@@ -1,4 +1,4 @@
-# ROBLOX Building Toolbelt
+# ROBLOX Building Tools
 A set of simple, yet flexible in-game building tools for ROBLOX.
 
 ## What's so special about these tools?
