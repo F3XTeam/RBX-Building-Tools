@@ -5,6 +5,11 @@
 -- ==================================
 
 ------------------------------------------
+-- Load external dependencies
+------------------------------------------
+RbxUtility = LoadLibrary( "RbxUtility" );
+
+------------------------------------------
 -- Create references to important objects
 ------------------------------------------
 Services = {
@@ -30,6 +35,7 @@ Services = {
 
 Tool = script.Parent;
 Player = Services.Players.LocalPlayer;
+Mouse = nil;
 
 ------------------------------------------
 -- Define functions that are depended-upon
@@ -46,6 +52,58 @@ function _findTableOccurrences( haystack, needle )
 	end;
 
 	return positions;
+end;
+
+function _getCollectionInfo( part_collection )
+	-- Returns the size and position of collection of parts `part_collection`
+
+	-- Get the corners
+	local corners = {};
+
+	for _, Part in pairs( part_collection ) do
+
+		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( Part.Size.x / 2, Part.Size.y / 2, Part.Size.z / 2 ) ) );
+		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( -Part.Size.x / 2, Part.Size.y / 2, Part.Size.z / 2 ) ) );
+		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( Part.Size.x / 2, -Part.Size.y / 2, Part.Size.z / 2 ) ) );
+		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( Part.Size.x / 2, Part.Size.y / 2, -Part.Size.z / 2 ) ) );
+		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( -Part.Size.x / 2, Part.Size.y / 2, -Part.Size.z / 2 ) ) );
+		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( -Part.Size.x / 2, -Part.Size.y / 2, Part.Size.z / 2 ) ) );
+		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( Part.Size.x / 2, -Part.Size.y / 2, -Part.Size.z / 2 ) ) );
+		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( -Part.Size.x / 2, -Part.Size.y / 2, -Part.Size.z / 2 ) ) );
+
+	end;
+
+	-- Get the extents
+	local x, y, z = {}, {}, {};
+
+	for _, Corner in pairs( corners ) do
+		table.insert( x, Corner.x );
+		table.insert( y, Corner.y );
+		table.insert( z, Corner.z );
+	end;
+
+	local x_min, y_min, z_min = math.min( unpack( x ) ),
+								math.min( unpack( y ) ),
+								math.min( unpack( z ) );
+
+	local x_max, y_max, z_max = math.max( unpack( x ) ),
+								math.max( unpack( y ) ),
+								math.max( unpack( z ) );
+
+	-- Get the size between the extents
+	local x_size, y_size, z_size = 	x_max - x_min,
+									y_max - y_min,
+									z_max - z_min;
+
+	local Size = Vector3.new( x_size, y_size, z_size );
+
+	-- Get the centroid of the collection of points
+	local Position = CFrame.new( 	x_min + ( x_max - x_min ) / 2,
+									y_min + ( y_max - y_min ) / 2,
+									z_min + ( z_max - z_min ) / 2 );
+
+	-- Return the size of the collection of parts
+	return Size, Position;
 end;
 
 ------------------------------------------
@@ -110,12 +168,19 @@ Options = setmetatable( {
 clicking = false;
 selecting = false;
 click_x, click_y = 0, 0;
+override_selection = false;
 
 SelectionBoxes = {};
+SelectionExistenceListeners = {};
 
 Selection = {
 
 	["Items"] = {};
+
+	-- Provide events to listen to changes in the selection
+	["Changed"] = RbxUtility.CreateSignal();
+	["ItemAdded"] = RbxUtility.CreateSignal();
+	["ItemRemoved"] = RbxUtility.CreateSignal();
 
 	-- Provide a method to add items to the selection
 	["add"] = function ( self, NewPart )
@@ -133,6 +198,17 @@ Selection = {
 		SelectionBoxes[NewPart].Name = "BTSelectionBox";
 		SelectionBoxes[NewPart].Color = BrickColor.new( "Cyan" );
 		SelectionBoxes[NewPart].Adornee = NewPart;
+
+		-- Make sure to remove the item from the selection when it's deleted
+		SelectionExistenceListeners[NewPart] = NewPart.AncestryChanged:connect( function ( Object, NewParent )
+			if NewParent == nil then
+				Selection:remove( NewPart );
+			end;
+		end );
+
+		-- Fire events
+		self.ItemAdded:fire( NewPart );
+		self.Changed:fire();
 
 	end;
 
@@ -160,6 +236,14 @@ Selection = {
 
 		-- Delete the item from the selection
 		self.Items[index] = nil;
+
+		-- Delete the existence listeners of the item
+		SelectionExistenceListeners[Item]:disconnect();
+		SelectionExistenceListeners[Item] = nil;
+
+		-- Fire events
+		self.ItemRemoved:fire( Item );
+		self.Changed:fire();
 
 	end;
 
@@ -266,7 +350,7 @@ Tools.Paint.Listeners.Unequipped = function ()
 	hidePalette();
 end;
 
-Tools.Paint.Listeners.Button1Up = function ( Mouse )
+Tools.Paint.Listeners.Button1Up = function ()
 
 	-- Make sure that they clicked on one of the items in their selection
 	if #_findTableOccurrences( Selection.Items, Mouse.Target ) > 0 then
@@ -359,10 +443,266 @@ function hidePalette()
 end;
 
 ------------------------------------------
+-- Move tool
+------------------------------------------
+
+-- Create the main container for this tool
+Tools.Move = {};
+
+-- Keep a container for the handles and other temporary stuff
+Tools.Move.Temporary = {
+	["Handles"] = nil;
+	["BoundaryBox"] = nil;
+	["BoundarySelectionBox"] = nil;
+	["Connections"] = {};
+	["MovementListeners"] = {};
+};
+
+-- Keep options in a container too
+Tools.Move.Options = {
+	["increment"] = 1;
+};
+
+-- Keep internal state data in its own container
+Tools.Move.State = {
+	["previous_distance"] = 0;
+};
+
+-- Add listeners
+Tools.Move.Listeners = {};
+
+Tools.Move.Listeners.Equipped = function ()
+
+	Tools.Move.Temporary.BoundaryBox = createBoundaryBox();
+
+	table.insert( Tools.Move.Temporary.Connections, Selection.Changed:connect( function ()
+		Tools.Move.Temporary.BoundaryBox = updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
+	end ) );
+
+	-- Listen to movement in any existing selection parts
+	for _, Item in pairs( Selection.Items ) do
+		Tools.Move.Temporary.MovementListeners[Item] = Item.Changed:connect( function ( property )
+			if property == "CFrame" then
+				Tools.Move.Temporary.BoundaryBox = updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
+			end;
+		end );
+	end;
+	table.insert( Tools.Move.Temporary.Connections, Selection.ItemAdded:connect( function ( Item )
+		Tools.Move.Temporary.MovementListeners[Item] = Item.Changed:connect( function ( property )
+			if property == "CFrame" then
+				Tools.Move.Temporary.BoundaryBox = updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
+			end;
+		end );
+	end ) );
+	table.insert( Tools.Move.Temporary.Connections, Selection.ItemRemoved:connect( function ( Item )
+		if Tools.Move.Temporary.MovementListeners[Item] then
+			Tools.Move.Temporary.MovementListeners[Item]:disconnect();
+			Tools.Move.Temporary.MovementListeners[Item] = nil;
+		end;
+	end ) );
+	Tools.Move.Temporary.BoundaryUpdater = coroutine.create( function ()
+		while true do
+			wait( 0.1 );
+			Tools.Move.Temporary.BoundaryBox = updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
+		end;
+	end );
+	coroutine.resume( Tools.Move.Temporary.BoundaryUpdater );
+
+	-- Create 3D movement handles
+	Tools.Move.Temporary.Handles = Instance.new( "Handles", Player.PlayerGui );
+	Tools.Move.Temporary.Handles.Name = "BTMovementHandles";
+	Tools.Move.Temporary.Handles.Adornee = nil;
+	Tools.Move.Temporary.Handles.Style = Enum.HandlesStyle.Resize;
+	Tools.Move.Temporary.Handles.Color = BrickColor.new( "Deep orange" );
+
+	-- Make sure to hide the handles when the boundary box is hidden
+	table.insert( Tools.Move.Temporary.Connections, Tools.Move.Temporary.BoundaryBox.AncestryChanged:connect( function ( Object, NewParent )
+ 		if NewParent == nil then
+			Tools.Move.Temporary.Handles.Adornee = nil;
+		else
+			Tools.Move.Temporary.Handles.Adornee = Tools.Move.Temporary.BoundaryBox;
+		end;
+	end ) );
+
+	-- Update BoundaryBox's shape/position to reflect current selection
+	Tools.Move.Temporary.BoundaryBox = updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
+
+	table.insert( Tools.Move.Temporary.Connections, Tools.Move.Temporary.Handles.MouseButton1Down:connect( function ()
+		Tools.Move.State.moving = true;
+		Tools.Move.State.MoveStart = {};
+		Tools.Move.State.MoveStartAnchors = {};
+		for _, Item in pairs( Selection.Items ) do
+			Tools.Move.State.MoveStart[Item] = Item.CFrame;
+			Tools.Move.State.MoveStartAnchors[Item] = Item.Anchored;
+			Item.Anchored = true;
+		end;
+		override_selection = true;
+
+		-- Let's listen to `Mouse`'s `Button1Up` instead of the handle's because the latter's only fires when
+		-- the button is released /on/ the handle (and that's not always the case)
+		local ReleaseListener;
+		ReleaseListener = Mouse.Button1Up:connect( function ()
+			ReleaseListener:disconnect();
+			Tools.Move.State.moving = false;
+			Tools.Move.State.MoveStart = {};
+
+			-- Reset each item's anchor state to its original
+			for _, Item in pairs( Selection.Items ) do
+				Item.Anchored = Tools.Move.State.MoveStartAnchors[Item];
+			end;
+
+			Tools.Move.State.MoveStartAnchors = {};
+		end );
+	end ) );
+
+	table.insert( Tools.Move.Temporary.Connections, Tools.Move.Temporary.Handles.MouseDrag:connect( function ( face, distance )
+
+		local distance = math.floor( distance );
+
+		-- Make sure that the distance has changed by at least a unit
+		if distance == Tools.Move.State.previous_distance then
+			return;
+		end;
+
+		Tools.Move.State.previous_distance = distance;
+
+		-- Increment the position of each selected item in the direction of `face`
+		for _, Item in pairs( Selection.Items ) do
+
+			if face == Enum.NormalId.Top then
+				Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, Tools.Move.Options.increment * distance, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+			
+			elseif face == Enum.NormalId.Bottom then
+				Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, -Tools.Move.Options.increment * distance, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+
+			elseif face == Enum.NormalId.Front then
+				Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, 0, -Tools.Move.Options.increment * distance ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+
+			elseif face == Enum.NormalId.Back then
+				Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, 0, Tools.Move.Options.increment * distance ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+
+			elseif face == Enum.NormalId.Right then
+				Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( Tools.Move.Options.increment * distance, 0, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+
+			elseif face == Enum.NormalId.Left then
+				Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( -Tools.Move.Options.increment * distance, 0, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+
+			end;
+
+		end;
+	end ) );
+
+end;
+
+Tools.Move.Listeners.Unequipped = function ()
+
+	-- Disconnect any temporary connections
+	for connection_index, Connection in pairs( Tools.Move.Temporary.Connections ) do
+		Connection:disconnect();
+		Tools.Move.Temporary.Connections[connection_index] = nil;
+	end;
+	for connection_index, Connection in pairs( Tools.Move.Temporary.MovementListeners ) do
+		Connection:disconnect();
+		Tools.Move.Temporary.MovementListeners[connection_index] = nil;
+	end;
+
+	-- Dispose of the coroutine that updates the boundary
+	Tools.Move.Temporary.BoundaryUpdater = nil;
+
+	-- Remove the boundary box
+	if Tools.Move.Temporary.BoundaryBox then
+		Tools.Move.Temporary.BoundaryBox:Destroy();
+		Tools.Move.Temporary.BoundaryBox = nil;
+	end;
+
+	-- Remove the boundary selection box
+	if Tools.Move.Temporary.BoundarySelectionBox then
+		Tools.Move.Temporary.BoundarySelectionBox:Destroy();
+		Tools.Move.Temporary.BoundarySelectionBox = nil;
+	end;
+
+	-- Remove the handles
+	if Tools.Move.Temporary.Handles then
+		Tools.Move.Temporary.Handles:Destroy();
+		Tools.Move.Temporary.Handles = nil;
+	end;
+
+end;
+
+-- Create the handle
+Tools.Move.Handle = Instance.new( "Part" );
+Tools.Move.Handle.Name = "Handle";
+Tools.Move.Handle.CanCollide = false;
+Tools.Move.Handle.Transparency = 1;
+
+-- Set the grip for the handle
+Tools.Move.Grip = CFrame.new( 0, 0, 0 );
+
+function createBoundaryBox()
+	-- Returns an empty boundary box
+
+	local BoundaryBox = Instance.new( "Part" );
+	BoundaryBox.Name = "BTBoundaryBox";
+	BoundaryBox.Anchored = true;
+	BoundaryBox.Locked = true;
+	BoundaryBox.CanCollide = false;
+	BoundaryBox.Transparency = 1;
+
+	local BoundarySelectionBox = Instance.new( "SelectionBox", Player.PlayerGui );
+	BoundarySelectionBox.Name = "BTBoundarySelectionBox";
+	BoundarySelectionBox.Color = BrickColor.new( "Deep orange" );
+	BoundarySelectionBox.Adornee = BoundaryBox;
+
+	BoundaryBox.AncestryChanged:connect( function ( Child, NewParent )
+		if NewParent == nil then
+			BoundarySelectionBox.Adornee = nil;
+		else
+			BoundarySelectionBox.Adornee = BoundaryBox;
+		end;
+	end );
+
+	Tools.Move.Temporary.BoundarySelectionBox = BoundarySelectionBox;
+
+	Mouse.TargetFilter = BoundaryBox;
+
+	return BoundaryBox;
+
+end;
+
+function updateBoundaryBox( BoundaryBox, part_collection )
+	-- Returns the boundary box
+
+	-- Make sure `BoundaryBox` exists
+	if not BoundaryBox then
+		return false;
+	end;
+
+	-- Delete the box if `part_collection` is empty and return a new one
+	if #part_collection == 0 then
+		BoundaryBox.Parent = nil;
+		return BoundaryBox;
+	end;
+
+	-- Get the size and position of `part_collection`
+	local Size, Position = _getCollectionInfo( part_collection );
+
+	-- Make `BoundaryBox` cover the part collection
+	BoundaryBox.Parent = Services.Workspace.CurrentCamera;
+	BoundaryBox.Size = Size;
+	BoundaryBox.CFrame = Position;
+
+	-- Return `BoundaryBox`
+	return BoundaryBox;
+
+end;
+
+------------------------------------------
 -- Attach listeners
 ------------------------------------------
 
-Tool.Equipped:connect( function ( Mouse )
+Tool.Equipped:connect( function ( CurrentMouse )
+
+	Mouse = CurrentMouse;
 
 	Options.TargetBox = Instance.new( "SelectionBox", Player.PlayerGui );
 	Options.TargetBox.Name = "BTTargetBox";
@@ -383,7 +723,10 @@ Tool.Equipped:connect( function ( Mouse )
 		local key = key:lower();
 		local key_code = key:byte();
 
-		if key == "v" then
+		if key == "z" then
+			Options.Tool = Tools.Move;
+
+		elseif key == "v" then
 			Options.Tool = Tools.Paint;
 
 		elseif key == "q" then
@@ -432,7 +775,7 @@ Tool.Equipped:connect( function ( Mouse )
 
 		-- Fire tool listeners
 		if Options.Tool and Options.Tool.Listeners.Button1Down then
-			Options.Tool.Listeners.Button1Down( Mouse );
+			Options.Tool.Listeners.Button1Down();
 		end;
 
 	end );
@@ -441,36 +784,41 @@ Tool.Equipped:connect( function ( Mouse )
 
 		-- If the target has changed, update the selectionbox appropriately
 		if Mouse.Target then
-			if Mouse.Target:IsA( "Part" ) and not Mouse.Target.Locked and Options.TargetBox.Adornee ~= Mouse.Target then
+			if Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked and Options.TargetBox.Adornee ~= Mouse.Target then
 				Options.TargetBox.Adornee = Mouse.Target;
 			end;
 		end;
 
 		-- When aiming at something invalid, don't highlight any targets
-		if not Mouse.Target or ( Mouse.Target and Mouse.Target:IsA( "Part" ) and Mouse.Target.Locked ) then
+		if not Mouse.Target or ( Mouse.Target and Mouse.Target:IsA( "BasePart" ) and Mouse.Target.Locked ) then
 			Options.TargetBox.Adornee = nil;
 		end;
 
 		-- If spay-like multi-selecting, add this current target to the selection
 		if selecting and clicking then
-			if Mouse.Target and Mouse.Target:IsA( "Part" ) and not Mouse.Target.Locked then
+			if Mouse.Target and Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked then
 				Selection:add( Mouse.Target );
 			end;
 		end;
 
 		-- Fire tool listeners
 		if Options.Tool and Options.Tool.Listeners.Move then
-			Options.Tool.Listeners.Move( Mouse );
+			Options.Tool.Listeners.Move();
 		end;
 
 	end );
 
 	Mouse.Button1Up:connect( function ()
 
+		if override_selection then
+			override_selection = false;
+			return false;
+		end;
+
 		clicking = false;
 
 		-- If the target when clicking was invalid then clear the selection (unless we're multi-selecting)
-		if not selecting and ( not Mouse.Target or ( Mouse.Target and Mouse.Target:IsA( "Part" ) and Mouse.Target.Locked ) ) then
+		if not selecting and ( not Mouse.Target or ( Mouse.Target and Mouse.Target:IsA( "BasePart" ) and Mouse.Target.Locked ) ) then
 			Selection:clear();
 		end;
 
@@ -479,21 +827,21 @@ Tool.Equipped:connect( function ( Mouse )
 
 			-- If the item isn't already selected, add it to the selection
 			if #_findTableOccurrences( Selection.Items, Mouse.Target ) == 0 then
-				if Mouse.Target and Mouse.Target:IsA( "Part" ) and not Mouse.Target.Locked then
+				if Mouse.Target and Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked then
 					Selection:add( Mouse.Target );
 				end;
 			
 			-- If the item _is_ already selected, remove it from the selection
 			-- (unless they're finishing a spray-like selection)
 			else
-				if ( Mouse.X == click_x and Mouse.Y == click_y ) and Mouse.Target and Mouse.Target:IsA( "Part" ) and not Mouse.Target.Locked then
+				if ( Mouse.X == click_x and Mouse.Y == click_y ) and Mouse.Target and Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked then
 					Selection:remove( Mouse.Target );
 				end;
 			end;
 
 		-- If not multi-selecting, replace the selection
 		else
-			if Mouse.Target and Mouse.Target:IsA( "Part" ) and not Mouse.Target.Locked then
+			if Mouse.Target and Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked then
 				Selection:clear();
 				Selection:add( Mouse.Target );
 			end;
@@ -501,7 +849,7 @@ Tool.Equipped:connect( function ( Mouse )
 
 		-- Fire tool listeners
 		if Options.Tool and Options.Tool.Listeners.Button1Up then
-			Options.Tool.Listeners.Button1Up( Mouse );
+			Options.Tool.Listeners.Button1Up();
 		end;
 
 	end );
@@ -509,6 +857,8 @@ Tool.Equipped:connect( function ( Mouse )
 end );
 
 Tool.Unequipped:connect( function ()
+
+	Mouse = nil;
 
 	-- Remove the mouse target SelectionBox from `Player`
 	local TargetBox = Player.PlayerGui:FindFirstChild( "BTTargetBox" );
