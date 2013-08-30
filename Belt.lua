@@ -121,6 +121,17 @@ function _round( number, places )
 
 end
 
+function _cloneTable( source )
+	-- Returns a deep copy of table `source`
+
+	-- Get a copy of `source`'s metatable, since the hacky method
+	-- we're using to copy the table doesn't include its metatable
+	local source_mt = getmetatable( source );
+
+	-- Return a copy of `source` including its metatable
+	return setmetatable( { unpack( source ) }, source_mt );
+end;
+
 ------------------------------------------
 -- Create data containers
 ------------------------------------------
@@ -250,6 +261,9 @@ Selection = {
 			end;
 		end );
 
+		-- Provide a reference to the last item added to the selection (i.e. NewPart)
+		self.Last = NewPart;
+
 		-- Fire events
 		self.ItemAdded:fire( NewPart );
 		self.Changed:fire();
@@ -259,13 +273,10 @@ Selection = {
 	-- Provide a method to remove items from the selection
 	["remove"] = function ( self, Item )
 
-		-- Look for `Item` in the selection
-		local index = self:find( Item );
-
-		-- Make sure selection item `index` exists
-		if not index then
+		-- Make sure selection item `Item` exists
+		if not self:find( Item ) then
 			return false;
-		end
+		end;
 
 		-- Remove `Item`'s SelectionBox
 		local SelectionBox = SelectionBoxes[Item];
@@ -274,8 +285,13 @@ Selection = {
 		end;
 		SelectionBoxes[Item] = nil;
 
+		-- If it was logged as the last item, change it
+		if self.Last == Item then
+			self.Last = ( #self.Items > 1 ) and self.Items[#self.Items - 1] or nil;
+		end;
+
 		-- Delete the item from the selection
-		self.Items[index] = nil;
+		table.remove( self.Items, self:find( Item ) );
 
 		-- Delete the existence listeners of the item
 		SelectionExistenceListeners[Item]:disconnect();
@@ -291,7 +307,7 @@ Selection = {
 	["clear"] = function ( self )
 
 		-- Go through all the items in the selection and call `self.remove` on them
-		for index, Item in pairs( self.Items ) do
+		for _, Item in pairs( _cloneTable( self.Items ) ) do
 			self:remove( Item );
 		end;
 
@@ -534,6 +550,7 @@ Tools.Move.Listeners.Equipped = function ()
 	table.insert( Tools.Move.Temporary.Connections, Selection.Changed:connect( function ()
 		Tools.Move.Temporary.BoundaryBox = Tools.Move:updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
 		Tools.Move:updateGUI();
+		Tools.Move:updateAxes();
 	end ) );
 
 	-- Listen to movement in any existing selection parts
@@ -574,15 +591,6 @@ Tools.Move.Listeners.Equipped = function ()
 	Tools.Move.Temporary.Handles.Adornee = nil;
 	Tools.Move.Temporary.Handles.Style = Enum.HandlesStyle.Resize;
 	Tools.Move.Temporary.Handles.Color = BrickColor.new( "Deep orange" );
-
-	-- Make sure to hide the handles when the boundary box is hidden
-	table.insert( Tools.Move.Temporary.Connections, Tools.Move.Temporary.BoundaryBox.AncestryChanged:connect( function ( Object, NewParent )
- 		if NewParent == nil then
-			Tools.Move.Temporary.Handles.Adornee = nil;
-		else
-			Tools.Move.Temporary.Handles.Adornee = Tools.Move.Temporary.BoundaryBox;
-		end;
-	end ) );
 
 	-- Update BoundaryBox's shape/position to reflect current selection
 	Tools.Move.Temporary.BoundaryBox = Tools.Move:updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
@@ -637,30 +645,70 @@ Tools.Move.Listeners.Equipped = function ()
 		-- Increment the position of each selected item in the direction of `face`
 		for _, Item in pairs( Selection.Items ) do
 
+			-- Remove any joints connected with `Item` so that it can freely move
 			Item:BreakJoints();
 
+			-- Update the position of `Item` depending on the type of axes that is currently set
 			if face == Enum.NormalId.Top then
-				Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, Tools.Move.Options.increment * distance, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+				if Tools.Move.Options.axes == "global" then
+					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, Tools.Move.Options.increment * distance, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+				elseif Tools.Move.Options.axes == "local" then
+					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, Tools.Move.Options.increment * distance, 0 ) );
+				elseif Tools.Move.Options.axes == "last" then
+					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, Tools.Move.Options.increment * distance, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+				end;
 			
 			elseif face == Enum.NormalId.Bottom then
-				Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, -Tools.Move.Options.increment * distance, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+				if Tools.Move.Options.axes == "global" then
+					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, -Tools.Move.Options.increment * distance, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+				elseif Tools.Move.Options.axes == "local" then
+					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, -Tools.Move.Options.increment * distance, 0 ) );
+				elseif Tools.Move.Options.axes == "last" then
+					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, -Tools.Move.Options.increment * distance, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+				end;
 
 			elseif face == Enum.NormalId.Front then
-				Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, 0, -Tools.Move.Options.increment * distance ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+				if Tools.Move.Options.axes == "global" then
+					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, 0, -Tools.Move.Options.increment * distance ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+				elseif Tools.Move.Options.axes == "local" then
+					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, 0, -Tools.Move.Options.increment * distance ) );
+				elseif Tools.Move.Options.axes == "last" then
+					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, 0, -Tools.Move.Options.increment * distance ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+				end;
 
 			elseif face == Enum.NormalId.Back then
-				Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, 0, Tools.Move.Options.increment * distance ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+				if Tools.Move.Options.axes == "global" then
+					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, 0, Tools.Move.Options.increment * distance ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+				elseif Tools.Move.Options.axes == "local" then
+					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, 0, Tools.Move.Options.increment * distance ) );
+				elseif Tools.Move.Options.axes == "last" then
+					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, 0, Tools.Move.Options.increment * distance ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+				end;
 
 			elseif face == Enum.NormalId.Right then
-				Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( Tools.Move.Options.increment * distance, 0, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+				if Tools.Move.Options.axes == "global" then
+					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( Tools.Move.Options.increment * distance, 0, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+				elseif Tools.Move.Options.axes == "local" then
+					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( Tools.Move.Options.increment * distance, 0, 0 ) );
+				elseif Tools.Move.Options.axes == "last" then
+					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( Tools.Move.Options.increment * distance, 0, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+				end;
 
 			elseif face == Enum.NormalId.Left then
-				Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( -Tools.Move.Options.increment * distance, 0, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+				if Tools.Move.Options.axes == "global" then
+					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( -Tools.Move.Options.increment * distance, 0, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+				elseif Tools.Move.Options.axes == "local" then
+					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( -Tools.Move.Options.increment * distance, 0, 0 ) );
+				elseif Tools.Move.Options.axes == "last" then
+					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( -Tools.Move.Options.increment * distance, 0, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+				end;
 
 			end;
 
 		end;
 	end ) );
+
+	Tools.Move:updateAxes();
 
 end;
 
@@ -794,6 +842,11 @@ Tools.Move.Listeners.Unequipped = function ()
 	if Tools.Move.Temporary.Dragger then
 		Tools.Move.Temporary.Dragger:Destroy();
 		Tools.Move.Temporary.Dragger = nil;
+	end;
+
+	if Tools.Move.Temporary.AdorneeWatcher then
+		Tools.Move.Temporary.AdorneeWatcher:disconnect();
+		Tools.Move.Temporary.AdorneeWatcher = nil;
 	end;
 
 end;
@@ -1387,9 +1440,63 @@ end;
 Tools.Move.updateAxes = function ( self )
 	-- Updates the axis type of the tool depending on the options
 
-	if self.Options.axes == "global" then
-		self.Temporary.Handles.Adornee = self.Temporary.BoundaryBox;
+	if self.Temporary.AdorneeWatcher then
+		self.Temporary.AdorneeWatcher:disconnect();
+		self.Temporary.AdorneeWatcher = nil;
 	end;
+
+	if self.Temporary.LocalAxesChooser then
+		self.Temporary.LocalAxesChooser:disconnect();
+		self.Temporary.LocalAxesChooser = nil;
+	end;
+
+	self.Temporary.Handles.Adornee = nil;
+
+	if self.Options.axes == "global" then
+		if self.Temporary.BoundaryBox.Parent then
+			self.Temporary.Handles.Adornee = self.Temporary.BoundaryBox;
+		end;
+	end;
+
+	if self.Options.axes == "local" then
+
+		-- If there is a last item in the selection, attach the handles to it
+		if Selection.Last then
+			self.Temporary.Handles.Adornee = Selection.Last;
+		end;
+
+		-- Move the handles over to whichever part is the mouse's current target
+		self.Temporary.LocalAxesChooser = Mouse.Button2Up:connect( function ()
+			if Selection:find( Mouse.Target ) then
+				self.Temporary.Handles.Adornee = Mouse.Target;
+			end;
+		end );
+
+	end;
+
+	if self.Options.axes == "last" then
+
+		-- If there is a last item in the selection, attach the handles to it
+		if Selection.Last then
+			self.Temporary.Handles.Adornee = Selection.Last;
+		end;
+
+	end;
+
+	-- Make sure to hide the handles when their adornee is removed
+	if self.Temporary.Handles.Adornee then
+		local Adornee = self.Temporary.Handles.Adornee;
+		self.Temporary.AdorneeWatcher = self.Temporary.Handles.Adornee.AncestryChanged:connect( function ( Object, NewParent )
+	 		if NewParent == nil then
+				self.Temporary.Handles.Adornee = nil;
+			else
+				self.Temporary.Handles.Adornee = Adornee;
+			end;
+		end );
+	end;
+
+	-- Reload the boundary box's parent so that the AdorneeWatcher connection can catch it
+	self.Temporary.BoundaryBox.Parent = self.Temporary.BoundaryBox.Parent;
 
 end;
 
@@ -1580,7 +1687,7 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		if not override_selection and selecting then
 
 			-- If the item isn't already selected, add it to the selection
-			if #_findTableOccurrences( Selection.Items, Mouse.Target ) == 0 then
+			if not Selection:find( Mouse.Target ) then
 				if Mouse.Target and Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked then
 					Selection:add( Mouse.Target );
 				end;
