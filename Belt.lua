@@ -65,16 +65,23 @@ function _getCollectionInfo( part_collection )
 	-- Get the corners
 	local corners = {};
 
+	local table_insert = table.insert;
+
 	for _, Part in pairs( part_collection ) do
 
-		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( Part.Size.x / 2, Part.Size.y / 2, Part.Size.z / 2 ) ) );
-		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( -Part.Size.x / 2, Part.Size.y / 2, Part.Size.z / 2 ) ) );
-		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( Part.Size.x / 2, -Part.Size.y / 2, Part.Size.z / 2 ) ) );
-		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( Part.Size.x / 2, Part.Size.y / 2, -Part.Size.z / 2 ) ) );
-		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( -Part.Size.x / 2, Part.Size.y / 2, -Part.Size.z / 2 ) ) );
-		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( -Part.Size.x / 2, -Part.Size.y / 2, Part.Size.z / 2 ) ) );
-		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( Part.Size.x / 2, -Part.Size.y / 2, -Part.Size.z / 2 ) ) );
-		table.insert( corners, Part.CFrame:toWorldSpace( CFrame.new( -Part.Size.x / 2, -Part.Size.y / 2, -Part.Size.z / 2 ) ) );
+		-- Create shortcuts to certain things that are expensive to call constantly
+		local PartCFrame = Part.CFrame;
+		local PartSize = Part.Size / 2;
+		local size_x, size_y, size_z = PartSize.x, PartSize.y, PartSize.z;
+
+		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( size_x, size_y, size_z ) ) );
+		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( -size_x, size_y, size_z ) ) );
+		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( size_x, -size_y, size_z ) ) );
+		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( size_x, size_y, -size_z ) ) );
+		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( -size_x, size_y, -size_z ) ) );
+		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( -size_x, -size_y, size_z ) ) );
+		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( size_x, -size_y, -size_z ) ) );
+		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( -size_x, -size_y, -size_z ) ) );
 
 	end;
 
@@ -82,9 +89,9 @@ function _getCollectionInfo( part_collection )
 	local x, y, z = {}, {}, {};
 
 	for _, Corner in pairs( corners ) do
-		table.insert( x, Corner.x );
-		table.insert( y, Corner.y );
-		table.insert( z, Corner.z );
+		table_insert( x, Corner.x );
+		table_insert( y, Corner.y );
+		table_insert( z, Corner.z );
 	end;
 
 	local x_min, y_min, z_min = math.min( unpack( x ) ),
@@ -551,24 +558,6 @@ Tools.Move.Listeners.Equipped = function ()
 		Tools.Move.Temporary.BoundaryBox = Tools.Move:updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
 		Tools.Move:updateGUI();
 		Tools.Move:updateAxes();
-	end ) );
-
-	-- Listen to movement in any existing selection parts
-	for _, Item in pairs( Selection.Items ) do
-		Tools.Move.Temporary.MovementListeners[Item] = Item.Changed:connect( function ( property )
-			if property == "CFrame" then
-				Tools.Move.Temporary.BoundaryBox = Tools.Move:updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
-				Tools.Move:updateGUI();
-			end;
-		end );
-	end;
-	table.insert( Tools.Move.Temporary.Connections, Selection.ItemAdded:connect( function ( Item )
-		Tools.Move.Temporary.MovementListeners[Item] = Item.Changed:connect( function ( property )
-			if property == "CFrame" then
-				Tools.Move.Temporary.BoundaryBox = Tools.Move:updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
-				Tools.Move:updateGUI();
-			end;
-		end );
 	end ) );
 	table.insert( Tools.Move.Temporary.Connections, Selection.ItemRemoved:connect( function ( Item )
 		if Tools.Move.Temporary.MovementListeners[Item] then
