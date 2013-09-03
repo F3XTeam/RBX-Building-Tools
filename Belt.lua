@@ -1548,6 +1548,867 @@ Tools.Move.updateBoundaryBox = function ( self, BoundaryBox, part_collection )
 end;
 
 ------------------------------------------
+-- Resize tool
+------------------------------------------
+
+-- Create the tool
+Tools.Resize = {};
+
+-- Create structures that will be used within the tool
+Tools.Resize.Temporary = {
+	["Connections"] = {};
+};
+
+Tools.Resize.Options = {
+	["increment"] = 1;
+	["directions"] = "normal";
+};
+
+Tools.Resize.State = {
+	["PreResize"] = {};
+	["previous_distance"] = 0;
+	["resizing"] = false;
+};
+
+Tools.Resize.Listeners = {};
+
+-- Create the handle for the tool
+Tools.Resize.Handle = RbxUtility.Create "Part" {
+	Name = "Handle";
+	CanCollide = false;
+	Transparency = 1;
+	Locked = true;
+};
+
+-- Set the grip for the handle
+Tools.Resize.Grip = CFrame.new( 0, 0, 0 );
+
+-- Define the color of the tool
+Tools.Resize.Color = BrickColor.new( "Cyan" );
+
+Tools.Resize.Listeners.Equipped = function ()
+
+	-- Change the color of selection boxes temporarily
+	Tools.Resize.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = Tools.Resize.Color;
+	updateSelectionBoxColor();
+
+	-- Reveal the GUI
+	Tools.Resize:showGUI();
+
+	-- Always have the handles on the most recent addition to the selection
+	table.insert( Tools.Resize.Temporary.Connections, Selection.Changed:connect( function ()
+
+		-- Clear out any previous adornee
+		Tools.Resize:hideHandles();
+
+		-- If there /is/ a last item in the selection, attach the handles to it
+		if Selection.Last then
+			Tools.Resize:showHandles( Selection.Last );
+		end;
+
+	end ) );
+
+	-- Switch the adornee of the handles if the second mouse button is pressed
+	table.insert( Tools.Resize.Temporary.Connections, Mouse.Button2Up:connect( function ()
+
+		-- Make sure the platform doesn't think we're selecting
+		override_selection = true;
+
+		-- If the target is in the selection, make it the new adornee
+		if Selection:find( Mouse.Target ) then
+			Tools.Resize:showHandles( Mouse.Target );
+		end;
+
+	end ) );
+
+	-- Finally, attach the handles to the last item added to the selection (if any)
+	if Selection.Last then
+		Tools.Resize:showHandles( Selection.Last );
+	end;
+
+end;
+
+Tools.Resize.Listeners.Unequipped = function ()
+
+	-- Hide the GUI
+	Tools.Resize:hideGUI();
+
+	-- Hide the handles
+	Tools.Resize:hideHandles();
+
+	-- Clear out any temporary connections
+	for connection_index, Connection in pairs( Tools.Resize.Temporary.Connections ) do
+		Connection:disconnect();
+		Tools.Resize.Temporary.Connections[connection_index] = nil;
+	end;
+
+	-- Restore the original color of the selection boxes
+	SelectionBoxColor = Tools.Resize.Temporary.PreviousSelectionBoxColor;
+	updateSelectionBoxColor();
+
+end;
+
+Tools.Resize.showGUI = function ( self )
+
+	-- Create the GUI if it doesn't exist
+	if not self.Temporary.GUI then
+		local GUIRoot = Instance.new( "ScreenGui", Player.PlayerGui );
+		GUIRoot.Name = "BTResizeToolGUI";
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot;
+			Name = "Container";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 280 );
+			Size = UDim2.new( 0, 245, 0, 90 );
+			Draggable = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "DirectionsOption";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 30 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.DirectionsOption;
+			Name = "Normal";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 70, 0, 0 );
+			Size = UDim2.new( 0, 70, 0, 25 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.DirectionsOption.Normal;
+			Name = "SelectedIndicator";
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 6, 0, -2 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+			BackgroundTransparency = ( self.Options.directions == "normal" ) and 0 or 1;
+		};
+
+		RbxUtility.Create "TextButton" {
+			Parent = GUIRoot.Container.DirectionsOption.Normal;
+			Name = "Button";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Text = "";
+			TextTransparency = 1;
+
+			-- Change the axis type option when the button is clicked
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self.Options.directions = "normal";
+				GUIRoot.Container.DirectionsOption.Normal.SelectedIndicator.BackgroundTransparency = 0;
+				GUIRoot.Container.DirectionsOption.Normal.Background.Image = dark_slanted_rectangle;
+				GUIRoot.Container.DirectionsOption.Both.SelectedIndicator.BackgroundTransparency = 1;
+				GUIRoot.Container.DirectionsOption.Both.Background.Image = light_slanted_rectangle;
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.DirectionsOption.Normal;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = ( self.Options.directions == "normal" ) and dark_slanted_rectangle or light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.DirectionsOption.Normal;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "NORMAL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.DirectionsOption;
+			Name = "Both";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 135, 0, 0 );
+			Size = UDim2.new( 0, 70, 0, 25 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.DirectionsOption.Both;
+			Name = "SelectedIndicator";
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 6, 0, -2 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+			BackgroundTransparency = ( self.Options.directions == "both" ) and 0 or 1;
+		};
+
+		RbxUtility.Create "TextButton" {
+			Parent = GUIRoot.Container.DirectionsOption.Both;
+			Name = "Button";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Text = "";
+			TextTransparency = 1;
+
+			-- Change the axis type option when the button is clicked
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self.Options.directions = "both";
+				GUIRoot.Container.DirectionsOption.Normal.SelectedIndicator.BackgroundTransparency = 1;
+				GUIRoot.Container.DirectionsOption.Normal.Background.Image = light_slanted_rectangle;
+				GUIRoot.Container.DirectionsOption.Both.SelectedIndicator.BackgroundTransparency = 0;
+				GUIRoot.Container.DirectionsOption.Both.Background.Image = dark_slanted_rectangle;
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.DirectionsOption.Both;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = ( self.Options.directions == "both" ) and dark_slanted_rectangle or light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.DirectionsOption.Both;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "BOTH";
+			TextColor3 = Color3.new( 1, 1, 1 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.DirectionsOption;
+			Name = "Label";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Size = UDim2.new( 0, 75, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.DirectionsOption.Label;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Directions";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextWrapped = true;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "Title";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Title;
+			Name = "ColorBar";
+			BackgroundColor3 = self.Color.Color;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, -3 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Title;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "RESIZE TOOL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Title;
+			Name = "F3XSignature";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size14;
+			Text = "F3X";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Right;
+			TextStrokeTransparency = 0.9;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "IncrementOption";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 65 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.IncrementOption;
+			Name = "Increment";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 70, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Name = "SelectedIndicator";
+			BorderSizePixel = 0;
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			Size = UDim2.new( 1, -4, 0, 2 );
+			Position = UDim2.new( 0, 5, 0, -2 );
+		};
+
+		RbxUtility.Create "TextBox" {
+			Parent = GUIRoot.Container.IncrementOption.Increment;
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = tostring( self.Options.increment );
+			TextColor3 = Color3.new( 1, 1, 1 );
+
+			-- Change the increment option when the value of the textbox is updated
+			[RbxUtility.Create.E "FocusLost"] = function ( enter_pressed )
+				if enter_pressed then
+					self.Options.increment = tonumber( GUIRoot.Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
+					GUIRoot.Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
+				end;
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.IncrementOption;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 0, 75, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.IncrementOption.Label;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Increment";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0;
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "Info";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 100 );
+			Size = UDim2.new( 1, -5, 0, 60 );
+			Visible = false;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info;
+			Name = "ColorBar";
+			BorderSizePixel = 0;
+			BackgroundColor3 = self.Color.Color;
+			Size = UDim2.new( 1, 0, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info;
+			Name = "Label";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 10, 0, 2 );
+			Size = UDim2.new( 1, -10, 0, 20 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "SELECTION INFO";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Left;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info;
+			Name = "SizeInfo";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 30 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info.SizeInfo;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 0, 75, 0, 25 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Size";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0);
+			TextStrokeTransparency = 0;
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info.SizeInfo;
+			Name = "X";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 70, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info.SizeInfo.X;
+			Name = "TextLabel";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.Info.SizeInfo.X;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Image = light_slanted_rectangle;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info.SizeInfo;
+			Name = "Y";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 117, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info.SizeInfo.Y;
+			Name = "TextLabel";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.Info.SizeInfo.Y;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Image = light_slanted_rectangle;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info.SizeInfo;
+			Name = "Z";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 164, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info.SizeInfo.Z;
+			Name = "TextLabel";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.Info.SizeInfo.Z;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Image = light_slanted_rectangle;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "Changes";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 165 );
+			Size = UDim2.new( 1, -5, 0, 20 );
+			Visible = false;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Changes;
+			Name = "ColorBar";
+			BorderSizePixel = 0;
+			BackgroundColor3 = self.Color.Color;
+			Size = UDim2.new( 1, 0, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Changes;
+			Name = "Text";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 10, 0, 2 );
+			Size = UDim2.new( 1, -10, 0, 20 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size11;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0.5;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Right;
+		};
+
+		-- Constantly update the GUI if it's visible
+		coroutine.wrap( function ()
+			while wait( 0.1 ) do
+				if GUIRoot.Container.Visible then
+					self:updateGUI();
+				end;
+			end;
+		end )();
+
+		self.Temporary.GUI = GUIRoot;
+	end;
+
+	-- Reveal the GUI
+	self.Temporary.GUI.Container.Visible = true;
+
+end;
+
+Tools.Resize.updateGUI = function ( self )
+
+	-- Make sure the GUI exists
+	if not self.Temporary.GUI then
+		return;
+	end;
+
+	local GUI = self.Temporary.GUI.Container;
+
+	if #Selection.Items > 0 then
+
+		-- Get the size and position of the selection
+		local SelectionSize, SelectionPosition = _getCollectionInfo( Selection.Items );
+
+		-- Update the size info on the GUI
+		GUI.Info.SizeInfo.X.TextLabel.Text = tostring( _round( SelectionSize.x, 2 ) );
+		GUI.Info.SizeInfo.Y.TextLabel.Text = tostring( _round( SelectionSize.y, 2 ) );
+		GUI.Info.SizeInfo.Z.TextLabel.Text = tostring( _round( SelectionSize.z, 2 ) );
+
+		GUI.Info.Visible = true;
+	else
+		GUI.Info.Visible = false;
+	end;
+
+	if self.State.length_resized then
+		GUI.Changes.Text.Text = "resized " .. tostring( self.State.length_resized ) .. " studs";
+		GUI.Changes.Position = GUI.Info.Visible and UDim2.new( 0, 5, 0, 165 ) or UDim2.new( 0, 5, 0, 100 );
+		GUI.Changes.Visible = true;
+	else
+		GUI.Changes.Text.Text = "";
+		GUI.Changes.Visible = false;
+	end;
+
+end;
+
+Tools.Resize.hideGUI = function ( self )
+
+	-- Hide the GUI if it exists
+	if self.Temporary.GUI then
+		self.Temporary.GUI.Container.Visible = false;
+	end;
+
+end;
+
+Tools.Resize.showHandles = function ( self, Part )
+
+	-- Create the handles if they don't exist yet
+	if not self.Temporary.Handles then
+
+		-- Create the object
+		self.Temporary.Handles = RbxUtility.Create "Handles" {
+			Name = "BTMovementHandles";
+			Style = Enum.HandlesStyle.Resize;
+			Color = self.Color;
+			Parent = Player.PlayerGui;
+		};
+
+		-- Add functionality to the handles
+		self.Temporary.Handles.MouseButton1Down:connect( function ()
+
+			-- Prevent the platform from thinking we're selecting
+			override_selection = true;
+			self.State.resizing = true;
+
+			-- Clear the change stats
+			self.State.length_resized = 0;
+
+			-- Do a few things to the selection before manipulating it
+			for _, Item in pairs( Selection.Items ) do
+
+				-- Keep a copy of the state of each item
+				self.State.PreResize[Item] = Item:Clone();
+
+				-- Make the item be able to be freely resized
+				Item.FormFactor = Enum.FormFactor.Custom;
+
+				-- Anchor each item
+				Item.Anchored = true;
+
+			end;
+
+			-- Return stuff to normal once the mouse button is released
+			self.Temporary.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
+
+				-- Prevent the platform from thinking we're selecting
+				override_selection = true;
+				self.State.resizing = false;
+
+				-- Stop this connection from firing again
+				self.Temporary.Connections.HandleReleaseListener:disconnect();
+				self.Temporary.Connections.HandleReleaseListener = nil;
+
+				-- Restore properties that may have been changed temporarily
+				-- from the pre-resize state copies
+				for Item, PreviousItemState in pairs( self.State.PreResize ) do
+					Item.Anchored = PreviousItemState.Anchored;
+					self.State.PreResize[Item] = nil;
+					Item:MakeJoints();
+				end;
+
+			end );
+
+		end );
+
+		self.Temporary.Handles.MouseDrag:connect( function ( face, distance )
+			
+			-- Round `distance` down
+			local distance = math.floor( distance );
+
+			-- Make sure the distance has changed by at least 1 unit
+			if distance == self.State.previous_distance then
+				return;
+			end;
+
+			-- Log the distance that the handle was dragged
+			self.State.previous_distance = distance;
+
+			-- Note the length by which the selection will be enlarged
+			local increase;
+			if self.Options.directions == "normal" then
+				increase = distance * self.Options.increment;
+			elseif self.Options.directions == "both" then
+				increase = distance * self.Options.increment * 2;
+			end;
+			self.State.length_resized = increase;
+
+			-- Go through the selection and make changes to it
+			for _, Item in pairs( Selection.Items ) do
+
+				-- Keep a copy of `Item` in case we need to revert anything
+				local PreviousItemState = Item:Clone();
+
+				-- Break any of `Item`'s joints so it can move freely
+				Item:BreakJoints();
+
+				-- Position and resize `Item` according to the options and the handle that was used
+
+				if face == Enum.NormalId.Top then
+					Item.Size = self.State.PreResize[Item].Size + Vector3.new( 0, increase, 0 );
+					if Item.Size == self.State.PreResize[Item].Size + Vector3.new( 0, increase, 0 ) then
+						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( 0, increase / 2, 0 ) ) )
+									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
+					-- If the resizing was not possible, revert `Item`'s state
+					else
+						Item.Size = PreviousItemState.Size;
+						Item.CFrame = PreviousItemState.CFrame;
+					end;
+
+				elseif face == Enum.NormalId.Bottom then
+					Item.Size = self.State.PreResize[Item].Size + Vector3.new( 0, increase, 0 );
+					if Item.Size == self.State.PreResize[Item].Size + Vector3.new( 0, increase, 0 ) then
+						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( 0, -increase / 2, 0 ) ) )
+									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
+					-- If the resizing was not possible, revert `Item`'s state
+					else
+						Item.Size = PreviousItemState.Size;
+						Item.CFrame = PreviousItemState.CFrame;
+					end;
+
+				elseif face == Enum.NormalId.Front then
+					Item.Size = self.State.PreResize[Item].Size + Vector3.new( 0, 0, increase );
+					if Item.Size == self.State.PreResize[Item].Size + Vector3.new( 0, 0, increase ) then
+						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, -increase / 2 ) ) )
+									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
+					-- If the resizing was not possible, revert `Item`'s state
+					else
+						Item.Size = PreviousItemState.Size;
+						Item.CFrame = PreviousItemState.CFrame;
+					end;
+
+				elseif face == Enum.NormalId.Back then
+					Item.Size = self.State.PreResize[Item].Size + Vector3.new( 0, 0, increase );
+					if Item.Size == self.State.PreResize[Item].Size + Vector3.new( 0, 0, increase ) then
+						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, increase / 2 ) ) )
+									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
+					-- If the resizing was not possible, revert `Item`'s state
+					else
+						Item.Size = PreviousItemState.Size;
+						Item.CFrame = PreviousItemState.CFrame;
+					end;
+
+				elseif face == Enum.NormalId.Left then
+					Item.Size = self.State.PreResize[Item].Size + Vector3.new( increase, 0, 0 );
+					if Item.Size == self.State.PreResize[Item].Size + Vector3.new( increase, 0, 0 ) then
+						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( -increase / 2, 0, 0 ) ) )
+									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
+					-- If the resizing was not possible, revert `Item`'s state
+					else
+						Item.Size = PreviousItemState.Size;
+						Item.CFrame = PreviousItemState.CFrame;
+					end;
+
+				elseif face == Enum.NormalId.Right then
+					Item.Size = self.State.PreResize[Item].Size + Vector3.new( increase, 0, 0 );
+					if Item.Size == self.State.PreResize[Item].Size + Vector3.new( increase, 0, 0 ) then
+						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( increase / 2, 0, 0 ) ) )
+									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
+					-- If the resizing was not possible, revert `Item`'s state
+					else
+						Item.Size = PreviousItemState.Size;
+						Item.CFrame = PreviousItemState.CFrame;
+					end;
+				end;
+
+				-- Make joints with surrounding parts again once the resizing is done
+				Item:MakeJoints();
+
+			end;
+
+		end );
+
+	end;
+
+	-- Stop listening for the existence of the previous adornee (if any)
+	if self.Temporary.Connections.AdorneeExistenceListener then
+		self.Temporary.Connections.AdorneeExistenceListener:disconnect();
+		self.Temporary.Connections.AdorneeExistenceListener = nil;
+	end;
+
+	-- Attach the handles to `Part`
+	self.Temporary.Handles.Adornee = Part;
+
+	-- Make sure to hide the handles if `Part` suddenly stops existing
+	self.Temporary.Connections.AdorneeExistenceListener = Part.AncestryChanged:connect( function ( Object, NewParent )
+
+		-- Make sure this change in parent applies directly to `Part`
+		if Object ~= Part then
+			return;
+		end;
+
+		-- Show the handles according to the existence of the part
+		if NewParent == nil then
+			self:hideHandles();
+		else
+			self:showHandles( Part );
+		end;
+
+	end );
+
+end;
+
+Tools.Resize.hideHandles = function ( self )
+
+	-- Hide the handles if they exist
+	if self.Temporary.Handles then
+		self.Temporary.Handles.Adornee = nil;
+	end;
+
+end;
+
+------------------------------------------
 -- Attach listeners
 ------------------------------------------
 
@@ -1576,6 +2437,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		if key == "z" then
 			Options.Tool = Tools.Move;
+
+		elseif key == "x" then
+			Options.Tool = Tools.Resize;
 
 		elseif key == "v" then
 			Options.Tool = Tools.Paint;
