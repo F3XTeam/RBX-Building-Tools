@@ -292,13 +292,13 @@ Selection = {
 		end;
 		SelectionBoxes[Item] = nil;
 
-		-- If it was logged as the last item, change it
-		if self.Last == Item then
-			self.Last = ( #self.Items > 1 ) and self.Items[#self.Items - 1] or nil;
-		end;
-
 		-- Delete the item from the selection
 		table.remove( self.Items, self:find( Item ) );
+
+		-- If it was logged as the last item, change it
+		if self.Last == Item then
+			self.Last = ( #self.Items > 0 ) and self.Items[#self.Items] or nil;
+		end;
 
 		-- Delete the existence listeners of the item
 		SelectionExistenceListeners[Item]:disconnect();
@@ -621,18 +621,28 @@ Tools.Move.Listeners.Equipped = function ()
 		end );
 	end ) );
 
-	table.insert( Tools.Move.Temporary.Connections, Tools.Move.Temporary.Handles.MouseDrag:connect( function ( face, distance )
+	table.insert( Tools.Move.Temporary.Connections, Tools.Move.Temporary.Handles.MouseDrag:connect( function ( face, drag_distance )
 
-		local distance = math.floor( distance );
+		-- Calculate which multiple of the increment to use based on the current drag distance's
+		-- proximity to their nearest upper and lower multiples
 
-		-- Make sure that the distance has changed by at least a unit
-		if distance == Tools.Move.State.previous_distance then
-			return;
+		local difference = drag_distance % Tools.Move.Options.increment;
+
+		local lower_degree = drag_distance - difference;
+		local upper_degree = drag_distance - difference + Tools.Move.Options.increment;
+
+		local lower_degree_proximity = math.abs( drag_distance - lower_degree );
+		local upper_degree_proximity = math.abs( drag_distance - upper_degree );
+
+		if lower_degree_proximity <= upper_degree_proximity then
+			drag_distance = lower_degree;
+		else
+			drag_distance = upper_degree;
 		end;
 
-		Tools.Move.State.previous_distance = distance;
+		local increase = drag_distance;
 
-		Tools.Move.State.distance_moved = Tools.Move.Options.increment * distance;
+		Tools.Move.State.distance_moved = drag_distance;
 		Tools.Move:updateGUI();
 
 		-- Increment the position of each selected item in the direction of `face`
@@ -644,56 +654,56 @@ Tools.Move.Listeners.Equipped = function ()
 			-- Update the position of `Item` depending on the type of axes that is currently set
 			if face == Enum.NormalId.Top then
 				if Tools.Move.Options.axes == "global" then
-					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, Tools.Move.Options.increment * distance, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, increase, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
 				elseif Tools.Move.Options.axes == "local" then
-					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, Tools.Move.Options.increment * distance, 0 ) );
+					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, increase, 0 ) );
 				elseif Tools.Move.Options.axes == "last" then
-					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, Tools.Move.Options.increment * distance, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, increase, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
 				end;
 			
 			elseif face == Enum.NormalId.Bottom then
 				if Tools.Move.Options.axes == "global" then
-					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, -Tools.Move.Options.increment * distance, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, -increase, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
 				elseif Tools.Move.Options.axes == "local" then
-					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, -Tools.Move.Options.increment * distance, 0 ) );
+					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, -increase, 0 ) );
 				elseif Tools.Move.Options.axes == "last" then
-					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, -Tools.Move.Options.increment * distance, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, -increase, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
 				end;
 
 			elseif face == Enum.NormalId.Front then
 				if Tools.Move.Options.axes == "global" then
-					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, 0, -Tools.Move.Options.increment * distance ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, 0, -increase ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
 				elseif Tools.Move.Options.axes == "local" then
-					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, 0, -Tools.Move.Options.increment * distance ) );
+					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, 0, -increase ) );
 				elseif Tools.Move.Options.axes == "last" then
-					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, 0, -Tools.Move.Options.increment * distance ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, 0, -increase ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
 				end;
 
 			elseif face == Enum.NormalId.Back then
 				if Tools.Move.Options.axes == "global" then
-					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, 0, Tools.Move.Options.increment * distance ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, 0, increase ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
 				elseif Tools.Move.Options.axes == "local" then
-					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, 0, Tools.Move.Options.increment * distance ) );
+					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, 0, increase ) );
 				elseif Tools.Move.Options.axes == "last" then
-					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, 0, Tools.Move.Options.increment * distance ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, 0, increase ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
 				end;
 
 			elseif face == Enum.NormalId.Right then
 				if Tools.Move.Options.axes == "global" then
-					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( Tools.Move.Options.increment * distance, 0, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( increase, 0, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
 				elseif Tools.Move.Options.axes == "local" then
-					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( Tools.Move.Options.increment * distance, 0, 0 ) );
+					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( increase, 0, 0 ) );
 				elseif Tools.Move.Options.axes == "last" then
-					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( Tools.Move.Options.increment * distance, 0, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( increase, 0, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
 				end;
 
 			elseif face == Enum.NormalId.Left then
 				if Tools.Move.Options.axes == "global" then
-					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( -Tools.Move.Options.increment * distance, 0, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
+					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( -increase, 0, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
 				elseif Tools.Move.Options.axes == "local" then
-					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( -Tools.Move.Options.increment * distance, 0, 0 ) );
+					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( -increase, 0, 0 ) );
 				elseif Tools.Move.Options.axes == "last" then
-					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( -Tools.Move.Options.increment * distance, 0, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( -increase, 0, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
 				end;
 
 			end;
@@ -2171,10 +2181,10 @@ Tools.Resize.updateGUI = function ( self )
 
 	local GUI = self.Temporary.GUI.Container;
 
-	if #Selection.Items > 0 then
+	if #Selection.Items == 1 then
 
 		-- Get the size and position of the selection
-		local SelectionSize, SelectionPosition = _getCollectionInfo( Selection.Items );
+		local SelectionSize, SelectionPosition = Selection.Items[1].Size, Selection.Items[1].CFrame;
 
 		-- Update the size info on the GUI
 		GUI.Info.SizeInfo.X.TextLabel.Text = tostring( _round( SelectionSize.x, 2 ) );
@@ -2254,8 +2264,10 @@ Tools.Resize.showHandles = function ( self, Part )
 				self.State.resizing = false;
 
 				-- Stop this connection from firing again
-				self.Temporary.Connections.HandleReleaseListener:disconnect();
-				self.Temporary.Connections.HandleReleaseListener = nil;
+				if self.Temporary.Connections.HandleReleaseListener then
+					self.Temporary.Connections.HandleReleaseListener:disconnect();
+					self.Temporary.Connections.HandleReleaseListener = nil;
+				end;
 
 				-- Restore properties that may have been changed temporarily
 				-- from the pre-resize state copies
@@ -2270,25 +2282,33 @@ Tools.Resize.showHandles = function ( self, Part )
 
 		end );
 
-		self.Temporary.Handles.MouseDrag:connect( function ( face, distance )
+		self.Temporary.Handles.MouseDrag:connect( function ( face, drag_distance )
 			
-			-- Round `distance` down
-			local distance = math.floor( distance );
+			-- Calculate which multiple of the increment to use based on the current drag distance's
+			-- proximity to their nearest upper and lower multiples
 
-			-- Make sure the distance has changed by at least 1 unit
-			if distance == self.State.previous_distance then
-				return;
+			local difference = drag_distance % self.Options.increment;
+
+			local lower_degree = drag_distance - difference;
+			local upper_degree = drag_distance - difference + self.Options.increment;
+
+			local lower_degree_proximity = math.abs( drag_distance - lower_degree );
+			local upper_degree_proximity = math.abs( drag_distance - upper_degree );
+
+			if lower_degree_proximity <= upper_degree_proximity then
+				drag_distance = lower_degree;
+			else
+				drag_distance = upper_degree;
 			end;
 
+			local increase = drag_distance;
+
 			-- Log the distance that the handle was dragged
-			self.State.previous_distance = distance;
+			self.State.previous_distance = drag_distance;
 
 			-- Note the length by which the selection will be enlarged
-			local increase;
-			if self.Options.directions == "normal" then
-				increase = distance * self.Options.increment;
-			elseif self.Options.directions == "both" then
-				increase = distance * self.Options.increment * 2;
+			if self.Options.directions == "both" then
+				increase = drag_distance * 2;
 			end;
 			self.State.length_resized = increase;
 
@@ -3375,6 +3395,8 @@ Tools.Rotate.showHandles = function ( self, Part )
 
 			-- Calculate which multiple of the increment to use based on the current angle's
 			-- proximity to their nearest upper and lower multiples
+
+			local difference = drag_distance % self.Options.increment;
 
 			local lower_degree = drag_distance - difference;
 			local upper_degree = drag_distance - difference + self.Options.increment;
