@@ -590,10 +590,13 @@ Tools.Move.Listeners.Equipped = function ()
 		Tools.Move.State.distance_moved = 0;
 		Tools.Move.State.MoveStart = {};
 		Tools.Move.State.MoveStartAnchors = {};
+		Tools.Move.State.MoveStartCollision = {};
 		for _, Item in pairs( Selection.Items ) do
 			Tools.Move.State.MoveStart[Item] = Item.CFrame;
 			Tools.Move.State.MoveStartAnchors[Item] = Item.Anchored;
+			Tools.Move.State.MoveStartCollision[Item] = Item.CanCollide;
 			Item.Anchored = true;
+			Item.CanCollide = false;
 		end;
 		override_selection = true;
 
@@ -610,6 +613,7 @@ Tools.Move.Listeners.Equipped = function ()
 			-- Reset each item's anchor state to its original
 			for _, Item in pairs( Selection.Items ) do
 				Item.Anchored = Tools.Move.State.MoveStartAnchors[Item];
+				Item.CanCollide = Tools.Move.State.MoveStartCollision[Item];
 				Item:MakeJoints();
 			end;
 
@@ -2237,6 +2241,9 @@ Tools.Resize.showHandles = function ( self, Part )
 				-- Anchor each item
 				Item.Anchored = true;
 
+				-- Disable collision for each item
+				Item.CanCollide = false;
+
 			end;
 
 			-- Return stuff to normal once the mouse button is released
@@ -2254,6 +2261,7 @@ Tools.Resize.showHandles = function ( self, Part )
 				-- from the pre-resize state copies
 				for Item, PreviousItemState in pairs( self.State.PreResize ) do
 					Item.Anchored = PreviousItemState.Anchored;
+					Item.CanCollide = PreviousItemState.CanCollide;
 					self.State.PreResize[Item] = nil;
 					Item:MakeJoints();
 				end;
@@ -2409,6 +2417,1064 @@ Tools.Resize.hideHandles = function ( self )
 end;
 
 ------------------------------------------
+-- Rotate tool
+------------------------------------------
+
+-- Create the tool
+Tools.Rotate = {};
+
+-- Create structures to hold data that the tool needs
+Tools.Rotate.Temporary = {
+	["Connections"] = {};
+};
+
+Tools.Rotate.Options = {
+	["increment"] = 15;
+	["pivot"] = "center"
+};
+
+Tools.Rotate.State = {
+	["PreRotation"] = {};
+	["rotating"] = false;
+	["previous_distance"] = 0;
+	["degrees_rotated"] = 0;
+	["rotation_size"] = 0;
+};
+
+Tools.Rotate.Listeners = {};
+
+-- Create the tool's handle
+Tools.Rotate.Handle = RbxUtility.Create "Part" {
+	Name = "Handle";
+	CanCollide = false;
+	Transparency = 1;
+	Locked = true;
+};
+
+-- Set the grip for the handle
+Tools.Rotate.Grip = CFrame.new( 0, 0, 0 );
+
+-- Define the color of the tool
+Tools.Rotate.Color = BrickColor.new( "Bright green" );
+
+-- Start adding functionality to the tool
+
+Tools.Rotate.Listeners.Equipped = function ()
+
+	-- Change the color of selection boxes temporarily
+	Tools.Rotate.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = Tools.Rotate.Color;
+	updateSelectionBoxColor();
+
+	-- Reveal the GUI
+	Tools.Rotate:showGUI();
+
+	-- Create the boundingbox if it doesn't already exist
+	if not Tools.Rotate.Temporary.BoundingBox then
+		Tools.Rotate.Temporary.BoundingBox = RbxUtility.Create "Part" {
+			Name = "BTBoundingBox";
+			CanCollide = false;
+			Transparency = 1;
+			Anchored = true;
+		};
+	end;
+	Mouse.TargetFilter = Tools.Rotate.Temporary.BoundingBox;
+
+	-- Update the pivot option
+	Tools.Rotate:changePivot( "center" );
+
+	-- Oh, and update the boundingbox and the GUI regularly
+	coroutine.wrap( function ()
+		local updater_on = true;
+
+		-- Provide a function to stop the loop
+		Tools.Rotate.Temporary.Updater = function ()
+			updater_on = false;
+		end;
+
+		while wait( 0.1 ) and updater_on do
+
+			-- Make sure the tool's equipped
+			if Options.Tool == Tools.Rotate then
+
+				-- Update the GUI if it's visible
+				if Tools.Rotate.Temporary.GUI and Tools.Rotate.Temporary.GUI.Container.Visible then
+					Tools.Rotate:updateGUI();
+				end;
+
+				-- Update the boundingbox if it's visible
+				if Tools.Rotate.Options.pivot == "center" then
+					Tools.Rotate:updateBoundingBox();
+				end;
+
+			end;
+
+		end;
+
+	end )();
+
+end;
+
+Tools.Rotate.Listeners.Unequipped = function ()
+
+	-- Stop the update loop
+	Tools.Rotate.Temporary.Updater();
+	Tools.Rotate.Temporary.Updater = nil;
+
+	-- Hide the GUI
+	Tools.Rotate:hideGUI();
+
+	-- Hide the handles
+	Tools.Rotate:hideHandles();
+
+	-- Hide the boundingbox
+	Tools.Rotate.Temporary.BoundingBox.Parent = nil;
+
+	-- Clear out any temporary connections
+	for connection_index, Connection in pairs( Tools.Rotate.Temporary.Connections ) do
+		Connection:disconnect();
+		Tools.Rotate.Temporary.Connections[connection_index] = nil;
+	end;
+
+	-- Restore the original color of the selection boxes
+	SelectionBoxColor = Tools.Rotate.Temporary.PreviousSelectionBoxColor;
+	updateSelectionBoxColor();
+
+end;
+
+Tools.Rotate.showGUI = function ( self )
+
+	-- Create the GUI if it doesn't exist
+	if not self.Temporary.GUI then
+		local GUIRoot = Instance.new( "ScreenGui", Player.PlayerGui );
+		GUIRoot.Name = "BTRotateToolGUI";
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot;
+			Name = "Container";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 280 );
+			Size = UDim2.new( 0, 245, 0, 90 );
+			Draggable = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "PivotOption";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 30 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.PivotOption;
+			Name = "Center";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 50, 0, 0 );
+			Size = UDim2.new( 0, 70, 0, 25 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.PivotOption.Center;
+			Name = "SelectedIndicator";
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 6, 0, -2 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+			BackgroundTransparency = ( self.Options.pivot == "center" ) and 0 or 1;
+		};
+
+		RbxUtility.Create "TextButton" {
+			Parent = GUIRoot.Container.PivotOption.Center;
+			Name = "Button";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Text = "";
+			TextTransparency = 1;
+
+			-- Change the pivot type option when the button is clicked
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self:changePivot( "center" );
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.PivotOption.Center;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = ( self.Options.pivot == "center" ) and dark_slanted_rectangle or light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.PivotOption.Center;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "CENTER";
+			TextColor3 = Color3.new( 1, 1, 1 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.PivotOption;
+			Name = "Local";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 115, 0, 0 );
+			Size = UDim2.new( 0, 70, 0, 25 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.PivotOption.Local;
+			Name = "SelectedIndicator";
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 6, 0, -2 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+			BackgroundTransparency = ( self.Options.pivot == "local" ) and 0 or 1;
+		};
+
+		RbxUtility.Create "TextButton" {
+			Parent = GUIRoot.Container.PivotOption.Local;
+			Name = "Button";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Text = "";
+			TextTransparency = 1;
+
+			-- Change the pivot type option when the button is clicked
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self:changePivot( "local" );
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.PivotOption.Local;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = ( self.Options.pivot == "local" ) and dark_slanted_rectangle or light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.PivotOption.Local;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "LOCAL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.PivotOption;
+			Name = "Last";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 180, 0, 0 );
+			Size = UDim2.new( 0, 70, 0, 25 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.PivotOption.Last;
+			Name = "SelectedIndicator";
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 6, 0, -2 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+			BackgroundTransparency = ( self.Options.pivot == "last" ) and 0 or 1;
+		};
+
+		RbxUtility.Create "TextButton" {
+			Parent = GUIRoot.Container.PivotOption.Last;
+			Name = "Button";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Text = "";
+			TextTransparency = 1;
+
+			-- Change the pivot type option when the button is clicked
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self:changePivot( "last" );
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.PivotOption.Last;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = ( self.Options.pivot == "last" ) and dark_slanted_rectangle or light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.PivotOption.Last;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "LAST";
+			TextColor3 = Color3.new( 1, 1, 1 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.PivotOption;
+			Name = "Label";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.PivotOption.Label;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Pivot";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextWrapped = true;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "Title";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Title;
+			Name = "ColorBar";
+			BackgroundColor3 = self.Color.Color;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, -3 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Title;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "ROTATE TOOL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Title;
+			Name = "F3XSignature";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size14;
+			Text = "F3X";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Right;
+			TextStrokeTransparency = 0.9;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "IncrementOption";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 65 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.IncrementOption;
+			Name = "Increment";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 70, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Name = "SelectedIndicator";
+			BorderSizePixel = 0;
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			Size = UDim2.new( 1, -4, 0, 2 );
+			Position = UDim2.new( 0, 5, 0, -2 );
+		};
+
+		RbxUtility.Create "TextBox" {
+			Parent = GUIRoot.Container.IncrementOption.Increment;
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = tostring( self.Options.increment );
+			TextColor3 = Color3.new( 1, 1, 1 );
+
+			-- Change the increment option when the value of the textbox is updated
+			[RbxUtility.Create.E "FocusLost"] = function ( enter_pressed )
+				if enter_pressed then
+					self.Options.increment = tonumber( GUIRoot.Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
+					GUIRoot.Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
+				end;
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.IncrementOption;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 0, 75, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.IncrementOption.Label;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Increment";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0;
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "Info";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 100 );
+			Size = UDim2.new( 1, -5, 0, 60 );
+			Visible = false;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info;
+			Name = "ColorBar";
+			BorderSizePixel = 0;
+			BackgroundColor3 = self.Color.Color;
+			Size = UDim2.new( 1, 0, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info;
+			Name = "Label";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 10, 0, 2 );
+			Size = UDim2.new( 1, -10, 0, 20 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "SELECTION INFO";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Left;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info;
+			Name = "RotationInfo";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 30 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info.RotationInfo;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 0, 75, 0, 25 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Rotation";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0);
+			TextStrokeTransparency = 0;
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info.RotationInfo;
+			Name = "X";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 70, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info.RotationInfo.X;
+			Name = "TextLabel";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.Info.RotationInfo.X;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Image = light_slanted_rectangle;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info.RotationInfo;
+			Name = "Y";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 117, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info.RotationInfo.Y;
+			Name = "TextLabel";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.Info.RotationInfo.Y;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Image = light_slanted_rectangle;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info.RotationInfo;
+			Name = "Z";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 164, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info.RotationInfo.Z;
+			Name = "TextLabel";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.Info.RotationInfo.Z;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Image = light_slanted_rectangle;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "Changes";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 165 );
+			Size = UDim2.new( 1, -5, 0, 20 );
+			Visible = false;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Changes;
+			Name = "ColorBar";
+			BorderSizePixel = 0;
+			BackgroundColor3 = self.Color.Color;
+			Size = UDim2.new( 1, 0, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Changes;
+			Name = "Text";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 10, 0, 2 );
+			Size = UDim2.new( 1, -10, 0, 20 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size11;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0.5;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Right;
+		};
+
+		self.Temporary.GUI = GUIRoot;
+	end;
+
+	-- Reveal the GUI
+	self.Temporary.GUI.Container.Visible = true;
+
+end;
+
+Tools.Rotate.updateGUI = function ( self )
+
+	-- Make sure the GUI exists
+	if not self.Temporary.GUI then
+		return;
+	end;
+
+	local GUI = self.Temporary.GUI.Container;
+
+	if #Selection.Items == 1 then
+
+		-- Get the rotation of the item in the selection
+		local rot_x, rot_y, rot_z = Selection.Items[1].CFrame:toEulerAnglesXYZ();
+		rot_x, rot_y, rot_z = math.deg( rot_x ), math.deg( rot_y ), math.deg( rot_z );
+
+		-- Update the size info on the GUI
+		GUI.Info.RotationInfo.X.TextLabel.Text = tostring( _round( rot_x, 2 ) );
+		GUI.Info.RotationInfo.Y.TextLabel.Text = tostring( _round( rot_y, 2 ) );
+		GUI.Info.RotationInfo.Z.TextLabel.Text = tostring( _round( rot_z, 2 ) );
+
+		GUI.Info.Visible = true;
+	else
+		GUI.Info.Visible = false;
+	end;
+
+	if self.State.degrees_rotated then
+		GUI.Changes.Text.Text = "rotated " .. tostring( self.State.degrees_rotated ) .. " degrees";
+		GUI.Changes.Position = GUI.Info.Visible and UDim2.new( 0, 5, 0, 165 ) or UDim2.new( 0, 5, 0, 100 );
+		GUI.Changes.Visible = true;
+	else
+		GUI.Changes.Text.Text = "";
+		GUI.Changes.Visible = false;
+	end;
+
+end;
+
+Tools.Rotate.hideGUI = function ( self )
+
+	-- Hide the GUI if it exists
+	if self.Temporary.GUI then
+		self.Temporary.GUI.Container.Visible = false;
+	end;
+
+end;
+
+Tools.Rotate.updateBoundingBox = function ( self )
+
+	if #Selection.Items > 0 then
+		local SelectionSize, SelectionPosition = _getCollectionInfo( Selection.Items );
+		self.Temporary.BoundingBox.Parent = Services.Workspace.CurrentCamera;
+		self.Temporary.BoundingBox.Size = SelectionSize;
+		self.Temporary.BoundingBox.CFrame = SelectionPosition;
+		self:showHandles( self.Temporary.BoundingBox );
+	
+	else
+		self.Temporary.BoundingBox.Parent = nil;
+		self:hideHandles();
+	end;
+
+end;
+
+Tools.Rotate.changePivot = function ( self, new_pivot )
+
+	-- Have a quick reference to the GUI (if any)
+	local PivotOptionGUI = self.Temporary.GUI and self.Temporary.GUI.Container.PivotOption or nil;
+
+	-- Disconnect any handle-related listeners that are specific to a certain pivot option
+
+	if self.Temporary.Connections.HandleFocusChangeListener then
+		self.Temporary.Connections.HandleFocusChangeListener:disconnect();
+		self.Temporary.Connections.HandleFocusChangeListener = nil;
+	end;
+
+	if self.Temporary.Connections.HandleSelectionChangeListener then
+		self.Temporary.Connections.HandleSelectionChangeListener:disconnect();
+		self.Temporary.Connections.HandleSelectionChangeListener = nil;
+	end;
+
+	if new_pivot == "center" then
+
+		-- Update the options
+		self.Options.pivot = "center";
+
+		-- Make the boundingbox visible
+		self.Temporary.BoundingBox.Parent = Services.Workspace.CurrentCamera;
+
+		-- Focus the handles on the boundingbox
+		self:showHandles( self.Temporary.BoundingBox );
+
+		-- Update the GUI's option panel
+		if self.Temporary.GUI then
+			PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 0;
+			PivotOptionGUI.Center.Background.Image = dark_slanted_rectangle;
+			PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
+			PivotOptionGUI.Local.Background.Image = light_slanted_rectangle;
+			PivotOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
+			PivotOptionGUI.Last.Background.Image = light_slanted_rectangle;
+		end;
+
+	end;
+
+	if new_pivot == "local" then
+
+		-- Update the options
+		self.Options.pivot = "local";
+
+		-- Hide the boundingbox
+		self.Temporary.BoundingBox.Parent = nil;
+
+		-- Always have the handles on the most recent addition to the selection
+		self.Temporary.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
+
+			-- Clear out any previous adornee
+			self:hideHandles();
+
+			-- If there /is/ a last item in the selection, attach the handles to it
+			if Selection.Last then
+				self:showHandles( Selection.Last );
+			end;
+
+		end );
+
+		-- Switch the adornee of the handles if the second mouse button is pressed
+		self.Temporary.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
+
+			-- Make sure the platform doesn't think we're selecting
+			override_selection = true;
+
+			-- If the target is in the selection, make it the new adornee
+			if Selection:find( Mouse.Target ) then
+				Selection.Last = Mouse.Target;
+				self:showHandles( Mouse.Target );
+			end;
+
+		end );
+
+		-- Finally, attach the handles to the last item added to the selection (if any)
+		if Selection.Last then
+			self:showHandles( Selection.Last );
+		end;
+
+		-- Update the GUI's option panel
+		if self.Temporary.GUI then
+			PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 1;
+			PivotOptionGUI.Center.Background.Image = light_slanted_rectangle;
+			PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 0;
+			PivotOptionGUI.Local.Background.Image = dark_slanted_rectangle;
+			PivotOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
+			PivotOptionGUI.Last.Background.Image = light_slanted_rectangle;
+		end;
+
+	end;
+
+	if new_pivot == "last" then
+
+		-- Update the options
+		self.Options.pivot = "last";
+
+		-- Hide the boundingbox
+		self.Temporary.BoundingBox.Parent = nil;
+
+		-- Always have the handles on the most recent addition to the selection
+		self.Temporary.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
+
+			-- Clear out any previous adornee
+			self:hideHandles();
+
+			-- If there /is/ a last item in the selection, attach the handles to it
+			if Selection.Last then
+				self:showHandles( Selection.Last );
+			end;
+
+		end );
+
+		-- Switch the adornee of the handles if the second mouse button is pressed
+		self.Temporary.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
+
+			-- Make sure the platform doesn't think we're selecting
+			override_selection = true;
+
+			-- If the target is in the selection, make it the new adornee
+			if Selection:find( Mouse.Target ) then
+				Selection.Last = Mouse.Target;
+				self:showHandles( Mouse.Target );
+			end;
+
+		end );
+
+		-- Finally, attach the handles to the last item added to the selection (if any)
+		if Selection.Last then
+			self:showHandles( Selection.Last );
+		end;
+
+		-- Update the GUI's option panel
+		if self.Temporary.GUI then
+			PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 1;
+			PivotOptionGUI.Center.Background.Image = light_slanted_rectangle;
+			PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
+			PivotOptionGUI.Local.Background.Image = light_slanted_rectangle;
+			PivotOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 0;
+			PivotOptionGUI.Last.Background.Image = dark_slanted_rectangle;
+		end;
+
+	end;
+
+end;
+
+
+Tools.Rotate.showHandles = function ( self, Part )
+
+	-- Create the handles if they don't exist yet
+	if not self.Temporary.Handles then
+
+		-- Create the object
+		self.Temporary.Handles = RbxUtility.Create "ArcHandles" {
+			Name = "BTRotationHandles";
+			Color = self.Color;
+			Parent = Player.PlayerGui;
+		};
+
+		-- Add functionality to the handles
+
+		self.Temporary.Handles.MouseButton1Down:connect( function ()
+
+			-- Prevent the platform from thinking we're selecting
+			override_selection = true;
+			self.State.rotating = true;
+
+			-- Clear the change stats
+			self.State.degrees_rotated = 0;
+			self.State.rotation_size = 0;
+
+			-- Do a few things to the selection before manipulating it
+			for _, Item in pairs( Selection.Items ) do
+
+				-- Keep a copy of the state of each item
+				self.State.PreRotation[Item] = Item:Clone();
+
+				-- Anchor each item
+				Item.Anchored = true;
+
+				-- Disable collision for each item
+				Item.CanCollide = false;
+
+			end;
+
+			-- Also keep the position of the original selection
+			local PreRotationSize, PreRotationPosition = _getCollectionInfo( self.State.PreRotation );
+			self.State.PreRotationPosition = PreRotationPosition;
+
+			-- Return stuff to normal once the mouse button is released
+			self.Temporary.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
+
+				-- Prevent the platform from thinking we're selecting
+				override_selection = true;
+				self.State.rotating = false;
+
+				-- Stop this connection from firing again
+				if self.Temporary.Connections.HandleReleaseListener then
+					self.Temporary.Connections.HandleReleaseListener:disconnect();
+					self.Temporary.Connections.HandleReleaseListener = nil;
+				end;
+
+				-- Restore properties that may have been changed temporarily
+				-- from the pre-rotation state copies
+				for Item, PreviousItemState in pairs( self.State.PreRotation ) do
+					Item.Anchored = PreviousItemState.Anchored;
+					Item.CanCollide = PreviousItemState.CanCollide;
+					self.State.PreRotation[Item] = nil;
+					Item:MakeJoints();
+				end;
+
+			end );
+
+		end );
+
+		self.Temporary.Handles.MouseDrag:connect( function ( axis, drag_distance )
+			
+			-- Round down and convert the drag distance to degrees to make it easier to work with
+			local drag_distance = math.floor( math.deg( drag_distance ) );
+
+			-- Calculate which multiple of the increment to use based on the current angle's
+			-- proximity to their nearest upper and lower multiples
+
+			local lower_degree = drag_distance - difference;
+			local upper_degree = drag_distance - difference + self.Options.increment;
+
+			local lower_degree_proximity = math.abs( drag_distance - lower_degree );
+			local upper_degree_proximity = math.abs( drag_distance - upper_degree );
+
+			if lower_degree_proximity <= upper_degree_proximity then
+				drag_distance = lower_degree;
+			else
+				drag_distance = upper_degree;
+			end;
+
+			local increase = self.Options.increment * math.floor( drag_distance / self.Options.increment );
+
+			self.State.degrees_rotated = drag_distance;
+
+			-- Go through the selection and make changes to it
+			for _, Item in pairs( Selection.Items ) do
+
+				-- Keep a copy of `Item` in case we need to revert anything
+				local PreviousItemState = Item:Clone();
+
+				-- Break any of `Item`'s joints so it can move freely
+				Item:BreakJoints();
+
+				-- Rotate `Item` according to the options and the handle that was used
+				if axis == Enum.Axis.Y then
+					if self.Options.pivot == "center" then
+						Item.CFrame = self.State.PreRotationPosition:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, math.rad( increase ), 0 ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.State.PreRotationPosition ):inverse() );
+					elseif self.Options.pivot == "local" then
+						Item.CFrame = self.State.PreRotation[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, math.rad( increase ), 0 ) );
+					elseif self.Options.pivot == "last" then
+						Item.CFrame = self.State.PreRotation[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, math.rad( increase ), 0 ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.State.PreRotation[Selection.Last].CFrame ):inverse() );
+					end;
+				elseif axis == Enum.Axis.X then
+					if self.Options.pivot == "center" then
+						Item.CFrame = self.State.PreRotationPosition:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( math.rad( increase ), 0, 0 ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.State.PreRotationPosition ):inverse() );
+					elseif self.Options.pivot == "local" then
+						Item.CFrame = self.State.PreRotation[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( math.rad( increase ), 0, 0 ) );
+					elseif self.Options.pivot == "last" then
+						Item.CFrame = self.State.PreRotation[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( math.rad( increase ), 0, 0 ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.State.PreRotation[Selection.Last].CFrame ):inverse() );
+					end;
+				elseif axis == Enum.Axis.Z then
+					if self.Options.pivot == "center" then
+						Item.CFrame = self.State.PreRotationPosition:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, 0, math.rad( increase ) ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.State.PreRotationPosition ):inverse() );
+					elseif self.Options.pivot == "local" then
+						Item.CFrame = self.State.PreRotation[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, 0, math.rad( increase ) ) );
+					elseif self.Options.pivot == "last" then
+						Item.CFrame = self.State.PreRotation[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, 0, math.rad( increase ) ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.State.PreRotation[Selection.Last].CFrame ):inverse() );
+					end;
+				end;
+
+				-- Make joints with surrounding parts again once the resizing is done
+				Item:MakeJoints();
+
+			end;
+
+		end );
+
+	end;
+
+	-- Stop listening for the existence of the previous adornee (if any)
+	if self.Temporary.Connections.AdorneeExistenceListener then
+		self.Temporary.Connections.AdorneeExistenceListener:disconnect();
+		self.Temporary.Connections.AdorneeExistenceListener = nil;
+	end;
+
+	-- Attach the handles to `Part`
+	self.Temporary.Handles.Adornee = Part;
+
+	-- Make sure to hide the handles if `Part` suddenly stops existing
+	self.Temporary.Connections.AdorneeExistenceListener = Part.AncestryChanged:connect( function ( Object, NewParent )
+
+		-- Make sure this change in parent applies directly to `Part`
+		if Object ~= Part then
+			return;
+		end;
+
+		-- Show the handles according to the existence of the part
+		if NewParent == nil then
+			self:hideHandles();
+		else
+			self:showHandles( Part );
+		end;
+
+	end );
+
+end;
+
+Tools.Rotate.hideHandles = function ( self )
+
+	-- Hide the handles if they exist
+	if self.Temporary.Handles then
+		self.Temporary.Handles.Adornee = nil;
+	end;
+
+end;
+
+------------------------------------------
 -- Attach listeners
 ------------------------------------------
 
@@ -2440,6 +3506,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		elseif key == "x" then
 			Options.Tool = Tools.Resize;
+
+		elseif key == "c" then
+			Options.Tool = Tools.Rotate;
 
 		elseif key == "v" then
 			Options.Tool = Tools.Paint;
