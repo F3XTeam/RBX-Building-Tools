@@ -3725,6 +3725,14 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		end;
 
+		-- Provide the abiltiy to delete via the delete key
+		if key_code == 127 then
+			local SelectionItems = _cloneTable( Selection.Items );
+			for _, Item in pairs( SelectionItems ) do
+				Item:Destroy();
+			end;
+		end;
+
 		ActiveKeys[key_code] = key_code;
 		ActiveKeys[key] = key;
 
