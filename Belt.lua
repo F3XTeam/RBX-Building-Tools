@@ -355,12 +355,12 @@ Tools.Paint.Options = setmetatable( {
 			if self.PaletteGUI then
 
 				-- Clear any mark on any other color button from the palette
-				for _, PaletteColorButton in pairs( self.PaletteGUI.Palette:GetChildren() ) do
+				for _, PaletteColorButton in pairs( self.PaletteGUI.Container.Palette:GetChildren() ) do
 					PaletteColorButton.Text = "";
 				end;
 
 				-- Mark the right color button in the palette
-				self.PaletteGUI.Palette[value.Name].Text = "X";
+				self.PaletteGUI.Container.Palette[value.Name].Text = "X";
 
 			end;
 
@@ -457,20 +457,79 @@ function showPalette()
 
 	-- Create the GUI container
 	local PaletteGUI = Instance.new( "ScreenGui", Player.PlayerGui );
-	PaletteGUI.Name = "BTColorPalette";
+	PaletteGUI.Name = "BTPaintGUI";
 
 	-- Register the GUI
 	Tools.Paint.Options.PaletteGUI = PaletteGUI;
 
+	RbxUtility.Create "Frame" {
+		Parent = PaletteGUI;
+		Name = "Container";
+		Active = true;
+		BackgroundTransparency = 1;
+		BorderSizePixel = 0;
+		Position = UDim2.new( 0, 0, 0, 230 );
+		Size = UDim2.new( 0, 205, 0, 230 );
+		Draggable = true;
+	};
+	RbxUtility.Create "Frame" {
+		Parent = PaletteGUI.Container;
+		Name = "Title";
+		BackgroundTransparency = 1;
+		BorderSizePixel = 0;
+		Size = UDim2.new( 1, 0, 0, 20 );
+	};
+
+	RbxUtility.Create "Frame" {
+		Parent = PaletteGUI.Container.Title;
+		Name = "ColorBar";
+		BackgroundColor3 = BrickColor.new( "Really red" ).Color;
+		BorderSizePixel = 0;
+		Position = UDim2.new( 0, 5, 0, -3 );
+		Size = UDim2.new( 1, -5, 0, 2 );
+	};
+
+	RbxUtility.Create "TextLabel" {
+		Parent = PaletteGUI.Container.Title;
+		Name = "Label";
+		BackgroundTransparency = 1;
+		BorderSizePixel = 0;
+		Position = UDim2.new( 0, 10, 0, 1 );
+		Size = UDim2.new( 1, -10, 1, 0 );
+		Font = Enum.Font.ArialBold;
+		FontSize = Enum.FontSize.Size12;
+		Text = "PAINT TOOL";
+		TextColor3 = Color3.new( 1, 1, 1 );
+		TextXAlignment = Enum.TextXAlignment.Left;
+		TextStrokeTransparency = 0;
+		TextStrokeColor3 = Color3.new( 0, 0, 0 );
+		TextWrapped = true;
+	};
+
+	RbxUtility.Create "TextLabel" {
+		Parent = PaletteGUI.Container.Title;
+		Name = "F3XSignature";
+		BackgroundTransparency = 1;
+		BorderSizePixel = 0;
+		Position = UDim2.new( 0, 10, 0, 1 );
+		Size = UDim2.new( 1, -10, 1, 0 );
+		Font = Enum.Font.ArialBold;
+		FontSize = Enum.FontSize.Size14;
+		Text = "F3X";
+		TextColor3 = Color3.new( 1, 1, 1 );
+		TextXAlignment = Enum.TextXAlignment.Right;
+		TextStrokeTransparency = 0.9;
+		TextStrokeColor3 = Color3.new( 0, 0, 0 );
+		TextWrapped = true;
+	};
+
 	-- Create the frame that will contain the colors
-	local PaletteFrame = Instance.new( "Frame", PaletteGUI );
+	local PaletteFrame = Instance.new( "Frame", PaletteGUI.Container );
 	PaletteFrame.Name = "Palette";
 	PaletteFrame.BackgroundColor3 = Color3.new( 0, 0, 0 );
 	PaletteFrame.Transparency = 1;
 	PaletteFrame.Size = UDim2.new( 0, 205, 0, 205 );
-	PaletteFrame.Position = UDim2.new( 0, 0, 1 / 3, 0 );
-	PaletteFrame.Draggable = true;
-	PaletteFrame.Active = true;
+	PaletteFrame.Position = UDim2.new( 0, 5, 0, 20 );
 
 	-- Insert the colors
 	for palette_index = 0, 63 do
