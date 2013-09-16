@@ -325,31 +325,6 @@ Selection = {
 Tools = {};
 
 ------------------------------------------
--- Default tool
-------------------------------------------
-
--- Create the main container for this tool
-Tools.Default = {};
-
--- Keep a container for the tool's listeners
-Tools.Default.Listeners = {};
-
--- Create the handle
-Tools.Default.Handle = Instance.new( "Part" );
-Tools.Default.Handle.Name = "Handle";
-Tools.Default.Handle.CanCollide = false;
-Tools.Default.Handle.Locked = true;
-
-Instance.new( "SpecialMesh", Tools.Default.Handle ).Name = "Mesh";
-Tools.Default.Handle.Mesh.MeshId = "http://www.roblox.com/asset/?id=16884681";
-Tools.Default.Handle.Mesh.MeshType = Enum.MeshType.FileMesh;
-Tools.Default.Handle.Mesh.Scale = Vector3.new( 0.6, 0.6, 0.6 );
-Tools.Default.Handle.Mesh.TextureId = "http://www.roblox.com/asset/?id=16884673";
-
--- Set the grip for the handle
-Tools.Default.Grip = CFrame.new( 0, 0, -0.4 ) * CFrame.Angles( math.rad( 90 ), math.rad( 90 ), 0 );
-
-------------------------------------------
 -- Paint tool
 ------------------------------------------
 
@@ -434,18 +409,48 @@ Tools.Paint.Listeners.Button1Up = function ()
 end;
 
 -- Create the handle
-Tools.Paint.Handle = Instance.new( "Part" );
-Tools.Paint.Handle.Name = "Handle";
-Tools.Paint.Handle.CanCollide = false;
-
-Instance.new( "SpecialMesh", Tools.Paint.Handle ).Name = "Mesh";
-Tools.Paint.Handle.Mesh.MeshId = "http://www.roblox.com/asset/?id=15952512";
-Tools.Paint.Handle.Mesh.MeshType = Enum.MeshType.FileMesh;
-Tools.Paint.Handle.Mesh.Scale = Vector3.new( 0.25, 0.25, 0.25 );
-Tools.Paint.Handle.Mesh.TextureId = "http://www.roblox.com/asset/?id=15952494";
+Tools.Paint.Handle = RbxUtility.Create "Part" {
+	Name = "Handle";
+	Locked = true;
+	BrickColor = BrickColor.new( "Really red" );
+	FormFactor = Enum.FormFactor.Custom;
+	Size = Vector3.new( 0.8, 0.8, 0.8 );
+	TopSurface = Enum.SurfaceType.Smooth;
+	BottomSurface = Enum.SurfaceType.Smooth;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Paint.Handle;
+	Face = Enum.NormalId.Front;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Paint.Handle;
+	Face = Enum.NormalId.Back;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Paint.Handle;
+	Face = Enum.NormalId.Left;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Paint.Handle;
+	Face = Enum.NormalId.Right;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Paint.Handle;
+	Face = Enum.NormalId.Top;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Paint.Handle;
+	Face = Enum.NormalId.Bottom;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
 
 -- Set the grip for the handle
-Tools.Paint.Grip = CFrame.new( 0, 1, 0 ) * CFrame.Angles( 0, math.rad( 90 ), 0 );
+Tools.Paint.Grip = CFrame.new( 0, 0, 0.4 );
 
 function showPalette()
 	-- Reveals a color palette
@@ -544,6 +549,11 @@ Tools.Move.Listeners = {};
 
 Tools.Move.Listeners.Equipped = function ()
 
+	-- Make sure the tool is actually being equipped (because this is the default tool)
+	if not Mouse then
+		return;
+	end;
+
 	-- Change the color of selection boxes temporarily
 	Tools.Move.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
 	SelectionBoxColor = BrickColor.new( "Deep orange" );
@@ -580,6 +590,16 @@ Tools.Move.Listeners.Equipped = function ()
 	Tools.Move.Temporary.Handles.Adornee = nil;
 	Tools.Move.Temporary.Handles.Style = Enum.HandlesStyle.Resize;
 	Tools.Move.Temporary.Handles.Color = BrickColor.new( "Deep orange" );
+
+	Tools.Move.Temporary.Connections.LastSwitchHandler = Mouse.Button2Down:connect( function ()
+
+		-- Make sure that the target is part of the selection already
+		if Selection:find( Mouse.Target ) then
+			Selection.Last = Mouse.Target;
+			Tools.Move:updateAxes();
+		end;
+
+	end );
 
 	-- Update BoundaryBox's shape/position to reflect current selection
 	Tools.Move.Temporary.BoundaryBox = Tools.Move:updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
@@ -721,11 +741,34 @@ Tools.Move.updateGUI = function ( self )
 		local GUI = self.Temporary.OptionsGUI.Container;
 
 		if #Selection.Items > 0 then
-			local SelectionSize, SelectionPosition = _getCollectionInfo( Selection.Items );
 
-			GUI.Info.Center.X.TextLabel.Text = tostring( _round( SelectionPosition.x, 2 ) );
-			GUI.Info.Center.Y.TextLabel.Text = tostring( _round( SelectionPosition.y, 2 ) );
-			GUI.Info.Center.Z.TextLabel.Text = tostring( _round( SelectionPosition.z, 2 ) );
+			-- Look for identical numbers in each axis
+			local position_x, position_y, position_z =  nil, nil, nil;
+			for item_index, Item in pairs( Selection.Items ) do
+
+				-- Set the first values for the first item
+				if item_index == 1 then
+					position_x, position_y, position_z = _round( Item.Position.x, 2 ), _round( Item.Position.y, 2 ), _round( Item.Position.z, 2 );
+
+				-- Otherwise, compare them and set them to `nil` if they're not identical
+				else
+					if position_x ~= _round( Item.Position.x, 2 ) then
+						position_x = nil;
+					end;
+					if position_y ~= _round( Item.Position.y, 2 ) then
+						position_y = nil;
+					end;
+					if position_z ~= _round( Item.Position.z, 2 ) then
+						position_z = nil;
+					end;
+				end;
+
+			end;
+
+			-- If each position along each axis is the same, display that number; otherwise, display "*"
+			GUI.Info.Center.X.TextLabel.Text = position_x and tostring( position_x ) or "*";
+			GUI.Info.Center.Y.TextLabel.Text = position_y and tostring( position_y ) or "*";
+			GUI.Info.Center.Z.TextLabel.Text = position_z and tostring( position_z ) or "*";
 
 			GUI.Info.Visible = true;
 		else
@@ -855,14 +898,49 @@ Tools.Move.Listeners.Unequipped = function ()
 end;
 
 -- Create the handle
-Tools.Move.Handle = Instance.new( "Part" );
-Tools.Move.Handle.Name = "Handle";
-Tools.Move.Handle.CanCollide = false;
-Tools.Move.Handle.Transparency = 1;
-Tools.Move.Handle.Locked = true;
+Tools.Move.Handle = RbxUtility.Create "Part" {
+	Name = "Handle";
+	Locked = true;
+	BrickColor = BrickColor.new( "Deep orange" );
+	FormFactor = Enum.FormFactor.Custom;
+	Size = Vector3.new( 0.8, 0.8, 0.8 );
+	TopSurface = Enum.SurfaceType.Smooth;
+	BottomSurface = Enum.SurfaceType.Smooth;
+};
+
+RbxUtility.Create "Decal" {
+	Parent = Tools.Move.Handle;
+	Face = Enum.NormalId.Front;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Move.Handle;
+	Face = Enum.NormalId.Back;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Move.Handle;
+	Face = Enum.NormalId.Left;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Move.Handle;
+	Face = Enum.NormalId.Right;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Move.Handle;
+	Face = Enum.NormalId.Top;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Move.Handle;
+	Face = Enum.NormalId.Bottom;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
 
 -- Set the grip for the handle
-Tools.Move.Grip = CFrame.new( 0, 0, 0 );
+Tools.Move.Grip = CFrame.new( 0, 0, 0.4 );
 
 Tools.Move.showGUI = function ( self )
 	-- Creates and shows the move tool's options panel
@@ -1287,7 +1365,7 @@ Tools.Move.showGUI = function ( self )
 		Size = UDim2.new( 0, 75, 0, 25 );
 		Font = Enum.Font.ArialBold;
 		FontSize = Enum.FontSize.Size12;
-		Text = "Center";
+		Text = "Position";
 		TextColor3 = Color3.new( 1, 1, 1 );
 		TextStrokeColor3 = Color3.new( 0, 0, 0);
 		TextStrokeTransparency = 0;
@@ -1586,19 +1664,52 @@ Tools.Resize.State = {
 
 Tools.Resize.Listeners = {};
 
--- Create the handle for the tool
+-- Define the color of the tool
+Tools.Resize.Color = BrickColor.new( "Cyan" );
+
+-- Create the handle
 Tools.Resize.Handle = RbxUtility.Create "Part" {
 	Name = "Handle";
-	CanCollide = false;
-	Transparency = 1;
 	Locked = true;
+	BrickColor = Tools.Resize.Color;
+	FormFactor = Enum.FormFactor.Custom;
+	Size = Vector3.new( 0.8, 0.8, 0.8 );
+	TopSurface = Enum.SurfaceType.Smooth;
+	BottomSurface = Enum.SurfaceType.Smooth;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Resize.Handle;
+	Face = Enum.NormalId.Front;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Resize.Handle;
+	Face = Enum.NormalId.Back;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Resize.Handle;
+	Face = Enum.NormalId.Left;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Resize.Handle;
+	Face = Enum.NormalId.Right;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Resize.Handle;
+	Face = Enum.NormalId.Top;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Resize.Handle;
+	Face = Enum.NormalId.Bottom;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
 };
 
 -- Set the grip for the handle
-Tools.Resize.Grip = CFrame.new( 0, 0, 0 );
-
--- Define the color of the tool
-Tools.Resize.Color = BrickColor.new( "Cyan" );
+Tools.Resize.Grip = CFrame.new( 0, 0, 0.4 );
 
 Tools.Resize.Listeners.Equipped = function ()
 
@@ -2181,15 +2292,35 @@ Tools.Resize.updateGUI = function ( self )
 
 	local GUI = self.Temporary.GUI.Container;
 
-	if #Selection.Items == 1 then
+	if #Selection.Items > 0 then
 
-		-- Get the size and position of the selection
-		local SelectionSize, SelectionPosition = Selection.Items[1].Size, Selection.Items[1].CFrame;
+		-- Look for identical numbers in each axis
+		local size_x, size_y, size_z =  nil, nil, nil;
+		for item_index, Item in pairs( Selection.Items ) do
+
+			-- Set the first values for the first item
+			if item_index == 1 then
+				size_x, size_y, size_z = _round( Item.Size.x, 2 ), _round( Item.Size.y, 2 ), _round( Item.Size.z, 2 );
+
+			-- Otherwise, compare them and set them to `nil` if they're not identical
+			else
+				if size_x ~= _round( Item.Size.x, 2 ) then
+					size_x = nil;
+				end;
+				if size_y ~= _round( Item.Size.y, 2 ) then
+					size_y = nil;
+				end;
+				if size_z ~= _round( Item.Size.z, 2 ) then
+					size_z = nil;
+				end;
+			end;
+
+		end;
 
 		-- Update the size info on the GUI
-		GUI.Info.SizeInfo.X.TextLabel.Text = tostring( _round( SelectionSize.x, 2 ) );
-		GUI.Info.SizeInfo.Y.TextLabel.Text = tostring( _round( SelectionSize.y, 2 ) );
-		GUI.Info.SizeInfo.Z.TextLabel.Text = tostring( _round( SelectionSize.z, 2 ) );
+		GUI.Info.SizeInfo.X.TextLabel.Text = size_x and tostring( size_x ) or "*";
+		GUI.Info.SizeInfo.Y.TextLabel.Text = size_y and tostring( size_y ) or "*";
+		GUI.Info.SizeInfo.Z.TextLabel.Text = size_z and tostring( size_z ) or "*";
 
 		GUI.Info.Visible = true;
 	else
@@ -2463,19 +2594,52 @@ Tools.Rotate.State = {
 
 Tools.Rotate.Listeners = {};
 
--- Create the tool's handle
+-- Define the color of the tool
+Tools.Rotate.Color = BrickColor.new( "Bright green" );
+
+-- Create the handle
 Tools.Rotate.Handle = RbxUtility.Create "Part" {
 	Name = "Handle";
-	CanCollide = false;
-	Transparency = 1;
 	Locked = true;
+	BrickColor = Tools.Rotate.Color;
+	FormFactor = Enum.FormFactor.Custom;
+	Size = Vector3.new( 0.8, 0.8, 0.8 );
+	TopSurface = Enum.SurfaceType.Smooth;
+	BottomSurface = Enum.SurfaceType.Smooth;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Rotate.Handle;
+	Face = Enum.NormalId.Front;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Rotate.Handle;
+	Face = Enum.NormalId.Back;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Rotate.Handle;
+	Face = Enum.NormalId.Left;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Rotate.Handle;
+	Face = Enum.NormalId.Right;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Rotate.Handle;
+	Face = Enum.NormalId.Top;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Rotate.Handle;
+	Face = Enum.NormalId.Bottom;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
 };
 
 -- Set the grip for the handle
-Tools.Rotate.Grip = CFrame.new( 0, 0, 0 );
-
--- Define the color of the tool
-Tools.Rotate.Color = BrickColor.new( "Bright green" );
+Tools.Rotate.Grip = CFrame.new( 0, 0, 0.4 );
 
 -- Start adding functionality to the tool
 
@@ -3121,16 +3285,37 @@ Tools.Rotate.updateGUI = function ( self )
 
 	local GUI = self.Temporary.GUI.Container;
 
-	if #Selection.Items == 1 then
+	if #Selection.Items > 0 then
 
-		-- Get the rotation of the item in the selection
-		local rot_x, rot_y, rot_z = Selection.Items[1].CFrame:toEulerAnglesXYZ();
-		rot_x, rot_y, rot_z = math.deg( rot_x ), math.deg( rot_y ), math.deg( rot_z );
+		-- Look for identical numbers in each axis
+		local rot_x, rot_y, rot_z = nil, nil, nil;
+		for item_index, Item in pairs( Selection.Items ) do
+
+			local item_rot_x, item_rot_y, item_rot_z = Item.CFrame:toEulerAnglesXYZ();
+
+			-- Set the first values for the first item
+			if item_index == 1 then
+				rot_x, rot_y, rot_z = _round( math.deg( item_rot_x ), 2 ), _round( math.deg( item_rot_y ), 2 ), _round( math.deg( item_rot_z ), 2 );
+
+			-- Otherwise, compare them and set them to `nil` if they're not identical
+			else
+				if rot_x ~= _round( math.deg( item_rot_x ), 2 ) then
+					rot_x = nil;
+				end;
+				if rot_y ~= _round( math.deg( item_rot_y ), 2 ) then
+					rot_y = nil;
+				end;
+				if rot_z ~= _round( math.deg( item_rot_z ), 2 ) then
+					rot_z = nil;
+				end;
+			end;
+
+		end;
 
 		-- Update the size info on the GUI
-		GUI.Info.RotationInfo.X.TextLabel.Text = tostring( _round( rot_x, 2 ) );
-		GUI.Info.RotationInfo.Y.TextLabel.Text = tostring( _round( rot_y, 2 ) );
-		GUI.Info.RotationInfo.Z.TextLabel.Text = tostring( _round( rot_z, 2 ) );
+		GUI.Info.RotationInfo.X.TextLabel.Text = rot_x and tostring( rot_x ) or "*";
+		GUI.Info.RotationInfo.Y.TextLabel.Text = rot_y and tostring( rot_y ) or "*";
+		GUI.Info.RotationInfo.Z.TextLabel.Text = rot_z and tostring( rot_z ) or "*";
 
 		GUI.Info.Visible = true;
 	else
@@ -3538,9 +3723,6 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		elseif key == "q" then
 			Selection:clear();
 
-		elseif key == "e" then
-			Options.Tool = Tools.Default;
-
 		end;
 
 		ActiveKeys[key_code] = key_code;
@@ -3687,5 +3869,5 @@ Tool.Unequipped:connect( function ()
 
 end );
 
--- Enable `Tools.Default` as the first tool
-Options.Tool = Tools.Default;
+-- Enable `Tools.Move` as the first tool
+Options.Tool = Tools.Move;
