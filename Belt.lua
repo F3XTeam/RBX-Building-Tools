@@ -680,9 +680,7 @@ Tools.Move.Listeners.Equipped = function ()
 		for _, Item in pairs( Selection.Items ) do
 			Tools.Move.State.MoveStart[Item] = Item.CFrame;
 			Tools.Move.State.MoveStartAnchors[Item] = Item.Anchored;
-			Tools.Move.State.MoveStartCollision[Item] = Item.CanCollide;
 			Item.Anchored = true;
-			Item.CanCollide = false;
 		end;
 		override_selection = true;
 
@@ -699,7 +697,6 @@ Tools.Move.Listeners.Equipped = function ()
 			-- Reset each item's anchor state to its original
 			for _, Item in pairs( Selection.Items ) do
 				Item.Anchored = Tools.Move.State.MoveStartAnchors[Item];
-				Item.CanCollide = Tools.Move.State.MoveStartCollision[Item];
 				Item:MakeJoints();
 			end;
 
@@ -2427,9 +2424,6 @@ Tools.Resize.showHandles = function ( self, Part )
 				-- Anchor each item
 				Item.Anchored = true;
 
-				-- Disable collision for each item
-				Item.CanCollide = false;
-
 			end;
 
 			-- Return stuff to normal once the mouse button is released
@@ -2449,7 +2443,6 @@ Tools.Resize.showHandles = function ( self, Part )
 				-- from the pre-resize state copies
 				for Item, PreviousItemState in pairs( self.State.PreResize ) do
 					Item.Anchored = PreviousItemState.Anchored;
-					Item.CanCollide = PreviousItemState.CanCollide;
 					self.State.PreResize[Item] = nil;
 					Item:MakeJoints();
 				end;
@@ -2500,8 +2493,17 @@ Tools.Resize.showHandles = function ( self, Part )
 				-- Position and resize `Item` according to the options and the handle that was used
 
 				if face == Enum.NormalId.Top then
-					Item.Size = self.State.PreResize[Item].Size + Vector3.new( 0, increase, 0 );
-					if Item.Size == self.State.PreResize[Item].Size + Vector3.new( 0, increase, 0 ) then
+
+					-- Calculate the appropriate increment to the size based on the shape of `Item`
+					local SizeIncrease;
+					if Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder then
+						SizeIncrease = Vector3.new( increase, increase, increase );
+					elseif Item.Shape == Enum.PartType.Block then
+						SizeIncrease = Vector3.new( 0, increase, 0 );
+					end;
+
+					Item.Size = self.State.PreResize[Item].Size + SizeIncrease;
+					if Item.Size == self.State.PreResize[Item].Size + SizeIncrease then
 						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( 0, increase / 2, 0 ) ) )
 									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
 					-- If the resizing was not possible, revert `Item`'s state
@@ -2511,8 +2513,17 @@ Tools.Resize.showHandles = function ( self, Part )
 					end;
 
 				elseif face == Enum.NormalId.Bottom then
-					Item.Size = self.State.PreResize[Item].Size + Vector3.new( 0, increase, 0 );
-					if Item.Size == self.State.PreResize[Item].Size + Vector3.new( 0, increase, 0 ) then
+
+					-- Calculate the appropriate increment to the size based on the shape of `Item`
+					local SizeIncrease;
+					if Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder then
+						SizeIncrease = Vector3.new( increase, increase, increase );
+					elseif Item.Shape == Enum.PartType.Block then
+						SizeIncrease = Vector3.new( 0, increase, 0 );
+					end;
+
+					Item.Size = self.State.PreResize[Item].Size + SizeIncrease;
+					if Item.Size == self.State.PreResize[Item].Size + SizeIncrease then
 						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( 0, -increase / 2, 0 ) ) )
 									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
 					-- If the resizing was not possible, revert `Item`'s state
@@ -2522,8 +2533,17 @@ Tools.Resize.showHandles = function ( self, Part )
 					end;
 
 				elseif face == Enum.NormalId.Front then
-					Item.Size = self.State.PreResize[Item].Size + Vector3.new( 0, 0, increase );
-					if Item.Size == self.State.PreResize[Item].Size + Vector3.new( 0, 0, increase ) then
+
+					-- Calculate the appropriate increment to the size based on the shape of `Item`
+					local SizeIncrease;
+					if Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder then
+						SizeIncrease = Vector3.new( increase, increase, increase );
+					elseif Item.Shape == Enum.PartType.Block then
+						SizeIncrease = Vector3.new( 0, 0, increase );
+					end;
+
+					Item.Size = self.State.PreResize[Item].Size + SizeIncrease;
+					if Item.Size == self.State.PreResize[Item].Size + SizeIncrease then
 						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, -increase / 2 ) ) )
 									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
 					-- If the resizing was not possible, revert `Item`'s state
@@ -2533,8 +2553,17 @@ Tools.Resize.showHandles = function ( self, Part )
 					end;
 
 				elseif face == Enum.NormalId.Back then
-					Item.Size = self.State.PreResize[Item].Size + Vector3.new( 0, 0, increase );
-					if Item.Size == self.State.PreResize[Item].Size + Vector3.new( 0, 0, increase ) then
+
+					-- Calculate the appropriate increment to the size based on the shape of `Item`
+					local SizeIncrease;
+					if Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder then
+						SizeIncrease = Vector3.new( increase, increase, increase );
+					elseif Item.Shape == Enum.PartType.Block then
+						SizeIncrease = Vector3.new( 0, 0, increase );
+					end;
+
+					Item.Size = self.State.PreResize[Item].Size + SizeIncrease;
+					if Item.Size == self.State.PreResize[Item].Size + SizeIncrease then
 						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, increase / 2 ) ) )
 									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
 					-- If the resizing was not possible, revert `Item`'s state
@@ -2544,8 +2573,17 @@ Tools.Resize.showHandles = function ( self, Part )
 					end;
 
 				elseif face == Enum.NormalId.Left then
-					Item.Size = self.State.PreResize[Item].Size + Vector3.new( increase, 0, 0 );
-					if Item.Size == self.State.PreResize[Item].Size + Vector3.new( increase, 0, 0 ) then
+
+					-- Calculate the appropriate increment to the size based on the shape of `Item`
+					local SizeIncrease;
+					if Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder then
+						SizeIncrease = Vector3.new( increase, increase, increase );
+					elseif Item.Shape == Enum.PartType.Block then
+						SizeIncrease = Vector3.new( increase, 0, 0 );
+					end;
+
+					Item.Size = self.State.PreResize[Item].Size + SizeIncrease;
+					if Item.Size == self.State.PreResize[Item].Size + SizeIncrease then
 						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( -increase / 2, 0, 0 ) ) )
 									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
 					-- If the resizing was not possible, revert `Item`'s state
@@ -2555,8 +2593,17 @@ Tools.Resize.showHandles = function ( self, Part )
 					end;
 
 				elseif face == Enum.NormalId.Right then
-					Item.Size = self.State.PreResize[Item].Size + Vector3.new( increase, 0, 0 );
-					if Item.Size == self.State.PreResize[Item].Size + Vector3.new( increase, 0, 0 ) then
+
+					-- Calculate the appropriate increment to the size based on the shape of `Item`
+					local SizeIncrease;
+					if Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder then
+						SizeIncrease = Vector3.new( increase, increase, increase );
+					elseif Item.Shape == Enum.PartType.Block then
+						SizeIncrease = Vector3.new( increase, 0, 0 );
+					end;
+
+					Item.Size = self.State.PreResize[Item].Size + SizeIncrease;
+					if Item.Size == self.State.PreResize[Item].Size + SizeIncrease then
 						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( increase / 2, 0, 0 ) ) )
 									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
 					-- If the resizing was not possible, revert `Item`'s state
@@ -3583,9 +3630,6 @@ Tools.Rotate.showHandles = function ( self, Part )
 				-- Anchor each item
 				Item.Anchored = true;
 
-				-- Disable collision for each item
-				Item.CanCollide = false;
-
 			end;
 
 			-- Also keep the position of the original selection
@@ -3609,7 +3653,6 @@ Tools.Rotate.showHandles = function ( self, Part )
 				-- from the pre-rotation state copies
 				for Item, PreviousItemState in pairs( self.State.PreRotation ) do
 					Item.Anchored = PreviousItemState.Anchored;
-					Item.CanCollide = PreviousItemState.CanCollide;
 					self.State.PreRotation[Item] = nil;
 					Item:MakeJoints();
 				end;
@@ -3763,7 +3806,7 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		end;
 
 		-- Provide the ability to clone via the ctrl + C key combination
-		if ActiveKeys[49] or ActiveKeys[50] and key == "c" then
+		if ActiveKeys[49] or ActiveKeys[50] and key == "e" then
 
 			-- Make sure that there are items in the selection
 			if #Selection.Items > 0 then
