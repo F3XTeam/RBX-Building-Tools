@@ -592,7 +592,6 @@ Tools.Move.Color = BrickColor.new( "Deep orange" );
 Tools.Move.Temporary = {
 	["Handles"] = nil;
 	["BoundaryBox"] = nil;
-	["BoundarySelectionBox"] = nil;
 	["Connections"] = {};
 	["MovementListeners"] = {};
 	["PreviousSelectionBoxColor"] = nil;
@@ -933,12 +932,6 @@ Tools.Move.Listeners.Unequipped = function ()
 	if Tools.Move.Temporary.BoundaryBox then
 		Tools.Move.Temporary.BoundaryBox:Destroy();
 		Tools.Move.Temporary.BoundaryBox = nil;
-	end;
-
-	-- Remove the boundary selection box
-	if Tools.Move.Temporary.BoundarySelectionBox then
-		Tools.Move.Temporary.BoundarySelectionBox:Destroy();
-		Tools.Move.Temporary.BoundarySelectionBox = nil;
 	end;
 
 	-- Remove the handles
@@ -1657,21 +1650,6 @@ Tools.Move.createBoundaryBox = function ( self )
 	BoundaryBox.Locked = true;
 	BoundaryBox.CanCollide = false;
 	BoundaryBox.Transparency = 1;
-
-	local BoundarySelectionBox = Instance.new( "SelectionBox", Player.PlayerGui );
-	BoundarySelectionBox.Name = "BTBoundarySelectionBox";
-	BoundarySelectionBox.Color = Tools.Move.Color;
-	BoundarySelectionBox.Adornee = BoundaryBox;
-
-	BoundaryBox.AncestryChanged:connect( function ( Child, NewParent )
-		if NewParent == nil then
-			BoundarySelectionBox.Adornee = nil;
-		else
-			BoundarySelectionBox.Adornee = BoundaryBox;
-		end;
-	end );
-
-	self.Temporary.BoundarySelectionBox = BoundarySelectionBox;
 
 	Mouse.TargetFilter = BoundaryBox;
 
@@ -3749,259 +3727,6 @@ Tools.Rotate.hideHandles = function ( self )
 end;
 
 ------------------------------------------
--- Clone tool
-------------------------------------------
-
--- Create the tool
-Tools.Clone = {};
-
--- Create structures to hold data that the tool needs
-Tools.Clone.Temporary = {
-	["Connections"] = {};
-};
-
-Tools.Clone.Listeners = {};
-
--- Define the color of the tool
-Tools.Clone.Color = BrickColor.new( "Really black" );
-
--- Create the handle
-Tools.Clone.Handle = RbxUtility.Create "Part" {
-	Name = "Handle";
-	Locked = true;
-	BrickColor = Tools.Clone.Color;
-	FormFactor = Enum.FormFactor.Custom;
-	Size = Vector3.new( 0.8, 0.8, 0.8 );
-	TopSurface = Enum.SurfaceType.Smooth;
-	BottomSurface = Enum.SurfaceType.Smooth;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Clone.Handle;
-	Face = Enum.NormalId.Front;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Clone.Handle;
-	Face = Enum.NormalId.Back;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Clone.Handle;
-	Face = Enum.NormalId.Left;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Clone.Handle;
-	Face = Enum.NormalId.Right;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Clone.Handle;
-	Face = Enum.NormalId.Top;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Clone.Handle;
-	Face = Enum.NormalId.Bottom;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-
--- Set the grip for the handle
-Tools.Clone.Grip = CFrame.new( 0, 0, 0.4 );
-
--- Start adding functionality to the tool
-
-Tools.Clone.Listeners.Equipped = function ()
-
-	-- Change the color of selection boxes temporarily
-	Tools.Clone.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = Tools.Clone.Color;
-	updateSelectionBoxColor();
-
-	-- Reveal the GUI
-	Tools.Clone:showGUI();
-
-	-- Listen for the enter button to be pressed
-	Tools.Clone.Temporary.Connections.EnterListener = Mouse.KeyDown:connect( function ( key )
-
-		-- Get info about the key
-		local key = key:lower();
-		local key_code = key:byte();
-
-		-- If the enter key was pressed, clone everything and select it
-		if key_code == 13 then
-
-			-- Make sure that there are items in the selection
-			if #Selection.Items == 0 then
-				return;
-			end;
-
-			local item_copies = {};
-
-			-- Make a copy of every item in the selection and add it to table `item_copies`
-			for _, Item in pairs( Selection.Items ) do
-				local ItemCopy = Item:Clone();
-				ItemCopy.Parent = Services.Workspace;
-				table.insert( item_copies, ItemCopy );
-			end;
-
-			-- Replace the selection with the copied items
-			Selection:clear();
-			for _, Item in pairs( item_copies ) do
-				Selection:add( Item );
-			end;
-
-			-- Equip the previously-equipped tool
-			Options.Tool = Options.PreviousTool;
-
-		end;
-
-	end );
-
-end;
-
-Tools.Clone.Listeners.Unequipped = function ()
-
-	-- Hide the GUI
-	Tools.Clone:hideGUI();
-
-	-- Clear out any temporary connections
-	for connection_index, Connection in pairs( Tools.Clone.Temporary.Connections ) do
-		Connection:disconnect();
-		Tools.Clone.Temporary.Connections[connection_index] = nil;
-	end;
-
-	-- Restore the original color of the selection boxes
-	SelectionBoxColor = Tools.Clone.Temporary.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
-
-end;
-
-Tools.Clone.showGUI = function ( self )
-
-	-- Create the GUI if it doesn't exist
-	if not self.Temporary.GUI then
-
-		local GUIRoot = Instance.new( "ScreenGui", Player.PlayerGui );
-		GUIRoot.Name = "BTCloneToolGUI";
-
-		RbxUtility.Create "Frame" {
-			Parent = GUIRoot;
-			Name = "Container";
-			BackgroundTransparency = 1;
-			BorderSizePixel = 0;
-			Position = UDim2.new( 0, 1, 0, 292 );
-			Size = UDim2.new( 0, 140, 0, 70 );
-			Active = true;
-			Draggable = true;
-		};
-
-		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
-			Name = "Background";
-			BackgroundColor3 = Color3.new( 0, 0, 0 );
-			BackgroundTransparency = 0.9;
-			BorderSizePixel = 1;
-			BorderColor3 = Color3.new( 27 / 255, 42 / 255, 53 / 255 );
-			Position = UDim2.new( 0, 10, 0, 25 );
-			Size = UDim2.new( 1, -10, 0, 40 );
-		};
-
-		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
-			Name = "Line";
-			BackgroundColor3 = self.Color.Color;
-			BorderSizePixel = 0;
-			Position = UDim2.new( 0, 10, 0, 25 );
-			Size = UDim2.new( 0, 3, 0, 40 );
-		};
-
-		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
-			Name = "Title";
-			BackgroundTransparency = 1;
-			BorderSizePixel = 0;
-			Size = UDim2.new( 1, 0, 0, 20 );
-		};
-
-		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Title;
-			Name = "ColorBar";
-			BackgroundColor3 = self.Color.Color;
-			BorderSizePixel = 0;
-			Position = UDim2.new( 0, 5, 0, -3 );
-			Size = UDim2.new( 1, -5, 0, 2 );
-		};
-
-		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Title;
-			Name = "Label";
-			BackgroundTransparency = 1;
-			BorderSizePixel = 0;
-			Position = UDim2.new( 0, 10, 0, 1 );
-			Size = UDim2.new( 1, -10, 1, 0 );
-			Font = Enum.Font.ArialBold;
-			FontSize = Enum.FontSize.Size12;
-			Text = "CLONE TOOL";
-			TextColor3 = Color3.new( 1, 1, 1 );
-			TextXAlignment = Enum.TextXAlignment.Left;
-			TextStrokeTransparency = 0;
-			TextStrokeColor3 = Color3.new( 0, 0, 0 );
-			TextWrapped = true;
-		};
-
-		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Title;
-			Name = "F3XSignature";
-			BackgroundTransparency = 1;
-			BorderSizePixel = 0;
-			Position = UDim2.new( 0, 10, 0, 1 );
-			Size = UDim2.new( 1, -10, 1, 0 );
-			Font = Enum.Font.ArialBold;
-			FontSize = Enum.FontSize.Size14;
-			Text = "F3X";
-			TextColor3 = Color3.new( 1, 1, 1 );
-			TextXAlignment = Enum.TextXAlignment.Right;
-			TextStrokeTransparency = 0.9;
-			TextStrokeColor3 = Color3.new( 0, 0, 0 );
-			TextWrapped = true;
-		};
-
-		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container;
-			Name = "Text";
-			BackgroundTransparency  = 1;
-			BorderSizePixel = 0;
-			Position = UDim2.new( 0, 20, 0, 25 );
-			Size = UDim2.new( 0, 120, 0, 40 );
-			Font = Enum.Font.ArialBold;
-			FontSize = Enum.FontSize.Size12;
-			Text = "Press enter to clone the current selection.";
-			TextColor3 = Color3.new( 1, 1, 1 );
-			TextStrokeColor3 = Color3.new( 0, 0, 0 );
-			TextStrokeTransparency = 0.5;
-			TextWrapped = true;
-			TextXAlignment = Enum.TextXAlignment.Left;
-		};
-
-		self.Temporary.GUI = GUIRoot;
-	end;
-
-	-- Reveal the GUI
-	self.Temporary.GUI.Container.Visible = true;
-
-end;
-
-Tools.Clone.hideGUI = function ( self )
-
-	-- Hide the GUI if it exists
-	if self.Temporary.GUI then
-		self.Temporary.GUI.Container.Visible = false;
-	end;
-
-end;
-
-------------------------------------------
 -- Attach listeners
 ------------------------------------------
 
@@ -4028,6 +3753,42 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		local key = key:lower();
 		local key_code = key:byte();
 
+		-- Provide the abiltiy to delete via the delete key
+		if key_code == 127 then
+			local SelectionItems = _cloneTable( Selection.Items );
+			for _, Item in pairs( SelectionItems ) do
+				Item:Destroy();
+			end;
+			return;
+		end;
+
+		-- Provide the ability to clone via the ctrl + C key combination
+		if ActiveKeys[49] or ActiveKeys[50] and key == "c" then
+
+			-- Make sure that there are items in the selection
+			if #Selection.Items > 0 then
+
+				local item_copies = {};
+
+				-- Make a copy of every item in the selection and add it to table `item_copies`
+				for _, Item in pairs( Selection.Items ) do
+					local ItemCopy = Item:Clone();
+					ItemCopy.Parent = Services.Workspace;
+					table.insert( item_copies, ItemCopy );
+				end;
+
+				-- Replace the selection with the copied items
+				Selection:clear();
+				for _, Item in pairs( item_copies ) do
+					Selection:add( Item );
+				end;
+
+			end;
+
+			return;
+
+		end;
+
 		if key == "z" then
 			Options.Tool = Tools.Move;
 
@@ -4040,20 +3801,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		elseif key == "v" then
 			Options.Tool = Tools.Paint;
 
-		elseif key == "l" then
-			Options.Tool = Tools.Clone;
-
 		elseif key == "q" then
 			Selection:clear();
 
-		end;
-
-		-- Provide the abiltiy to delete via the delete key
-		if key_code == 127 then
-			local SelectionItems = _cloneTable( Selection.Items );
-			for _, Item in pairs( SelectionItems ) do
-				Item:Destroy();
-			end;
 		end;
 
 		ActiveKeys[key_code] = key_code;
