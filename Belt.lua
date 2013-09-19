@@ -327,258 +327,6 @@ Selection = {
 Tools = {};
 
 ------------------------------------------
--- Paint tool
-------------------------------------------
-
--- Create the main container for this tool
-Tools.Paint = {};
-
--- Define the color of the tool
-Tools.Paint.Color = BrickColor.new( "Really red" );
-
--- Define options
-Tools.Paint.Options = setmetatable( {
-
-	["_options"] = {
-		["Color"] = BrickColor.new( "Institutional white" ),
-		["PaletteGUI"] = nil
-	}
-
-}, {
-
-	-- Get the option from `self._options` instead of `self` directly
-	__index = function ( self, key )
-		return rawget( self, "_options" )[key];
-	end;
-
-	-- Let's do some special stuff if certain options are touched
-	__newindex = function ( self, key, value )
-
-		if key == "Color" then
-
-			-- Mark the appropriate color in the palette
-			if self.PaletteGUI then
-
-				-- Clear any mark on any other color button from the palette
-				for _, PaletteColorButton in pairs( self.PaletteGUI.Container.Palette:GetChildren() ) do
-					PaletteColorButton.Text = "";
-				end;
-
-				-- Mark the right color button in the palette
-				self.PaletteGUI.Container.Palette[value.Name].Text = "X";
-
-			end;
-
-			-- Change the color of selected items
-			for _, Item in pairs( Selection.Items ) do
-				Item.BrickColor = value;
-			end;
-
-		end;
-
-		-- Set the option normally
-		rawget( self, "_options" )[key] = value;
-
-	end;
-
-} );
-
--- Add listeners
-Tools.Paint.Listeners = {};
-
-Tools.Paint.Listeners.Equipped = function ()
-	showPalette();
-end;
-
-Tools.Paint.Listeners.Unequipped = function ()
-	hidePalette();
-end;
-
-Tools.Paint.Listeners.Button1Up = function ()
-
-	-- Make sure that they clicked on one of the items in their selection
-	-- (and they weren't multi-selecting)
-	if Selection:find( Mouse.Target ) and not selecting and not selecting then
-
-		override_selection = true;
-
-		-- Paint all of the selected items `Tools.Paint.Options.Color`
-		if Tools.Paint.Options.Color then
-			for _, Item in pairs( Selection.Items ) do
-				Item.BrickColor = Tools.Paint.Options.Color;
-			end;
-		end;
-
-	end;
-
-end;
-
--- Create the handle
-Tools.Paint.Handle = RbxUtility.Create "Part" {
-	Name = "Handle";
-	Locked = true;
-	BrickColor = Tools.Paint.Color;
-	FormFactor = Enum.FormFactor.Custom;
-	Size = Vector3.new( 0.8, 0.8, 0.8 );
-	TopSurface = Enum.SurfaceType.Smooth;
-	BottomSurface = Enum.SurfaceType.Smooth;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Paint.Handle;
-	Face = Enum.NormalId.Front;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Paint.Handle;
-	Face = Enum.NormalId.Back;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Paint.Handle;
-	Face = Enum.NormalId.Left;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Paint.Handle;
-	Face = Enum.NormalId.Right;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Paint.Handle;
-	Face = Enum.NormalId.Top;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Paint.Handle;
-	Face = Enum.NormalId.Bottom;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-
--- Set the grip for the handle
-Tools.Paint.Grip = CFrame.new( 0, 0, 0.4 );
-
-function showPalette()
-	-- Reveals a color palette
-
-	-- Create the GUI container
-	local PaletteGUI = Instance.new( "ScreenGui", Player.PlayerGui );
-	PaletteGUI.Name = "BTPaintGUI";
-
-	-- Register the GUI
-	Tools.Paint.Options.PaletteGUI = PaletteGUI;
-
-	RbxUtility.Create "Frame" {
-		Parent = PaletteGUI;
-		Name = "Container";
-		Active = true;
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 0, 0, 230 );
-		Size = UDim2.new( 0, 205, 0, 230 );
-		Draggable = true;
-	};
-	RbxUtility.Create "Frame" {
-		Parent = PaletteGUI.Container;
-		Name = "Title";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 1, 0, 0, 20 );
-	};
-
-	RbxUtility.Create "Frame" {
-		Parent = PaletteGUI.Container.Title;
-		Name = "ColorBar";
-		BackgroundColor3 = BrickColor.new( "Really red" ).Color;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 5, 0, -3 );
-		Size = UDim2.new( 1, -5, 0, 2 );
-	};
-
-	RbxUtility.Create "TextLabel" {
-		Parent = PaletteGUI.Container.Title;
-		Name = "Label";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 10, 0, 1 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "PAINT TOOL";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextXAlignment = Enum.TextXAlignment.Left;
-		TextStrokeTransparency = 0;
-		TextStrokeColor3 = Color3.new( 0, 0, 0 );
-		TextWrapped = true;
-	};
-
-	RbxUtility.Create "TextLabel" {
-		Parent = PaletteGUI.Container.Title;
-		Name = "F3XSignature";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 10, 0, 1 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size14;
-		Text = "F3X";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextXAlignment = Enum.TextXAlignment.Right;
-		TextStrokeTransparency = 0.9;
-		TextStrokeColor3 = Color3.new( 0, 0, 0 );
-		TextWrapped = true;
-	};
-
-	-- Create the frame that will contain the colors
-	local PaletteFrame = Instance.new( "Frame", PaletteGUI.Container );
-	PaletteFrame.Name = "Palette";
-	PaletteFrame.BackgroundColor3 = Color3.new( 0, 0, 0 );
-	PaletteFrame.Transparency = 1;
-	PaletteFrame.Size = UDim2.new( 0, 205, 0, 205 );
-	PaletteFrame.Position = UDim2.new( 0, 5, 0, 20 );
-
-	-- Insert the colors
-	for palette_index = 0, 63 do
-
-		-- Get BrickColor `palette_index` from the palette
-		local Color = BrickColor.palette( palette_index );
-
-		-- Calculate the row and column in the 8x8 grid
-		local row = ( palette_index - ( palette_index % 8 ) ) / 8;
-		local column = palette_index % 8;
-
-		-- Create the button
-		local ColorButton = Instance.new( "TextButton", PaletteFrame );
-		ColorButton.Name = Color.Name;
-		ColorButton.BackgroundColor3 = Color.Color;
-		ColorButton.Size = UDim2.new( 0, 20, 0, 20 );
-		ColorButton.Text = "";
-		ColorButton.TextStrokeTransparency = 0.75;
-		ColorButton.Font = Enum.Font.ArialBold;
-		ColorButton.FontSize = Enum.FontSize.Size18;
-		ColorButton.TextColor3 = Color3.new( 1, 1, 1 );
-		ColorButton.TextStrokeColor3 = Color3.new( 0, 0, 0 );
-		ColorButton.Position = UDim2.new( 0, column * 25 + 5, 0, row * 25 + 5 );
-		ColorButton.BorderSizePixel = 0;
-
-		-- Make the button change the `Color` option
-		ColorButton.MouseButton1Click:connect( function ()
-			Tools.Paint.Options.Color = Color;
-		end );
-
-	end;
-
-end;
-
-function hidePalette()
-
-	if Tools.Paint.Options.PaletteGUI then
-		Tools.Paint.Options.PaletteGUI:Destroy();
-		Tools.Paint.Options.PaletteGUI = nil;
-	end;
-
-end;
-
-------------------------------------------
 -- Move tool
 ------------------------------------------
 
@@ -3769,6 +3517,753 @@ Tools.Rotate.hideHandles = function ( self )
 
 end;
 
+
+------------------------------------------
+-- Paint tool
+------------------------------------------
+
+-- Create the main container for this tool
+Tools.Paint = {};
+
+-- Define the color of the tool
+Tools.Paint.Color = BrickColor.new( "Really red" );
+
+-- Define options
+Tools.Paint.Options = setmetatable( {
+
+	["_options"] = {
+		["Color"] = BrickColor.new( "Institutional white" ),
+		["PaletteGUI"] = nil
+	}
+
+}, {
+
+	-- Get the option from `self._options` instead of `self` directly
+	__index = function ( self, key )
+		return rawget( self, "_options" )[key];
+	end;
+
+	-- Let's do some special stuff if certain options are touched
+	__newindex = function ( self, key, value )
+
+		if key == "Color" then
+
+			-- Mark the appropriate color in the palette
+			if self.PaletteGUI then
+
+				-- Clear any mark on any other color button from the palette
+				for _, PaletteColorButton in pairs( self.PaletteGUI.Container.Palette:GetChildren() ) do
+					PaletteColorButton.Text = "";
+				end;
+
+				-- Mark the right color button in the palette
+				self.PaletteGUI.Container.Palette[value.Name].Text = "X";
+
+			end;
+
+			-- Change the color of selected items
+			for _, Item in pairs( Selection.Items ) do
+				Item.BrickColor = value;
+			end;
+
+		end;
+
+		-- Set the option normally
+		rawget( self, "_options" )[key] = value;
+
+	end;
+
+} );
+
+Tools.Paint.Temporary = {};
+
+-- Add listeners
+Tools.Paint.Listeners = {};
+
+Tools.Paint.Listeners.Equipped = function ()
+
+	-- Change the color of selection boxes temporarily
+	Tools.Paint.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = Tools.Paint.Color;
+	updateSelectionBoxColor();
+
+	showPalette();
+end;
+
+Tools.Paint.Listeners.Unequipped = function ()
+
+	-- Hide the GUI
+	hidePalette();
+
+	-- Restore the original color of the selection boxes
+	SelectionBoxColor = Tools.Paint.Temporary.PreviousSelectionBoxColor;
+	updateSelectionBoxColor();
+
+end;
+
+Tools.Paint.Listeners.Button1Up = function ()
+
+	-- Make sure that they clicked on one of the items in their selection
+	-- (and they weren't multi-selecting)
+	if Selection:find( Mouse.Target ) and not selecting and not selecting then
+
+		override_selection = true;
+
+		-- Paint all of the selected items `Tools.Paint.Options.Color`
+		if Tools.Paint.Options.Color then
+			for _, Item in pairs( Selection.Items ) do
+				Item.BrickColor = Tools.Paint.Options.Color;
+			end;
+		end;
+
+	end;
+
+end;
+
+-- Create the handle
+Tools.Paint.Handle = RbxUtility.Create "Part" {
+	Name = "Handle";
+	Locked = true;
+	BrickColor = Tools.Paint.Color;
+	FormFactor = Enum.FormFactor.Custom;
+	Size = Vector3.new( 0.8, 0.8, 0.8 );
+	TopSurface = Enum.SurfaceType.Smooth;
+	BottomSurface = Enum.SurfaceType.Smooth;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Paint.Handle;
+	Face = Enum.NormalId.Front;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Paint.Handle;
+	Face = Enum.NormalId.Back;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Paint.Handle;
+	Face = Enum.NormalId.Left;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Paint.Handle;
+	Face = Enum.NormalId.Right;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Paint.Handle;
+	Face = Enum.NormalId.Top;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Paint.Handle;
+	Face = Enum.NormalId.Bottom;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+
+-- Set the grip for the handle
+Tools.Paint.Grip = CFrame.new( 0, 0, 0.4 );
+
+function showPalette()
+	-- Reveals a color palette
+
+	-- Create the GUI container
+	local PaletteGUI = Instance.new( "ScreenGui", Player.PlayerGui );
+	PaletteGUI.Name = "BTPaintGUI";
+
+	-- Register the GUI
+	Tools.Paint.Options.PaletteGUI = PaletteGUI;
+
+	RbxUtility.Create "Frame" {
+		Parent = PaletteGUI;
+		Name = "Container";
+		Active = true;
+		BackgroundTransparency = 1;
+		BorderSizePixel = 0;
+		Position = UDim2.new( 0, 0, 0, 230 );
+		Size = UDim2.new( 0, 205, 0, 230 );
+		Draggable = true;
+	};
+	RbxUtility.Create "Frame" {
+		Parent = PaletteGUI.Container;
+		Name = "Title";
+		BackgroundTransparency = 1;
+		BorderSizePixel = 0;
+		Size = UDim2.new( 1, 0, 0, 20 );
+	};
+
+	RbxUtility.Create "Frame" {
+		Parent = PaletteGUI.Container.Title;
+		Name = "ColorBar";
+		BackgroundColor3 = BrickColor.new( "Really red" ).Color;
+		BorderSizePixel = 0;
+		Position = UDim2.new( 0, 5, 0, -3 );
+		Size = UDim2.new( 1, -5, 0, 2 );
+	};
+
+	RbxUtility.Create "TextLabel" {
+		Parent = PaletteGUI.Container.Title;
+		Name = "Label";
+		BackgroundTransparency = 1;
+		BorderSizePixel = 0;
+		Position = UDim2.new( 0, 10, 0, 1 );
+		Size = UDim2.new( 1, -10, 1, 0 );
+		Font = Enum.Font.ArialBold;
+		FontSize = Enum.FontSize.Size12;
+		Text = "PAINT TOOL";
+		TextColor3 = Color3.new( 1, 1, 1 );
+		TextXAlignment = Enum.TextXAlignment.Left;
+		TextStrokeTransparency = 0;
+		TextStrokeColor3 = Color3.new( 0, 0, 0 );
+		TextWrapped = true;
+	};
+
+	RbxUtility.Create "TextLabel" {
+		Parent = PaletteGUI.Container.Title;
+		Name = "F3XSignature";
+		BackgroundTransparency = 1;
+		BorderSizePixel = 0;
+		Position = UDim2.new( 0, 10, 0, 1 );
+		Size = UDim2.new( 1, -10, 1, 0 );
+		Font = Enum.Font.ArialBold;
+		FontSize = Enum.FontSize.Size14;
+		Text = "F3X";
+		TextColor3 = Color3.new( 1, 1, 1 );
+		TextXAlignment = Enum.TextXAlignment.Right;
+		TextStrokeTransparency = 0.9;
+		TextStrokeColor3 = Color3.new( 0, 0, 0 );
+		TextWrapped = true;
+	};
+
+	-- Create the frame that will contain the colors
+	local PaletteFrame = Instance.new( "Frame", PaletteGUI.Container );
+	PaletteFrame.Name = "Palette";
+	PaletteFrame.BackgroundColor3 = Color3.new( 0, 0, 0 );
+	PaletteFrame.Transparency = 1;
+	PaletteFrame.Size = UDim2.new( 0, 205, 0, 205 );
+	PaletteFrame.Position = UDim2.new( 0, 5, 0, 20 );
+
+	-- Insert the colors
+	for palette_index = 0, 63 do
+
+		-- Get BrickColor `palette_index` from the palette
+		local Color = BrickColor.palette( palette_index );
+
+		-- Calculate the row and column in the 8x8 grid
+		local row = ( palette_index - ( palette_index % 8 ) ) / 8;
+		local column = palette_index % 8;
+
+		-- Create the button
+		local ColorButton = Instance.new( "TextButton", PaletteFrame );
+		ColorButton.Name = Color.Name;
+		ColorButton.BackgroundColor3 = Color.Color;
+		ColorButton.Size = UDim2.new( 0, 20, 0, 20 );
+		ColorButton.Text = "";
+		ColorButton.TextStrokeTransparency = 0.75;
+		ColorButton.Font = Enum.Font.ArialBold;
+		ColorButton.FontSize = Enum.FontSize.Size18;
+		ColorButton.TextColor3 = Color3.new( 1, 1, 1 );
+		ColorButton.TextStrokeColor3 = Color3.new( 0, 0, 0 );
+		ColorButton.Position = UDim2.new( 0, column * 25 + 5, 0, row * 25 + 5 );
+		ColorButton.BorderSizePixel = 0;
+
+		-- Make the button change the `Color` option
+		ColorButton.MouseButton1Click:connect( function ()
+			Tools.Paint.Options.Color = Color;
+		end );
+
+	end;
+
+end;
+
+function hidePalette()
+
+	if Tools.Paint.Options.PaletteGUI then
+		Tools.Paint.Options.PaletteGUI:Destroy();
+		Tools.Paint.Options.PaletteGUI = nil;
+	end;
+
+end;
+
+------------------------------------------
+-- Anchor tool
+------------------------------------------
+
+-- Create the tool
+Tools.Anchor = {};
+
+-- Create structures to hold data that the tool needs
+Tools.Anchor.Temporary = {
+	["Connections"] = {};
+};
+
+Tools.Anchor.State = {
+	["anchored"] = nil;
+};
+
+Tools.Anchor.Listeners = {};
+
+-- Define the color of the tool
+Tools.Anchor.Color = BrickColor.new( "Really black" );
+
+-- Create the handle
+Tools.Anchor.Handle = RbxUtility.Create "Part" {
+	Name = "Handle";
+	Locked = true;
+	BrickColor = Tools.Anchor.Color;
+	FormFactor = Enum.FormFactor.Custom;
+	Size = Vector3.new( 0.8, 0.8, 0.8 );
+	TopSurface = Enum.SurfaceType.Smooth;
+	BottomSurface = Enum.SurfaceType.Smooth;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Anchor.Handle;
+	Face = Enum.NormalId.Front;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Anchor.Handle;
+	Face = Enum.NormalId.Back;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Anchor.Handle;
+	Face = Enum.NormalId.Left;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Anchor.Handle;
+	Face = Enum.NormalId.Right;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Anchor.Handle;
+	Face = Enum.NormalId.Top;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Anchor.Handle;
+	Face = Enum.NormalId.Bottom;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+
+-- Set the grip for the handle
+Tools.Anchor.Grip = CFrame.new( 0, 0, 0.4 );
+
+-- Start adding functionality to the tool
+
+Tools.Anchor.Listeners.Equipped = function ()
+
+	-- Change the color of selection boxes temporarily
+	Tools.Anchor.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = Tools.Anchor.Color;
+	updateSelectionBoxColor();
+
+	-- Reveal the GUI
+	Tools.Anchor:showGUI();
+
+	-- Update the GUI regularly
+	coroutine.wrap( function ()
+		local updater_on = true;
+
+		-- Provide a function to stop the loop
+		Tools.Anchor.Temporary.Updater = function ()
+			updater_on = false;
+		end;
+
+		while wait( 0.1 ) and updater_on do
+
+			-- Make sure the tool's equipped
+			if Options.Tool == Tools.Anchor then
+
+				-- Update the anchor status of every item in the selection
+				local anchor_status = nil;
+				for item_index, Item in pairs( Selection.Items ) do
+
+					-- Set the first values for the first item
+					if item_index == 1 then
+						anchor_status = Item.Anchored;
+
+					-- Otherwise, compare them and set them to `nil` if they're not identical
+					else
+						if anchor_status ~= Item.Anchored then
+							anchor_status = nil;
+						end;
+					end;
+
+				end;
+
+				Tools.Anchor.State.anchored = anchor_status;
+
+				-- Update the GUI if it's visible
+				if Tools.Anchor.Temporary.GUI and Tools.Anchor.Temporary.GUI.Container.Visible then
+					Tools.Anchor:updateGUI();
+				end;
+
+			end;
+
+		end;
+
+	end )();
+
+	-- Listen for the Enter button to be pressed to toggle the anchor
+	Tools.Anchor.Temporary.Connections.EnterButtonListener = Mouse.KeyDown:connect( function ( key )
+
+		local key = key:lower();
+		local key_code = key:byte();
+
+		-- If the Enter button is pressed
+		if key_code == 13 then
+
+			if Tools.Anchor.State.anchored == true then
+				Tools.Anchor:unanchor();
+
+			elseif Tools.Anchor.State.anchored == false then
+				Tools.Anchor:anchor();
+
+			elseif Tools.Anchor.State.anchored == nil then
+				Tools.Anchor:anchor();
+
+			end;
+
+		end;
+
+	end );
+
+end;
+
+Tools.Anchor.anchor = function ( self )
+
+	-- Anchor all the items in the selection
+	for _, Item in pairs( Selection.Items ) do
+		Item.Anchored = true;
+	end;
+
+end;
+
+Tools.Anchor.unanchor = function ( self )
+
+	-- Unanchor all the items in the selection
+	for _, Item in pairs( Selection.Items ) do
+		Item.Anchored = false;
+	end;
+
+end;
+
+Tools.Anchor.showGUI = function ( self )
+
+	-- Create the GUI if it doesn't exist
+	if not self.Temporary.GUI then
+		local GUIRoot = Instance.new( "ScreenGui", Player.PlayerGui );
+		GUIRoot.Name = "BTRotateToolGUI";
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot;
+			Name = "Container";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 280 );
+			Size = UDim2.new( 0, 245, 0, 90 );
+			Draggable = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "Title";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Title;
+			Name = "ColorBar";
+			BackgroundColor3 = self.Color.Color;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, -3 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Title;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "ANCHOR TOOL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Title;
+			Name = "F3XSignature";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size14;
+			Text = "F3X";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Right;
+			TextStrokeTransparency = 0.9;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "Status";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 30 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Status;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 14, 0, 0 );
+			Size = UDim2.new( 0, 40, 0, 25 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Status";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Left;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Status;
+			Name = "Anchored";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 55, 0, 0 );
+			Size = UDim2.new( 0, 90, 0, 25 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Status.Anchored;
+			Name = "SelectedIndicator";
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 9, 0, -2 );
+			Size = UDim2.new( 1, -9, 0, 2 );
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BackgroundTransparency = ( self.State.anchored == true ) and 0 or 1;
+		};
+
+		RbxUtility.Create "TextButton" {
+			Parent = GUIRoot.Container.Status.Anchored;
+			Name = "Button";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Text = "";
+			TextTransparency = 1;
+
+			-- Change the anchor status when the button is clicked
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self:anchor();
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.Status.Anchored;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = ( self.State.anchored == true ) and dark_slanted_rectangle or light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Status.Anchored;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "ANCHORED";
+			TextColor3 = Color3.new( 1, 1, 1 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Status;
+			Name = "Unanchored";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 140, 0, 0 );
+			Size = UDim2.new( 0, 90, 0, 25 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Status.Unanchored;
+			Name = "SelectedIndicator";
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 9, 0, -2 );
+			Size = UDim2.new( 1, -9, 0, 2 );
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BackgroundTransparency = ( self.State.anchored == false ) and 0 or 1;
+		};
+
+		RbxUtility.Create "TextButton" {
+			Parent = GUIRoot.Container.Status.Unanchored;
+			Name = "Button";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Text = "";
+			TextTransparency = 1;
+
+			-- Change the anchor status when the button is clicked
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self:unanchor();
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.Status.Unanchored;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = ( self.State.anchored == false ) and dark_slanted_rectangle or light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Status.Unanchored;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "UNANCHORED";
+			TextColor3 = Color3.new( 1, 1, 1 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "Tip";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 70 );
+			Size = UDim2.new( 1, -5, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Tip;
+			Name = "ColorBar";
+			BorderSizePixel = 0;
+			BackgroundColor3 = self.Color.Color;
+			Size = UDim2.new( 1, 0, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Tip;
+			Name = "Text";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 0, 0, 2 );
+			Size = UDim2.new( 1, 0, 0, 20 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size11;
+			Text = "TIP: Press Enter to quickly toggle the anchor.";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0.5;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Center;
+		};
+		self.Temporary.GUI = GUIRoot;
+	end;
+
+	-- Reveal the GUI
+	self.Temporary.GUI.Container.Visible = true;
+
+end;
+
+Tools.Anchor.updateGUI = function ( self )
+
+	-- Make sure the GUI exists
+	if not self.Temporary.GUI then
+		return;
+	end;
+
+	local GUI = self.Temporary.GUI.Container;
+
+	if self.State.anchored == nil then
+		GUI.Status.Anchored.Background.Image = light_slanted_rectangle;
+		GUI.Status.Anchored.SelectedIndicator.BackgroundTransparency = 1;
+		GUI.Status.Unanchored.Background.Image = light_slanted_rectangle;
+		GUI.Status.Unanchored.SelectedIndicator.BackgroundTransparency = 1;
+
+	elseif self.State.anchored == true then
+		GUI.Status.Anchored.Background.Image = dark_slanted_rectangle;
+		GUI.Status.Anchored.SelectedIndicator.BackgroundTransparency = 0;
+		GUI.Status.Unanchored.Background.Image = light_slanted_rectangle;
+		GUI.Status.Unanchored.SelectedIndicator.BackgroundTransparency = 1;
+
+	elseif self.State.anchored == false then
+		GUI.Status.Anchored.Background.Image = light_slanted_rectangle;
+		GUI.Status.Anchored.SelectedIndicator.BackgroundTransparency = 1;
+		GUI.Status.Unanchored.Background.Image = dark_slanted_rectangle;
+		GUI.Status.Unanchored.SelectedIndicator.BackgroundTransparency = 0;
+
+	end;
+
+end;
+
+Tools.Anchor.hideGUI = function ( self )
+
+	-- Hide the GUI if it exists
+	if self.Temporary.GUI then
+		self.Temporary.GUI.Container.Visible = false;
+	end;
+
+end;
+
+Tools.Anchor.Listeners.Unequipped = function ()
+
+	-- Stop the update loop
+	Tools.Anchor.Temporary.Updater();
+	Tools.Anchor.Temporary.Updater = nil;
+
+	-- Hide the GUI
+	Tools.Anchor:hideGUI();
+
+	-- Clear out any temporary connections
+	for connection_index, Connection in pairs( Tools.Anchor.Temporary.Connections ) do
+		Connection:disconnect();
+		Tools.Anchor.Temporary.Connections[connection_index] = nil;
+	end;
+
+	-- Restore the original color of the selection boxes
+	SelectionBoxColor = Tools.Anchor.Temporary.PreviousSelectionBoxColor;
+	updateSelectionBoxColor();
+
+end;
+
 ------------------------------------------
 -- Attach listeners
 ------------------------------------------
@@ -3864,6 +4359,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		elseif key == "v" then
 			Options.Tool = Tools.Paint;
+
+		elseif key == "l" then
+			Options.Tool = Tools.Anchor;
 
 		elseif key == "q" then
 			Selection:clear();
