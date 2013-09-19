@@ -3796,8 +3796,8 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		local key = key:lower();
 		local key_code = key:byte();
 
-		-- Provide the abiltiy to delete via the delete key
-		if key_code == 127 then
+		-- Provide the abiltiy to delete via the shift + X key combination
+		if ActiveKeys[47] or ActiveKeys[48] and key == "x" then
 			local SelectionItems = _cloneTable( Selection.Items );
 			for _, Item in pairs( SelectionItems ) do
 				Item:Destroy();
@@ -3805,8 +3805,8 @@ Tool.Equipped:connect( function ( CurrentMouse )
 			return;
 		end;
 
-		-- Provide the ability to clone via the ctrl + C key combination
-		if ActiveKeys[49] or ActiveKeys[50] and key == "e" then
+		-- Provide the ability to clone via the shift + C key combination
+		if ActiveKeys[47] or ActiveKeys[48] and key == "c" then
 
 			-- Make sure that there are items in the selection
 			if #Selection.Items > 0 then
@@ -3825,6 +3825,27 @@ Tool.Equipped:connect( function ( CurrentMouse )
 				for _, Item in pairs( item_copies ) do
 					Selection:add( Item );
 				end;
+
+				-- Play a confirmation sound
+				local Sound = RbxUtility.Create "Sound" {
+					Name = "BTActionCompletionSound";
+					Pitch = 1.5;
+					SoundId = "http://www.roblox.com/asset/?id=99666917";
+					Volume = 1;
+					Parent = Player;
+				};
+				Sound:Play();
+				Sound:Destroy();
+
+				-- Highlight the outlines of the new parts
+				coroutine.wrap( function ()
+					for transparency = 1, 0, -0.1 do
+						for Item, SelectionBox in pairs( SelectionBoxes ) do
+							SelectionBox.Transparency = transparency;
+						end;
+						wait( 0.1 );
+					end;
+				end )();
 
 			end;
 
