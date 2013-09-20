@@ -2505,7 +2505,7 @@ Tools.Rotate.Listeners.Equipped = function ()
 	Mouse.TargetFilter = Tools.Rotate.Temporary.BoundingBox;
 
 	-- Update the pivot option
-	Tools.Rotate:changePivot( "center" );
+	Tools.Rotate:changePivot( Tools.Rotate.Options.pivot );
 
 	-- Oh, and update the boundingbox and the GUI regularly
 	coroutine.wrap( function ()
