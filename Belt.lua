@@ -431,6 +431,34 @@ Tools.Move.Listeners.Equipped = function ()
 	-- Refresh the axis type option
 	Tools.Move:changeAxes( Tools.Move.Options.axes );
 
+	-- Listen for any keystrokes that might affect any dragging operation
+	Tools.Move.Temporary.Connections.DraggerKeyListener = Mouse.KeyDown:connect( function ( key )
+
+		local key = key:lower();
+
+		-- Make sure a dragger exists
+		if not Tools.Move.Temporary.Dragger then
+			return;
+		end;
+
+		-- Rotate along the Z axis if `r` is pressed
+		if key == "r" then
+			Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.Z );
+
+		-- Rotate along the X axis if `t` is pressed
+		elseif key == "t" then
+			Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.X );
+
+		-- Rotate along the Y axis if `y` is pressed
+		elseif key == "y" then
+			Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.Y );
+		end;
+
+		-- Simulate a mouse move so that it applies the changes
+		Tools.Move.Temporary.Dragger:MouseMove( Mouse.UnitRay );
+
+	end );
+
 	-- Oh, and update the boundingbox and the GUI regularly
 	coroutine.wrap( function ()
 		local updater_on = true;
@@ -556,7 +584,7 @@ Tools.Move.Listeners.Button1Down = function ()
 
 	Tools.Move.Temporary.Dragger = Instance.new( "Dragger" );
 
-	Tools.Move.Temporary.Dragger:MouseDown( Mouse.Target, CFrame.new( Mouse.Target.Position - Mouse.Hit.p ):inverse().p, Selection.Items );
+	Tools.Move.Temporary.Dragger:MouseDown( Mouse.Target, ( Mouse.Target.CFrame:inverse() * CFrame.new( Mouse.Hit.p ) ).p, Selection.Items );
 
 	Tools.Move.Temporary.Connections.DraggerConnection = Mouse.Button1Up:connect( function ()
 
