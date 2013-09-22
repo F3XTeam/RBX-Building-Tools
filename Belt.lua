@@ -338,11 +338,7 @@ Tools.Move.Color = BrickColor.new( "Deep orange" );
 
 -- Keep a container for the handles and other temporary stuff
 Tools.Move.Temporary = {
-	["Handles"] = nil;
-	["BoundaryBox"] = nil;
 	["Connections"] = {};
-	["MovementListeners"] = {};
-	["PreviousSelectionBoxColor"] = nil;
 };
 
 -- Keep options in a container too
@@ -353,13 +349,58 @@ Tools.Move.Options = {
 
 -- Keep internal state data in its own container
 Tools.Move.State = {
-	["previous_distance"] = 0;
+	["distance_moved"] = 0;
 	["moving"] = false;
-	["dragging"] = false;
+	["PreMove"] = {};
 };
 
 -- Add listeners
 Tools.Move.Listeners = {};
+
+-- Create the handle
+Tools.Move.Handle = RbxUtility.Create "Part" {
+	Name = "Handle";
+	Locked = true;
+	BrickColor = BrickColor.new( "Deep orange" );
+	FormFactor = Enum.FormFactor.Custom;
+	Size = Vector3.new( 0.8, 0.8, 0.8 );
+	TopSurface = Enum.SurfaceType.Smooth;
+	BottomSurface = Enum.SurfaceType.Smooth;
+};
+
+RbxUtility.Create "Decal" {
+	Parent = Tools.Move.Handle;
+	Face = Enum.NormalId.Front;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Move.Handle;
+	Face = Enum.NormalId.Back;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Move.Handle;
+	Face = Enum.NormalId.Left;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Move.Handle;
+	Face = Enum.NormalId.Right;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Move.Handle;
+	Face = Enum.NormalId.Top;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Move.Handle;
+	Face = Enum.NormalId.Bottom;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+
+-- Set the grip for the handle
+Tools.Move.Grip = CFrame.new( 0, 0, 0.4 );
 
 Tools.Move.Listeners.Equipped = function ()
 
@@ -373,183 +414,83 @@ Tools.Move.Listeners.Equipped = function ()
 	SelectionBoxColor = Tools.Move.Color;
 	updateSelectionBoxColor();
 
-	Tools.Move.Temporary.BoundaryBox = Tools.Move:createBoundaryBox();
-
-	-- Show the GUI
+	-- Reveal the GUI
 	Tools.Move:showGUI();
 
-	table.insert( Tools.Move.Temporary.Connections, Selection.Changed:connect( function ()
-		Tools.Move.Temporary.BoundaryBox = Tools.Move:updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
-		Tools.Move:updateGUI();
-		Tools.Move:updateAxes();
-	end ) );
-	table.insert( Tools.Move.Temporary.Connections, Selection.ItemRemoved:connect( function ( Item )
-		if Tools.Move.Temporary.MovementListeners[Item] then
-			Tools.Move.Temporary.MovementListeners[Item]:disconnect();
-			Tools.Move.Temporary.MovementListeners[Item] = nil;
-		end;
-	end ) );
-	Tools.Move.Temporary.BoundaryUpdater = coroutine.create( function ()
-		while true do
-			wait( 0.1 );
-			Tools.Move.Temporary.BoundaryBox = Tools.Move:updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
-			Tools.Move:updateGUI();
-		end;
-	end );
-	coroutine.resume( Tools.Move.Temporary.BoundaryUpdater );
+	-- Create the boundingbox if it doesn't already exist
+	if not Tools.Move.Temporary.BoundingBox then
+		Tools.Move.Temporary.BoundingBox = RbxUtility.Create "Part" {
+			Name = "BTBoundingBox";
+			CanCollide = false;
+			Transparency = 1;
+			Anchored = true;
+		};
+	end;
+	Mouse.TargetFilter = Tools.Move.Temporary.BoundingBox;
 
-	-- Create 3D movement handles
-	Tools.Move.Temporary.Handles = Instance.new( "Handles", Player.PlayerGui );
-	Tools.Move.Temporary.Handles.Name = "BTMovementHandles";
-	Tools.Move.Temporary.Handles.Adornee = nil;
-	Tools.Move.Temporary.Handles.Style = Enum.HandlesStyle.Resize;
-	Tools.Move.Temporary.Handles.Color = Tools.Move.Color;
+	-- Refresh the axis type option
+	Tools.Move:changeAxes( Tools.Move.Options.axes );
 
-	Tools.Move.Temporary.Connections.LastSwitchHandler = Mouse.Button2Down:connect( function ()
+	-- Oh, and update the boundingbox and the GUI regularly
+	coroutine.wrap( function ()
+		local updater_on = true;
 
-		-- Make sure that the target is part of the selection already
-		if Selection:find( Mouse.Target ) then
-			Selection.Last = Mouse.Target;
-			Tools.Move:updateAxes();
+		-- Provide a function to stop the loop
+		Tools.Move.Temporary.Updater = function ()
+			updater_on = false;
 		end;
 
-	end );
+		while wait( 0.1 ) and updater_on do
 
-	-- Update BoundaryBox's shape/position to reflect current selection
-	Tools.Move.Temporary.BoundaryBox = Tools.Move:updateBoundaryBox( Tools.Move.Temporary.BoundaryBox, Selection.Items );
-	Tools.Move:updateGUI();
+			-- Make sure the tool's equipped
+			if Options.Tool == Tools.Move then
 
-	table.insert( Tools.Move.Temporary.Connections, Tools.Move.Temporary.Handles.MouseButton1Down:connect( function ()
-		Tools.Move.State.moving = true;
-		Tools.Move.State.distance_moved = 0;
-		Tools.Move.State.MoveStart = {};
-		Tools.Move.State.MoveStartAnchors = {};
-		Tools.Move.State.MoveStartCollision = {};
-		for _, Item in pairs( Selection.Items ) do
-			Tools.Move.State.MoveStart[Item] = Item.CFrame;
-			Tools.Move.State.MoveStartAnchors[Item] = Item.Anchored;
-			Item.Anchored = true;
-		end;
-		override_selection = true;
-
-		-- Let's listen to `Mouse`'s `Button1Up` instead of the handle's because the latter's only fires when
-		-- the button is released /on/ the handle (and that's not always the case)
-		local ReleaseListener;
-		ReleaseListener = Mouse.Button1Up:connect( function ()
-			override_selection = true;
-
-			ReleaseListener:disconnect();
-			Tools.Move.State.moving = false;
-			Tools.Move.State.MoveStart = {};
-
-			-- Reset each item's anchor state to its original
-			for _, Item in pairs( Selection.Items ) do
-				Item.Anchored = Tools.Move.State.MoveStartAnchors[Item];
-				Item:MakeJoints();
-			end;
-
-			Tools.Move.State.MoveStartAnchors = {};
-		end );
-	end ) );
-
-	table.insert( Tools.Move.Temporary.Connections, Tools.Move.Temporary.Handles.MouseDrag:connect( function ( face, drag_distance )
-
-		-- Calculate which multiple of the increment to use based on the current drag distance's
-		-- proximity to their nearest upper and lower multiples
-
-		local difference = drag_distance % Tools.Move.Options.increment;
-
-		local lower_degree = drag_distance - difference;
-		local upper_degree = drag_distance - difference + Tools.Move.Options.increment;
-
-		local lower_degree_proximity = math.abs( drag_distance - lower_degree );
-		local upper_degree_proximity = math.abs( drag_distance - upper_degree );
-
-		if lower_degree_proximity <= upper_degree_proximity then
-			drag_distance = lower_degree;
-		else
-			drag_distance = upper_degree;
-		end;
-
-		local increase = drag_distance;
-
-		Tools.Move.State.distance_moved = drag_distance;
-		Tools.Move:updateGUI();
-
-		-- Increment the position of each selected item in the direction of `face`
-		for _, Item in pairs( Selection.Items ) do
-
-			-- Remove any joints connected with `Item` so that it can freely move
-			Item:BreakJoints();
-
-			-- Update the position of `Item` depending on the type of axes that is currently set
-			if face == Enum.NormalId.Top then
-				if Tools.Move.Options.axes == "global" then
-					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, increase, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
-				elseif Tools.Move.Options.axes == "local" then
-					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, increase, 0 ) );
-				elseif Tools.Move.Options.axes == "last" then
-					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, increase, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
-				end;
-			
-			elseif face == Enum.NormalId.Bottom then
-				if Tools.Move.Options.axes == "global" then
-					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, -increase, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
-				elseif Tools.Move.Options.axes == "local" then
-					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, -increase, 0 ) );
-				elseif Tools.Move.Options.axes == "last" then
-					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, -increase, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+				-- Update the GUI if it's visible
+				if Tools.Move.Temporary.GUI and Tools.Move.Temporary.GUI.Container.Visible then
+					Tools.Move:updateGUI();
 				end;
 
-			elseif face == Enum.NormalId.Front then
+				-- Update the boundingbox if it's visible
 				if Tools.Move.Options.axes == "global" then
-					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, 0, -increase ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
-				elseif Tools.Move.Options.axes == "local" then
-					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, 0, -increase ) );
-				elseif Tools.Move.Options.axes == "last" then
-					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, 0, -increase ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
-				end;
-
-			elseif face == Enum.NormalId.Back then
-				if Tools.Move.Options.axes == "global" then
-					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( 0, 0, increase ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
-				elseif Tools.Move.Options.axes == "local" then
-					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( 0, 0, increase ) );
-				elseif Tools.Move.Options.axes == "last" then
-					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( 0, 0, increase ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
-				end;
-
-			elseif face == Enum.NormalId.Right then
-				if Tools.Move.Options.axes == "global" then
-					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( increase, 0, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
-				elseif Tools.Move.Options.axes == "local" then
-					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( increase, 0, 0 ) );
-				elseif Tools.Move.Options.axes == "last" then
-					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( increase, 0, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
-				end;
-
-			elseif face == Enum.NormalId.Left then
-				if Tools.Move.Options.axes == "global" then
-					Item.CFrame = CFrame.new( Tools.Move.State.MoveStart[Item].p ):toWorldSpace( CFrame.new( -increase, 0, 0 ) ) * CFrame.Angles( Tools.Move.State.MoveStart[Item]:toEulerAnglesXYZ() );
-				elseif Tools.Move.Options.axes == "local" then
-					Item.CFrame = Tools.Move.State.MoveStart[Item]:toWorldSpace( CFrame.new( -increase, 0, 0 ) );
-				elseif Tools.Move.Options.axes == "last" then
-					Item.CFrame = Tools.Move.State.MoveStart[Selection.Last]:toWorldSpace( CFrame.new( -increase, 0, 0 ) ):toWorldSpace( Tools.Move.State.MoveStart[Item]:toObjectSpace( Tools.Move.State.MoveStart[Selection.Last] ):inverse() );
+					Tools.Move:updateBoundingBox();
 				end;
 
 			end;
 
 		end;
-	end ) );
 
-	Tools.Move:updateAxes();
+	end )();
+
+end;
+
+Tools.Move.Listeners.Unequipped = function ()
+
+	-- Stop the update loop
+	Tools.Move.Temporary.Updater();
+	Tools.Move.Temporary.Updater = nil;
+
+	-- Hide the GUI
+	Tools.Move:hideGUI();
+
+	-- Hide the handles
+	Tools.Move:hideHandles();
+
+	-- Clear out any temporary connections
+	for connection_index, Connection in pairs( Tools.Move.Temporary.Connections ) do
+		Connection:disconnect();
+		Tools.Move.Temporary.Connections[connection_index] = nil;
+	end;
+
+	-- Restore the original color of the selection boxes
+	SelectionBoxColor = Tools.Move.Temporary.PreviousSelectionBoxColor;
+	updateSelectionBoxColor();
 
 end;
 
 Tools.Move.updateGUI = function ( self )
 	
-	if self.Temporary.OptionsGUI then
-		local GUI = self.Temporary.OptionsGUI.Container;
+	if self.Temporary.GUI then
+		local GUI = self.Temporary.GUI.Container;
 
 		if #Selection.Items > 0 then
 
@@ -615,14 +556,16 @@ Tools.Move.Listeners.Button1Down = function ()
 
 	Tools.Move.Temporary.Dragger = Instance.new( "Dragger" );
 
-	Tools.Move.Temporary.Dragger:MouseDown( Mouse.Target, Mouse.Target.Position - Mouse.Hit.p, Selection.Items );
+	Tools.Move.Temporary.Dragger:MouseDown( Mouse.Target, CFrame.new( Mouse.Target.Position - Mouse.Hit.p ):inverse().p, Selection.Items );
 
-	Tools.Move.Temporary.DraggerConnection = Mouse.Button1Up:connect( function ()
+	Tools.Move.Temporary.Connections.DraggerConnection = Mouse.Button1Up:connect( function ()
 
 		override_selection = true;
 
-		Tools.Move.Temporary.DraggerConnection:disconnect();
-		Tools.Move.Temporary.DraggerConnection = nil;
+		if Tools.Move.Temporary.Connections.DraggerConnection then
+			Tools.Move.Temporary.Connections.DraggerConnection:disconnect();
+			Tools.Move.Temporary.Connections.DraggerConnection = nil;
+		end;
 
 		if not Tools.Move.Temporary.Dragger then
 			return;
@@ -651,781 +594,924 @@ Tools.Move.Listeners.Move = function ()
 
 end;
 
-Tools.Move.Listeners.Unequipped = function ()
-
-	-- Hide the options GUI
-	Tools.Move:hideGUI();
-
-	-- Restore the original selection box color
-	SelectionBoxColor = Tools.Move.Temporary.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
-
-	-- Disconnect any temporary connections
-	for connection_index, Connection in pairs( Tools.Move.Temporary.Connections ) do
-		Connection:disconnect();
-		Tools.Move.Temporary.Connections[connection_index] = nil;
-	end;
-	for connection_index, Connection in pairs( Tools.Move.Temporary.MovementListeners ) do
-		Connection:disconnect();
-		Tools.Move.Temporary.MovementListeners[connection_index] = nil;
-	end;
-
-	-- Dispose of the coroutine that updates the boundary
-	Tools.Move.Temporary.BoundaryUpdater = nil;
-
-	-- Remove the boundary box
-	if Tools.Move.Temporary.BoundaryBox then
-		Tools.Move.Temporary.BoundaryBox:Destroy();
-		Tools.Move.Temporary.BoundaryBox = nil;
-	end;
-
-	-- Remove the handles
-	if Tools.Move.Temporary.Handles then
-		Tools.Move.Temporary.Handles:Destroy();
-		Tools.Move.Temporary.Handles = nil;
-	end;
-
-	if Tools.Move.Temporary.DraggerConnection then
-		Tools.Move.Temporary.DraggerConnection:disconnect();
-		Tools.Move.Temporary.DraggerConnection = nil;
-	end;
-
-	if Tools.Move.Temporary.Dragger then
-		Tools.Move.Temporary.Dragger:Destroy();
-		Tools.Move.Temporary.Dragger = nil;
-	end;
-
-	if Tools.Move.Temporary.AdorneeWatcher then
-		Tools.Move.Temporary.AdorneeWatcher:disconnect();
-		Tools.Move.Temporary.AdorneeWatcher = nil;
-	end;
-
-end;
-
--- Create the handle
-Tools.Move.Handle = RbxUtility.Create "Part" {
-	Name = "Handle";
-	Locked = true;
-	BrickColor = BrickColor.new( "Deep orange" );
-	FormFactor = Enum.FormFactor.Custom;
-	Size = Vector3.new( 0.8, 0.8, 0.8 );
-	TopSurface = Enum.SurfaceType.Smooth;
-	BottomSurface = Enum.SurfaceType.Smooth;
-};
-
-RbxUtility.Create "Decal" {
-	Parent = Tools.Move.Handle;
-	Face = Enum.NormalId.Front;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Move.Handle;
-	Face = Enum.NormalId.Back;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Move.Handle;
-	Face = Enum.NormalId.Left;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Move.Handle;
-	Face = Enum.NormalId.Right;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Move.Handle;
-	Face = Enum.NormalId.Top;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Move.Handle;
-	Face = Enum.NormalId.Bottom;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
-};
-
--- Set the grip for the handle
-Tools.Move.Grip = CFrame.new( 0, 0, 0.4 );
-
 Tools.Move.showGUI = function ( self )
-	-- Creates and shows the move tool's options panel
 
-	local GUIRoot = Instance.new( "ScreenGui", Player.PlayerGui );
-	GUIRoot.Name = "BTMoveToolGUI";
+	-- Create the GUI if it doesn't exist
+	if not self.Temporary.GUI then
+		local GUIRoot = Instance.new( "ScreenGui", Player.PlayerGui );
+		GUIRoot.Name = "BTMoveToolGUI";
 
-	self.Temporary.OptionsGUI = GUIRoot;
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot;
+			Name = "Container";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 280 );
+			Size = UDim2.new( 0, 245, 0, 90 );
+			Draggable = true;
+		};
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot;
-		Name = "Container";
-		Active = true;
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 0, 0, 280 );
-		Size = UDim2.new( 0, 245, 0, 90 );
-		Draggable = true;
-	};
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "AxesOption";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 30 );
+		};
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container;
-		Name = "AxesOption";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 0, 0, 30 );
-	};
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.AxesOption;
+			Name = "Global";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 45, 0, 0 );
+			Size = UDim2.new( 0, 70, 0, 25 );
+		};
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.AxesOption;
-		Name = "Global";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 45, 0, 0 );
-		Size = UDim2.new( 0, 70, 0, 25 );
-	};
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.AxesOption.Global;
+			Name = "SelectedIndicator";
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 6, 0, -2 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+			BackgroundTransparency = ( self.Options.axes == "global" ) and 0 or 1;
+		};
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.AxesOption.Global;
-		Name = "SelectedIndicator";
-		BackgroundColor3 = Color3.new( 1, 1, 1 );
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 6, 0, -2 );
-		Size = UDim2.new( 1, -5, 0, 2 );
-		BackgroundTransparency = ( self.Options.axes == "global" ) and 0 or 1;
-	};
+		RbxUtility.Create "TextButton" {
+			Parent = GUIRoot.Container.AxesOption.Global;
+			Name = "Button";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Text = "";
+			TextTransparency = 1;
 
-	RbxUtility.Create "TextButton" {
-		Parent = GUIRoot.Container.AxesOption.Global;
-		Name = "Button";
-		Active = true;
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 5, 0, 0 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		ZIndex = 2;
-		Text = "";
-		TextTransparency = 1;
-
-		-- Change the axis type option when the button is clicked
-		[RbxUtility.Create.E "MouseButton1Down"] = function ()
-			self.Options.axes = "global";
-			self:updateAxes();
-			GUIRoot.Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 0;
-			GUIRoot.Container.AxesOption.Global.Background.Image = dark_slanted_rectangle;
-			GUIRoot.Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
-			GUIRoot.Container.AxesOption.Local.Background.Image = light_slanted_rectangle;
-			GUIRoot.Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
-			GUIRoot.Container.AxesOption.Last.Background.Image = light_slanted_rectangle;
-		end;
-	};
-
-	RbxUtility.Create "ImageLabel" {
-		Parent = GUIRoot.Container.AxesOption.Global;
-		Name = "Background";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Image = ( self.Options.axes == "global" ) and dark_slanted_rectangle or light_slanted_rectangle;
-		Size = UDim2.new( 1, 0, 1, 0 );
-	};
-
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.AxesOption.Global;
-		Name = "Label";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 1, 0, 1, 0 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "GLOBAL";
-		TextColor3 = Color3.new( 1, 1, 1 );
-	};
-
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.AxesOption;
-		Name = "Local";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 110, 0, 0 );
-		Size = UDim2.new( 0, 70, 0, 25 );
-	};
-
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.AxesOption.Local;
-		Name = "SelectedIndicator";
-		BackgroundColor3 = Color3.new( 1, 1, 1 );
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 6, 0, -2 );
-		Size = UDim2.new( 1, -5, 0, 2 );
-		BackgroundTransparency = ( self.Options.axes == "local" ) and 0 or 1;
-	};
-
-	RbxUtility.Create "TextButton" {
-		Parent = GUIRoot.Container.AxesOption.Local;
-		Name = "Button";
-		Active = true;
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 5, 0, 0 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		ZIndex = 2;
-		Text = "";
-		TextTransparency = 1;
-
-		-- Change the axis type option when the button is clicked
-		[RbxUtility.Create.E "MouseButton1Down"] = function ()
-			self.Options.axes = "local";
-			self:updateAxes();
-			GUIRoot.Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
-			GUIRoot.Container.AxesOption.Global.Background.Image = light_slanted_rectangle;
-			GUIRoot.Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 0;
-			GUIRoot.Container.AxesOption.Local.Background.Image = dark_slanted_rectangle;
-			GUIRoot.Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
-			GUIRoot.Container.AxesOption.Last.Background.Image = light_slanted_rectangle;
-		end;
-	};
-
-	RbxUtility.Create "ImageLabel" {
-		Parent = GUIRoot.Container.AxesOption.Local;
-		Name = "Background";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Image = ( self.Options.axes == "local" ) and dark_slanted_rectangle or light_slanted_rectangle;
-		Size = UDim2.new( 1, 0, 1, 0 );
-	};
-
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.AxesOption.Local;
-		Name = "Label";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 1, 0, 1, 0 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "LOCAL";
-		TextColor3 = Color3.new( 1, 1, 1 );
-	};
-
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.AxesOption;
-		Name = "Last";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 175, 0, 0 );
-		Size = UDim2.new( 0, 70, 0, 25 );
-	};
-
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.AxesOption.Last;
-		Name = "SelectedIndicator";
-		BackgroundColor3 = Color3.new( 1, 1, 1 );
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 6, 0, -2 );
-		Size = UDim2.new( 1, -5, 0, 2 );
-		BackgroundTransparency = ( self.Options.axes == "last" ) and 0 or 1;
-	};
-
-	RbxUtility.Create "TextButton" {
-		Parent = GUIRoot.Container.AxesOption.Last;
-		Name = "Button";
-		Active = true;
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 5, 0, 0 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		ZIndex = 2;
-		Text = "";
-		TextTransparency = 1;
-
-		-- Change the axis type option when the button is clicked
-		[RbxUtility.Create.E "MouseButton1Down"] = function ()
-			self.Options.axes = "last";
-			self:updateAxes();
-			GUIRoot.Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
-			GUIRoot.Container.AxesOption.Global.Background.Image = light_slanted_rectangle;
-			GUIRoot.Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
-			GUIRoot.Container.AxesOption.Local.Background.Image = light_slanted_rectangle;
-			GUIRoot.Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 0;
-			GUIRoot.Container.AxesOption.Last.Background.Image = dark_slanted_rectangle;
-		end;
-	};
-
-	RbxUtility.Create "ImageLabel" {
-		Parent = GUIRoot.Container.AxesOption.Last;
-		Name = "Background";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Image = ( self.Options.axes == "last" ) and dark_slanted_rectangle or light_slanted_rectangle;
-		Size = UDim2.new( 1, 0, 1, 0 );
-	};
-
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.AxesOption.Last;
-		Name = "Label";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 1, 0, 1, 0 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "LAST";
-		TextColor3 = Color3.new( 1, 1, 1 );
-	};
-
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.AxesOption;
-		Name = "Label";
-		BorderSizePixel = 0;
-		BackgroundTransparency = 1;
-		Size = UDim2.new( 0, 50, 0, 25 );
-	};
-
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.AxesOption.Label;
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 1, 0, 1, 0 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "Axes";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextWrapped = true;
-		TextStrokeColor3 = Color3.new( 0, 0, 0 );
-		TextStrokeTransparency = 0;
-	};
-
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container;
-		Name = "Title";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 1, 0, 0, 20 );
-	};
-
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.Title;
-		Name = "ColorBar";
-		BackgroundColor3 = Color3.new( 255 / 255, 170 / 255, 0 );
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 5, 0, -3 );
-		Size = UDim2.new( 1, -5, 0, 2 );
-	};
-
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.Title;
-		Name = "Label";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 10, 0, 1 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "MOVE TOOL";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextXAlignment = Enum.TextXAlignment.Left;
-		TextStrokeTransparency = 0;
-		TextStrokeColor3 = Color3.new( 0, 0, 0 );
-		TextWrapped = true;
-	};
-
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.Title;
-		Name = "F3XSignature";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 10, 0, 1 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size14;
-		Text = "F3X";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextXAlignment = Enum.TextXAlignment.Right;
-		TextStrokeTransparency = 0.9;
-		TextStrokeColor3 = Color3.new( 0, 0, 0 );
-		TextWrapped = true;
-	};
-
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container;
-		Name = "IncrementOption";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 0, 0, 65 );
-	};
-
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.IncrementOption;
-		Name = "Increment";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 70, 0, 0 );
-		Size = UDim2.new( 0, 50, 0, 25 );
-	};
-
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.IncrementOption.Increment;
-		Name = "SelectedIndicator";
-		BorderSizePixel = 0;
-		BackgroundColor3 = Color3.new( 1, 1, 1 );
-		Size = UDim2.new( 1, -4, 0, 2 );
-		Position = UDim2.new( 0, 5, 0, -2 );
-	};
-
-	RbxUtility.Create "TextBox" {
-		Parent = GUIRoot.Container.IncrementOption.Increment;
-		BorderSizePixel = 0;
-		BackgroundTransparency = 1;
-		Position = UDim2.new( 0, 5, 0, 0 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		ZIndex = 2;
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = tostring( self.Options.increment );
-		TextColor3 = Color3.new( 1, 1, 1 );
-
-		-- Change the increment option when the value of the textbox is updated
-		[RbxUtility.Create.E "FocusLost"] = function ( enter_pressed )
-			if enter_pressed then
-				self.Options.increment = tonumber( GUIRoot.Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
-				GUIRoot.Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
+			-- Change the axis type option when the button is clicked
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self:changeAxes( "global" );
+				GUIRoot.Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 0;
+				GUIRoot.Container.AxesOption.Global.Background.Image = dark_slanted_rectangle;
+				GUIRoot.Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
+				GUIRoot.Container.AxesOption.Local.Background.Image = light_slanted_rectangle;
+				GUIRoot.Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
+				GUIRoot.Container.AxesOption.Last.Background.Image = light_slanted_rectangle;
 			end;
-		end;
-	};
+		};
 
-	RbxUtility.Create "ImageLabel" {
-		Parent = GUIRoot.Container.IncrementOption.Increment;
-		Name = "Background";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Image = light_slanted_rectangle;
-		Size = UDim2.new( 1, 0, 1, 0 );
-	};
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.AxesOption.Global;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = ( self.Options.axes == "global" ) and dark_slanted_rectangle or light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.IncrementOption;
-		Name = "Label";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 0, 75, 0, 25 );
-	};
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.AxesOption.Global;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "GLOBAL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+		};
 
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.IncrementOption.Label;
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 1, 0, 1, 0 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "Increment";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextStrokeColor3 = Color3.new( 0, 0, 0 );
-		TextStrokeTransparency = 0;
-		TextWrapped = true;
-	};
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.AxesOption;
+			Name = "Local";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 110, 0, 0 );
+			Size = UDim2.new( 0, 70, 0, 25 );
+		};
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container;
-		Name = "Info";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 5, 0, 100 );
-		Size = UDim2.new( 1, -5, 0, 60 );
-		Visible = false;
-	};
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.AxesOption.Local;
+			Name = "SelectedIndicator";
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 6, 0, -2 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+			BackgroundTransparency = ( self.Options.axes == "local" ) and 0 or 1;
+		};
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.Info;
-		Name = "ColorBar";
-		BorderSizePixel = 0;
-		BackgroundColor3 = Color3.new( 1, 170 / 255, 0 );
-		Size = UDim2.new( 1, 0, 0, 2 );
-	};
+		RbxUtility.Create "TextButton" {
+			Parent = GUIRoot.Container.AxesOption.Local;
+			Name = "Button";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Text = "";
+			TextTransparency = 1;
 
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.Info;
-		Name = "Label";
-		BorderSizePixel = 0;
-		BackgroundTransparency = 1;
-		Position = UDim2.new( 0, 10, 0, 2 );
-		Size = UDim2.new( 1, -10, 0, 20 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "SELECTION INFO";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextStrokeColor3 = Color3.new( 0, 0, 0 );
-		TextStrokeTransparency = 0;
-		TextWrapped = true;
-		TextXAlignment = Enum.TextXAlignment.Left;
-	};
+			-- Change the axis type option when the button is clicked
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self:changeAxes( "local" );
+				GUIRoot.Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
+				GUIRoot.Container.AxesOption.Global.Background.Image = light_slanted_rectangle;
+				GUIRoot.Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 0;
+				GUIRoot.Container.AxesOption.Local.Background.Image = dark_slanted_rectangle;
+				GUIRoot.Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
+				GUIRoot.Container.AxesOption.Last.Background.Image = light_slanted_rectangle;
+			end;
+		};
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.Info;
-		Name = "Center";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 0, 0, 30 );
-	};
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.AxesOption.Local;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = ( self.Options.axes == "local" ) and dark_slanted_rectangle or light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
 
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.Info.Center;
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 0, 75, 0, 25 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "Position";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextStrokeColor3 = Color3.new( 0, 0, 0);
-		TextStrokeTransparency = 0;
-		TextWrapped = true;
-	};
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.AxesOption.Local;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "LOCAL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+		};
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.Info.Center;
-		Name = "X";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 70, 0, 0 );
-		Size = UDim2.new( 0, 50, 0, 25 );
-	};
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.AxesOption;
+			Name = "Last";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 175, 0, 0 );
+			Size = UDim2.new( 0, 70, 0, 25 );
+		};
 
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.Info.Center.X;
-		Name = "TextLabel";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 5, 0, 0 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		ZIndex = 2;
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextWrapped = true;
-	};
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.AxesOption.Last;
+			Name = "SelectedIndicator";
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 6, 0, -2 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+			BackgroundTransparency = ( self.Options.axes == "last" ) and 0 or 1;
+		};
 
-	RbxUtility.Create "ImageLabel" {
-		Parent = GUIRoot.Container.Info.Center.X;
-		Name = "Background";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 1, 0, 1, 0 );
-		Image = light_slanted_rectangle;
-	};
+		RbxUtility.Create "TextButton" {
+			Parent = GUIRoot.Container.AxesOption.Last;
+			Name = "Button";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Text = "";
+			TextTransparency = 1;
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.Info.Center;
-		Name = "Y";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 117, 0, 0 );
-		Size = UDim2.new( 0, 50, 0, 25 );
-	};
+			-- Change the axis type option when the button is clicked
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self:changeAxes( "last" );
+				GUIRoot.Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
+				GUIRoot.Container.AxesOption.Global.Background.Image = light_slanted_rectangle;
+				GUIRoot.Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
+				GUIRoot.Container.AxesOption.Local.Background.Image = light_slanted_rectangle;
+				GUIRoot.Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 0;
+				GUIRoot.Container.AxesOption.Last.Background.Image = dark_slanted_rectangle;
+			end;
+		};
 
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.Info.Center.Y;
-		Name = "TextLabel";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 5, 0, 0 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		ZIndex = 2;
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextWrapped = true;
-	};
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.AxesOption.Last;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = ( self.Options.axes == "last" ) and dark_slanted_rectangle or light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
 
-	RbxUtility.Create "ImageLabel" {
-		Parent = GUIRoot.Container.Info.Center.Y;
-		Name = "Background";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 1, 0, 1, 0 );
-		Image = light_slanted_rectangle;
-	};
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.AxesOption.Last;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "LAST";
+			TextColor3 = Color3.new( 1, 1, 1 );
+		};
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.Info.Center;
-		Name = "Z";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 164, 0, 0 );
-		Size = UDim2.new( 0, 50, 0, 25 );
-	};
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.AxesOption;
+			Name = "Label";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
 
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.Info.Center.Z;
-		Name = "TextLabel";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 5, 0, 0 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		ZIndex = 2;
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextWrapped = true;
-	};
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.AxesOption.Label;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Axes";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextWrapped = true;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0;
+		};
 
-	RbxUtility.Create "ImageLabel" {
-		Parent = GUIRoot.Container.Info.Center.Z;
-		Name = "Background";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 1, 0, 1, 0 );
-		Image = light_slanted_rectangle;
-	};
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "Title";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 0, 20 );
+		};
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container;
-		Name = "Changes";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 5, 0, 165 );
-		Size = UDim2.new( 1, -5, 0, 20 );
-		Visible = false;
-	};
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Title;
+			Name = "ColorBar";
+			BackgroundColor3 = Color3.new( 255 / 255, 170 / 255, 0 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, -3 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+		};
 
-	RbxUtility.Create "Frame" {
-		Parent = GUIRoot.Container.Changes;
-		Name = "ColorBar";
-		BorderSizePixel = 0;
-		BackgroundColor3 = Color3.new( 1, 170 / 255, 0 );
-		Size = UDim2.new( 1, 0, 0, 2 );
-	};
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Title;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "MOVE TOOL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
 
-	RbxUtility.Create "TextLabel" {
-		Parent = GUIRoot.Container.Changes;
-		Name = "Text";
-		BorderSizePixel = 0;
-		BackgroundTransparency = 1;
-		Position = UDim2.new( 0, 10, 0, 2 );
-		Size = UDim2.new( 1, -10, 0, 20 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size11;
-		Text = "";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextStrokeColor3 = Color3.new( 0, 0, 0 );
-		TextStrokeTransparency = 0.5;
-		TextWrapped = true;
-		TextXAlignment = Enum.TextXAlignment.Right;
-	};
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Title;
+			Name = "F3XSignature";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size14;
+			Text = "F3X";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Right;
+			TextStrokeTransparency = 0.9;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "IncrementOption";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 65 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.IncrementOption;
+			Name = "Increment";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 70, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Name = "SelectedIndicator";
+			BorderSizePixel = 0;
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			Size = UDim2.new( 1, -4, 0, 2 );
+			Position = UDim2.new( 0, 5, 0, -2 );
+		};
+
+		RbxUtility.Create "TextBox" {
+			Parent = GUIRoot.Container.IncrementOption.Increment;
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = tostring( self.Options.increment );
+			TextColor3 = Color3.new( 1, 1, 1 );
+
+			-- Change the increment option when the value of the textbox is updated
+			[RbxUtility.Create.E "FocusLost"] = function ( enter_pressed )
+				if enter_pressed then
+					self.Options.increment = tonumber( GUIRoot.Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
+					GUIRoot.Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
+				end;
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.IncrementOption;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 0, 75, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.IncrementOption.Label;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Increment";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0;
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "Info";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 100 );
+			Size = UDim2.new( 1, -5, 0, 60 );
+			Visible = false;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info;
+			Name = "ColorBar";
+			BorderSizePixel = 0;
+			BackgroundColor3 = Color3.new( 1, 170 / 255, 0 );
+			Size = UDim2.new( 1, 0, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info;
+			Name = "Label";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 10, 0, 2 );
+			Size = UDim2.new( 1, -10, 0, 20 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "SELECTION INFO";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Left;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info;
+			Name = "Center";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 30 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info.Center;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 0, 75, 0, 25 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Position";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0);
+			TextStrokeTransparency = 0;
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info.Center;
+			Name = "X";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 70, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info.Center.X;
+			Name = "TextLabel";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.Info.Center.X;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Image = light_slanted_rectangle;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info.Center;
+			Name = "Y";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 117, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info.Center.Y;
+			Name = "TextLabel";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.Info.Center.Y;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Image = light_slanted_rectangle;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Info.Center;
+			Name = "Z";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 164, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Info.Center.Z;
+			Name = "TextLabel";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = GUIRoot.Container.Info.Center.Z;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Image = light_slanted_rectangle;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container;
+			Name = "Changes";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 165 );
+			Size = UDim2.new( 1, -5, 0, 20 );
+			Visible = false;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = GUIRoot.Container.Changes;
+			Name = "ColorBar";
+			BorderSizePixel = 0;
+			BackgroundColor3 = Color3.new( 1, 170 / 255, 0 );
+			Size = UDim2.new( 1, 0, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = GUIRoot.Container.Changes;
+			Name = "Text";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 10, 0, 2 );
+			Size = UDim2.new( 1, -10, 0, 20 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size11;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0.5;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Right;
+		};
+
+		self.Temporary.GUI = GUIRoot;
+	end;
+
+	-- Reveal the GUI
+	self.Temporary.GUI.Container.Visible = true;
 
 end;
 
 Tools.Move.hideGUI = function ( self )
-	-- Hide any existent options GUI for the move tool
 
-	if self.Temporary.OptionsGUI then
-		self.Temporary.OptionsGUI:Destroy();
-		self.Temporary.OptionsGUI = nil;
+	-- Hide the GUI if it exists
+	if self.Temporary.GUI then
+		self.Temporary.GUI.Container.Visible = false;
 	end;
 
 end;
 
-Tools.Move.updateAxes = function ( self )
-	-- Updates the axis type of the tool depending on the options
+Tools.Move.showHandles = function ( self, Part )
 
-	if self.Temporary.AdorneeWatcher then
-		self.Temporary.AdorneeWatcher:disconnect();
-		self.Temporary.AdorneeWatcher = nil;
-	end;
+	-- Create the handles if they don't exist yet
+	if not self.Temporary.Handles then
 
-	if self.Temporary.LocalAxesChooser then
-		self.Temporary.LocalAxesChooser:disconnect();
-		self.Temporary.LocalAxesChooser = nil;
-	end;
+		-- Create the object
+		self.Temporary.Handles = RbxUtility.Create "Handles" {
+			Name = "BTMovementHandles";
+			Color = self.Color;
+			Parent = Player.PlayerGui;
+		};
 
-	self.Temporary.Handles.Adornee = nil;
+		-- Add functionality to the handles
 
-	if self.Options.axes == "global" then
-		if self.Temporary.BoundaryBox.Parent then
-			self.Temporary.Handles.Adornee = self.Temporary.BoundaryBox;
-		end;
-	end;
+		self.Temporary.Handles.MouseButton1Down:connect( function ()
 
-	if self.Options.axes == "local" then
+			-- Prevent the platform from thinking we're selecting
+			override_selection = true;
+			self.State.moving = true;
 
-		-- If there is a last item in the selection, attach the handles to it
-		if Selection.Last then
-			self.Temporary.Handles.Adornee = Selection.Last;
-		end;
+			-- Clear the change stats
+			self.State.distance_moved = 0;
 
-		-- Move the handles over to whichever part is the mouse's current target
-		self.Temporary.LocalAxesChooser = Mouse.Button2Up:connect( function ()
-			if Selection:find( Mouse.Target ) then
-				self.Temporary.Handles.Adornee = Mouse.Target;
+			-- Do a few things to the selection before manipulating it
+			for _, Item in pairs( Selection.Items ) do
+
+				-- Keep a copy of the state of each item
+				self.State.PreMove[Item] = Item:Clone();
+
+				-- Anchor each item
+				Item.Anchored = true;
+
 			end;
+
+			-- Return stuff to normal once the mouse button is released
+			self.Temporary.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
+
+				-- Prevent the platform from thinking we're selecting
+				override_selection = true;
+				self.State.moving = false;
+
+				-- Stop this connection from firing again
+				if self.Temporary.Connections.HandleReleaseListener then
+					self.Temporary.Connections.HandleReleaseListener:disconnect();
+					self.Temporary.Connections.HandleReleaseListener = nil;
+				end;
+
+				-- Restore properties that may have been changed temporarily
+				-- from the pre-movement state copies
+				for Item, PreviousItemState in pairs( self.State.PreMove ) do
+					Item.Anchored = PreviousItemState.Anchored;
+					self.State.PreMove[Item] = nil;
+					Item:MakeJoints();
+					Item.Velocity = Vector3.new( 0, 0, 0 );
+					Item.RotVelocity = Vector3.new( 0, 0, 0 );
+				end;
+
+			end );
+
 		end );
 
-	end;
+		self.Temporary.Handles.MouseDrag:connect( function ( face, drag_distance )
+			
+			-- Calculate which multiple of the increment to use based on the current drag distance's
+			-- proximity to their nearest upper and lower multiples
 
-	if self.Options.axes == "last" then
+			local difference = drag_distance % self.Options.increment;
 
-		-- If there is a last item in the selection, attach the handles to it
-		if Selection.Last then
-			self.Temporary.Handles.Adornee = Selection.Last;
-		end;
+			local lower_degree = drag_distance - difference;
+			local upper_degree = drag_distance - difference + self.Options.increment;
 
-	end;
+			local lower_degree_proximity = math.abs( drag_distance - lower_degree );
+			local upper_degree_proximity = math.abs( drag_distance - upper_degree );
 
-	-- Make sure to hide the handles when their adornee is removed
-	if self.Temporary.Handles.Adornee then
-		local Adornee = self.Temporary.Handles.Adornee;
-		self.Temporary.AdorneeWatcher = self.Temporary.Handles.Adornee.AncestryChanged:connect( function ( Object, NewParent )
-	 		if NewParent == nil then
-				self.Temporary.Handles.Adornee = nil;
+			if lower_degree_proximity <= upper_degree_proximity then
+				drag_distance = lower_degree;
 			else
-				self.Temporary.Handles.Adornee = Adornee;
+				drag_distance = upper_degree;
 			end;
+
+			local increase = drag_distance;
+
+			self.State.distance_moved = drag_distance;
+
+			-- Increment the position of each selected item in the direction of `face`
+			for _, Item in pairs( Selection.Items ) do
+
+				-- Remove any joints connected with `Item` so that it can freely move
+				Item:BreakJoints();
+
+				-- Update the position of `Item` depending on the type of axes that is currently set
+				if face == Enum.NormalId.Top then
+					if self.Options.axes == "global" then
+						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( 0, increase, 0 ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
+					elseif self.Options.axes == "local" then
+						Item.CFrame = self.State.PreMove[Item].CFrame:toWorldSpace( CFrame.new( 0, increase, 0 ) );
+					elseif self.Options.axes == "last" then
+						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, increase, 0 ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
+					end;
+				
+				elseif face == Enum.NormalId.Bottom then
+					if self.Options.axes == "global" then
+						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( 0, -increase, 0 ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
+					elseif self.Options.axes == "local" then
+						Item.CFrame = self.State.PreMove[Item].CFrame:toWorldSpace( CFrame.new( 0, -increase, 0 ) );
+					elseif self.Options.axes == "last" then
+						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, -increase, 0 ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
+					end;
+
+				elseif face == Enum.NormalId.Front then
+					if self.Options.axes == "global" then
+						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( 0, 0, -increase ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
+					elseif self.Options.axes == "local" then
+						Item.CFrame = self.State.PreMove[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, -increase ) );
+					elseif self.Options.axes == "last" then
+						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, 0, -increase ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
+					end;
+
+				elseif face == Enum.NormalId.Back then
+					if self.Options.axes == "global" then
+						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( 0, 0, increase ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
+					elseif self.Options.axes == "local" then
+						Item.CFrame = self.State.PreMove[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, increase ) );
+					elseif self.Options.axes == "last" then
+						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, 0, increase ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
+					end;
+
+				elseif face == Enum.NormalId.Right then
+					if self.Options.axes == "global" then
+						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( increase, 0, 0 ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
+					elseif self.Options.axes == "local" then
+						Item.CFrame = self.State.PreMove[Item].CFrame:toWorldSpace( CFrame.new( increase, 0, 0 ) );
+					elseif self.Options.axes == "last" then
+						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( increase, 0, 0 ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
+					end;
+
+				elseif face == Enum.NormalId.Left then
+					if self.Options.axes == "global" then
+						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( -increase, 0, 0 ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
+					elseif self.Options.axes == "local" then
+						Item.CFrame = self.State.PreMove[Item].CFrame:toWorldSpace( CFrame.new( -increase, 0, 0 ) );
+					elseif self.Options.axes == "last" then
+						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( -increase, 0, 0 ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
+					end;
+
+				end;
+
+			end;
+
 		end );
+
 	end;
 
-	-- Reload the boundary box's parent so that the AdorneeWatcher connection can catch it
-	self.Temporary.BoundaryBox.Parent = self.Temporary.BoundaryBox.Parent;
+	-- Stop listening for the existence of the previous adornee (if any)
+	if self.Temporary.Connections.AdorneeExistenceListener then
+		self.Temporary.Connections.AdorneeExistenceListener:disconnect();
+		self.Temporary.Connections.AdorneeExistenceListener = nil;
+	end;
+
+	-- Attach the handles to `Part`
+	self.Temporary.Handles.Adornee = Part;
+
+	-- Make sure to hide the handles if `Part` suddenly stops existing
+	self.Temporary.Connections.AdorneeExistenceListener = Part.AncestryChanged:connect( function ( Object, NewParent )
+
+		-- Make sure this change in parent applies directly to `Part`
+		if Object ~= Part then
+			return;
+		end;
+
+		-- Show the handles according to the existence of the part
+		if NewParent == nil then
+			self:hideHandles();
+		else
+			self:showHandles( Part );
+		end;
+
+	end );
 
 end;
 
-Tools.Move.createBoundaryBox = function ( self )
-	-- Returns an empty boundary box
+Tools.Move.hideHandles = function ( self )
 
-	local BoundaryBox = Instance.new( "Part" );
-	BoundaryBox.Name = "BTBoundaryBox";
-	BoundaryBox.Anchored = true;
-	BoundaryBox.Locked = true;
-	BoundaryBox.CanCollide = false;
-	BoundaryBox.Transparency = 1;
-
-	Mouse.TargetFilter = BoundaryBox;
-
-	return BoundaryBox;
+	-- Hide the handles if they exist
+	if self.Temporary.Handles then
+		self.Temporary.Handles.Adornee = nil;
+	end;
 
 end;
 
-Tools.Move.updateBoundaryBox = function ( self, BoundaryBox, part_collection )
-	-- Returns the boundary box
+Tools.Move.updateBoundingBox = function ( self )
 
-	-- Make sure `BoundaryBox` exists
-	if not BoundaryBox then
-		return false;
+	if #Selection.Items > 0 and not self.State.dragging then
+		local SelectionSize, SelectionPosition = _getCollectionInfo( Selection.Items );
+		self.Temporary.BoundingBox.Size = SelectionSize;
+		self.Temporary.BoundingBox.CFrame = SelectionPosition;
+		self:showHandles( self.Temporary.BoundingBox );
+	
+	else
+		self:hideHandles();
 	end;
 
-	-- Delete the box if `part_collection` is empty or we're dragging and return a new one
-	if #part_collection == 0 or self.State.dragging then
-		BoundaryBox.Parent = nil;
-		return BoundaryBox;
+end;
+
+Tools.Move.changeAxes = function ( self, new_axes )
+
+	-- Have a quick reference to the GUI (if any)
+	local AxesOptionGUI = self.Temporary.GUI and self.Temporary.GUI.Container.AxesOption or nil;
+
+	-- Disconnect any handle-related listeners that are specific to a certain axes option
+
+	if self.Temporary.Connections.HandleFocusChangeListener then
+		self.Temporary.Connections.HandleFocusChangeListener:disconnect();
+		self.Temporary.Connections.HandleFocusChangeListener = nil;
 	end;
 
-	-- Get the size and position of `part_collection`
-	local Size, Position = _getCollectionInfo( part_collection );
+	if self.Temporary.Connections.HandleSelectionChangeListener then
+		self.Temporary.Connections.HandleSelectionChangeListener:disconnect();
+		self.Temporary.Connections.HandleSelectionChangeListener = nil;
+	end;
 
-	-- Make `BoundaryBox` cover the part collection
-	BoundaryBox.Parent = Services.Workspace.CurrentCamera;
-	BoundaryBox.Size = Size;
-	BoundaryBox.CFrame = Position;
+	if new_axes == "global" then
 
-	-- Return `BoundaryBox`
-	return BoundaryBox;
+		-- Update the options
+		self.Options.axes = "global";
+
+		-- Clear out any previous adornee
+		self:hideHandles();
+
+		-- Focus the handles on the boundary box
+		self:showHandles( self.Temporary.BoundingBox );
+
+		-- Update the GUI's option panel
+		if self.Temporary.GUI then
+			AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 0;
+			AxesOptionGUI.Global.Background.Image = dark_slanted_rectangle;
+			AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
+			AxesOptionGUI.Local.Background.Image = light_slanted_rectangle;
+			AxesOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
+			AxesOptionGUI.Last.Background.Image = light_slanted_rectangle;
+		end;
+
+	end;
+
+	if new_axes == "local" then
+
+		-- Update the options
+		self.Options.axes = "local";
+
+		-- Always have the handles on the most recent addition to the selection
+		self.Temporary.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
+
+			-- Clear out any previous adornee
+			self:hideHandles();
+
+			-- If there /is/ a last item in the selection, attach the handles to it
+			if Selection.Last then
+				self:showHandles( Selection.Last );
+			end;
+
+		end );
+
+		-- Switch the adornee of the handles if the second mouse button is pressed
+		self.Temporary.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
+
+			-- Make sure the platform doesn't think we're selecting
+			override_selection = true;
+
+			-- If the target is in the selection, make it the new adornee
+			if Selection:find( Mouse.Target ) then
+				Selection.Last = Mouse.Target;
+				self:showHandles( Mouse.Target );
+			end;
+
+		end );
+
+		-- Finally, attach the handles to the last item added to the selection (if any)
+		if Selection.Last then
+			self:showHandles( Selection.Last );
+		end;
+
+		-- Update the GUI's option panel
+		if self.Temporary.GUI then
+			AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 1;
+			AxesOptionGUI.Global.Background.Image = light_slanted_rectangle;
+			AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 0;
+			AxesOptionGUI.Local.Background.Image = dark_slanted_rectangle;
+			AxesOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
+			AxesOptionGUI.Last.Background.Image = light_slanted_rectangle;
+		end;
+
+	end;
+
+	if new_axes == "last" then
+
+		-- Update the options
+		self.Options.axes = "last";
+
+		-- Always have the handles on the most recent addition to the selection
+		self.Temporary.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
+
+			-- Clear out any previous adornee
+			self:hideHandles();
+
+			-- If there /is/ a last item in the selection, attach the handles to it
+			if Selection.Last then
+				self:showHandles( Selection.Last );
+			end;
+
+		end );
+
+		-- Switch the adornee of the handles if the second mouse button is pressed
+		self.Temporary.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
+
+			-- Make sure the platform doesn't think we're selecting
+			override_selection = true;
+
+			-- If the target is in the selection, make it the new adornee
+			if Selection:find( Mouse.Target ) then
+				Selection.Last = Mouse.Target;
+				self:showHandles( Mouse.Target );
+			end;
+
+		end );
+
+		-- Finally, attach the handles to the last item added to the selection (if any)
+		if Selection.Last then
+			self:showHandles( Selection.Last );
+		end;
+
+		-- Update the GUI's option panel
+		if self.Temporary.GUI then
+			AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 1;
+			AxesOptionGUI.Global.Background.Image = light_slanted_rectangle;
+			AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
+			AxesOptionGUI.Local.Background.Image = light_slanted_rectangle;
+			AxesOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 0;
+			AxesOptionGUI.Last.Background.Image = dark_slanted_rectangle;
+		end;
+
+	end;
 
 end;
 
@@ -1542,9 +1628,38 @@ Tools.Resize.Listeners.Equipped = function ()
 		Tools.Resize:showHandles( Selection.Last );
 	end;
 
+	-- Update the GUI regularly
+	coroutine.wrap( function ()
+		local updater_on = true;
+
+		-- Provide a function to stop the loop
+		Tools.Resize.Temporary.Updater = function ()
+			updater_on = false;
+		end;
+
+		while wait( 0.1 ) and updater_on do
+
+			-- Make sure the tool's equipped
+			if Options.Tool == Tools.Resize then
+
+				-- Update the GUI if it's visible
+				if Tools.Resize.Temporary.GUI and Tools.Resize.Temporary.GUI.Container.Visible then
+					Tools.Resize:updateGUI();
+				end;
+
+			end;
+
+		end;
+
+	end )();
+
 end;
 
 Tools.Resize.Listeners.Unequipped = function ()
+
+	-- Stop the update loop
+	Tools.Resize.Temporary.Updater();
+	Tools.Resize.Temporary.Updater = nil;
 
 	-- Hide the GUI
 	Tools.Resize:hideGUI();
@@ -2056,15 +2171,6 @@ Tools.Resize.showGUI = function ( self )
 			TextXAlignment = Enum.TextXAlignment.Right;
 		};
 
-		-- Constantly update the GUI if it's visible
-		coroutine.wrap( function ()
-			while wait( 0.1 ) do
-				if GUIRoot.Container.Visible then
-					self:updateGUI();
-				end;
-			end;
-		end )();
-
 		self.Temporary.GUI = GUIRoot;
 	end;
 
@@ -2144,7 +2250,7 @@ Tools.Resize.showHandles = function ( self, Part )
 
 		-- Create the object
 		self.Temporary.Handles = RbxUtility.Create "Handles" {
-			Name = "BTMovementHandles";
+			Name = "BTResizeHandles";
 			Style = Enum.HandlesStyle.Resize;
 			Color = self.Color;
 			Parent = Player.PlayerGui;
@@ -2550,9 +2656,6 @@ Tools.Rotate.Listeners.Unequipped = function ()
 
 	-- Hide the handles
 	Tools.Rotate:hideHandles();
-
-	-- Hide the boundingbox
-	Tools.Rotate.Temporary.BoundingBox.Parent = nil;
 
 	-- Clear out any temporary connections
 	for connection_index, Connection in pairs( Tools.Rotate.Temporary.Connections ) do
@@ -3186,13 +3289,11 @@ Tools.Rotate.updateBoundingBox = function ( self )
 
 	if #Selection.Items > 0 then
 		local SelectionSize, SelectionPosition = _getCollectionInfo( Selection.Items );
-		self.Temporary.BoundingBox.Parent = Services.Workspace.CurrentCamera;
 		self.Temporary.BoundingBox.Size = SelectionSize;
 		self.Temporary.BoundingBox.CFrame = SelectionPosition;
 		self:showHandles( self.Temporary.BoundingBox );
 	
 	else
-		self.Temporary.BoundingBox.Parent = nil;
 		self:hideHandles();
 	end;
 
@@ -3220,9 +3321,6 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 		-- Update the options
 		self.Options.pivot = "center";
 
-		-- Make the boundingbox visible
-		self.Temporary.BoundingBox.Parent = Services.Workspace.CurrentCamera;
-
 		-- Focus the handles on the boundingbox
 		self:showHandles( self.Temporary.BoundingBox );
 
@@ -3242,9 +3340,6 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 
 		-- Update the options
 		self.Options.pivot = "local";
-
-		-- Hide the boundingbox
-		self.Temporary.BoundingBox.Parent = nil;
 
 		-- Always have the handles on the most recent addition to the selection
 		self.Temporary.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
@@ -3294,9 +3389,6 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 
 		-- Update the options
 		self.Options.pivot = "last";
-
-		-- Hide the boundingbox
-		self.Temporary.BoundingBox.Parent = nil;
 
 		-- Always have the handles on the most recent addition to the selection
 		self.Temporary.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
@@ -3529,96 +3621,14 @@ Tools.Paint = {};
 Tools.Paint.Color = BrickColor.new( "Really red" );
 
 -- Define options
-Tools.Paint.Options = setmetatable( {
-
-	["_options"] = {
-		["Color"] = BrickColor.new( "Institutional white" ),
-		["PaletteGUI"] = nil
-	}
-
-}, {
-
-	-- Get the option from `self._options` instead of `self` directly
-	__index = function ( self, key )
-		return rawget( self, "_options" )[key];
-	end;
-
-	-- Let's do some special stuff if certain options are touched
-	__newindex = function ( self, key, value )
-
-		if key == "Color" then
-
-			-- Mark the appropriate color in the palette
-			if self.PaletteGUI then
-
-				-- Clear any mark on any other color button from the palette
-				for _, PaletteColorButton in pairs( self.PaletteGUI.Container.Palette:GetChildren() ) do
-					PaletteColorButton.Text = "";
-				end;
-
-				-- Mark the right color button in the palette
-				self.PaletteGUI.Container.Palette[value.Name].Text = "X";
-
-			end;
-
-			-- Change the color of selected items
-			for _, Item in pairs( Selection.Items ) do
-				Item.BrickColor = value;
-			end;
-
-		end;
-
-		-- Set the option normally
-		rawget( self, "_options" )[key] = value;
-
-	end;
-
-} );
+Tools.Paint.Options = {
+	["Color"] = nil
+};
 
 Tools.Paint.Temporary = {};
 
 -- Add listeners
 Tools.Paint.Listeners = {};
-
-Tools.Paint.Listeners.Equipped = function ()
-
-	-- Change the color of selection boxes temporarily
-	Tools.Paint.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = Tools.Paint.Color;
-	updateSelectionBoxColor();
-
-	showPalette();
-end;
-
-Tools.Paint.Listeners.Unequipped = function ()
-
-	-- Hide the GUI
-	hidePalette();
-
-	-- Restore the original color of the selection boxes
-	SelectionBoxColor = Tools.Paint.Temporary.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
-
-end;
-
-Tools.Paint.Listeners.Button1Up = function ()
-
-	-- Make sure that they clicked on one of the items in their selection
-	-- (and they weren't multi-selecting)
-	if Selection:find( Mouse.Target ) and not selecting and not selecting then
-
-		override_selection = true;
-
-		-- Paint all of the selected items `Tools.Paint.Options.Color`
-		if Tools.Paint.Options.Color then
-			for _, Item in pairs( Selection.Items ) do
-				Item.BrickColor = Tools.Paint.Options.Color;
-			end;
-		end;
-
-	end;
-
-end;
 
 -- Create the handle
 Tools.Paint.Handle = RbxUtility.Create "Part" {
@@ -3664,123 +3674,223 @@ RbxUtility.Create "Decal" {
 -- Set the grip for the handle
 Tools.Paint.Grip = CFrame.new( 0, 0, 0.4 );
 
-function showPalette()
-	-- Reveals a color palette
+Tools.Paint.Listeners.Equipped = function ()
 
-	-- Create the GUI container
-	local PaletteGUI = Instance.new( "ScreenGui", Player.PlayerGui );
-	PaletteGUI.Name = "BTPaintGUI";
+	-- Change the color of selection boxes temporarily
+	Tools.Paint.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = Tools.Paint.Color;
+	updateSelectionBoxColor();
 
-	-- Register the GUI
-	Tools.Paint.Options.PaletteGUI = PaletteGUI;
+	-- Show the GUI
+	Tools.Paint:showGUI();
 
-	RbxUtility.Create "Frame" {
-		Parent = PaletteGUI;
-		Name = "Container";
-		Active = true;
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 0, 0, 230 );
-		Size = UDim2.new( 0, 205, 0, 230 );
-		Draggable = true;
-	};
-	RbxUtility.Create "Frame" {
-		Parent = PaletteGUI.Container;
-		Name = "Title";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Size = UDim2.new( 1, 0, 0, 20 );
-	};
+	-- Update the selected color
+	Tools.Paint:changeColor( Tools.Paint.Options.Color );
 
-	RbxUtility.Create "Frame" {
-		Parent = PaletteGUI.Container.Title;
-		Name = "ColorBar";
-		BackgroundColor3 = BrickColor.new( "Really red" ).Color;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 5, 0, -3 );
-		Size = UDim2.new( 1, -5, 0, 2 );
-	};
+end;
 
-	RbxUtility.Create "TextLabel" {
-		Parent = PaletteGUI.Container.Title;
-		Name = "Label";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 10, 0, 1 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
-		Text = "PAINT TOOL";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextXAlignment = Enum.TextXAlignment.Left;
-		TextStrokeTransparency = 0;
-		TextStrokeColor3 = Color3.new( 0, 0, 0 );
-		TextWrapped = true;
-	};
+Tools.Paint.Listeners.Unequipped = function ()
 
-	RbxUtility.Create "TextLabel" {
-		Parent = PaletteGUI.Container.Title;
-		Name = "F3XSignature";
-		BackgroundTransparency = 1;
-		BorderSizePixel = 0;
-		Position = UDim2.new( 0, 10, 0, 1 );
-		Size = UDim2.new( 1, -10, 1, 0 );
-		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size14;
-		Text = "F3X";
-		TextColor3 = Color3.new( 1, 1, 1 );
-		TextXAlignment = Enum.TextXAlignment.Right;
-		TextStrokeTransparency = 0.9;
-		TextStrokeColor3 = Color3.new( 0, 0, 0 );
-		TextWrapped = true;
-	};
+	-- Clear out the preferred color option
+	Tools.Paint:changeColor( nil );
 
-	-- Create the frame that will contain the colors
-	local PaletteFrame = Instance.new( "Frame", PaletteGUI.Container );
-	PaletteFrame.Name = "Palette";
-	PaletteFrame.BackgroundColor3 = Color3.new( 0, 0, 0 );
-	PaletteFrame.Transparency = 1;
-	PaletteFrame.Size = UDim2.new( 0, 205, 0, 205 );
-	PaletteFrame.Position = UDim2.new( 0, 5, 0, 20 );
+	-- Hide the GUI
+	Tools.Paint:hideGUI();
 
-	-- Insert the colors
-	for palette_index = 0, 63 do
+	-- Restore the original color of the selection boxes
+	SelectionBoxColor = Tools.Paint.Temporary.PreviousSelectionBoxColor;
+	updateSelectionBoxColor();
 
-		-- Get BrickColor `palette_index` from the palette
-		local Color = BrickColor.palette( palette_index );
+end;
 
-		-- Calculate the row and column in the 8x8 grid
-		local row = ( palette_index - ( palette_index % 8 ) ) / 8;
-		local column = palette_index % 8;
+Tools.Paint.Listeners.Button1Up = function ()
 
-		-- Create the button
-		local ColorButton = Instance.new( "TextButton", PaletteFrame );
-		ColorButton.Name = Color.Name;
-		ColorButton.BackgroundColor3 = Color.Color;
-		ColorButton.Size = UDim2.new( 0, 20, 0, 20 );
-		ColorButton.Text = "";
-		ColorButton.TextStrokeTransparency = 0.75;
-		ColorButton.Font = Enum.Font.ArialBold;
-		ColorButton.FontSize = Enum.FontSize.Size18;
-		ColorButton.TextColor3 = Color3.new( 1, 1, 1 );
-		ColorButton.TextStrokeColor3 = Color3.new( 0, 0, 0 );
-		ColorButton.Position = UDim2.new( 0, column * 25 + 5, 0, row * 25 + 5 );
-		ColorButton.BorderSizePixel = 0;
+	-- Make sure that they clicked on one of the items in their selection
+	-- (and they weren't multi-selecting)
+	if Selection:find( Mouse.Target ) and not selecting and not selecting then
 
-		-- Make the button change the `Color` option
-		ColorButton.MouseButton1Click:connect( function ()
-			Tools.Paint.Options.Color = Color;
-		end );
+		override_selection = true;
+
+		-- Paint all of the selected items `Tools.Paint.Options.Color`
+		if Tools.Paint.Options.Color then
+			for _, Item in pairs( Selection.Items ) do
+				Item.BrickColor = Tools.Paint.Options.Color;
+			end;
+		end;
 
 	end;
 
 end;
 
-function hidePalette()
+Tools.Paint.changeColor = function ( self, Color )
 
-	if Tools.Paint.Options.PaletteGUI then
-		Tools.Paint.Options.PaletteGUI:Destroy();
-		Tools.Paint.Options.PaletteGUI = nil;
+	-- Alright so if `Color` is given, set that as the preferred color
+	if Color then
+
+		-- First of all, change the color option itself
+		self.Options.Color = Color;
+
+		-- Then, we want to update the color of any items in the selection
+		for _, Item in pairs( Selection.Items ) do
+			Item.BrickColor = Color;
+		end;
+
+		-- After that, we want to mark our new color in the palette
+		if self.Temporary.GUI then
+
+			-- First clear out any other marks
+			for _, ColorSquare in pairs( self.Temporary.GUI.Container.Palette:GetChildren() ) do
+				ColorSquare.Text = "";
+			end;
+
+			-- Then mark the right square
+			self.Temporary.GUI.Container.Palette[Color.Name].Text = "X";
+
+		end;
+
+	-- Otherwise, let's assume no color at all
+	else
+
+		-- Set the preferred color to none
+		self.Options.Color = nil;
+
+		-- Clear out any color option marks on any of the squares
+		if self.Temporary.GUI then
+			for _, ColorSquare in pairs( self.Temporary.GUI.Container.Palette:GetChildren() ) do
+				ColorSquare.Text = "";
+			end;
+		end;
+
+	end;
+
+end;
+
+Tools.Paint.showGUI = function ( self )
+
+	-- Create the GUI if it doesn't exist
+	if not self.Temporary.GUI then
+
+		-- Create the GUI container
+		local PaletteGUI = Instance.new( "ScreenGui", Player.PlayerGui );
+		PaletteGUI.Name = "BTPaintGUI";
+
+		RbxUtility.Create "Frame" {
+			Parent = PaletteGUI;
+			Name = "Container";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 230 );
+			Size = UDim2.new( 0, 205, 0, 230 );
+			Draggable = true;
+		};
+		RbxUtility.Create "Frame" {
+			Parent = PaletteGUI.Container;
+			Name = "Title";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = PaletteGUI.Container.Title;
+			Name = "ColorBar";
+			BackgroundColor3 = BrickColor.new( "Really red" ).Color;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, -3 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = PaletteGUI.Container.Title;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "PAINT TOOL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = PaletteGUI.Container.Title;
+			Name = "F3XSignature";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size14;
+			Text = "F3X";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Right;
+			TextStrokeTransparency = 0.9;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		-- Create the frame that will contain the colors
+		local PaletteFrame = RbxUtility.Create "Frame" {
+			Parent = PaletteGUI.Container;
+			Name = "Palette";
+			BackgroundColor3 = Color3.new( 0, 0, 0 );
+			Transparency = 1;
+			Size = UDim2.new( 0, 205, 0, 205 );
+			Position = UDim2.new( 0, 5, 0, 20 );
+		};
+
+		-- Insert the colors
+		for palette_index = 0, 63 do
+
+			-- Get BrickColor `palette_index` from the palette
+			local Color = BrickColor.palette( palette_index );
+
+			-- Calculate the row and column in the 8x8 grid
+			local row = ( palette_index - ( palette_index % 8 ) ) / 8;
+			local column = palette_index % 8;
+
+			-- Create the button
+			local ColorButton = RbxUtility.Create "TextButton" {
+				Parent = PaletteFrame;
+				Name = Color.Name;
+				BackgroundColor3 = Color.Color;
+				Size = UDim2.new( 0, 20, 0, 20 );
+				Text = "";
+				TextStrokeTransparency = 0.75;
+				Font = Enum.Font.Arial;
+				FontSize = Enum.FontSize.Size12;
+				TextColor3 = Color3.new( 1, 1, 1 );
+				TextStrokeColor3 = Color3.new( 0, 0, 0 );
+				Position = UDim2.new( 0, column * 25 + 5, 0, row * 25 + 5 );
+				BorderSizePixel = 0;
+
+				-- Make the button change the `Color` option
+				[RbxUtility.Create.E "MouseButton1Click"] = function ()
+					self:changeColor( Color );
+				end;
+			};
+
+		end;
+
+		self.Temporary.GUI = PaletteGUI;
+	end;
+
+	-- Reveal the GUI
+	self.Temporary.GUI.Container.Visible = true;
+
+end;
+
+Tools.Paint.hideGUI = function ( self )
+
+	-- Hide the GUI if it exists
+	if self.Temporary.GUI then
+		self.Temporary.GUI.Container.Visible = false;
 	end;
 
 end;
@@ -3955,7 +4065,7 @@ Tools.Anchor.showGUI = function ( self )
 	-- Create the GUI if it doesn't exist
 	if not self.Temporary.GUI then
 		local GUIRoot = Instance.new( "ScreenGui", Player.PlayerGui );
-		GUIRoot.Name = "BTRotateToolGUI";
+		GUIRoot.Name = "BTAnchorToolGUI";
 
 		RbxUtility.Create "Frame" {
 			Parent = GUIRoot;
