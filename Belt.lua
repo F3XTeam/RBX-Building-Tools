@@ -34,6 +34,7 @@ Mouse = nil;
 
 dark_slanted_rectangle = "http://www.roblox.com/asset/?id=127774197";
 light_slanted_rectangle = "http://www.roblox.com/asset/?id=127772502";
+action_completion_sound = "http://www.roblox.com/asset/?id=99666917";
 
 ------------------------------------------
 -- Load external dependencies
@@ -41,6 +42,7 @@ light_slanted_rectangle = "http://www.roblox.com/asset/?id=127772502";
 RbxUtility = LoadLibrary( "RbxUtility" );
 Services.ContentProvider:Preload( dark_slanted_rectangle );
 Services.ContentProvider:Preload( light_slanted_rectangle );
+Services.ContentProvider:Preload( action_completion_sound );
 
 ------------------------------------------
 -- Define functions that are depended-upon
@@ -584,7 +586,7 @@ Tools.Move.Listeners.Button1Down = function ()
 
 	Tools.Move.Temporary.Dragger = Instance.new( "Dragger" );
 
-	Tools.Move.Temporary.Dragger:MouseDown( Mouse.Target, ( Mouse.Target.CFrame:inverse() * CFrame.new( Mouse.Hit.p ) ).p, Selection.Items );
+	Tools.Move.Temporary.Dragger:MouseDown( Mouse.Target, Mouse.Target.CFrame:toObjectSpace( CFrame.new( Mouse.Hit.p ) ).p, Selection.Items );
 
 	Tools.Move.Temporary.Connections.DraggerConnection = Mouse.Button1Up:connect( function ()
 
@@ -4463,7 +4465,7 @@ Tool.Equipped:connect( function ( CurrentMouse )
 				local Sound = RbxUtility.Create "Sound" {
 					Name = "BTActionCompletionSound";
 					Pitch = 1.5;
-					SoundId = "http://www.roblox.com/asset/?id=99666917";
+					SoundId = action_completion_sound;
 					Volume = 1;
 					Parent = Player;
 				};
