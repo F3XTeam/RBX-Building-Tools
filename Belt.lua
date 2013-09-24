@@ -4587,6 +4587,11 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		clicking = false;
 
+		-- Make sure the person didn't accidentally miss a handle or something
+		if Mouse.X ~= click_x or Mouse.Y ~= click_y then
+			override_selection = true;
+		end;
+
 		-- If the target when clicking was invalid then clear the selection (unless we're multi-selecting)
 		if not override_selection and not selecting and ( not Mouse.Target or ( Mouse.Target and Mouse.Target:IsA( "BasePart" ) and Mouse.Target.Locked ) ) then
 			Selection:clear();
