@@ -8,24 +8,28 @@
 -- Create references to important objects
 ------------------------------------------
 Services = {
-	["Workspace"] = game:GetService( "Workspace" );
-	["Players"] = game:GetService( "Players" );
-	["Lighting"] = game:GetService( "Lighting" );
-	["Teams"] = game:GetService( "Teams" );
-	["Debris"] = game:GetService( "Debris" );
-	["MarketplaceService"] = game:GetService( "MarketplaceService" );
-	["JointsService"] = game.JointsService;
-	["BadgeService"] = game:GetService( "BadgeService" );
-	["RunService"] = game:GetService( "RunService" );
-	["ContentProvider"] = game:GetService( "ContentProvider" );
-	["TeleportService"] = game:GetService( "TeleportService" );
-	["SoundService"] = game:GetService( "SoundService" );
-	["InsertService"] = game:GetService( "InsertService" );
-	["CollectionService"] = game:GetService( "CollectionService" );
-	["UserInputService"] = game:GetService( "UserInputService" );
-	["GamePassService"] = game:GetService( "GamePassService" );
-	["StarterPack"] = game:GetService( "StarterPack" );
-	["StarterGui"] = game:GetService( "StarterGui" );
+	["Workspace"] = Game:GetService( "Workspace" );
+	["Players"] = Game:GetService( "Players" );
+	["Lighting"] = Game:GetService( "Lighting" );
+	["Teams"] = Game:GetService( "Teams" );
+	["Debris"] = Game:GetService( "Debris" );
+	["MarketplaceService"] = Game:GetService( "MarketplaceService" );
+	["JointsService"] = Game.JointsService;
+	["BadgeService"] = Game:GetService( "BadgeService" );
+	["RunService"] = Game:GetService( "RunService" );
+	["ContentProvider"] = Game:GetService( "ContentProvider" );
+	["TeleportService"] = Game:GetService( "TeleportService" );
+	["SoundService"] = Game:GetService( "SoundService" );
+	["InsertService"] = Game:GetService( "InsertService" );
+	["CollectionService"] = Game:GetService( "CollectionService" );
+	["UserInputService"] = Game:GetService( "UserInputService" );
+	["GamePassService"] = Game:GetService( "GamePassService" );
+	["StarterPack"] = Game:GetService( "StarterPack" );
+	["StarterGui"] = Game:GetService( "StarterGui" );
+	["TestService"] = Game:GetService( "TestService" );
+	["ServerScriptService"] = Game:GetService( "ServerScriptService" );
+	["ServerStorage"] = Game:GetService( "ServerStorage" );
+	["ReplicatedStorage"] = Game:GetService( "ReplicatedStorage" );
 };
 
 Tool = script.Parent;
