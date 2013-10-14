@@ -35,6 +35,7 @@ Services = {
 Tool = script.Parent;
 Player = Services.Players.LocalPlayer;
 Mouse = nil;
+Camera = Services.Workspace.CurrentCamera;
 
 dark_slanted_rectangle = "http://www.roblox.com/asset/?id=127774197";
 light_slanted_rectangle = "http://www.roblox.com/asset/?id=127772502";
@@ -143,6 +144,43 @@ function _cloneTable( source )
 
 	-- Return a copy of `source` including its metatable
 	return setmetatable( { unpack( source ) }, source_mt );
+end;
+
+function _getAllDescendants( Parent )
+	-- Recursively gets all the descendants of  `Parent` and returns them
+
+	local descendants = {};
+
+	for _, Child in pairs( Parent:GetChildren() ) do
+
+		-- Add the direct descendants of `Parent`
+		table.insert( descendants, Child );
+
+		-- Add the descendants of each child
+		for _, Subchild in pairs( _getAllDescendants( Child ) ) do
+			table.insert( descendants, Subchild );
+		end;
+
+	end;
+
+	return descendants;
+
+end;
+
+function _pointToScreenSpace( Point )
+	-- Returns Vector3 `Point`'s position on the screen when rendered
+	-- (kudos to stravant for this)
+
+	local point = Camera.CoordinateFrame:pointToObjectSpace( Point );
+	local aspectRatio = Mouse.ViewSizeX / Mouse.ViewSizeY;
+	local hfactor = math.tan( math.rad( Camera.FieldOfView ) / 2 )
+	local wfactor = aspectRatio * hfactor;
+
+	local x = ( point.x / point.z ) / -wfactor;
+	local y = ( point.y / point.z ) /  hfactor;
+
+	return Vector2.new( Mouse.ViewSizeX * ( 0.5 + 0.5 * x ), Mouse.ViewSizeY * ( 0.5 + 0.5 * y ) );
+
 end;
 
 ------------------------------------------
@@ -4409,6 +4447,113 @@ Tools.Anchor.Listeners.Unequipped = function ()
 end;
 
 ------------------------------------------
+-- Provide an interface to the 2D
+-- selection system
+------------------------------------------
+
+Select2D = {
+
+	-- Keep state data
+	["enabled"] = false;
+
+	-- Keep objects
+	["GUI"] = nil;
+
+	-- Keep temporary, disposable connections
+	["Connections"] = {};
+
+	-- Provide an interface to the functions
+	["start"] = function ( self )
+
+		if enabled then
+			return;
+		end;
+
+		self.enabled = true;
+
+		-- Create the GUI
+		self.GUI = RbxUtility.Create "ScreenGui" {
+			Name = "BTSelectionRectangle";
+			Parent = Player.PlayerGui;
+		};
+
+		local Rectangle = RbxUtility.Create "Frame" {
+			Name = "Rectangle";
+			Active = false;
+			Parent = self.GUI;
+			BackgroundColor3 = Color3.new( 0, 0, 0 );
+			BackgroundTransparency = 0.5;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, math.min( click_x, Mouse.X ), 0, math.min( click_y, Mouse.Y ) );
+			Size = UDim2.new( 0, math.max( click_x, Mouse.X ) - math.min( click_x, Mouse.X ), 0, math.max( click_y, Mouse.Y ) - math.min( click_y, Mouse.Y ) );
+		};
+
+		-- Listen for when to resize the selection
+		self.Connections.SelectionResize = Mouse.Move:connect( function ()
+			Rectangle.Position = UDim2.new( 0, math.min( click_x, Mouse.X ), 0, math.min( click_y, Mouse.Y ) );
+			Rectangle.Size = UDim2.new( 0, math.max( click_x, Mouse.X ) - math.min( click_x, Mouse.X ), 0, math.max( click_y, Mouse.Y ) - math.min( click_y, Mouse.Y ) );
+		end );
+
+		-- Listen for when the selection ends
+		self.Connections.SelectionEnd = Mouse.Button1Up:connect( function ()
+			self:select();
+			self:finish();
+		end );
+
+	end;
+
+	["select"] = function ( self )
+
+		if not self.enabled then
+			return;
+		end;
+
+		for _, Object in pairs( _getAllDescendants( Services.Workspace ) ) do
+
+			-- Make sure we can select this part
+			if Object:IsA( "BasePart" ) and not Object.Locked then
+
+				-- Check if the part is rendered within the range of the selection area
+				local PartPosition = _pointToScreenSpace( Object.Position );
+				local left_check = PartPosition.x >= self.GUI.Rectangle.AbsolutePosition.x;
+				local right_check = PartPosition.x <= ( self.GUI.Rectangle.AbsolutePosition.x + self.GUI.Rectangle.AbsoluteSize.x );
+				local top_check = PartPosition.y >= self.GUI.Rectangle.AbsolutePosition.y;
+				local bottom_check = PartPosition.y <= ( self.GUI.Rectangle.AbsolutePosition.y + self.GUI.Rectangle.AbsoluteSize.y );
+
+				-- If the part is within the selection area, select it
+				if left_check and right_check and top_check and bottom_check then
+					Selection:add( Object );
+				end;
+
+			end;
+
+		end;
+
+	end;
+
+	["finish"] = function ( self )
+
+		if not self.enabled then
+			return;
+		end;
+
+		-- Disconnect temporary connections
+		for connection_index, Connection in pairs( self.Connections ) do
+			Connection:disconnect();
+			self.Connections[connection_index] = nil;
+		end;
+
+		-- Remove temporary objects
+		self.GUI:Destroy();
+		self.GUI = nil;
+
+		self.enabled = false;
+
+	end;
+
+};
+
+------------------------------------------
 -- Attach listeners
 ------------------------------------------
 
@@ -4531,9 +4676,13 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		ActiveKeys[key_code] = nil;
 		ActiveKeys[key] = nil;
 
-		-- If it's no longer in multiselection mode, update `selecting`
+		-- If it's no longer in multiselection mode, update `selecting` & related values
 		if selecting and not ActiveKeys[selecting] then
 			selecting = false;
+			if Select2D.enabled then
+				Select2D:select();
+				Select2D:finish();
+			end;
 		end;
 
 	end );
@@ -4557,6 +4706,11 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 	Mouse.Move:connect( function ()
 
+		-- If the mouse has moved since it was clicked, start 2D selection mode
+		if not override_selection and not Select2D.enabled and clicking and selecting and ( click_x ~= Mouse.X or click_y ~= Mouse.Y ) then
+			Select2D:start();
+		end;
+
 		-- If the target has changed, update the selectionbox appropriately
 		if not override_selection and Mouse.Target then
 			if Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked and Options.TargetBox.Adornee ~= Mouse.Target and not Selection:find( Mouse.Target ) then
@@ -4567,13 +4721,6 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		-- When aiming at something invalid, don't highlight any targets
 		if not override_selection and not Mouse.Target or ( Mouse.Target and Mouse.Target:IsA( "BasePart" ) and Mouse.Target.Locked ) or Selection:find( Mouse.Target ) then
 			Options.TargetBox.Adornee = nil;
-		end;
-
-		-- If spay-like multi-selecting, add this current target to the selection
-		if not override_selection and selecting and clicking then
-			if Mouse.Target and Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked then
-				Selection:add( Mouse.Target );
-			end;
 		end;
 
 		-- Fire tool listeners
@@ -4592,7 +4739,7 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		clicking = false;
 
 		-- Make sure the person didn't accidentally miss a handle or something
-		if Mouse.X ~= click_x or Mouse.Y ~= click_y then
+		if not Select2D.enabled and ( Mouse.X ~= click_x or Mouse.Y ~= click_y ) then
 			override_selection = true;
 		end;
 
@@ -4611,7 +4758,6 @@ Tool.Equipped:connect( function ( CurrentMouse )
 				end;
 			
 			-- If the item _is_ already selected, remove it from the selection
-			-- (unless they're finishing a spray-like selection)
 			else
 				if ( Mouse.X == click_x and Mouse.Y == click_y ) and Mouse.Target and Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked then
 					Selection:remove( Mouse.Target );
