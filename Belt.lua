@@ -72,23 +72,27 @@ function _getCollectionInfo( part_collection )
 	-- Get the corners
 	local corners = {};
 
+	-- Create shortcuts to certain things that are expensive to call constantly
+	-- (note: otherwise it actually becomes an issue if the selection grows
+	-- considerably large)
 	local table_insert = table.insert;
+	local newCFrame = CFrame.new;
 
 	for _, Part in pairs( part_collection ) do
 
-		-- Create shortcuts to certain things that are expensive to call constantly
 		local PartCFrame = Part.CFrame;
+		local partCFrameOffset = PartCFrame.toWorldSpace;
 		local PartSize = Part.Size / 2;
 		local size_x, size_y, size_z = PartSize.x, PartSize.y, PartSize.z;
 
-		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( size_x, size_y, size_z ) ) );
-		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( -size_x, size_y, size_z ) ) );
-		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( size_x, -size_y, size_z ) ) );
-		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( size_x, size_y, -size_z ) ) );
-		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( -size_x, size_y, -size_z ) ) );
-		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( -size_x, -size_y, size_z ) ) );
-		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( size_x, -size_y, -size_z ) ) );
-		table_insert( corners, PartCFrame:toWorldSpace( CFrame.new( -size_x, -size_y, -size_z ) ) );
+		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( size_x, size_y, size_z ) ) );
+		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( -size_x, size_y, size_z ) ) );
+		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( size_x, -size_y, size_z ) ) );
+		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( size_x, size_y, -size_z ) ) );
+		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( -size_x, size_y, -size_z ) ) );
+		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( -size_x, -size_y, size_z ) ) );
+		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( size_x, -size_y, -size_z ) ) );
+		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( -size_x, -size_y, -size_z ) ) );
 
 	end;
 
