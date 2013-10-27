@@ -319,7 +319,7 @@ Selection = {
 		end );
 
 		-- Provide a reference to the last item added to the selection (i.e. NewPart)
-		self.Last = NewPart;
+		self:focus( NewPart );
 
 		-- Fire events
 		self.ItemAdded:fire( NewPart );
@@ -347,7 +347,7 @@ Selection = {
 
 		-- If it was logged as the last item, change it
 		if self.Last == Item then
-			self.Last = ( #self.Items > 0 ) and self.Items[#self.Items] or nil;
+			self:focus( ( #self.Items > 0 ) and self.Items[#self.Items] or nil );
 		end;
 
 		-- Delete the existence listeners of the item
@@ -367,6 +367,17 @@ Selection = {
 		for _, Item in pairs( _cloneTable( self.Items ) ) do
 			self:remove( Item );
 		end;
+
+	end;
+
+	-- Provide a method to change the focus of the selection
+	["focus"] = function ( self, NewFocus )
+
+		-- Change the focus
+		self.Last = NewFocus;
+
+		-- Fire events
+		self.Changed:fire();
 
 	end;
 
@@ -1517,7 +1528,7 @@ Tools.Move.changeAxes = function ( self, new_axes )
 
 			-- If the target is in the selection, make it the new adornee
 			if Selection:find( Mouse.Target ) then
-				Selection.Last = Mouse.Target;
+				Selection:focus( Mouse.Target );
 				self:showHandles( Mouse.Target );
 			end;
 
@@ -1566,7 +1577,7 @@ Tools.Move.changeAxes = function ( self, new_axes )
 
 			-- If the target is in the selection, make it the new adornee
 			if Selection:find( Mouse.Target ) then
-				Selection.Last = Mouse.Target;
+				Selection:focus( Mouse.Target );
 				self:showHandles( Mouse.Target );
 			end;
 
@@ -2664,7 +2675,6 @@ RbxUtility.Create "Decal" {
 Tools.Rotate.Grip = CFrame.new( 0, 0, 0.4 );
 
 -- Start adding functionality to the tool
-
 Tools.Rotate.Listeners.Equipped = function ()
 
 	-- Change the color of selection boxes temporarily
@@ -2719,6 +2729,18 @@ Tools.Rotate.Listeners.Equipped = function ()
 
 	end )();
 
+	-- Also enable the ability to select an edge as a pivot
+	SelectEdge:start( function ( EdgeMarker )
+		Tools.Rotate:changePivot( "last" );
+		Tools.Rotate.Temporary.SelectedEdge = EdgeMarker;
+		table.insert( Tools.Rotate.Temporary.Connections, Selection.Changed:connect( function ()
+			if Selection.Last ~= EdgeMarker then
+				EdgeMarker:Destroy();
+				Tools.Rotate.Temporary.SelectedEdge = nil;
+			end;
+		end ) );
+	end );
+
 end;
 
 Tools.Rotate.Listeners.Unequipped = function ()
@@ -2726,6 +2748,12 @@ Tools.Rotate.Listeners.Unequipped = function ()
 	-- Stop the update loop
 	Tools.Rotate.Temporary.Updater();
 	Tools.Rotate.Temporary.Updater = nil;
+
+	-- Disable the ability to select edges
+	SelectEdge:stop();
+	if Tools.Rotate.Temporary.SelectedEdge then
+		Tools.Rotate.Temporary.SelectedEdge:Destroy();
+	end;
 
 	-- Hide the GUI
 	Tools.Rotate:hideGUI();
@@ -3381,7 +3409,6 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 	local PivotOptionGUI = self.Temporary.GUI and self.Temporary.GUI.Container.PivotOption or nil;
 
 	-- Disconnect any handle-related listeners that are specific to a certain pivot option
-
 	if self.Temporary.Connections.HandleFocusChangeListener then
 		self.Temporary.Connections.HandleFocusChangeListener:disconnect();
 		self.Temporary.Connections.HandleFocusChangeListener = nil;
@@ -3390,6 +3417,12 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 	if self.Temporary.Connections.HandleSelectionChangeListener then
 		self.Temporary.Connections.HandleSelectionChangeListener:disconnect();
 		self.Temporary.Connections.HandleSelectionChangeListener = nil;
+	end;
+
+	-- Remove any temporary edge selection
+	if self.Temporary.SelectedEdge then
+		self.Temporary.SelectedEdge:Destroy();
+		self.Temporary.SelectedEdge = nil;
 	end;
 
 	if new_pivot == "center" then
@@ -3438,7 +3471,7 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 
 			-- If the target is in the selection, make it the new adornee
 			if Selection:find( Mouse.Target ) then
-				Selection.Last = Mouse.Target;
+				Selection:focus( Mouse.Target );
 				self:showHandles( Mouse.Target );
 			end;
 
@@ -3487,7 +3520,7 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 
 			-- If the target is in the selection, make it the new adornee
 			if Selection:find( Mouse.Target ) then
-				Selection.Last = Mouse.Target;
+				Selection:focus( Mouse.Target );
 				self:showHandles( Mouse.Target );
 			end;
 
@@ -4558,6 +4591,215 @@ Select2D = {
 };
 
 ------------------------------------------
+-- Provide an interface to the edge
+-- selection system
+------------------------------------------
+SelectEdge = {
+
+	-- Keep state data
+	["enabled"] = false;
+	["started"] = false;
+
+	-- Keep objects
+	["Marker"] = nil;
+	["MarkerOutline"] = RbxUtility.Create "SelectionBox" {
+		Color = BrickColor.new( "Institutional white" );
+		Parent = Player.PlayerGui;
+		Name = "BTEdgeSelectionMarkerOutline";
+	};
+
+	-- Keep temporary, disposable connections
+	["Connections"] = {};
+
+	-- Provide an interface to the functions
+	["start"] = function ( self, edgeSelectionCallback )
+
+		if self.started then
+			return;
+		end;
+
+		-- Listen for when to engage in selection
+		self.Connections.KeyListener = Mouse.KeyDown:connect( function ( key )
+
+			local key = key:lower();
+			local key_code = key:byte();
+
+			if key == "e" then
+				self:enable( edgeSelectionCallback );
+			end;
+
+		end );
+
+		self.started = true;
+
+	end;
+
+	["enable"] = function ( self, edgeSelectionCallback )
+
+		if self.enabled then
+			return;
+		end;
+
+		self.Connections.MoveListener = Mouse.Move:connect( function ()
+
+			-- Make sure the target can be selected
+			if not Selection:find( Mouse.Target ) then
+				return;
+			end;
+
+			-- Calculate the proximity to each edge
+			local Proximity = {};
+			local edges = {};
+
+			-- Create shortcuts to certain things that are expensive to call constantly
+			local table_insert = table.insert;
+			local newCFrame = CFrame.new;
+			local PartCFrame = Mouse.Target.CFrame;
+			local partCFrameOffset = PartCFrame.toWorldSpace;
+			local PartSize = Mouse.Target.Size / 2;
+			local size_x, size_y, size_z = PartSize.x, PartSize.y, PartSize.z;
+
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, size_y, size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, size_y, size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, -size_y, size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, size_y, -size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, size_y, -size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, -size_y, size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, -size_y, -size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, -size_y, -size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, size_y, 0 ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, 0, size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, size_y, size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, 0, 0 ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, size_y, 0 ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, 0, size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, size_y, 0 ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, 0, size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, -size_y, size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, 0, 0 ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, -size_y, 0 ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, 0, -size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, -size_y, 0 ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, 0, -size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, size_y, -size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, -size_y, 0 ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, 0, -size_z ) ) );
+			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, -size_y, -size_z ) ) );
+
+			-- Calculate the proximity of every edge to the mouse
+			for edge_index, Edge in pairs( edges ) do
+				Proximity[edge_index] = ( Mouse.Hit.p - Edge.p ).magnitude;
+			end;
+
+			-- Get the closest edge to the mouse
+			local highest_proximity = 1;
+			for proximity_index, proximity in pairs( Proximity ) do
+				if proximity < Proximity[highest_proximity] then
+					highest_proximity = proximity_index;
+				end;
+			end;
+
+			-- Replace the current target edge (if any)
+			local ClosestEdge = edges[highest_proximity];
+
+			if self.Marker then
+				self.Marker:Destroy();
+			end;
+			self.Marker = RbxUtility.Create "Part" {
+				Name = "BTEdgeSelectionMarker";
+				Anchored = true;
+				Locked = true;
+				CanCollide = false;
+				Transparency = 1;
+				FormFactor = Enum.FormFactor.Custom;
+				Size = Vector3.new( 0.2, 0.2, 0.2 );
+				CFrame = ClosestEdge;
+			};
+
+			self.MarkerOutline.Adornee = self.Marker;
+
+		end );
+
+		self.Connections.ClickListener = Mouse.Button1Up:connect( function ()
+			override_selection = true;
+			self:select( edgeSelectionCallback );
+		end );
+
+		self.enabled = true;
+
+	end;
+
+	["select"] = function ( self, callback )
+
+		if not self.enabled or not self.Marker then
+			return;
+		end;
+
+		-- Turn the marker into an actual part of the selection
+		self.Marker.Parent = Services.Workspace.CurrentCamera;
+		Selection:add( self.Marker );
+
+		callback( self.Marker );
+
+		-- Stop treating it like a marker
+		self.Marker = nil;
+		self.MarkerOutline.Adornee = nil;
+
+		self:disable();
+
+	end;
+
+	["disable"] = function ( self )
+
+		if not self.enabled then
+			return;
+		end;
+
+		-- Disconnect unnecessary temporary connections
+		if self.Connections.ClickListener then
+			self.Connections.ClickListener:disconnect();
+			self.Connections.ClickListener = nil;
+		end;
+		if self.Connections.MoveListener then
+			self.Connections.MoveListener:disconnect();
+			self.Connections.MoveListener = nil;
+		end;
+
+		-- Remove temporary objects
+		if self.Marker then
+			self.Marker:Destroy();
+		end;
+		self.Marker = nil;
+
+		self.MarkerOutline.Adornee = nil;
+		self.enabled = false;
+
+	end;
+
+	["stop"] = function ( self )
+
+		if not self.started then
+			return;
+		end;
+
+		-- Disconnect & remove all temporary connections
+		for connection_index, Connection in pairs( self.Connections ) do
+			Connection:disconnect();
+			self.Connections[connection_index] = nil;
+		end;
+
+		-- Remove temporary objects
+		if self.Marker then
+			self.Marker:Destroy();
+		end;
+
+		self.started = false;
+
+	end;
+
+};
+
+------------------------------------------
 -- Attach listeners
 ------------------------------------------
 
@@ -4603,9 +4845,14 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 				-- Make a copy of every item in the selection and add it to table `item_copies`
 				for _, Item in pairs( Selection.Items ) do
-					local ItemCopy = Item:Clone();
-					ItemCopy.Parent = Services.Workspace;
-					table.insert( item_copies, ItemCopy );
+
+					-- Make sure not to include things like markers
+					if Item.Name ~= "BTEdgeSelectionMarker" then
+						local ItemCopy = Item:Clone();
+						ItemCopy.Parent = Services.Workspace;
+						table.insert( item_copies, ItemCopy );
+					end;
+
 				end;
 
 				-- Replace the selection with the copied items
