@@ -257,6 +257,10 @@ SelectionBoxes = {};
 SelectionExistenceListeners = {};
 SelectionBoxColor = BrickColor.new( "Cyan" );
 
+UI = RbxUtility.Create "ScreenGui" {
+	Name = "Building Tools by F3X (UI)",
+	Parent = Player.PlayerGui
+};
 Dragger = nil;
 
 function updateSelectionBoxColor()
@@ -301,7 +305,7 @@ Selection = {
 		table.insert( self.Items, NewPart );
 
 		-- Add its SelectionBox
-		SelectionBoxes[NewPart] = Instance.new( "SelectionBox", Player.PlayerGui );
+		SelectionBoxes[NewPart] = Instance.new( "SelectionBox", UI );
 		SelectionBoxes[NewPart].Name = "BTSelectionBox";
 		SelectionBoxes[NewPart].Color = SelectionBoxColor;
 		SelectionBoxes[NewPart].Adornee = NewPart;
@@ -533,7 +537,7 @@ Tools.Move.Listeners.Equipped = function ()
 			if Options.Tool == Tools.Move then
 
 				-- Update the GUI if it's visible
-				if Tools.Move.Temporary.GUI and Tools.Move.Temporary.GUI.Container.Visible then
+				if Tools.Move.Temporary.GUI and Tools.Move.Temporary.GUI.Visible then
 					Tools.Move:updateGUI();
 				end;
 
@@ -577,7 +581,7 @@ end;
 Tools.Move.updateGUI = function ( self )
 	
 	if self.Temporary.GUI then
-		local GUI = self.Temporary.GUI.Container;
+		local GUI = self.Temporary.GUI;
 
 		if #Selection.Items > 0 then
 
@@ -685,12 +689,10 @@ Tools.Move.showGUI = function ( self )
 
 	-- Create the GUI if it doesn't exist
 	if not self.Temporary.GUI then
-		local GUIRoot = Instance.new( "ScreenGui", Player.PlayerGui );
-		GUIRoot.Name = "BTMoveToolGUI";
 
-		RbxUtility.Create "Frame" {
-			Parent = GUIRoot;
-			Name = "Container";
+		local Container = RbxUtility.Create "Frame" {
+			Parent = UI;
+			Name = "BTMoveToolGUI";
 			Active = true;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -700,7 +702,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "AxesOption";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -708,7 +710,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.AxesOption;
+			Parent = Container.AxesOption;
 			Name = "Global";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -717,7 +719,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.AxesOption.Global;
+			Parent = Container.AxesOption.Global;
 			Name = "SelectedIndicator";
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
 			BorderSizePixel = 0;
@@ -727,7 +729,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextButton" {
-			Parent = GUIRoot.Container.AxesOption.Global;
+			Parent = Container.AxesOption.Global;
 			Name = "Button";
 			Active = true;
 			BackgroundTransparency = 1;
@@ -741,17 +743,17 @@ Tools.Move.showGUI = function ( self )
 			-- Change the axis type option when the button is clicked
 			[RbxUtility.Create.E "MouseButton1Down"] = function ()
 				self:changeAxes( "global" );
-				GUIRoot.Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 0;
-				GUIRoot.Container.AxesOption.Global.Background.Image = dark_slanted_rectangle;
-				GUIRoot.Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
-				GUIRoot.Container.AxesOption.Local.Background.Image = light_slanted_rectangle;
-				GUIRoot.Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
-				GUIRoot.Container.AxesOption.Last.Background.Image = light_slanted_rectangle;
+				Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 0;
+				Container.AxesOption.Global.Background.Image = dark_slanted_rectangle;
+				Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
+				Container.AxesOption.Local.Background.Image = light_slanted_rectangle;
+				Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
+				Container.AxesOption.Last.Background.Image = light_slanted_rectangle;
 			end;
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.AxesOption.Global;
+			Parent = Container.AxesOption.Global;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -760,7 +762,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.AxesOption.Global;
+			Parent = Container.AxesOption.Global;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -772,7 +774,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.AxesOption;
+			Parent = Container.AxesOption;
 			Name = "Local";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -781,7 +783,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.AxesOption.Local;
+			Parent = Container.AxesOption.Local;
 			Name = "SelectedIndicator";
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
 			BorderSizePixel = 0;
@@ -791,7 +793,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextButton" {
-			Parent = GUIRoot.Container.AxesOption.Local;
+			Parent = Container.AxesOption.Local;
 			Name = "Button";
 			Active = true;
 			BackgroundTransparency = 1;
@@ -805,17 +807,17 @@ Tools.Move.showGUI = function ( self )
 			-- Change the axis type option when the button is clicked
 			[RbxUtility.Create.E "MouseButton1Down"] = function ()
 				self:changeAxes( "local" );
-				GUIRoot.Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
-				GUIRoot.Container.AxesOption.Global.Background.Image = light_slanted_rectangle;
-				GUIRoot.Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 0;
-				GUIRoot.Container.AxesOption.Local.Background.Image = dark_slanted_rectangle;
-				GUIRoot.Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
-				GUIRoot.Container.AxesOption.Last.Background.Image = light_slanted_rectangle;
+				Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
+				Container.AxesOption.Global.Background.Image = light_slanted_rectangle;
+				Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 0;
+				Container.AxesOption.Local.Background.Image = dark_slanted_rectangle;
+				Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
+				Container.AxesOption.Last.Background.Image = light_slanted_rectangle;
 			end;
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.AxesOption.Local;
+			Parent = Container.AxesOption.Local;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -824,7 +826,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.AxesOption.Local;
+			Parent = Container.AxesOption.Local;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -836,7 +838,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.AxesOption;
+			Parent = Container.AxesOption;
 			Name = "Last";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -845,7 +847,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.AxesOption.Last;
+			Parent = Container.AxesOption.Last;
 			Name = "SelectedIndicator";
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
 			BorderSizePixel = 0;
@@ -855,7 +857,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextButton" {
-			Parent = GUIRoot.Container.AxesOption.Last;
+			Parent = Container.AxesOption.Last;
 			Name = "Button";
 			Active = true;
 			BackgroundTransparency = 1;
@@ -869,17 +871,17 @@ Tools.Move.showGUI = function ( self )
 			-- Change the axis type option when the button is clicked
 			[RbxUtility.Create.E "MouseButton1Down"] = function ()
 				self:changeAxes( "last" );
-				GUIRoot.Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
-				GUIRoot.Container.AxesOption.Global.Background.Image = light_slanted_rectangle;
-				GUIRoot.Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
-				GUIRoot.Container.AxesOption.Local.Background.Image = light_slanted_rectangle;
-				GUIRoot.Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 0;
-				GUIRoot.Container.AxesOption.Last.Background.Image = dark_slanted_rectangle;
+				Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
+				Container.AxesOption.Global.Background.Image = light_slanted_rectangle;
+				Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
+				Container.AxesOption.Local.Background.Image = light_slanted_rectangle;
+				Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 0;
+				Container.AxesOption.Last.Background.Image = dark_slanted_rectangle;
 			end;
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.AxesOption.Last;
+			Parent = Container.AxesOption.Last;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -888,7 +890,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.AxesOption.Last;
+			Parent = Container.AxesOption.Last;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -900,7 +902,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.AxesOption;
+			Parent = Container.AxesOption;
 			Name = "Label";
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
@@ -908,7 +910,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.AxesOption.Label;
+			Parent = Container.AxesOption.Label;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
 			Size = UDim2.new( 1, 0, 1, 0 );
@@ -922,7 +924,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "Title";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -930,7 +932,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Title;
+			Parent = Container.Title;
 			Name = "ColorBar";
 			BackgroundColor3 = Color3.new( 255 / 255, 170 / 255, 0 );
 			BorderSizePixel = 0;
@@ -939,7 +941,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Title;
+			Parent = Container.Title;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -956,7 +958,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Title;
+			Parent = Container.Title;
 			Name = "F3XSignature";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -973,7 +975,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "IncrementOption";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -981,7 +983,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.IncrementOption;
+			Parent = Container.IncrementOption;
 			Name = "Increment";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -990,7 +992,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Parent = Container.IncrementOption.Increment;
 			Name = "SelectedIndicator";
 			BorderSizePixel = 0;
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
@@ -999,7 +1001,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextBox" {
-			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Parent = Container.IncrementOption.Increment;
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
 			Position = UDim2.new( 0, 5, 0, 0 );
@@ -1013,14 +1015,14 @@ Tools.Move.showGUI = function ( self )
 			-- Change the increment option when the value of the textbox is updated
 			[RbxUtility.Create.E "FocusLost"] = function ( enter_pressed )
 				if enter_pressed then
-					self.Options.increment = tonumber( GUIRoot.Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
-					GUIRoot.Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
+					self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
+					Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
 				end;
 			end;
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Parent = Container.IncrementOption.Increment;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1029,7 +1031,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.IncrementOption;
+			Parent = Container.IncrementOption;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1037,7 +1039,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.IncrementOption.Label;
+			Parent = Container.IncrementOption.Label;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
 			Size = UDim2.new( 1, 0, 1, 0 );
@@ -1051,7 +1053,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "Info";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1061,7 +1063,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info;
+			Parent = Container.Info;
 			Name = "ColorBar";
 			BorderSizePixel = 0;
 			BackgroundColor3 = Color3.new( 1, 170 / 255, 0 );
@@ -1069,7 +1071,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info;
+			Parent = Container.Info;
 			Name = "Label";
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
@@ -1086,7 +1088,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info;
+			Parent = Container.Info;
 			Name = "Center";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1094,7 +1096,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info.Center;
+			Parent = Container.Info.Center;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
 			Size = UDim2.new( 0, 75, 0, 25 );
@@ -1108,7 +1110,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info.Center;
+			Parent = Container.Info.Center;
 			Name = "X";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1117,7 +1119,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info.Center.X;
+			Parent = Container.Info.Center.X;
 			Name = "TextLabel";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1132,7 +1134,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.Info.Center.X;
+			Parent = Container.Info.Center.X;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1141,7 +1143,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info.Center;
+			Parent = Container.Info.Center;
 			Name = "Y";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1150,7 +1152,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info.Center.Y;
+			Parent = Container.Info.Center.Y;
 			Name = "TextLabel";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1165,7 +1167,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.Info.Center.Y;
+			Parent = Container.Info.Center.Y;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1174,7 +1176,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info.Center;
+			Parent = Container.Info.Center;
 			Name = "Z";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1183,7 +1185,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info.Center.Z;
+			Parent = Container.Info.Center.Z;
 			Name = "TextLabel";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1198,7 +1200,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.Info.Center.Z;
+			Parent = Container.Info.Center.Z;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1207,7 +1209,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "Changes";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1217,7 +1219,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Changes;
+			Parent = Container.Changes;
 			Name = "ColorBar";
 			BorderSizePixel = 0;
 			BackgroundColor3 = Color3.new( 1, 170 / 255, 0 );
@@ -1225,7 +1227,7 @@ Tools.Move.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Changes;
+			Parent = Container.Changes;
 			Name = "Text";
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
@@ -1241,11 +1243,11 @@ Tools.Move.showGUI = function ( self )
 			TextXAlignment = Enum.TextXAlignment.Right;
 		};
 
-		self.Temporary.GUI = GUIRoot;
+		self.Temporary.GUI = Container;
 	end;
 
 	-- Reveal the GUI
-	self.Temporary.GUI.Container.Visible = true;
+	self.Temporary.GUI.Visible = true;
 
 end;
 
@@ -1253,7 +1255,7 @@ Tools.Move.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists
 	if self.Temporary.GUI then
-		self.Temporary.GUI.Container.Visible = false;
+		self.Temporary.GUI.Visible = false;
 	end;
 
 end;
@@ -1465,7 +1467,7 @@ end;
 Tools.Move.changeAxes = function ( self, new_axes )
 
 	-- Have a quick reference to the GUI (if any)
-	local AxesOptionGUI = self.Temporary.GUI and self.Temporary.GUI.Container.AxesOption or nil;
+	local AxesOptionGUI = self.Temporary.GUI and self.Temporary.GUI.AxesOption or nil;
 
 	-- Disconnect any handle-related listeners that are specific to a certain axes option
 
@@ -1730,7 +1732,7 @@ Tools.Resize.Listeners.Equipped = function ()
 			if Options.Tool == Tools.Resize then
 
 				-- Update the GUI if it's visible
-				if Tools.Resize.Temporary.GUI and Tools.Resize.Temporary.GUI.Container.Visible then
+				if Tools.Resize.Temporary.GUI and Tools.Resize.Temporary.GUI.Visible then
 					Tools.Resize:updateGUI();
 				end;
 
@@ -1770,12 +1772,10 @@ Tools.Resize.showGUI = function ( self )
 
 	-- Create the GUI if it doesn't exist
 	if not self.Temporary.GUI then
-		local GUIRoot = Instance.new( "ScreenGui", Player.PlayerGui );
-		GUIRoot.Name = "BTResizeToolGUI";
 
-		RbxUtility.Create "Frame" {
-			Parent = GUIRoot;
-			Name = "Container";
+		local Container = RbxUtility.Create "Frame" {
+			Parent = UI;
+			Name = "BTResizeToolGUI";
 			Active = true;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1785,7 +1785,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "DirectionsOption";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1793,7 +1793,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.DirectionsOption;
+			Parent = Container.DirectionsOption;
 			Name = "Normal";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1802,7 +1802,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.DirectionsOption.Normal;
+			Parent = Container.DirectionsOption.Normal;
 			Name = "SelectedIndicator";
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
 			BorderSizePixel = 0;
@@ -1812,7 +1812,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextButton" {
-			Parent = GUIRoot.Container.DirectionsOption.Normal;
+			Parent = Container.DirectionsOption.Normal;
 			Name = "Button";
 			Active = true;
 			BackgroundTransparency = 1;
@@ -1826,15 +1826,15 @@ Tools.Resize.showGUI = function ( self )
 			-- Change the axis type option when the button is clicked
 			[RbxUtility.Create.E "MouseButton1Down"] = function ()
 				self.Options.directions = "normal";
-				GUIRoot.Container.DirectionsOption.Normal.SelectedIndicator.BackgroundTransparency = 0;
-				GUIRoot.Container.DirectionsOption.Normal.Background.Image = dark_slanted_rectangle;
-				GUIRoot.Container.DirectionsOption.Both.SelectedIndicator.BackgroundTransparency = 1;
-				GUIRoot.Container.DirectionsOption.Both.Background.Image = light_slanted_rectangle;
+				Container.DirectionsOption.Normal.SelectedIndicator.BackgroundTransparency = 0;
+				Container.DirectionsOption.Normal.Background.Image = dark_slanted_rectangle;
+				Container.DirectionsOption.Both.SelectedIndicator.BackgroundTransparency = 1;
+				Container.DirectionsOption.Both.Background.Image = light_slanted_rectangle;
 			end;
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.DirectionsOption.Normal;
+			Parent = Container.DirectionsOption.Normal;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1843,7 +1843,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.DirectionsOption.Normal;
+			Parent = Container.DirectionsOption.Normal;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1855,7 +1855,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.DirectionsOption;
+			Parent = Container.DirectionsOption;
 			Name = "Both";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1864,7 +1864,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.DirectionsOption.Both;
+			Parent = Container.DirectionsOption.Both;
 			Name = "SelectedIndicator";
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
 			BorderSizePixel = 0;
@@ -1874,7 +1874,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextButton" {
-			Parent = GUIRoot.Container.DirectionsOption.Both;
+			Parent = Container.DirectionsOption.Both;
 			Name = "Button";
 			Active = true;
 			BackgroundTransparency = 1;
@@ -1888,15 +1888,15 @@ Tools.Resize.showGUI = function ( self )
 			-- Change the axis type option when the button is clicked
 			[RbxUtility.Create.E "MouseButton1Down"] = function ()
 				self.Options.directions = "both";
-				GUIRoot.Container.DirectionsOption.Normal.SelectedIndicator.BackgroundTransparency = 1;
-				GUIRoot.Container.DirectionsOption.Normal.Background.Image = light_slanted_rectangle;
-				GUIRoot.Container.DirectionsOption.Both.SelectedIndicator.BackgroundTransparency = 0;
-				GUIRoot.Container.DirectionsOption.Both.Background.Image = dark_slanted_rectangle;
+				Container.DirectionsOption.Normal.SelectedIndicator.BackgroundTransparency = 1;
+				Container.DirectionsOption.Normal.Background.Image = light_slanted_rectangle;
+				Container.DirectionsOption.Both.SelectedIndicator.BackgroundTransparency = 0;
+				Container.DirectionsOption.Both.Background.Image = dark_slanted_rectangle;
 			end;
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.DirectionsOption.Both;
+			Parent = Container.DirectionsOption.Both;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1905,7 +1905,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.DirectionsOption.Both;
+			Parent = Container.DirectionsOption.Both;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1917,7 +1917,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.DirectionsOption;
+			Parent = Container.DirectionsOption;
 			Name = "Label";
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
@@ -1925,7 +1925,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.DirectionsOption.Label;
+			Parent = Container.DirectionsOption.Label;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
 			Size = UDim2.new( 1, 0, 1, 0 );
@@ -1939,7 +1939,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "Title";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1947,7 +1947,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Title;
+			Parent = Container.Title;
 			Name = "ColorBar";
 			BackgroundColor3 = self.Color.Color;
 			BorderSizePixel = 0;
@@ -1956,7 +1956,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Title;
+			Parent = Container.Title;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1973,7 +1973,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Title;
+			Parent = Container.Title;
 			Name = "F3XSignature";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1990,7 +1990,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "IncrementOption";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -1998,7 +1998,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.IncrementOption;
+			Parent = Container.IncrementOption;
 			Name = "Increment";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2007,7 +2007,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Parent = Container.IncrementOption.Increment;
 			Name = "SelectedIndicator";
 			BorderSizePixel = 0;
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
@@ -2016,7 +2016,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextBox" {
-			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Parent = Container.IncrementOption.Increment;
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
 			Position = UDim2.new( 0, 5, 0, 0 );
@@ -2030,14 +2030,14 @@ Tools.Resize.showGUI = function ( self )
 			-- Change the increment option when the value of the textbox is updated
 			[RbxUtility.Create.E "FocusLost"] = function ( enter_pressed )
 				if enter_pressed then
-					self.Options.increment = tonumber( GUIRoot.Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
-					GUIRoot.Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
+					self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
+					Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
 				end;
 			end;
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Parent = Container.IncrementOption.Increment;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2046,7 +2046,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.IncrementOption;
+			Parent = Container.IncrementOption;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2054,7 +2054,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.IncrementOption.Label;
+			Parent = Container.IncrementOption.Label;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
 			Size = UDim2.new( 1, 0, 1, 0 );
@@ -2068,7 +2068,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "Info";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2078,7 +2078,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info;
+			Parent = Container.Info;
 			Name = "ColorBar";
 			BorderSizePixel = 0;
 			BackgroundColor3 = self.Color.Color;
@@ -2086,7 +2086,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info;
+			Parent = Container.Info;
 			Name = "Label";
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
@@ -2103,7 +2103,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info;
+			Parent = Container.Info;
 			Name = "SizeInfo";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2111,7 +2111,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info.SizeInfo;
+			Parent = Container.Info.SizeInfo;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
 			Size = UDim2.new( 0, 75, 0, 25 );
@@ -2125,7 +2125,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info.SizeInfo;
+			Parent = Container.Info.SizeInfo;
 			Name = "X";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2134,7 +2134,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info.SizeInfo.X;
+			Parent = Container.Info.SizeInfo.X;
 			Name = "TextLabel";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2149,7 +2149,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.Info.SizeInfo.X;
+			Parent = Container.Info.SizeInfo.X;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2158,7 +2158,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info.SizeInfo;
+			Parent = Container.Info.SizeInfo;
 			Name = "Y";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2167,7 +2167,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info.SizeInfo.Y;
+			Parent = Container.Info.SizeInfo.Y;
 			Name = "TextLabel";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2182,7 +2182,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.Info.SizeInfo.Y;
+			Parent = Container.Info.SizeInfo.Y;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2191,7 +2191,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info.SizeInfo;
+			Parent = Container.Info.SizeInfo;
 			Name = "Z";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2200,7 +2200,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info.SizeInfo.Z;
+			Parent = Container.Info.SizeInfo.Z;
 			Name = "TextLabel";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2215,7 +2215,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.Info.SizeInfo.Z;
+			Parent = Container.Info.SizeInfo.Z;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2224,7 +2224,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "Changes";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2234,7 +2234,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Changes;
+			Parent = Container.Changes;
 			Name = "ColorBar";
 			BorderSizePixel = 0;
 			BackgroundColor3 = self.Color.Color;
@@ -2242,7 +2242,7 @@ Tools.Resize.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Changes;
+			Parent = Container.Changes;
 			Name = "Text";
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
@@ -2258,11 +2258,11 @@ Tools.Resize.showGUI = function ( self )
 			TextXAlignment = Enum.TextXAlignment.Right;
 		};
 
-		self.Temporary.GUI = GUIRoot;
+		self.Temporary.GUI = Container;
 	end;
 
 	-- Reveal the GUI
-	self.Temporary.GUI.Container.Visible = true;
+	self.Temporary.GUI.Visible = true;
 
 end;
 
@@ -2273,7 +2273,7 @@ Tools.Resize.updateGUI = function ( self )
 		return;
 	end;
 
-	local GUI = self.Temporary.GUI.Container;
+	local GUI = self.Temporary.GUI;
 
 	if #Selection.Items > 0 then
 
@@ -2325,7 +2325,7 @@ Tools.Resize.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists
 	if self.Temporary.GUI then
-		self.Temporary.GUI.Container.Visible = false;
+		self.Temporary.GUI.Visible = false;
 	end;
 
 end;
@@ -2714,7 +2714,7 @@ Tools.Rotate.Listeners.Equipped = function ()
 			if Options.Tool == Tools.Rotate then
 
 				-- Update the GUI if it's visible
-				if Tools.Rotate.Temporary.GUI and Tools.Rotate.Temporary.GUI.Container.Visible then
+				if Tools.Rotate.Temporary.GUI and Tools.Rotate.Temporary.GUI.Visible then
 					Tools.Rotate:updateGUI();
 				end;
 
@@ -2777,12 +2777,10 @@ Tools.Rotate.showGUI = function ( self )
 
 	-- Create the GUI if it doesn't exist
 	if not self.Temporary.GUI then
-		local GUIRoot = Instance.new( "ScreenGui", Player.PlayerGui );
-		GUIRoot.Name = "BTRotateToolGUI";
 
-		RbxUtility.Create "Frame" {
-			Parent = GUIRoot;
-			Name = "Container";
+		local Container = RbxUtility.Create "Frame" {
+			Parent = UI;
+			Name = "BTRotateToolGUI";
 			Active = true;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2792,7 +2790,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "PivotOption";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2800,7 +2798,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.PivotOption;
+			Parent = Container.PivotOption;
 			Name = "Center";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2809,7 +2807,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.PivotOption.Center;
+			Parent = Container.PivotOption.Center;
 			Name = "SelectedIndicator";
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
 			BorderSizePixel = 0;
@@ -2819,7 +2817,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextButton" {
-			Parent = GUIRoot.Container.PivotOption.Center;
+			Parent = Container.PivotOption.Center;
 			Name = "Button";
 			Active = true;
 			BackgroundTransparency = 1;
@@ -2837,7 +2835,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.PivotOption.Center;
+			Parent = Container.PivotOption.Center;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2846,7 +2844,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.PivotOption.Center;
+			Parent = Container.PivotOption.Center;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2858,7 +2856,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.PivotOption;
+			Parent = Container.PivotOption;
 			Name = "Local";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2867,7 +2865,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.PivotOption.Local;
+			Parent = Container.PivotOption.Local;
 			Name = "SelectedIndicator";
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
 			BorderSizePixel = 0;
@@ -2877,7 +2875,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextButton" {
-			Parent = GUIRoot.Container.PivotOption.Local;
+			Parent = Container.PivotOption.Local;
 			Name = "Button";
 			Active = true;
 			BackgroundTransparency = 1;
@@ -2895,7 +2893,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.PivotOption.Local;
+			Parent = Container.PivotOption.Local;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2904,7 +2902,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.PivotOption.Local;
+			Parent = Container.PivotOption.Local;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2916,7 +2914,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.PivotOption;
+			Parent = Container.PivotOption;
 			Name = "Last";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2925,7 +2923,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.PivotOption.Last;
+			Parent = Container.PivotOption.Last;
 			Name = "SelectedIndicator";
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
 			BorderSizePixel = 0;
@@ -2935,7 +2933,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextButton" {
-			Parent = GUIRoot.Container.PivotOption.Last;
+			Parent = Container.PivotOption.Last;
 			Name = "Button";
 			Active = true;
 			BackgroundTransparency = 1;
@@ -2953,7 +2951,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.PivotOption.Last;
+			Parent = Container.PivotOption.Last;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2962,7 +2960,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.PivotOption.Last;
+			Parent = Container.PivotOption.Last;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -2974,7 +2972,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.PivotOption;
+			Parent = Container.PivotOption;
 			Name = "Label";
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
@@ -2982,7 +2980,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.PivotOption.Label;
+			Parent = Container.PivotOption.Label;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
 			Size = UDim2.new( 1, 0, 1, 0 );
@@ -2996,7 +2994,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "Title";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3004,7 +3002,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Title;
+			Parent = Container.Title;
 			Name = "ColorBar";
 			BackgroundColor3 = self.Color.Color;
 			BorderSizePixel = 0;
@@ -3013,7 +3011,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Title;
+			Parent = Container.Title;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3030,7 +3028,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Title;
+			Parent = Container.Title;
 			Name = "F3XSignature";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3047,7 +3045,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "IncrementOption";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3055,7 +3053,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.IncrementOption;
+			Parent = Container.IncrementOption;
 			Name = "Increment";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3064,7 +3062,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Parent = Container.IncrementOption.Increment;
 			Name = "SelectedIndicator";
 			BorderSizePixel = 0;
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
@@ -3073,7 +3071,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextBox" {
-			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Parent = Container.IncrementOption.Increment;
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
 			Position = UDim2.new( 0, 5, 0, 0 );
@@ -3087,14 +3085,14 @@ Tools.Rotate.showGUI = function ( self )
 			-- Change the increment option when the value of the textbox is updated
 			[RbxUtility.Create.E "FocusLost"] = function ( enter_pressed )
 				if enter_pressed then
-					self.Options.increment = tonumber( GUIRoot.Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
-					GUIRoot.Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
+					self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
+					Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
 				end;
 			end;
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.IncrementOption.Increment;
+			Parent = Container.IncrementOption.Increment;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3103,7 +3101,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.IncrementOption;
+			Parent = Container.IncrementOption;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3111,7 +3109,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.IncrementOption.Label;
+			Parent = Container.IncrementOption.Label;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
 			Size = UDim2.new( 1, 0, 1, 0 );
@@ -3125,7 +3123,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "Info";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3135,7 +3133,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info;
+			Parent = Container.Info;
 			Name = "ColorBar";
 			BorderSizePixel = 0;
 			BackgroundColor3 = self.Color.Color;
@@ -3143,7 +3141,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info;
+			Parent = Container.Info;
 			Name = "Label";
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
@@ -3160,7 +3158,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info;
+			Parent = Container.Info;
 			Name = "RotationInfo";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3168,7 +3166,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info.RotationInfo;
+			Parent = Container.Info.RotationInfo;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
 			Size = UDim2.new( 0, 75, 0, 25 );
@@ -3182,7 +3180,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info.RotationInfo;
+			Parent = Container.Info.RotationInfo;
 			Name = "X";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3191,7 +3189,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info.RotationInfo.X;
+			Parent = Container.Info.RotationInfo.X;
 			Name = "TextLabel";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3206,7 +3204,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.Info.RotationInfo.X;
+			Parent = Container.Info.RotationInfo.X;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3215,7 +3213,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info.RotationInfo;
+			Parent = Container.Info.RotationInfo;
 			Name = "Y";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3224,7 +3222,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info.RotationInfo.Y;
+			Parent = Container.Info.RotationInfo.Y;
 			Name = "TextLabel";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3239,7 +3237,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.Info.RotationInfo.Y;
+			Parent = Container.Info.RotationInfo.Y;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3248,7 +3246,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Info.RotationInfo;
+			Parent = Container.Info.RotationInfo;
 			Name = "Z";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3257,7 +3255,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Info.RotationInfo.Z;
+			Parent = Container.Info.RotationInfo.Z;
 			Name = "TextLabel";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3272,7 +3270,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.Info.RotationInfo.Z;
+			Parent = Container.Info.RotationInfo.Z;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3281,7 +3279,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "Changes";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3291,7 +3289,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Changes;
+			Parent = Container.Changes;
 			Name = "ColorBar";
 			BorderSizePixel = 0;
 			BackgroundColor3 = self.Color.Color;
@@ -3299,7 +3297,7 @@ Tools.Rotate.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Changes;
+			Parent = Container.Changes;
 			Name = "Text";
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
@@ -3315,11 +3313,11 @@ Tools.Rotate.showGUI = function ( self )
 			TextXAlignment = Enum.TextXAlignment.Right;
 		};
 
-		self.Temporary.GUI = GUIRoot;
+		self.Temporary.GUI = Container;
 	end;
 
 	-- Reveal the GUI
-	self.Temporary.GUI.Container.Visible = true;
+	self.Temporary.GUI.Visible = true;
 
 end;
 
@@ -3330,7 +3328,7 @@ Tools.Rotate.updateGUI = function ( self )
 		return;
 	end;
 
-	local GUI = self.Temporary.GUI.Container;
+	local GUI = self.Temporary.GUI;
 
 	if #Selection.Items > 0 then
 
@@ -3384,7 +3382,7 @@ Tools.Rotate.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists
 	if self.Temporary.GUI then
-		self.Temporary.GUI.Container.Visible = false;
+		self.Temporary.GUI.Visible = false;
 	end;
 
 end;
@@ -3406,7 +3404,7 @@ end;
 Tools.Rotate.changePivot = function ( self, new_pivot )
 
 	-- Have a quick reference to the GUI (if any)
-	local PivotOptionGUI = self.Temporary.GUI and self.Temporary.GUI.Container.PivotOption or nil;
+	local PivotOptionGUI = self.Temporary.GUI and self.Temporary.GUI.PivotOption or nil;
 
 	-- Disconnect any handle-related listeners that are specific to a certain pivot option
 	if self.Temporary.Connections.HandleFocusChangeListener then
@@ -3848,12 +3846,12 @@ Tools.Paint.changeColor = function ( self, Color )
 		if self.Temporary.GUI then
 
 			-- First clear out any other marks
-			for _, ColorSquare in pairs( self.Temporary.GUI.Container.Palette:GetChildren() ) do
+			for _, ColorSquare in pairs( self.Temporary.GUI.Palette:GetChildren() ) do
 				ColorSquare.Text = "";
 			end;
 
 			-- Then mark the right square
-			self.Temporary.GUI.Container.Palette[Color.Name].Text = "X";
+			self.Temporary.GUI.Palette[Color.Name].Text = "X";
 
 		end;
 
@@ -3865,7 +3863,7 @@ Tools.Paint.changeColor = function ( self, Color )
 
 		-- Clear out any color option marks on any of the squares
 		if self.Temporary.GUI then
-			for _, ColorSquare in pairs( self.Temporary.GUI.Container.Palette:GetChildren() ) do
+			for _, ColorSquare in pairs( self.Temporary.GUI.Palette:GetChildren() ) do
 				ColorSquare.Text = "";
 			end;
 		end;
@@ -3880,12 +3878,9 @@ Tools.Paint.showGUI = function ( self )
 	if not self.Temporary.GUI then
 
 		-- Create the GUI container
-		local PaletteGUI = Instance.new( "ScreenGui", Player.PlayerGui );
-		PaletteGUI.Name = "BTPaintGUI";
-
-		RbxUtility.Create "Frame" {
-			Parent = PaletteGUI;
-			Name = "Container";
+		local Container = RbxUtility.Create "Frame" {
+			Parent = UI;
+			Name = "BTPaintGUI";
 			Active = true;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3894,7 +3889,7 @@ Tools.Paint.showGUI = function ( self )
 			Draggable = true;
 		};
 		RbxUtility.Create "Frame" {
-			Parent = PaletteGUI.Container;
+			Parent = Container;
 			Name = "Title";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3902,7 +3897,7 @@ Tools.Paint.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = PaletteGUI.Container.Title;
+			Parent = Container.Title;
 			Name = "ColorBar";
 			BackgroundColor3 = BrickColor.new( "Really red" ).Color;
 			BorderSizePixel = 0;
@@ -3911,7 +3906,7 @@ Tools.Paint.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = PaletteGUI.Container.Title;
+			Parent = Container.Title;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3928,7 +3923,7 @@ Tools.Paint.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = PaletteGUI.Container.Title;
+			Parent = Container.Title;
 			Name = "F3XSignature";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -3946,7 +3941,7 @@ Tools.Paint.showGUI = function ( self )
 
 		-- Create the frame that will contain the colors
 		local PaletteFrame = RbxUtility.Create "Frame" {
-			Parent = PaletteGUI.Container;
+			Parent = Container;
 			Name = "Palette";
 			BackgroundColor3 = Color3.new( 0, 0, 0 );
 			Transparency = 1;
@@ -3987,11 +3982,11 @@ Tools.Paint.showGUI = function ( self )
 
 		end;
 
-		self.Temporary.GUI = PaletteGUI;
+		self.Temporary.GUI = Container;
 	end;
 
 	-- Reveal the GUI
-	self.Temporary.GUI.Container.Visible = true;
+	self.Temporary.GUI.Visible = true;
 
 end;
 
@@ -3999,7 +3994,7 @@ Tools.Paint.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists
 	if self.Temporary.GUI then
-		self.Temporary.GUI.Container.Visible = false;
+		self.Temporary.GUI.Visible = false;
 	end;
 
 end;
@@ -4115,7 +4110,7 @@ Tools.Anchor.Listeners.Equipped = function ()
 				Tools.Anchor.State.anchored = anchor_status;
 
 				-- Update the GUI if it's visible
-				if Tools.Anchor.Temporary.GUI and Tools.Anchor.Temporary.GUI.Container.Visible then
+				if Tools.Anchor.Temporary.GUI and Tools.Anchor.Temporary.GUI.Visible then
 					Tools.Anchor:updateGUI();
 				end;
 
@@ -4173,12 +4168,10 @@ Tools.Anchor.showGUI = function ( self )
 
 	-- Create the GUI if it doesn't exist
 	if not self.Temporary.GUI then
-		local GUIRoot = Instance.new( "ScreenGui", Player.PlayerGui );
-		GUIRoot.Name = "BTAnchorToolGUI";
 
-		RbxUtility.Create "Frame" {
-			Parent = GUIRoot;
-			Name = "Container";
+		local Container = RbxUtility.Create "Frame" {
+			Parent = UI;
+			Name = "BTAnchorToolGUI";
 			Active = true;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4188,7 +4181,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "Title";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4196,7 +4189,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Title;
+			Parent = Container.Title;
 			Name = "ColorBar";
 			BackgroundColor3 = self.Color.Color;
 			BorderSizePixel = 0;
@@ -4205,7 +4198,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Title;
+			Parent = Container.Title;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4222,7 +4215,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Title;
+			Parent = Container.Title;
 			Name = "F3XSignature";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4239,7 +4232,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "Status";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4247,7 +4240,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Status;
+			Parent = Container.Status;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4264,7 +4257,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Status;
+			Parent = Container.Status;
 			Name = "Anchored";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4273,7 +4266,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Status.Anchored;
+			Parent = Container.Status.Anchored;
 			Name = "SelectedIndicator";
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
 			BorderSizePixel = 0;
@@ -4284,7 +4277,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextButton" {
-			Parent = GUIRoot.Container.Status.Anchored;
+			Parent = Container.Status.Anchored;
 			Name = "Button";
 			Active = true;
 			BackgroundTransparency = 1;
@@ -4302,7 +4295,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.Status.Anchored;
+			Parent = Container.Status.Anchored;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4311,7 +4304,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Status.Anchored;
+			Parent = Container.Status.Anchored;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4323,7 +4316,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Status;
+			Parent = Container.Status;
 			Name = "Unanchored";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4332,7 +4325,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Status.Unanchored;
+			Parent = Container.Status.Unanchored;
 			Name = "SelectedIndicator";
 			BackgroundColor3 = Color3.new( 1, 1, 1 );
 			BorderSizePixel = 0;
@@ -4343,7 +4336,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextButton" {
-			Parent = GUIRoot.Container.Status.Unanchored;
+			Parent = Container.Status.Unanchored;
 			Name = "Button";
 			Active = true;
 			BackgroundTransparency = 1;
@@ -4361,7 +4354,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "ImageLabel" {
-			Parent = GUIRoot.Container.Status.Unanchored;
+			Parent = Container.Status.Unanchored;
 			Name = "Background";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4370,7 +4363,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Status.Unanchored;
+			Parent = Container.Status.Unanchored;
 			Name = "Label";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4382,7 +4375,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container;
+			Parent = Container;
 			Name = "Tip";
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
@@ -4391,7 +4384,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "Frame" {
-			Parent = GUIRoot.Container.Tip;
+			Parent = Container.Tip;
 			Name = "ColorBar";
 			BorderSizePixel = 0;
 			BackgroundColor3 = self.Color.Color;
@@ -4399,7 +4392,7 @@ Tools.Anchor.showGUI = function ( self )
 		};
 
 		RbxUtility.Create "TextLabel" {
-			Parent = GUIRoot.Container.Tip;
+			Parent = Container.Tip;
 			Name = "Text";
 			BorderSizePixel = 0;
 			BackgroundTransparency = 1;
@@ -4414,11 +4407,11 @@ Tools.Anchor.showGUI = function ( self )
 			TextWrapped = true;
 			TextXAlignment = Enum.TextXAlignment.Center;
 		};
-		self.Temporary.GUI = GUIRoot;
+		self.Temporary.GUI = Container;
 	end;
 
 	-- Reveal the GUI
-	self.Temporary.GUI.Container.Visible = true;
+	self.Temporary.GUI.Visible = true;
 
 end;
 
@@ -4429,7 +4422,7 @@ Tools.Anchor.updateGUI = function ( self )
 		return;
 	end;
 
-	local GUI = self.Temporary.GUI.Container;
+	local GUI = self.Temporary.GUI;
 
 	if self.State.anchored == nil then
 		GUI.Status.Anchored.Background.Image = light_slanted_rectangle;
@@ -4457,7 +4450,7 @@ Tools.Anchor.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists
 	if self.Temporary.GUI then
-		self.Temporary.GUI.Container.Visible = false;
+		self.Temporary.GUI.Visible = false;
 	end;
 
 end;
@@ -4511,7 +4504,7 @@ Select2D = {
 		-- Create the GUI
 		self.GUI = RbxUtility.Create "ScreenGui" {
 			Name = "BTSelectionRectangle";
-			Parent = Player.PlayerGui;
+			Parent = UI;
 		};
 
 		local Rectangle = RbxUtility.Create "Frame" {
@@ -4604,7 +4597,7 @@ SelectEdge = {
 	["Marker"] = nil;
 	["MarkerOutline"] = RbxUtility.Create "SelectionBox" {
 		Color = BrickColor.new( "Institutional white" );
-		Parent = Player.PlayerGui;
+		Parent = UI;
 		Name = "BTEdgeSelectionMarkerOutline";
 	};
 
@@ -4807,13 +4800,13 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 	Mouse = CurrentMouse;
 
-	Options.TargetBox = Instance.new( "SelectionBox", Player.PlayerGui );
+	Options.TargetBox = Instance.new( "SelectionBox", UI );
 	Options.TargetBox.Name = "BTTargetBox";
 	Options.TargetBox.Color = BrickColor.new( "Institutional white" );
 
 	-- Enable any temporarily-disabled selection boxes
 	for _, SelectionBox in pairs( SelectionBoxes ) do
-		SelectionBox.Parent = Player.PlayerGui;
+		SelectionBox.Parent = UI;
 	end;
 
 	-- Call the `Equipped` listener of the current tool
@@ -5041,7 +5034,7 @@ Tool.Unequipped:connect( function ()
 	Mouse = nil;
 
 	-- Remove the mouse target SelectionBox from `Player`
-	local TargetBox = Player.PlayerGui:FindFirstChild( "BTTargetBox" );
+	local TargetBox = UI:FindFirstChild( "BTTargetBox" );
 	if TargetBox then
 		TargetBox:Destroy();
 	end;
