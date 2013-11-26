@@ -579,7 +579,7 @@ Tools.Move.Listeners.Unequipped = function ()
 end;
 
 Tools.Move.updateGUI = function ( self )
-	
+
 	if self.Temporary.GUI then
 		local GUI = self.Temporary.GUI;
 
@@ -1322,7 +1322,7 @@ Tools.Move.showHandles = function ( self, Part )
 		end );
 
 		self.Temporary.Handles.MouseDrag:connect( function ( face, drag_distance )
-			
+
 			-- Calculate which multiple of the increment to use based on the current drag distance's
 			-- proximity to their nearest upper and lower multiples
 
@@ -1359,7 +1359,7 @@ Tools.Move.showHandles = function ( self, Part )
 					elseif self.Options.axes == "last" then
 						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, increase, 0 ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
 					end;
-				
+
 				elseif face == Enum.NormalId.Bottom then
 					if self.Options.axes == "global" then
 						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( 0, -increase, 0 ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
@@ -1457,7 +1457,7 @@ Tools.Move.updateBoundingBox = function ( self )
 		self.Temporary.BoundingBox.Size = SelectionSize;
 		self.Temporary.BoundingBox.CFrame = SelectionPosition;
 		self:showHandles( self.Temporary.BoundingBox );
-	
+
 	else
 		self:hideHandles();
 	end;
@@ -2393,7 +2393,7 @@ Tools.Resize.showHandles = function ( self, Part )
 		end );
 
 		self.Temporary.Handles.MouseDrag:connect( function ( face, drag_distance )
-			
+
 			-- Calculate which multiple of the increment to use based on the current drag distance's
 			-- proximity to their nearest upper and lower multiples
 
@@ -3394,7 +3394,7 @@ Tools.Rotate.updateBoundingBox = function ( self )
 		self.Temporary.BoundingBox.Size = SelectionSize;
 		self.Temporary.BoundingBox.CFrame = SelectionPosition;
 		self:showHandles( self.Temporary.BoundingBox );
-	
+
 	else
 		self:hideHandles();
 	end;
@@ -3609,7 +3609,7 @@ Tools.Rotate.showHandles = function ( self, Part )
 		end );
 
 		self.Temporary.Handles.MouseDrag:connect( function ( axis, drag_distance )
-			
+
 			-- Round down and convert the drag distance to degrees to make it easier to work with
 			local drag_distance = math.floor( math.deg( drag_distance ) );
 
@@ -4893,7 +4893,7 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		elseif key == "v" then
 			Options.Tool = Tools.Paint;
 
-		elseif key == "l" then
+		elseif key == "m" then
 			Options.Tool = Tools.Anchor;
 
 		elseif key == "q" then
@@ -5000,7 +5000,7 @@ Tool.Equipped:connect( function ( CurrentMouse )
 				if Mouse.Target and Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked then
 					Selection:add( Mouse.Target );
 				end;
-			
+
 			-- If the item _is_ already selected, remove it from the selection
 			else
 				if ( Mouse.X == click_x and Mouse.Y == click_y ) and Mouse.Target and Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked then
