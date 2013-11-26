@@ -4840,7 +4840,7 @@ Tools.Surface.showGUI = function ( self )
 			Active = true;
 			BackgroundTransparency = 1;
 			BorderSizePixel = 0;
-			Position = UDim2.new( 0, 0, 0, 95 );
+			Position = UDim2.new( 0, 0, 0, 172 );
 			Size = UDim2.new( 0, 245, 0, 90 );
 			Draggable = true;
 		};
