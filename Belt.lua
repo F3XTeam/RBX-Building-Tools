@@ -40,6 +40,7 @@ Camera = Services.Workspace.CurrentCamera;
 dark_slanted_rectangle = "http://www.roblox.com/asset/?id=127774197";
 light_slanted_rectangle = "http://www.roblox.com/asset/?id=127772502";
 action_completion_sound = "http://www.roblox.com/asset/?id=99666917";
+expand_arrow = "http://www.roblox.com/asset/?id=134367382";
 
 ------------------------------------------
 -- Load external dependencies
@@ -48,6 +49,7 @@ RbxUtility = LoadLibrary( "RbxUtility" );
 Services.ContentProvider:Preload( dark_slanted_rectangle );
 Services.ContentProvider:Preload( light_slanted_rectangle );
 Services.ContentProvider:Preload( action_completion_sound );
+Services.ContentProvider:Preload( expand_arrow );
 
 ------------------------------------------
 -- Define functions that are depended-upon
@@ -4477,6 +4479,588 @@ Tools.Anchor.Listeners.Unequipped = function ()
 end;
 
 ------------------------------------------
+-- Surface tool
+------------------------------------------
+
+-- Create the tool
+Tools.Surface = {};
+
+-- Define the tool's color
+Tools.Surface.Color = BrickColor.new( "Bright violet" );
+
+-- Keep a container for temporary connections
+Tools.Surface.Connections = {};
+
+-- Keep a container for state data
+Tools.Surface.State = {
+	["type"] = nil;
+};
+
+-- Maintain a container for options
+Tools.Surface.Options = {
+	["side"] = Enum.NormalId.Top;
+};
+
+-- Keep a container for platform event connections
+Tools.Surface.Listeners = {};
+
+-- Create the handle
+Tools.Surface.Handle = RbxUtility.Create "Part" {
+	Name = "Handle";
+	Locked = true;
+	BrickColor = Tools.Surface.Color;
+	FormFactor = Enum.FormFactor.Custom;
+	Size = Vector3.new( 0.8, 0.8, 0.8 );
+	TopSurface = Enum.SurfaceType.Smooth;
+	BottomSurface = Enum.SurfaceType.Smooth;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Surface.Handle;
+	Face = Enum.NormalId.Front;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Surface.Handle;
+	Face = Enum.NormalId.Back;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Surface.Handle;
+	Face = Enum.NormalId.Left;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Surface.Handle;
+	Face = Enum.NormalId.Right;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Surface.Handle;
+	Face = Enum.NormalId.Top;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Surface.Handle;
+	Face = Enum.NormalId.Bottom;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+
+-- Set the grip for the handle
+Tools.Surface.Grip = CFrame.new( 0, 0, 0.4 );
+
+-- Start adding functionality to the tool
+Tools.Surface.Listeners.Equipped = function ()
+
+	local self = Tools.Surface;
+
+	-- Change the color of selection boxes temporarily
+	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = self.Color;
+	updateSelectionBoxColor();
+
+	-- Reveal the GUI
+	self:showGUI();
+
+	-- Restore the side option
+	self:changeSurface( self.Options.side );
+
+	-- Update the GUI regularly
+	coroutine.wrap( function ()
+		local updater_on = true;
+
+		-- Provide a function to stop the loop
+		self.Updater = function ()
+			updater_on = false;
+		end;
+
+		while wait( 0.1 ) and updater_on do
+
+			-- Make sure the tool's equipped
+			if Options.Tool == self then
+
+				-- Update the surface type of every item in the selection
+				local surface_type = nil;
+				for item_index, Item in pairs( Selection.Items ) do
+
+					-- Set the first values for the first item
+					if item_index == 1 then
+						surface_type = Item[self.Options.side.Name .. "Surface"];
+
+					-- Otherwise, compare them and set them to `nil` if they're not identical
+					else
+						if surface_type ~= Item[self.Options.side.Name .. "Surface"] then
+							surface_type = nil;
+						end;
+					end;
+
+				end;
+
+				self.State.type = surface_type;
+
+				-- Update the GUI if it's visible
+				if self.GUI and self.GUI.Visible then
+					self:updateGUI();
+				end;
+
+			end;
+
+		end;
+
+	end )();
+
+end;
+
+Tools.Surface.Listeners.Unequipped = function ()
+
+	local self = Tools.Surface;
+
+	-- Stop the GUI updating loop
+	self.Updater();
+	self.Updater = nil;
+
+	-- Hide the GUI
+	self:hideGUI();
+
+	-- Disconnect temporary connections
+	for connection_index, Connection in pairs( self.Connections ) do
+		Connection:disconnect();
+		self.Connections[connection_index] = nil;
+	end;
+
+	-- Restore the original color of selection boxes
+	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
+	updateSelectionBoxColor();
+
+end;
+
+Tools.Surface.Listeners.Button2Down = function ()
+
+	local self = Tools.Surface;
+
+	-- Capture the camera rotation (for later use
+	-- in determining whether a surface was being
+	-- selected or the camera was being rotated
+	-- with the right mouse button)
+	local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
+
+end;
+
+Tools.Surface.Listeners.Button2Up = function ()
+
+	local self = Tools.Surface;
+
+	local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+	local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
+
+	-- If a surface is selected
+	if Selection:find( Mouse.Target ) and self.State.PreB2DownCameraRotation == CameraRotation then
+		self:changeSurface( Mouse.TargetSurface );
+	end;
+
+end;
+
+Tools.Surface.SpecialTypeNames = {
+	SmoothNoOutlines = "NO OUTLINE",
+	Inlet = "INLETS"
+};
+
+Tools.Surface.changeType = function ( self, surface_type )
+	-- Apply `surface_type` to all items in the selection
+	for _, Item in pairs( Selection.Items ) do
+		Item[self.Options.side.Name .. "Surface"] = surface_type;
+	end;
+	self.TypeDropdown:selectOption( self.SpecialTypeNames[surface_type.Name] or surface_type.Name:upper() );
+	if self.TypeDropdown.open then
+		self.TypeDropdown:toggle();
+	end;
+end;
+
+Tools.Surface.changeSurface = function ( self, surface )
+	self.Options.side = surface;
+	self.SideDropdown:selectOption( surface.Name:upper() );
+	if self.SideDropdown.open then
+		self.SideDropdown:toggle();
+	end;
+end;
+
+Tools.Surface.updateGUI = function ( self )
+
+	-- Make sure the GUI exists
+	if not self.GUI then
+		return;
+	end;
+
+	if self.State.type then
+		self.TypeDropdown:selectOption( self.SpecialTypeNames[self.State.type.Name] or self.State.type.Name:upper() );
+	else
+		self.TypeDropdown:selectOption( "" );
+	end;
+
+end;
+
+function createDropdown()
+
+	local Frame = RbxUtility.Create "Frame" {
+		Name = "Dropdown";
+		Size = UDim2.new( 0, 20, 0, 20 );
+		BackgroundTransparency = 1;
+		BorderSizePixel = 0;
+		ClipsDescendants = true;
+	};
+
+	RbxUtility.Create "ImageLabel" {
+		Parent = Frame;
+		Name = "Arrow";
+		BackgroundTransparency = 1;
+		BorderSizePixel = 0;
+		Image = expand_arrow;
+		Position = UDim2.new( 1, -21, 0, 3 );
+		Size = UDim2.new( 0, 20, 0, 20 );
+		ZIndex = 3;
+	};
+
+	local DropdownObject = {
+		-- Provide access to the actual frame
+		Frame = Frame;
+
+		-- Keep a list of all the options in the dropdown
+		_options = {};
+
+		-- Provide a function to add options to the dropdown
+		addOption = function ( self, option )
+
+			-- Add the option to the list
+			table.insert( self._options, option );
+
+			-- Create the GUI for the option
+			local Button = RbxUtility.Create "TextButton" {
+				Parent = self.Frame;
+				BackgroundColor3 = Color3.new( 0, 0, 0 );
+				BackgroundTransparency = 0.3;
+				BorderColor3 = Color3.new( 27 / 255, 42 / 255, 53 / 255 );
+				BorderSizePixel = 1;
+				Name = option;
+				Position = UDim2.new( 0, 0, 0, 25 * #self._options );
+				Size = UDim2.new( 1, 0, 0, 25 );
+				ZIndex = 2;
+				Text = "";
+			};
+			local Label = RbxUtility.Create "TextLabel" {
+				Parent = Button;
+				BackgroundTransparency = 1;
+				BorderSizePixel = 0;
+				Position = UDim2.new( 0, 6, 0, 0 );
+				Size = UDim2.new( 1, -30, 1, 0 );
+				ZIndex = 3;
+				Font = Enum.Font.ArialBold;
+				FontSize = Enum.FontSize.Size12;
+				Text = option;
+				TextColor3 = Color3.new( 1, 1, 1 );
+				TextXAlignment = Enum.TextXAlignment.Left;
+				TextYAlignment = Enum.TextYAlignment.Center;
+			};
+
+			-- Return the button object
+			return Button;
+
+		end;
+
+		selectOption = function ( self, option )
+			self.Frame.MainButton.CurrentOption.Text = option;
+		end;
+
+		open = false;
+
+		toggle = function ( self )
+
+			-- If it's open, close it
+			if self.open then
+				self.Frame.MainButton.BackgroundTransparency = 0.3;
+				self.Frame.ClipsDescendants = true;
+				self.open = false;
+
+			-- If it's not open, open it
+			else
+				self.Frame.MainButton.BackgroundTransparency = 0;
+				self.Frame.ClipsDescendants = false;
+				self.open = true;
+			end;
+
+		end;
+
+	};
+
+	-- Create the GUI for the option
+	local MainButton = RbxUtility.Create "TextButton" {
+		Parent = Frame;
+		Name = "MainButton";
+		BackgroundColor3 = Color3.new( 0, 0, 0 );
+		BackgroundTransparency = 0.3;
+		BorderColor3 = Color3.new( 27 / 255, 42 / 255, 53 / 255 );
+		BorderSizePixel = 1;
+		Position = UDim2.new( 0, 0, 0, 0 );
+		Size = UDim2.new( 1, 0, 0, 25 );
+		ZIndex = 2;
+		Text = "";
+
+		-- Toggle the dropdown when pressed
+		[RbxUtility.Create.E "MouseButton1Up"] = function ()
+			DropdownObject:toggle();
+		end;
+	};
+	RbxUtility.Create "TextLabel" {
+		Parent = MainButton;
+		Name = "CurrentOption";
+		BackgroundTransparency = 1;
+		BorderSizePixel = 0;
+		Position = UDim2.new( 0, 6, 0, 0 );
+		Size = UDim2.new( 1, -30, 1, 0 );
+		ZIndex = 3;
+		Font = Enum.Font.ArialBold;
+		FontSize = Enum.FontSize.Size12;
+		Text = "";
+		TextColor3 = Color3.new( 1, 1, 1 );
+		TextXAlignment = Enum.TextXAlignment.Left;
+		TextYAlignment = Enum.TextYAlignment.Center;
+	};
+
+	return DropdownObject;
+
+end;
+
+Tools.Surface.showGUI = function ( self )
+
+	-- Create the GUI if it doesn't already exist
+	if not self.GUI then
+
+		local Container = RbxUtility.Create "Frame" {
+			Parent = UI;
+			Name = "BTSurfaceToolGUI";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 95 );
+			Size = UDim2.new( 0, 245, 0, 90 );
+			Draggable = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "Title";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.Title;
+			Name = "ColorBar";
+			BackgroundColor3 = self.Color.Color;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, -3 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Title;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "SURFACE TOOL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Title;
+			Name = "F3XSignature";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size14;
+			Text = "F3X";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Right;
+			TextStrokeTransparency = 0.9;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "SideOption";
+			Position = UDim2.new( 0, 14, 0, 30 );
+			Size = UDim2.new( 0, 120, 0, 25 );
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.SideOption;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Name = "Label";
+			Size = UDim2.new( 0, 40, 0, 25 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Side";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextYAlignment = Enum.TextYAlignment.Center;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		local SideDropdown = createDropdown();
+		self.SideDropdown = SideDropdown;
+		SideDropdown.Frame.Parent = Container.SideOption;
+		SideDropdown.Frame.Position = UDim2.new( 0, 30, 0, 0 );
+		SideDropdown.Frame.Size = UDim2.new( 0, 72, 0, 25 );
+
+		SideDropdown:addOption( "TOP" ).MouseButton1Up:connect( function ()
+			self:changeSurface( Enum.NormalId.Top );
+		end );
+		SideDropdown:addOption( "BOTTOM" ).MouseButton1Up:connect( function ()
+			self:changeSurface( Enum.NormalId.Bottom );
+		end );
+		SideDropdown:addOption( "FRONT" ).MouseButton1Up:connect( function ()
+			self:changeSurface( Enum.NormalId.Front );
+		end );
+		SideDropdown:addOption( "BACK" ).MouseButton1Up:connect( function ()
+			self:changeSurface( Enum.NormalId.Back );
+		end );
+		SideDropdown:addOption( "LEFT" ).MouseButton1Up:connect( function ()
+			self:changeSurface( Enum.NormalId.Left );
+		end );
+		SideDropdown:addOption( "RIGHT" ).MouseButton1Up:connect( function ()
+			self:changeSurface( Enum.NormalId.Right );
+		end );
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "TypeOption";
+			Position = UDim2.new( 0, 124, 0, 30 );
+			Size = UDim2.new( 0, 120, 0, 25 );
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.TypeOption;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Name = "Label";
+			Size = UDim2.new( 0, 40, 0, 25 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Type";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextYAlignment = Enum.TextYAlignment.Center;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		local TypeDropdown = createDropdown();
+		self.TypeDropdown = TypeDropdown;
+		TypeDropdown.Frame.Parent = Container.TypeOption;
+		TypeDropdown.Frame.Position = UDim2.new( 0, 30, 0, 0 );
+		TypeDropdown.Frame.Size = UDim2.new( 0, 87, 0, 25 );
+
+		TypeDropdown:addOption( "STUDS" ).MouseButton1Up:connect( function ()
+			self:changeType( Enum.SurfaceType.Studs );
+		end );
+		TypeDropdown:addOption( "INLETS" ).MouseButton1Up:connect( function ()
+			self:changeType( Enum.SurfaceType.Inlet );
+		end );
+		TypeDropdown:addOption( "SMOOTH" ).MouseButton1Up:connect( function ()
+			self:changeType( Enum.SurfaceType.Smooth );
+		end );
+		TypeDropdown:addOption( "WELD" ).MouseButton1Up:connect( function ()
+			self:changeType( Enum.SurfaceType.Weld );
+		end );
+		TypeDropdown:addOption( "GLUE" ).MouseButton1Up:connect( function ()
+			self:changeType( Enum.SurfaceType.Glue );
+		end );
+		TypeDropdown:addOption( "UNIVERSAL" ).MouseButton1Up:connect( function ()
+			self:changeType( Enum.SurfaceType.Universal );
+		end );
+		TypeDropdown:addOption( "HINGE" ).MouseButton1Up:connect( function ()
+			self:changeType( Enum.SurfaceType.Hinge );
+		end );
+		TypeDropdown:addOption( "MOTOR" ).MouseButton1Up:connect( function ()
+			self:changeType( Enum.SurfaceType.Motor );
+		end );
+		TypeDropdown:addOption( "NO OUTLINE" ).MouseButton1Up:connect( function ()
+			self:changeType( Enum.SurfaceType.SmoothNoOutlines );
+		end );
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "Tip";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 70 );
+			Size = UDim2.new( 1, -5, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.Tip;
+			Name = "ColorBar";
+			BorderSizePixel = 0;
+			BackgroundColor3 = self.Color.Color;
+			Size = UDim2.new( 1, 0, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Tip;
+			Name = "Text";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 6, 0, 2 );
+			Size = UDim2.new( 1, -6, 0, 20 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size11;
+			Text = "TIP: Select a part and right click on a surface";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0.5;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextYAlignment = Enum.TextYAlignment.Center;
+		};
+
+		self.GUI = Container;
+
+	end;
+
+	-- Reveal the GUI
+	self.GUI.Visible = true;
+
+end;
+
+Tools.Surface.hideGUI = function ( self )
+
+	-- Hide the GUI if it exists already
+	if self.GUI then
+		self.GUI.Visible = false;
+	end;
+
+end;
+
+------------------------------------------
 -- Provide an interface to the 2D
 -- selection system
 ------------------------------------------
@@ -4893,6 +5477,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		elseif key == "v" then
 			Options.Tool = Tools.Paint;
 
+		elseif key == "b" then
+			Options.Tool = Tools.Surface;
+
 		elseif key == "m" then
 			Options.Tool = Tools.Anchor;
 
@@ -5025,6 +5612,20 @@ Tool.Equipped:connect( function ( CurrentMouse )
 			override_selection = false;
 		end;
 
+	end );
+
+	Mouse.Button2Down:connect( function ()
+		-- Fire tool listeners
+		if Options.Tool and Options.Tool.Listeners.Button2Down then
+			Options.Tool.Listeners.Button2Down();
+		end;
+	end );
+
+	Mouse.Button2Up:connect( function ()
+		-- Fire tool listeners
+		if Options.Tool and Options.Tool.Listeners.Button2Up then
+			Options.Tool.Listeners.Button2Up();
+		end;
 	end );
 
 end );
