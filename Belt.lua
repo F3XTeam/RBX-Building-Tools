@@ -5642,6 +5642,483 @@ Tools.Material.hideGUI = function ( self )
 end;
 
 ------------------------------------------
+-- Collision tool
+------------------------------------------
+
+-- Create the tool
+Tools.Collision = {};
+
+-- Create structures to hold data that the tool needs
+Tools.Collision.Temporary = {
+	["Connections"] = {};
+};
+
+Tools.Collision.State = {
+	["colliding"] = nil;
+};
+
+Tools.Collision.Listeners = {};
+
+-- Define the color of the tool
+Tools.Collision.Color = BrickColor.new( "Really black" );
+
+-- Create the handle
+Tools.Collision.Handle = RbxUtility.Create "Part" {
+	Name = "Handle";
+	Locked = true;
+	BrickColor = Tools.Collision.Color;
+	FormFactor = Enum.FormFactor.Custom;
+	Size = Vector3.new( 0.8, 0.8, 0.8 );
+	TopSurface = Enum.SurfaceType.Smooth;
+	BottomSurface = Enum.SurfaceType.Smooth;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Collision.Handle;
+	Face = Enum.NormalId.Front;
+	Texture = tool_decal;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Collision.Handle;
+	Face = Enum.NormalId.Back;
+	Texture = tool_decal;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Collision.Handle;
+	Face = Enum.NormalId.Left;
+	Texture = tool_decal;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Collision.Handle;
+	Face = Enum.NormalId.Right;
+	Texture = tool_decal;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Collision.Handle;
+	Face = Enum.NormalId.Top;
+	Texture = tool_decal;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Collision.Handle;
+	Face = Enum.NormalId.Bottom;
+	Texture = tool_decal;
+};
+
+-- Set the grip for the handle
+Tools.Collision.Grip = CFrame.new( 0, 0, 0.4 );
+
+-- Start adding functionality to the tool
+
+Tools.Collision.Listeners.Equipped = function ()
+
+	-- Change the color of selection boxes temporarily
+	Tools.Collision.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = Tools.Collision.Color;
+	updateSelectionBoxColor();
+
+	-- Reveal the GUI
+	Tools.Collision:showGUI();
+
+	-- Update the GUI regularly
+	coroutine.wrap( function ()
+		local updater_on = true;
+
+		-- Provide a function to stop the loop
+		Tools.Collision.Temporary.Updater = function ()
+			updater_on = false;
+		end;
+
+		while wait( 0.1 ) and updater_on do
+
+			-- Make sure the tool's equipped
+			if Options.Tool == Tools.Collision then
+
+				-- Update the collision status of every item in the selection
+				local colliding = nil;
+				for item_index, Item in pairs( Selection.Items ) do
+
+					-- Set the first values for the first item
+					if item_index == 1 then
+						colliding = Item.CanCollide;
+
+					-- Otherwise, compare them and set them to `nil` if they're not identical
+					else
+						if colliding ~= Item.CanCollide then
+							colliding = nil;
+						end;
+					end;
+
+				end;
+
+				Tools.Collision.State.colliding = colliding;
+
+				-- Update the GUI if it's visible
+				if Tools.Collision.Temporary.GUI and Tools.Collision.Temporary.GUI.Visible then
+					Tools.Collision:updateGUI();
+				end;
+
+			end;
+
+		end;
+
+	end )();
+
+	-- Listen for the Enter button to be pressed to toggle collision
+	Tools.Collision.Temporary.Connections.EnterButtonListener = Mouse.KeyDown:connect( function ( key )
+
+		local key = key:lower();
+		local key_code = key:byte();
+
+		-- If the Enter button is pressed
+		if key_code == 13 then
+
+			if Tools.Collision.State.colliding == true then
+				Tools.Collision:disable();
+
+			elseif Tools.Collision.State.colliding == false then
+				Tools.Collision:enable();
+
+			elseif Tools.Collision.State.colliding == nil then
+				Tools.Collision:enable();
+
+			end;
+
+		end;
+
+	end );
+
+end;
+
+Tools.Collision.enable = function ( self )
+
+	-- Enable collision for all the items in the selection
+	for _, Item in pairs( Selection.Items ) do
+		Item.CanCollide = true;
+	end;
+
+end;
+
+Tools.Collision.disable = function ( self )
+
+	-- Disable collision for all the items in the selection
+	for _, Item in pairs( Selection.Items ) do
+		Item.CanCollide = false;
+	end;
+
+end;
+
+Tools.Collision.showGUI = function ( self )
+
+	-- Create the GUI if it doesn't exist
+	if not self.Temporary.GUI then
+
+		local Container = RbxUtility.Create "Frame" {
+			Parent = UI;
+			Name = "BTCollisionToolGUI";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 280 );
+			Size = UDim2.new( 0, 200, 0, 90 );
+			Draggable = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "Title";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.Title;
+			Name = "ColorBar";
+			BackgroundColor3 = self.Color.Color;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, -3 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Title;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "COLLISION TOOL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Title;
+			Name = "F3XSignature";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size14;
+			Text = "F3X";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Right;
+			TextStrokeTransparency = 0.9;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "Status";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 30 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Status;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 14, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Collision";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Left;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.Status;
+			Name = "On";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 65, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.Status.On;
+			Name = "SelectedIndicator";
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, -2 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BackgroundTransparency = ( self.State.colliding == true ) and 0 or 1;
+		};
+
+		RbxUtility.Create "TextButton" {
+			Parent = Container.Status.On;
+			Name = "Button";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Text = "";
+			TextTransparency = 1;
+
+			-- Change the collision status when the button is clicked
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self:enable();
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = Container.Status.On;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = ( self.State.colliding == true ) and dark_slanted_rectangle or light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Status.On;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "ON";
+			TextColor3 = Color3.new( 1, 1, 1 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.Status;
+			Name = "Off";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 113, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.Status.Off;
+			Name = "SelectedIndicator";
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, -2 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			BackgroundTransparency = ( self.State.colliding == false ) and 0 or 1;
+		};
+
+		RbxUtility.Create "TextButton" {
+			Parent = Container.Status.Off;
+			Name = "Button";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 2;
+			Text = "";
+			TextTransparency = 1;
+
+			-- Change the collision status when the button is clicked
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self:disable();
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = Container.Status.Off;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = ( self.State.colliding == false ) and dark_slanted_rectangle or light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Status.Off;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "OFF";
+			TextColor3 = Color3.new( 1, 1, 1 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "Tip";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 70 );
+			Size = UDim2.new( 1, -5, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.Tip;
+			Name = "ColorBar";
+			BorderSizePixel = 0;
+			BackgroundColor3 = self.Color.Color;
+			Size = UDim2.new( 1, 0, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Tip;
+			Name = "Text";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 0, 0, 2 );
+			Size = UDim2.new( 1, 0, 0, 20 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size11;
+			Text = "TIP: Press Enter to quickly toggle collision.";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0.5;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Center;
+		};
+		self.Temporary.GUI = Container;
+	end;
+
+	-- Reveal the GUI
+	self.Temporary.GUI.Visible = true;
+
+end;
+
+Tools.Collision.updateGUI = function ( self )
+
+	-- Make sure the GUI exists
+	if not self.Temporary.GUI then
+		return;
+	end;
+
+	local GUI = self.Temporary.GUI;
+
+	if self.State.colliding == nil then
+		GUI.Status.On.Background.Image = light_slanted_rectangle;
+		GUI.Status.On.SelectedIndicator.BackgroundTransparency = 1;
+		GUI.Status.Off.Background.Image = light_slanted_rectangle;
+		GUI.Status.Off.SelectedIndicator.BackgroundTransparency = 1;
+
+	elseif self.State.colliding == true then
+		GUI.Status.On.Background.Image = dark_slanted_rectangle;
+		GUI.Status.On.SelectedIndicator.BackgroundTransparency = 0;
+		GUI.Status.Off.Background.Image = light_slanted_rectangle;
+		GUI.Status.Off.SelectedIndicator.BackgroundTransparency = 1;
+
+	elseif self.State.colliding == false then
+		GUI.Status.On.Background.Image = light_slanted_rectangle;
+		GUI.Status.On.SelectedIndicator.BackgroundTransparency = 1;
+		GUI.Status.Off.Background.Image = dark_slanted_rectangle;
+		GUI.Status.Off.SelectedIndicator.BackgroundTransparency = 0;
+
+	end;
+
+end;
+
+Tools.Collision.hideGUI = function ( self )
+
+	-- Hide the GUI if it exists
+	if self.Temporary.GUI then
+		self.Temporary.GUI.Visible = false;
+	end;
+
+end;
+
+Tools.Collision.Listeners.Unequipped = function ()
+
+	-- Stop the update loop
+	Tools.Collision.Temporary.Updater();
+	Tools.Collision.Temporary.Updater = nil;
+
+	-- Hide the GUI
+	Tools.Collision:hideGUI();
+
+	-- Clear out any temporary connections
+	for connection_index, Connection in pairs( Tools.Collision.Temporary.Connections ) do
+		Connection:disconnect();
+		Tools.Collision.Temporary.Connections[connection_index] = nil;
+	end;
+
+	-- Restore the original color of the selection boxes
+	SelectionBoxColor = Tools.Collision.Temporary.PreviousSelectionBoxColor;
+	updateSelectionBoxColor();
+
+end;
+
+------------------------------------------
 -- Provide an interface to the 2D
 -- selection system
 ------------------------------------------
@@ -6066,6 +6543,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		elseif key == "m" then
 			Options.Tool = Tools.Anchor;
+
+		elseif key == "k" then
+			Options.Tool = Tools.Collision;
 
 		elseif key == "q" then
 			Selection:clear();
