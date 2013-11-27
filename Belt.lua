@@ -199,8 +199,7 @@ ActiveKeys = {};
 Options = setmetatable( {
 
 	["_options"] = {
-		["Tool"] = nil,
-		["PreviousTool"] = nil
+		["Tool"] = nil
 	}
 
 }, {
@@ -218,18 +217,10 @@ Options = setmetatable( {
 					Options.Tool.Listeners.Unequipped();
 				end;
 
-				rawget( self, "_options" ).PreviousTool = Options.Tool;
 				rawget( self, "_options" ).Tool = nil;
 
-				-- Replace the current handle with `value.Handle`
-				local Handle = Tool:FindFirstChild( "Handle" );
-				if Handle then
-					Handle.Parent = nil;
-				end;
-				value.Handle.Parent = Tool;
-
-				-- Adjust the grip for the new handle
-				Tool.Grip = value.Grip;
+				-- Recolor the handle
+				Tool.Handle.BrickColor = value.Color;
 
 				-- Run (if existent) the new tool's `Equipped` listener
 				if value.Listeners.Equipped then
@@ -261,10 +252,63 @@ SelectionBoxes = {};
 SelectionExistenceListeners = {};
 SelectionBoxColor = BrickColor.new( "Cyan" );
 
+-- Keep a container for temporary connections
+-- from the platform
+Connections = {};
+
+-- Create the handle
+Handle = RbxUtility.Create "Part" {
+	Name = "Handle";
+	Parent = Tool;
+	Locked = true;
+	FormFactor = Enum.FormFactor.Custom;
+	Size = Vector3.new( 0.8, 0.8, 0.8 );
+	TopSurface = Enum.SurfaceType.Smooth;
+	BottomSurface = Enum.SurfaceType.Smooth;
+};
+
+RbxUtility.Create "Decal" {
+	Parent = Handle;
+	Face = Enum.NormalId.Front;
+	Texture = tool_decal;
+};
+RbxUtility.Create "Decal" {
+	Parent = Handle;
+	Face = Enum.NormalId.Back;
+	Texture = tool_decal;
+};
+RbxUtility.Create "Decal" {
+	Parent = Handle;
+	Face = Enum.NormalId.Left;
+	Texture = tool_decal;
+};
+RbxUtility.Create "Decal" {
+	Parent = Handle;
+	Face = Enum.NormalId.Right;
+	Texture = tool_decal;
+};
+RbxUtility.Create "Decal" {
+	Parent = Handle;
+	Face = Enum.NormalId.Top;
+	Texture = tool_decal;
+};
+RbxUtility.Create "Decal" {
+	Parent = Handle;
+	Face = Enum.NormalId.Bottom;
+	Texture = tool_decal;
+};
+
+-- Set the grip for the handle
+Tool.Grip = CFrame.new( 0, 0, 0.4 );
+
+-- Make sure the UI container gets placed
+Player:WaitForChild( "PlayerGui" );
+wait( 0 );
 UI = RbxUtility.Create "ScreenGui" {
 	Name = "Building Tools by F3X (UI)",
 	Parent = Player.PlayerGui
 };
+
 Dragger = nil;
 
 function updateSelectionBoxColor()
@@ -423,51 +467,6 @@ Tools.Move.State = {
 
 -- Add listeners
 Tools.Move.Listeners = {};
-
--- Create the handle
-Tools.Move.Handle = RbxUtility.Create "Part" {
-	Name = "Handle";
-	Locked = true;
-	BrickColor = BrickColor.new( "Deep orange" );
-	FormFactor = Enum.FormFactor.Custom;
-	Size = Vector3.new( 0.8, 0.8, 0.8 );
-	TopSurface = Enum.SurfaceType.Smooth;
-	BottomSurface = Enum.SurfaceType.Smooth;
-};
-
-RbxUtility.Create "Decal" {
-	Parent = Tools.Move.Handle;
-	Face = Enum.NormalId.Front;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Move.Handle;
-	Face = Enum.NormalId.Back;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Move.Handle;
-	Face = Enum.NormalId.Left;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Move.Handle;
-	Face = Enum.NormalId.Right;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Move.Handle;
-	Face = Enum.NormalId.Top;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Move.Handle;
-	Face = Enum.NormalId.Bottom;
-	Texture = tool_decal;
-};
-
--- Set the grip for the handle
-Tools.Move.Grip = CFrame.new( 0, 0, 0.4 );
 
 Tools.Move.Listeners.Equipped = function ()
 
@@ -1637,50 +1636,6 @@ Tools.Resize.Listeners = {};
 -- Define the color of the tool
 Tools.Resize.Color = BrickColor.new( "Cyan" );
 
--- Create the handle
-Tools.Resize.Handle = RbxUtility.Create "Part" {
-	Name = "Handle";
-	Locked = true;
-	BrickColor = Tools.Resize.Color;
-	FormFactor = Enum.FormFactor.Custom;
-	Size = Vector3.new( 0.8, 0.8, 0.8 );
-	TopSurface = Enum.SurfaceType.Smooth;
-	BottomSurface = Enum.SurfaceType.Smooth;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Resize.Handle;
-	Face = Enum.NormalId.Front;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Resize.Handle;
-	Face = Enum.NormalId.Back;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Resize.Handle;
-	Face = Enum.NormalId.Left;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Resize.Handle;
-	Face = Enum.NormalId.Right;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Resize.Handle;
-	Face = Enum.NormalId.Top;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Resize.Handle;
-	Face = Enum.NormalId.Bottom;
-	Texture = tool_decal;
-};
-
--- Set the grip for the handle
-Tools.Resize.Grip = CFrame.new( 0, 0, 0.4 );
-
 Tools.Resize.Listeners.Equipped = function ()
 
 	-- Change the color of selection boxes temporarily
@@ -2634,50 +2589,6 @@ Tools.Rotate.Listeners = {};
 
 -- Define the color of the tool
 Tools.Rotate.Color = BrickColor.new( "Bright green" );
-
--- Create the handle
-Tools.Rotate.Handle = RbxUtility.Create "Part" {
-	Name = "Handle";
-	Locked = true;
-	BrickColor = Tools.Rotate.Color;
-	FormFactor = Enum.FormFactor.Custom;
-	Size = Vector3.new( 0.8, 0.8, 0.8 );
-	TopSurface = Enum.SurfaceType.Smooth;
-	BottomSurface = Enum.SurfaceType.Smooth;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Rotate.Handle;
-	Face = Enum.NormalId.Front;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Rotate.Handle;
-	Face = Enum.NormalId.Back;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Rotate.Handle;
-	Face = Enum.NormalId.Left;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Rotate.Handle;
-	Face = Enum.NormalId.Right;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Rotate.Handle;
-	Face = Enum.NormalId.Top;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Rotate.Handle;
-	Face = Enum.NormalId.Bottom;
-	Texture = tool_decal;
-};
-
--- Set the grip for the handle
-Tools.Rotate.Grip = CFrame.new( 0, 0, 0.4 );
 
 -- Start adding functionality to the tool
 Tools.Rotate.Listeners.Equipped = function ()
@@ -3742,50 +3653,6 @@ Tools.Paint.Temporary = {};
 -- Add listeners
 Tools.Paint.Listeners = {};
 
--- Create the handle
-Tools.Paint.Handle = RbxUtility.Create "Part" {
-	Name = "Handle";
-	Locked = true;
-	BrickColor = Tools.Paint.Color;
-	FormFactor = Enum.FormFactor.Custom;
-	Size = Vector3.new( 0.8, 0.8, 0.8 );
-	TopSurface = Enum.SurfaceType.Smooth;
-	BottomSurface = Enum.SurfaceType.Smooth;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Paint.Handle;
-	Face = Enum.NormalId.Front;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Paint.Handle;
-	Face = Enum.NormalId.Back;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Paint.Handle;
-	Face = Enum.NormalId.Left;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Paint.Handle;
-	Face = Enum.NormalId.Right;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Paint.Handle;
-	Face = Enum.NormalId.Top;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Paint.Handle;
-	Face = Enum.NormalId.Bottom;
-	Texture = tool_decal;
-};
-
--- Set the grip for the handle
-Tools.Paint.Grip = CFrame.new( 0, 0, 0.4 );
-
 Tools.Paint.Listeners.Equipped = function ()
 
 	-- Change the color of selection boxes temporarily
@@ -4025,52 +3892,7 @@ Tools.Anchor.Listeners = {};
 -- Define the color of the tool
 Tools.Anchor.Color = BrickColor.new( "Really black" );
 
--- Create the handle
-Tools.Anchor.Handle = RbxUtility.Create "Part" {
-	Name = "Handle";
-	Locked = true;
-	BrickColor = Tools.Anchor.Color;
-	FormFactor = Enum.FormFactor.Custom;
-	Size = Vector3.new( 0.8, 0.8, 0.8 );
-	TopSurface = Enum.SurfaceType.Smooth;
-	BottomSurface = Enum.SurfaceType.Smooth;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Anchor.Handle;
-	Face = Enum.NormalId.Front;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Anchor.Handle;
-	Face = Enum.NormalId.Back;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Anchor.Handle;
-	Face = Enum.NormalId.Left;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Anchor.Handle;
-	Face = Enum.NormalId.Right;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Anchor.Handle;
-	Face = Enum.NormalId.Top;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Anchor.Handle;
-	Face = Enum.NormalId.Bottom;
-	Texture = tool_decal;
-};
-
--- Set the grip for the handle
-Tools.Anchor.Grip = CFrame.new( 0, 0, 0.4 );
-
 -- Start adding functionality to the tool
-
 Tools.Anchor.Listeners.Equipped = function ()
 
 	-- Change the color of selection boxes temporarily
@@ -4506,50 +4328,6 @@ Tools.Surface.Options = {
 
 -- Keep a container for platform event connections
 Tools.Surface.Listeners = {};
-
--- Create the handle
-Tools.Surface.Handle = RbxUtility.Create "Part" {
-	Name = "Handle";
-	Locked = true;
-	BrickColor = Tools.Surface.Color;
-	FormFactor = Enum.FormFactor.Custom;
-	Size = Vector3.new( 0.8, 0.8, 0.8 );
-	TopSurface = Enum.SurfaceType.Smooth;
-	BottomSurface = Enum.SurfaceType.Smooth;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Surface.Handle;
-	Face = Enum.NormalId.Front;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Surface.Handle;
-	Face = Enum.NormalId.Back;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Surface.Handle;
-	Face = Enum.NormalId.Left;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Surface.Handle;
-	Face = Enum.NormalId.Right;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Surface.Handle;
-	Face = Enum.NormalId.Top;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Surface.Handle;
-	Face = Enum.NormalId.Bottom;
-	Texture = tool_decal;
-};
-
--- Set the grip for the handle
-Tools.Surface.Grip = CFrame.new( 0, 0, 0.4 );
 
 -- Start adding functionality to the tool
 Tools.Surface.Listeners.Equipped = function ()
@@ -5082,50 +4860,6 @@ Tools.Material.SpecialMaterialNames = {
 	DiamondPlate = "DIAMOND PLATE",
 	SmoothPlastic = "SMOOTH PLASTIC"
 };
-
--- Create the handle
-Tools.Material.Handle = RbxUtility.Create "Part" {
-	Name = "Handle";
-	Locked = true;
-	BrickColor = Tools.Material.Color;
-	FormFactor = Enum.FormFactor.Custom;
-	Size = Vector3.new( 0.8, 0.8, 0.8 );
-	TopSurface = Enum.SurfaceType.Smooth;
-	BottomSurface = Enum.SurfaceType.Smooth;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Material.Handle;
-	Face = Enum.NormalId.Front;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Material.Handle;
-	Face = Enum.NormalId.Back;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Material.Handle;
-	Face = Enum.NormalId.Left;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Material.Handle;
-	Face = Enum.NormalId.Right;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Material.Handle;
-	Face = Enum.NormalId.Top;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Material.Handle;
-	Face = Enum.NormalId.Bottom;
-	Texture = tool_decal;
-};
-
--- Set the grip for the handle
-Tools.Material.Grip = CFrame.new( 0, 0, 0.4 );
 
 -- Start adding functionality to the tool
 Tools.Material.Listeners.Equipped = function ()
@@ -5662,52 +5396,7 @@ Tools.Collision.Listeners = {};
 -- Define the color of the tool
 Tools.Collision.Color = BrickColor.new( "Really black" );
 
--- Create the handle
-Tools.Collision.Handle = RbxUtility.Create "Part" {
-	Name = "Handle";
-	Locked = true;
-	BrickColor = Tools.Collision.Color;
-	FormFactor = Enum.FormFactor.Custom;
-	Size = Vector3.new( 0.8, 0.8, 0.8 );
-	TopSurface = Enum.SurfaceType.Smooth;
-	BottomSurface = Enum.SurfaceType.Smooth;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Collision.Handle;
-	Face = Enum.NormalId.Front;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Collision.Handle;
-	Face = Enum.NormalId.Back;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Collision.Handle;
-	Face = Enum.NormalId.Left;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Collision.Handle;
-	Face = Enum.NormalId.Right;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Collision.Handle;
-	Face = Enum.NormalId.Top;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Tools.Collision.Handle;
-	Face = Enum.NormalId.Bottom;
-	Texture = tool_decal;
-};
-
--- Set the grip for the handle
-Tools.Collision.Grip = CFrame.new( 0, 0, 0.4 );
-
 -- Start adding functionality to the tool
-
 Tools.Collision.Listeners.Equipped = function ()
 
 	-- Change the color of selection boxes temporarily
@@ -6456,7 +6145,7 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		Options.Tool.Listeners.Equipped();
 	end;
 
-	Mouse.KeyDown:connect( function ( key )
+	table.insert( Connections, Mouse.KeyDown:connect( function ( key )
 
 		local key = key:lower();
 		local key_code = key:byte();
@@ -6561,9 +6250,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 			selecting = ActiveKeys[47] or ActiveKeys[48] or ActiveKeys[49] or ActiveKeys[50];
 		end;
 
-	end );
+	end ) );
 
-	Mouse.KeyUp:connect( function ( key )
+	table.insert( Connections, Mouse.KeyUp:connect( function ( key )
 
 		local key = key:lower();
 		local key_code = key:byte();
@@ -6580,9 +6269,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 			end;
 		end;
 
-	end );
+	end ) );
 
-	Mouse.Button1Down:connect( function ()
+	table.insert( Connections, Mouse.Button1Down:connect( function ()
 
 		clicking = true;
 		click_x, click_y = Mouse.X, Mouse.Y;
@@ -6597,9 +6286,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 			Options.Tool.Listeners.Button1Down();
 		end;
 
-	end );
+	end ) );
 
-	Mouse.Move:connect( function ()
+	table.insert( Connections, Mouse.Move:connect( function ()
 
 		-- If the mouse has moved since it was clicked, start 2D selection mode
 		if not override_selection and not Select2D.enabled and clicking and selecting and ( click_x ~= Mouse.X or click_y ~= Mouse.Y ) then
@@ -6627,9 +6316,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 			override_selection = false;
 		end;
 
-	end );
+	end ) );
 
-	Mouse.Button1Up:connect( function ()
+	table.insert( Connections, Mouse.Button1Up:connect( function ()
 
 		clicking = false;
 
@@ -6676,21 +6365,21 @@ Tool.Equipped:connect( function ( CurrentMouse )
 			override_selection = false;
 		end;
 
-	end );
+	end ) );
 
-	Mouse.Button2Down:connect( function ()
+	table.insert( Connections, Mouse.Button2Down:connect( function ()
 		-- Fire tool listeners
 		if Options.Tool and Options.Tool.Listeners.Button2Down then
 			Options.Tool.Listeners.Button2Down();
 		end;
-	end );
+	end ) );
 
-	Mouse.Button2Up:connect( function ()
+	table.insert( Connections, Mouse.Button2Up:connect( function ()
 		-- Fire tool listeners
 		if Options.Tool and Options.Tool.Listeners.Button2Up then
 			Options.Tool.Listeners.Button2Up();
 		end;
-	end );
+	end ) );
 
 end );
 
@@ -6707,6 +6396,12 @@ Tool.Unequipped:connect( function ()
 	-- Disable all the selection boxes temporarily
 	for _, SelectionBox in pairs( SelectionBoxes ) do
 		SelectionBox.Parent = nil;
+	end;
+
+	-- Disconnect temporary platform-related connections
+	for connection_index, Connection in pairs( Connections ) do
+		Connection:disconnect();
+		Connections[connection_index] = nil;
 	end;
 
 	-- Call the `Unequipped` listener of the current tool
