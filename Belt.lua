@@ -1627,6 +1627,7 @@ Tools.Resize.State = {
 	["PreResize"] = {};
 	["previous_distance"] = 0;
 	["resizing"] = false;
+	["length_resized"] = 0;
 };
 
 Tools.Resize.Listeners = {};
@@ -4691,8 +4692,8 @@ Tools.Surface.updateGUI = function ( self )
 		return;
 	end;
 
-	if self.State.type then
-		self.TypeDropdown:selectOption( self.SpecialTypeNames[self.State.type.Name] or self.State.type.Name:upper() );
+	if #Selection.Items > 0 then
+		self.TypeDropdown:selectOption( self.State.type and ( self.SpecialTypeNames[self.State.type.Name] or self.State.type.Name:upper() ) or "*" );
 	else
 		self.TypeDropdown:selectOption( "" );
 	end;
