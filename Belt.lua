@@ -2323,7 +2323,7 @@ Tools.Resize.showHandles = function ( self, Part )
 				self.State.PreResize[Item] = Item:Clone();
 
 				-- Make the item be able to be freely resized
-				if Item.FormFactor then
+				if ( pcall( function () local test = Item.FormFactor; end ) ) then
 					Item.FormFactor = Enum.FormFactor.Custom;
 				end;
 
@@ -2402,9 +2402,9 @@ Tools.Resize.showHandles = function ( self, Part )
 
 					-- Calculate the appropriate increment to the size based on the shape of `Item`
 					local SizeIncrease;
-					if Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder then
+					if ( pcall( function () local test = Item.Shape; end ) ) and ( Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder ) then
 						SizeIncrease = Vector3.new( increase, increase, increase );
-					elseif Item.Shape == Enum.PartType.Block then
+					elseif not ( pcall( function () local test = Item.Shape; end ) ) or ( Item.Shape and Item.Shape == Enum.PartType.Block ) then
 						SizeIncrease = Vector3.new( 0, increase, 0 );
 					end;
 
@@ -2422,9 +2422,9 @@ Tools.Resize.showHandles = function ( self, Part )
 
 					-- Calculate the appropriate increment to the size based on the shape of `Item`
 					local SizeIncrease;
-					if Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder then
+					if ( pcall( function () local test = Item.Shape; end ) ) and ( Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder ) then
 						SizeIncrease = Vector3.new( increase, increase, increase );
-					elseif Item.Shape == Enum.PartType.Block then
+					elseif not ( pcall( function () local test = Item.Shape; end ) ) or ( Item.Shape and Item.Shape == Enum.PartType.Block ) then
 						SizeIncrease = Vector3.new( 0, increase, 0 );
 					end;
 
@@ -2442,9 +2442,9 @@ Tools.Resize.showHandles = function ( self, Part )
 
 					-- Calculate the appropriate increment to the size based on the shape of `Item`
 					local SizeIncrease;
-					if Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder then
+					if ( pcall( function () local test = Item.Shape; end ) ) and ( Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder ) then
 						SizeIncrease = Vector3.new( increase, increase, increase );
-					elseif Item.Shape == Enum.PartType.Block then
+					elseif not ( pcall( function () local test = Item.Shape; end ) ) or ( Item.Shape and Item.Shape == Enum.PartType.Block ) then
 						SizeIncrease = Vector3.new( 0, 0, increase );
 					end;
 
@@ -2462,9 +2462,9 @@ Tools.Resize.showHandles = function ( self, Part )
 
 					-- Calculate the appropriate increment to the size based on the shape of `Item`
 					local SizeIncrease;
-					if Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder then
+					if ( pcall( function () local test = Item.Shape; end ) ) and ( Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder ) then
 						SizeIncrease = Vector3.new( increase, increase, increase );
-					elseif Item.Shape == Enum.PartType.Block then
+					elseif not ( pcall( function () local test = Item.Shape; end ) ) or ( Item.Shape and Item.Shape == Enum.PartType.Block ) then
 						SizeIncrease = Vector3.new( 0, 0, increase );
 					end;
 
@@ -2482,9 +2482,9 @@ Tools.Resize.showHandles = function ( self, Part )
 
 					-- Calculate the appropriate increment to the size based on the shape of `Item`
 					local SizeIncrease;
-					if Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder then
+					if ( pcall( function () local test = Item.Shape; end ) ) and ( Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder ) then
 						SizeIncrease = Vector3.new( increase, increase, increase );
-					elseif Item.Shape == Enum.PartType.Block then
+					elseif not ( pcall( function () local test = Item.Shape; end ) ) or ( Item.Shape and Item.Shape == Enum.PartType.Block ) then
 						SizeIncrease = Vector3.new( increase, 0, 0 );
 					end;
 
@@ -2502,9 +2502,9 @@ Tools.Resize.showHandles = function ( self, Part )
 
 					-- Calculate the appropriate increment to the size based on the shape of `Item`
 					local SizeIncrease;
-					if Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder then
+					if ( pcall( function () local test = Item.Shape; end ) ) and ( Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder ) then
 						SizeIncrease = Vector3.new( increase, increase, increase );
-					elseif Item.Shape == Enum.PartType.Block then
+					elseif not ( pcall( function () local test = Item.Shape; end ) ) or ( Item.Shape and Item.Shape == Enum.PartType.Block ) then
 						SizeIncrease = Vector3.new( increase, 0, 0 );
 					end;
 
@@ -5896,6 +5896,10 @@ Tools.NewPart.Listeners.Button1Down = function ()
 	elseif self.Options.type == "ball" then
 		NewPart = Instance.new( "Part", Services.Workspace );
 		NewPart.Shape = "Ball";
+	elseif self.Options.type == "seat" then
+		NewPart = Instance.new( "Seat", Services.Workspace );
+	elseif self.Options.type == "vehicle seat" then
+		NewPart = Instance.new( "VehicleSeat", Services.Workspace );
 	end;
 	NewPart.Anchored = true;
 
@@ -6036,6 +6040,12 @@ Tools.NewPart.showGUI = function ( self )
 		end );
 		TypeDropdown:addOption( "BALL" ).MouseButton1Up:connect( function ()
 			self:changeType( "ball" );
+		end );
+		TypeDropdown:addOption( "SEAT" ).MouseButton1Up:connect( function ()
+			self:changeType( "seat" );
+		end );
+		TypeDropdown:addOption( "VEHICLE SEAT" ).MouseButton1Up:connect( function ()
+			self:changeType( "vehicle seat" );
 		end );
 
 		RbxUtility.Create "Frame" {
@@ -6517,7 +6527,7 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		elseif key == "k" then
 			Options.Tool = Tools.Collision;
 
-		elseif key == "f" then
+		elseif key == "j" then
 			Options.Tool = Tools.NewPart;
 
 		elseif key == "q" then
