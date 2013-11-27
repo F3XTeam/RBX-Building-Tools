@@ -635,13 +635,16 @@ end;
 
 Tools.Move.Listeners.Button1Down = function ()
 
-	if not Mouse.Target or ( Mouse.Target:IsA( "BasePart" ) and Mouse.Target.Locked ) then
+	local Target = Tools.Move.ManualTarget or Mouse.Target;
+	Tools.Move.ManualTarget = nil;
+
+	if not Target or ( Target:IsA( "BasePart" ) and Target.Locked ) then
 		return;
 	end;
 
-	if not Selection:find( Mouse.Target ) then
+	if not Selection:find( Target ) then
 		Selection:clear();
-		Selection:add( Mouse.Target );
+		Selection:add( Target );
 	end;
 
 	Tools.Move.State.dragging = true;
@@ -650,7 +653,7 @@ Tools.Move.Listeners.Button1Down = function ()
 
 	Tools.Move.Temporary.Dragger = Instance.new( "Dragger" );
 
-	Tools.Move.Temporary.Dragger:MouseDown( Mouse.Target, Mouse.Target.CFrame:toObjectSpace( CFrame.new( Mouse.Hit.p ) ).p, Selection.Items );
+	Tools.Move.Temporary.Dragger:MouseDown( Target, Target.CFrame:toObjectSpace( CFrame.new( Mouse.Hit.p ) ).p, Selection.Items );
 
 	Tools.Move.Temporary.Connections.DraggerConnection = Mouse.Button1Up:connect( function ()
 
@@ -2320,7 +2323,9 @@ Tools.Resize.showHandles = function ( self, Part )
 				self.State.PreResize[Item] = Item:Clone();
 
 				-- Make the item be able to be freely resized
-				Item.FormFactor = Enum.FormFactor.Custom;
+				if Item.FormFactor then
+					Item.FormFactor = Enum.FormFactor.Custom;
+				end;
 
 				-- Anchor each item
 				Item.Anchored = true;
@@ -5808,6 +5813,282 @@ Tools.Collision.Listeners.Unequipped = function ()
 end;
 
 ------------------------------------------
+-- New part tool
+------------------------------------------
+
+-- Create the tool
+Tools.NewPart = {};
+
+-- Define the tool's color
+Tools.NewPart.Color = BrickColor.new( "Really black" );
+
+-- Keep a container for temporary connections
+Tools.NewPart.Connections = {};
+
+-- Keep a container for state data
+Tools.NewPart.State = {
+	["Part"] = nil;
+};
+
+-- Maintain a container for options
+Tools.NewPart.Options = {
+	["type"] = "normal"
+};
+
+-- Keep a container for platform event connections
+Tools.NewPart.Listeners = {};
+
+-- Start adding functionality to the tool
+Tools.NewPart.Listeners.Equipped = function ()
+
+	local self = Tools.NewPart;
+
+	-- Change the color of selection boxes temporarily
+	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = self.Color;
+	updateSelectionBoxColor();
+
+	-- Reveal the GUI
+	self:showGUI();
+
+	-- Restore the type option
+	self:changeType( self.Options.type );
+
+end;
+
+Tools.NewPart.Listeners.Unequipped = function ()
+
+	local self = Tools.NewPart;
+
+	-- Hide the GUI
+	self:hideGUI();
+
+	-- Disconnect temporary connections
+	for connection_index, Connection in pairs( self.Connections ) do
+		Connection:disconnect();
+		self.Connections[connection_index] = nil;
+	end;
+
+	-- Restore the original color of selection boxes
+	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
+	updateSelectionBoxColor();
+
+end;
+
+Tools.NewPart.Listeners.Button1Down = function ()
+
+	local self = Tools.NewPart;
+
+	local NewPart;
+
+	-- Create the new part of type `self.Options.type`
+	if self.Options.type == "normal" then
+		NewPart = Instance.new( "Part", Services.Workspace );
+	elseif self.Options.type == "truss" then
+		NewPart = Instance.new( "TrussPart", Services.Workspace );
+	elseif self.Options.type == "wedge" then
+		NewPart = Instance.new( "WedgePart", Services.Workspace );
+	elseif self.Options.type == "corner" then
+		NewPart = Instance.new( "CornerWedgePart", Services.Workspace );
+	elseif self.Options.type == "cylinder" then
+		NewPart = Instance.new( "Part", Services.Workspace );
+		NewPart.Shape = "Cylinder";
+	elseif self.Options.type == "ball" then
+		NewPart = Instance.new( "Part", Services.Workspace );
+		NewPart.Shape = "Ball";
+	end;
+	NewPart.Anchored = true;
+
+	-- Select the new part
+	Selection:clear();
+	Selection:add( NewPart );
+
+	-- Switch to the move tool and simulate clicking so
+	-- that the user could easily position their new part
+	Options.Tool = Tools.Move;
+	Tools.Move.ManualTarget = NewPart;
+	NewPart.CFrame = CFrame.new( Mouse.Hit.p );
+	Tools.Move.Listeners.Button1Down();
+	Tools.Move.Listeners.Move();
+
+end;
+
+Tools.NewPart.changeType = function ( self, new_type )
+	self.Options.type = new_type;
+	self.TypeDropdown:selectOption( new_type:upper() );
+	if self.TypeDropdown.open then
+		self.TypeDropdown:toggle();
+	end;
+end;
+
+Tools.NewPart.showGUI = function ( self )
+
+	-- Create the GUI if it doesn't exist
+	if not self.GUI then
+
+		local Container = RbxUtility.Create "Frame" {
+			Parent = UI;
+			Name = "BTNewPartToolGUI";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 280 );
+			Size = UDim2.new( 0, 220, 0, 90 );
+			Draggable = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "Title";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.Title;
+			Name = "ColorBar";
+			BackgroundColor3 = self.Color.Color;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, -3 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Title;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "NEW PART TOOL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Title;
+			Name = "F3XSignature";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size14;
+			Text = "F3X";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Right;
+			TextStrokeTransparency = 0.9;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "TypeOption";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 30 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.TypeOption;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 14, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Part Type";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Left;
+		};
+
+		local TypeDropdown = createDropdown();
+		self.TypeDropdown = TypeDropdown;
+		TypeDropdown.Frame.Parent = Container.TypeOption;
+		TypeDropdown.Frame.Position = UDim2.new( 0, 70, 0, 0 );
+		TypeDropdown.Frame.Size = UDim2.new( 0, 140, 0, 25 );
+
+		TypeDropdown:addOption( "NORMAL" ).MouseButton1Up:connect( function ()
+			self:changeType( "normal" );
+		end );
+		TypeDropdown:addOption( "TRUSS" ).MouseButton1Up:connect( function ()
+			self:changeType( "truss" );
+		end );
+		TypeDropdown:addOption( "WEDGE" ).MouseButton1Up:connect( function ()
+			self:changeType( "wedge" );
+		end );
+		TypeDropdown:addOption( "CORNER" ).MouseButton1Up:connect( function ()
+			self:changeType( "corner" );
+		end );
+		TypeDropdown:addOption( "CYLINDER" ).MouseButton1Up:connect( function ()
+			self:changeType( "cylinder" );
+		end );
+		TypeDropdown:addOption( "BALL" ).MouseButton1Up:connect( function ()
+			self:changeType( "ball" );
+		end );
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "Tip";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 70 );
+			Size = UDim2.new( 1, -5, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.Tip;
+			Name = "ColorBar";
+			BorderSizePixel = 0;
+			BackgroundColor3 = self.Color.Color;
+			Size = UDim2.new( 1, 0, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Tip;
+			Name = "Text";
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 0, 0, 2 );
+			Size = UDim2.new( 1, 0, 0, 20 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size11;
+			Text = "TIP: Point and click for a new part.";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextStrokeTransparency = 0.5;
+			TextWrapped = true;
+			TextXAlignment = Enum.TextXAlignment.Center;
+		};
+		self.GUI = Container;
+	end;
+
+	-- Reveal the GUI
+	self.GUI.Visible = true;
+
+end;
+
+Tools.NewPart.hideGUI = function ( self )
+
+	-- Hide the GUI if it exists already
+	if self.GUI then
+		self.GUI.Visible = false;
+	end;
+
+end;
+
+------------------------------------------
 -- Provide an interface to the 2D
 -- selection system
 ------------------------------------------
@@ -6235,6 +6516,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		elseif key == "k" then
 			Options.Tool = Tools.Collision;
+
+		elseif key == "f" then
+			Options.Tool = Tools.NewPart;
 
 		elseif key == "q" then
 			Selection:clear();
