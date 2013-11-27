@@ -191,6 +191,34 @@ function _pointToScreenSpace( Point )
 
 end;
 
+function _cloneParts( parts )
+	-- Returns a table of cloned `parts`
+
+	local new_parts = {};
+
+	-- Copy the parts into `new_parts`
+	for part_index, Part in pairs( parts ) do
+		new_parts[part_index] = Part:Clone();
+	end;
+
+	return new_parts;
+end;
+
+function _replaceParts( old_parts, new_parts )
+	-- Removes `old_parts` and inserts `new_parts`
+
+	-- Remove `old_parts`
+	for _, OldPart in pairs( old_parts ) do
+		OldPart.Parent = nil;
+	end;
+
+	-- Insert `new_parts
+	for _, NewPart in pairs( new_parts ) do
+		NewPart.Parent = Services.Workspace;
+	end;
+
+end;
+
 ------------------------------------------
 -- Create data containers
 ------------------------------------------
@@ -646,6 +674,16 @@ Tools.Move.Listeners.Button1Down = function ()
 		Selection:clear();
 		Selection:add( Target );
 	end;
+
+	-- Add a new record to the history system
+	local old_parts = _cloneTable( Selection.Items );
+	local new_parts = _cloneParts( Selection.Items );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	History:add( old_parts, new_parts );
+	Target = new_parts[_findTableOccurrences( old_parts, Target )[1]];
 
 	Tools.Move.State.dragging = true;
 
@@ -1288,6 +1326,15 @@ Tools.Move.showHandles = function ( self, Part )
 
 			-- Clear the change stats
 			self.State.distance_moved = 0;
+
+			-- Add a new record to the history system
+			local old_parts = _cloneTable( Selection.Items );
+			local new_parts = _cloneParts( Selection.Items );
+			_replaceParts( old_parts, new_parts );
+			for _, Item in pairs( new_parts ) do
+				Selection:add( Item );
+			end;
+			History:add( old_parts, new_parts );
 
 			-- Do a few things to the selection before manipulating it
 			for _, Item in pairs( Selection.Items ) do
@@ -2315,6 +2362,15 @@ Tools.Resize.showHandles = function ( self, Part )
 
 			-- Clear the change stats
 			self.State.length_resized = 0;
+
+			-- Add a new record to the history system
+			local old_parts = _cloneTable( Selection.Items );
+			local new_parts = _cloneParts( Selection.Items );
+			_replaceParts( old_parts, new_parts );
+			for _, Item in pairs( new_parts ) do
+				Selection:add( Item );
+			end;
+			History:add( old_parts, new_parts );
 
 			-- Do a few things to the selection before manipulating it
 			for _, Item in pairs( Selection.Items ) do
@@ -3489,6 +3545,15 @@ Tools.Rotate.showHandles = function ( self, Part )
 			self.State.degrees_rotated = 0;
 			self.State.rotation_size = 0;
 
+			-- Add a new record to the history system
+			local old_parts = _cloneTable( Selection.Items );
+			local new_parts = _cloneParts( Selection.Items );
+			_replaceParts( old_parts, new_parts );
+			for _, Item in pairs( new_parts ) do
+				Selection:add( Item );
+			end;
+			History:add( old_parts, new_parts );
+
 			-- Do a few things to the selection before manipulating it
 			for _, Item in pairs( Selection.Items ) do
 
@@ -3695,6 +3760,15 @@ Tools.Paint.Listeners.Button1Up = function ()
 
 		override_selection = true;
 
+		-- Add a new record to the history system
+		local old_parts = _cloneTable( Selection.Items );
+		local new_parts = _cloneParts( Selection.Items );
+		_replaceParts( old_parts, new_parts );
+		for _, Item in pairs( new_parts ) do
+			Selection:add( Item );
+		end;
+		History:add( old_parts, new_parts );
+
 		-- Paint all of the selected items `Tools.Paint.Options.Color`
 		if Tools.Paint.Options.Color then
 			for _, Item in pairs( Selection.Items ) do
@@ -3713,6 +3787,15 @@ Tools.Paint.changeColor = function ( self, Color )
 
 		-- First of all, change the color option itself
 		self.Options.Color = Color;
+
+		-- Add a new record to the history system
+		local old_parts = _cloneTable( Selection.Items );
+		local new_parts = _cloneParts( Selection.Items );
+		_replaceParts( old_parts, new_parts );
+		for _, Item in pairs( new_parts ) do
+			Selection:add( Item );
+		end;
+		History:add( old_parts, new_parts );
 
 		-- Then, we want to update the color of any items in the selection
 		for _, Item in pairs( Selection.Items ) do
@@ -3980,6 +4063,15 @@ end;
 
 Tools.Anchor.anchor = function ( self )
 
+	-- Add a new record to the history system
+	local old_parts = _cloneTable( Selection.Items );
+	local new_parts = _cloneParts( Selection.Items );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	History:add( old_parts, new_parts );
+
 	-- Anchor all the items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item.Anchored = true;
@@ -3988,6 +4080,15 @@ Tools.Anchor.anchor = function ( self )
 end;
 
 Tools.Anchor.unanchor = function ( self )
+
+	-- Add a new record to the history system
+	local old_parts = _cloneTable( Selection.Items );
+	local new_parts = _cloneParts( Selection.Items );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	History:add( old_parts, new_parts );
 
 	-- Unanchor all the items in the selection
 	for _, Item in pairs( Selection.Items ) do
@@ -4452,6 +4553,16 @@ Tools.Surface.SpecialTypeNames = {
 };
 
 Tools.Surface.changeType = function ( self, surface_type )
+
+	-- Add a new record to the history system
+	local old_parts = _cloneTable( Selection.Items );
+	local new_parts = _cloneParts( Selection.Items );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	History:add( old_parts, new_parts );
+
 	-- Apply `surface_type` to all items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item[self.Options.side.Name .. "Surface"] = surface_type;
@@ -4959,6 +5070,16 @@ Tools.Material.Listeners.Unequipped = function ()
 end;
 
 Tools.Material.changeMaterial = function ( self, material_type )
+
+	-- Add a new record to the history system
+	local old_parts = _cloneTable( Selection.Items );
+	local new_parts = _cloneParts( Selection.Items );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	History:add( old_parts, new_parts );
+
 	-- Apply `material_type` to all items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item.Material = material_type;
@@ -4969,6 +5090,16 @@ Tools.Material.changeMaterial = function ( self, material_type )
 end;
 
 Tools.Material.changeTransparency = function ( self, transparency )
+
+	-- Add a new record to the history system
+	local old_parts = _cloneTable( Selection.Items );
+	local new_parts = _cloneParts( Selection.Items );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	History:add( old_parts, new_parts );
+
 	-- Apply `transparency` to all items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item.Transparency = transparency;
@@ -4976,6 +5107,16 @@ Tools.Material.changeTransparency = function ( self, transparency )
 end;
 
 Tools.Material.changeReflectance = function ( self, reflectance )
+
+	-- Add a new record to the history system
+	local old_parts = _cloneTable( Selection.Items );
+	local new_parts = _cloneParts( Selection.Items );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	History:add( old_parts, new_parts );
+
 	-- Apply `reflectance` to all items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item.Reflectance = reflectance;
@@ -5484,6 +5625,15 @@ end;
 
 Tools.Collision.enable = function ( self )
 
+	-- Add a new record to the history system
+	local old_parts = _cloneTable( Selection.Items );
+	local new_parts = _cloneParts( Selection.Items );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	History:add( old_parts, new_parts );
+
 	-- Enable collision for all the items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item.CanCollide = true;
@@ -5492,6 +5642,15 @@ Tools.Collision.enable = function ( self )
 end;
 
 Tools.Collision.disable = function ( self )
+
+	-- Add a new record to the history system
+	local old_parts = _cloneTable( Selection.Items );
+	local new_parts = _cloneParts( Selection.Items );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	History:add( old_parts, new_parts );
 
 	-- Disable collision for all the items in the selection
 	for _, Item in pairs( Selection.Items ) do
@@ -5906,6 +6065,10 @@ Tools.NewPart.Listeners.Button1Down = function ()
 	-- Select the new part
 	Selection:clear();
 	Selection:add( NewPart );
+
+	-- Add a new record to the history system
+	local new_parts = { NewPart };
+	History:add( {}, new_parts );
 
 	-- Switch to the move tool and simulate clicking so
 	-- that the user could easily position their new part
@@ -6415,6 +6578,91 @@ SelectEdge = {
 };
 
 ------------------------------------------
+-- Provide an interface to the history
+-- system
+------------------------------------------
+History = {
+
+	-- Keep a container for the actual history data
+	["Data"] = {};
+
+	-- Keep state data
+	["index"] = 0;
+
+	-- Provide functions to control the system
+	["undo"] = function ( self )
+
+		-- Make sure we're not getting out of boundary
+		if self.index - 1 < 0 then
+			return;
+		end;
+
+		-- Fetch the history record
+		local Record = self.Data[self.index];
+
+		_replaceParts( Record.new, Record.old );
+		Selection:clear();
+		for _, Part in pairs( Record.old ) do
+			Selection:add( Part );
+		end;
+
+		-- Go back in the history
+		self.index = self.index - 1;
+
+	end;
+
+	["redo"] = function ( self )
+
+		-- Make sure we're not getting out of boundary
+		if self.index + 1 > #self.Data then
+			return;
+		end;
+
+		-- Go forward in the history
+		self.index = self.index + 1;
+
+		-- Fetch the history record
+		local Record = self.Data[self.index];
+
+		_replaceParts( Record.old, Record.new );
+		Selection:clear();
+		for _, Part in pairs( Record.new ) do
+			Selection:add( Part );
+		end;
+
+	end;
+
+	["add"] = function ( self, old_selection, new_selection )
+
+		-- Purge the selections of any items that shouldn't be there
+		for item_index, Item in pairs( old_selection ) do
+			if Item.Name == "BTEdgeSelectionMarker" then
+				old_selection[item_index] = nil;
+			end;
+		end;
+		for item_index, Item in pairs( new_selection ) do
+			if Item.Name == "BTEdgeSelectionMarker" then
+				new_selection[item_index] = nil;
+			end;
+		end;
+
+		-- Create the history record
+		local Record = {
+			old = old_selection;
+			new = new_selection;
+		};
+
+		-- Place the record in its right spot
+		self.Data[self.index + 1] = Record;
+
+		-- Advance the history index
+		self.index = self.index + 1;
+
+	end;
+
+}
+
+------------------------------------------
 -- Attach listeners
 ------------------------------------------
 
@@ -6444,8 +6692,12 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		-- Provide the abiltiy to delete via the shift + X key combination
 		if ActiveKeys[47] or ActiveKeys[48] and key == "x" then
 			local SelectionItems = _cloneTable( Selection.Items );
+
+			-- Add a new record to the history system
+			History:add( SelectionItems, {} );
+
 			for _, Item in pairs( SelectionItems ) do
-				Item:Destroy();
+				Item.Parent = nil;
 			end;
 			return;
 		end;
@@ -6476,6 +6728,10 @@ Tool.Equipped:connect( function ( CurrentMouse )
 					Selection:add( Item );
 				end;
 
+				-- Add a new record to the history system
+				local new_parts = _cloneTable( Selection.Items );
+				History:add( {}, new_parts );
+
 				-- Play a confirmation sound
 				local Sound = RbxUtility.Create "Sound" {
 					Name = "BTActionCompletionSound";
@@ -6503,7 +6759,7 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		end;
 
-		if key == "z" then
+		if key == "z" and not ( ActiveKeys[47] or ActiveKeys[48] ) then
 			Options.Tool = Tools.Move;
 
 		elseif key == "x" then
@@ -6533,6 +6789,15 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		elseif key == "q" then
 			Selection:clear();
 
+		end;
+
+		-- Undo if shift+z is pressed
+		if key == "z" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+			History:undo();
+
+		-- Redo if shift+y is pressed
+		elseif key == "y" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+			History:redo();
 		end;
 
 		ActiveKeys[key_code] = key_code;
