@@ -41,6 +41,7 @@ dark_slanted_rectangle = "http://www.roblox.com/asset/?id=127774197";
 light_slanted_rectangle = "http://www.roblox.com/asset/?id=127772502";
 action_completion_sound = "http://www.roblox.com/asset/?id=99666917";
 expand_arrow = "http://www.roblox.com/asset/?id=134367382";
+tool_decal = "http://www.roblox.com/asset/?id=129748355";
 
 ------------------------------------------
 -- Load external dependencies
@@ -50,6 +51,7 @@ Services.ContentProvider:Preload( dark_slanted_rectangle );
 Services.ContentProvider:Preload( light_slanted_rectangle );
 Services.ContentProvider:Preload( action_completion_sound );
 Services.ContentProvider:Preload( expand_arrow );
+Services.ContentProvider:Preload( tool_decal );
 
 ------------------------------------------
 -- Define functions that are depended-upon
@@ -436,32 +438,32 @@ Tools.Move.Handle = RbxUtility.Create "Part" {
 RbxUtility.Create "Decal" {
 	Parent = Tools.Move.Handle;
 	Face = Enum.NormalId.Front;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Move.Handle;
 	Face = Enum.NormalId.Back;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Move.Handle;
 	Face = Enum.NormalId.Left;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Move.Handle;
 	Face = Enum.NormalId.Right;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Move.Handle;
 	Face = Enum.NormalId.Top;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Move.Handle;
 	Face = Enum.NormalId.Bottom;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 
 -- Set the grip for the handle
@@ -1648,32 +1650,32 @@ Tools.Resize.Handle = RbxUtility.Create "Part" {
 RbxUtility.Create "Decal" {
 	Parent = Tools.Resize.Handle;
 	Face = Enum.NormalId.Front;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Resize.Handle;
 	Face = Enum.NormalId.Back;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Resize.Handle;
 	Face = Enum.NormalId.Left;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Resize.Handle;
 	Face = Enum.NormalId.Right;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Resize.Handle;
 	Face = Enum.NormalId.Top;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Resize.Handle;
 	Face = Enum.NormalId.Bottom;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 
 -- Set the grip for the handle
@@ -2646,32 +2648,32 @@ Tools.Rotate.Handle = RbxUtility.Create "Part" {
 RbxUtility.Create "Decal" {
 	Parent = Tools.Rotate.Handle;
 	Face = Enum.NormalId.Front;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Rotate.Handle;
 	Face = Enum.NormalId.Back;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Rotate.Handle;
 	Face = Enum.NormalId.Left;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Rotate.Handle;
 	Face = Enum.NormalId.Right;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Rotate.Handle;
 	Face = Enum.NormalId.Top;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Rotate.Handle;
 	Face = Enum.NormalId.Bottom;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 
 -- Set the grip for the handle
@@ -3753,32 +3755,32 @@ Tools.Paint.Handle = RbxUtility.Create "Part" {
 RbxUtility.Create "Decal" {
 	Parent = Tools.Paint.Handle;
 	Face = Enum.NormalId.Front;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Paint.Handle;
 	Face = Enum.NormalId.Back;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Paint.Handle;
 	Face = Enum.NormalId.Left;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Paint.Handle;
 	Face = Enum.NormalId.Right;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Paint.Handle;
 	Face = Enum.NormalId.Top;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Paint.Handle;
 	Face = Enum.NormalId.Bottom;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 
 -- Set the grip for the handle
@@ -4036,32 +4038,32 @@ Tools.Anchor.Handle = RbxUtility.Create "Part" {
 RbxUtility.Create "Decal" {
 	Parent = Tools.Anchor.Handle;
 	Face = Enum.NormalId.Front;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Anchor.Handle;
 	Face = Enum.NormalId.Back;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Anchor.Handle;
 	Face = Enum.NormalId.Left;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Anchor.Handle;
 	Face = Enum.NormalId.Right;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Anchor.Handle;
 	Face = Enum.NormalId.Top;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Anchor.Handle;
 	Face = Enum.NormalId.Bottom;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 
 -- Set the grip for the handle
@@ -4518,32 +4520,32 @@ Tools.Surface.Handle = RbxUtility.Create "Part" {
 RbxUtility.Create "Decal" {
 	Parent = Tools.Surface.Handle;
 	Face = Enum.NormalId.Front;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Surface.Handle;
 	Face = Enum.NormalId.Back;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Surface.Handle;
 	Face = Enum.NormalId.Left;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Surface.Handle;
 	Face = Enum.NormalId.Right;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Surface.Handle;
 	Face = Enum.NormalId.Top;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Surface.Handle;
 	Face = Enum.NormalId.Bottom;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 
 -- Set the grip for the handle
@@ -5094,32 +5096,32 @@ Tools.Material.Handle = RbxUtility.Create "Part" {
 RbxUtility.Create "Decal" {
 	Parent = Tools.Material.Handle;
 	Face = Enum.NormalId.Front;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Material.Handle;
 	Face = Enum.NormalId.Back;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Material.Handle;
 	Face = Enum.NormalId.Left;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Material.Handle;
 	Face = Enum.NormalId.Right;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Material.Handle;
 	Face = Enum.NormalId.Top;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 RbxUtility.Create "Decal" {
 	Parent = Tools.Material.Handle;
 	Face = Enum.NormalId.Bottom;
-	Texture = "http://www.roblox.com/asset/?id=129748355";
+	Texture = tool_decal;
 };
 
 -- Set the grip for the handle
