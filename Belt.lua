@@ -4742,9 +4742,9 @@ function createDropdown()
 				BorderColor3 = Color3.new( 27 / 255, 42 / 255, 53 / 255 );
 				BorderSizePixel = 1;
 				Name = option;
-				Position = UDim2.new( 0, 0, 0, 25 * #self._options );
+				Position = UDim2.new( math.ceil( #self._options / 9 ) - 1, 0, 0, 25 * ( ( #self._options % 9 == 0 ) and 9 or ( #self._options % 9 ) ) );
 				Size = UDim2.new( 1, 0, 0, 25 );
-				ZIndex = 2;
+				ZIndex = 3;
 				Text = "";
 			};
 			local Label = RbxUtility.Create "TextLabel" {
@@ -5053,6 +5053,584 @@ Tools.Surface.showGUI = function ( self )
 end;
 
 Tools.Surface.hideGUI = function ( self )
+
+	-- Hide the GUI if it exists already
+	if self.GUI then
+		self.GUI.Visible = false;
+	end;
+
+end;
+
+------------------------------------------
+-- Material tool
+------------------------------------------
+
+-- Create the tool
+Tools.Material = {};
+Tools.Material.Color = BrickColor.new( "Bright violet" );
+Tools.Material.Connections = {};
+Tools.Material.State = {
+	["material"] = nil;
+	["reflectance_focused"] = false;
+	["transparency_focused"] = false;
+};
+Tools.Material.Listeners = {};
+Tools.Material.SpecialMaterialNames = {
+	CorrodedMetal = "CORRODED METAL",
+	DiamondPlate = "DIAMOND PLATE",
+	SmoothPlastic = "SMOOTH PLASTIC"
+};
+
+-- Create the handle
+Tools.Material.Handle = RbxUtility.Create "Part" {
+	Name = "Handle";
+	Locked = true;
+	BrickColor = Tools.Material.Color;
+	FormFactor = Enum.FormFactor.Custom;
+	Size = Vector3.new( 0.8, 0.8, 0.8 );
+	TopSurface = Enum.SurfaceType.Smooth;
+	BottomSurface = Enum.SurfaceType.Smooth;
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Material.Handle;
+	Face = Enum.NormalId.Front;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Material.Handle;
+	Face = Enum.NormalId.Back;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Material.Handle;
+	Face = Enum.NormalId.Left;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Material.Handle;
+	Face = Enum.NormalId.Right;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Material.Handle;
+	Face = Enum.NormalId.Top;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+RbxUtility.Create "Decal" {
+	Parent = Tools.Material.Handle;
+	Face = Enum.NormalId.Bottom;
+	Texture = "http://www.roblox.com/asset/?id=129748355";
+};
+
+-- Set the grip for the handle
+Tools.Material.Grip = CFrame.new( 0, 0, 0.4 );
+
+-- Start adding functionality to the tool
+Tools.Material.Listeners.Equipped = function ()
+
+	local self = Tools.Material;
+
+	-- Change the color of selection boxes temporarily
+	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = self.Color;
+	updateSelectionBoxColor();
+
+	-- Reveal the GUI
+	self:showGUI();
+
+	-- Update the GUI regularly
+	coroutine.wrap( function ()
+		local updater_on = true;
+
+		-- Provide a function to stop the loop
+		self.Updater = function ()
+			updater_on = false;
+		end;
+
+		while wait( 0.1 ) and updater_on do
+
+			-- Make sure the tool's equipped
+			if Options.Tool == self then
+
+				-- Update the material type of every item in the selection
+				local material_type, transparency, reflectance = nil, nil, nil;
+				for item_index, Item in pairs( Selection.Items ) do
+
+					-- Set the first values for the first item
+					if item_index == 1 then
+						material_type = Item.Material;
+						transparency = Item.Transparency;
+						reflectance = Item.Reflectance;
+
+					-- Otherwise, compare them and set them to `nil` if they're not identical
+					else
+						if material_type ~= Item.Material then
+							material_type = nil;
+						end;
+						if reflectance ~= Item.Reflectance then
+							reflectance = nil;
+						end;
+						if transparency ~= Item.Transparency then
+							transparency = nil;
+						end;
+					end;
+
+				end;
+
+				self.State.material = material_type;
+				self.State.transparency = transparency;
+				self.State.reflectance = reflectance;
+
+				-- Update the GUI if it's visible
+				if self.GUI and self.GUI.Visible then
+					self:updateGUI();
+				end;
+
+			end;
+
+		end;
+
+	end )();
+
+end;
+
+Tools.Material.Listeners.Unequipped = function ()
+
+	local self = Tools.Material;
+
+	-- Stop the GUI updating loop
+	self.Updater();
+	self.Updater = nil;
+
+	-- Hide the GUI
+	self:hideGUI();
+
+	-- Disconnect temporary connections
+	for connection_index, Connection in pairs( self.Connections ) do
+		Connection:disconnect();
+		self.Connections[connection_index] = nil;
+	end;
+
+	-- Restore the original color of selection boxes
+	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
+	updateSelectionBoxColor();
+
+end;
+
+Tools.Material.changeMaterial = function ( self, material_type )
+	-- Apply `material_type` to all items in the selection
+	for _, Item in pairs( Selection.Items ) do
+		Item.Material = material_type;
+	end;
+	if self.MaterialDropdown.open then
+		self.MaterialDropdown:toggle();
+	end;
+end;
+
+Tools.Material.changeTransparency = function ( self, transparency )
+	-- Apply `transparency` to all items in the selection
+	for _, Item in pairs( Selection.Items ) do
+		Item.Transparency = transparency;
+	end;
+end;
+
+Tools.Material.changeReflectance = function ( self, reflectance )
+	-- Apply `reflectance` to all items in the selection
+	for _, Item in pairs( Selection.Items ) do
+		Item.Reflectance = reflectance;
+	end;
+end;
+
+Tools.Material.updateGUI = function ( self )
+
+	-- Make sure the GUI exists
+	if not self.GUI then
+		return;
+	end;
+
+	if #Selection.Items > 0 then
+		self.MaterialDropdown:selectOption( self.State.material and ( self.SpecialMaterialNames[self.State.material.Name] or self.State.material.Name:upper() ) or "*" );
+
+		-- Update the text inputs without interrupting the user
+		if not self.State.transparency_focused then
+			self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = self.State.transparency and tostring( self.State.transparency ) or "*";
+		end;
+		if not self.State.reflectance_focused then
+			self.GUI.ReflectanceOption.ReflectanceInput.TextBox.Text = self.State.reflectance and tostring( self.State.reflectance ) or "*";
+		end;
+
+	else
+		self.MaterialDropdown:selectOption( "" );
+		self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = "";
+		self.GUI.ReflectanceOption.ReflectanceInput.TextBox.Text = "";
+	end;
+
+end;
+
+
+Tools.Material.showGUI = function ( self )
+
+	-- Create the GUI if it doesn't already exist
+	if not self.GUI then
+
+		local Container = RbxUtility.Create "Frame" {
+			Parent = UI;
+			Name = "BTMaterialToolGUI";
+			Active = true;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 172 );
+			Size = UDim2.new( 0, 200, 0, 135 );
+			Draggable = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "Title";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.Title;
+			Name = "ColorBar";
+			BackgroundColor3 = self.Color.Color;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, -3 );
+			Size = UDim2.new( 1, -5, 0, 2 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Title;
+			Name = "Label";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "MATERIAL TOOL";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.Title;
+			Name = "F3XSignature";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 10, 0, 1 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size14;
+			Text = "F3X";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Right;
+			TextStrokeTransparency = 0.9;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "MaterialOption";
+			Position = UDim2.new( 0, 14, 0, 30 );
+			Size = UDim2.new( 1, -14, 0, 25 );
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.MaterialOption;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Name = "Label";
+			Size = UDim2.new( 0, 40, 0, 25 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Material";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextYAlignment = Enum.TextYAlignment.Center;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		local MaterialDropdown = createDropdown();
+		self.MaterialDropdown = MaterialDropdown;
+		MaterialDropdown.Frame.Parent = Container.MaterialOption;
+		MaterialDropdown.Frame.Position = UDim2.new( 0, 50, 0, 0 );
+		MaterialDropdown.Frame.Size = UDim2.new( 0, 130, 0, 25 );
+
+		MaterialDropdown:addOption( "SMOOTH PLASTIC" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.SmoothPlastic );
+		end );
+		MaterialDropdown:addOption( "PLASTIC" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Plastic );
+		end );
+		MaterialDropdown:addOption( "CONCRETE" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Concrete );
+		end );
+		MaterialDropdown:addOption( "DIAMOND PLATE" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.DiamondPlate );
+		end );
+		MaterialDropdown:addOption( "CORRODED METAL" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.CorrodedMetal );
+		end );
+		MaterialDropdown:addOption( "BRICK" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Brick );
+		end );
+		MaterialDropdown:addOption( "FABRIC" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Fabric );
+		end );
+		MaterialDropdown:addOption( "FOIL" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Foil );
+		end );
+		MaterialDropdown:addOption( "GRANITE" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Granite );
+		end );
+		MaterialDropdown:addOption( "GRASS" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Grass );
+		end );
+		MaterialDropdown:addOption( "ICE" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Ice );
+		end );
+		MaterialDropdown:addOption( "MARBLE" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Marble );
+		end );
+		MaterialDropdown:addOption( "PEBBLE" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Pebble );
+		end );
+		MaterialDropdown:addOption( "SAND" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Sand );
+		end );
+		MaterialDropdown:addOption( "SLATE" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Slate );
+		end );
+		MaterialDropdown:addOption( "WOOD" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Wood );
+		end );
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "TransparencyOption";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 65 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.TransparencyOption;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Name = "Label";
+			Position = UDim2.new( 0, 14, 0, 0 );
+			Size = UDim2.new( 0, 70, 0, 25 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Transparency";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextYAlignment = Enum.TextYAlignment.Center;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.TransparencyOption;
+			Name = "TransparencyInput";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 90, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "TextButton" {
+			Parent = Container.TransparencyOption.TransparencyInput;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Text = "";
+			ZIndex = 2;
+			AutoButtonColor = false;
+
+			-- Capture focus of the input when clicked
+			-- (so we can detect when it is focused-on)
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self.State.transparency_focused = true;
+				Container.TransparencyOption.TransparencyInput.TextBox:CaptureFocus();
+			end;
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = Container.TransparencyOption.TransparencyInput;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.TransparencyOption.TransparencyInput;
+			Name = "SelectedIndicator";
+			BorderSizePixel = 0;
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			Size = UDim2.new( 1, -4, 0, 2 );
+			Position = UDim2.new( 0, 5, 0, -2 );
+		};
+
+		RbxUtility.Create "TextBox" {
+			Parent = Container.TransparencyOption.TransparencyInput;
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 1;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+
+			-- Change the transparency when the value of the textbox is updated
+			[RbxUtility.Create.E "FocusLost"] = function ( enter_pressed )
+				if enter_pressed then
+					local potential_new = tonumber( Container.TransparencyOption.TransparencyInput.TextBox.Text );
+					if potential_new then
+						self:changeTransparency( potential_new );
+					end;
+				end;
+				self.State.transparency_focused = false;
+			end;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "ReflectanceOption";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 0, 0, 100 );
+		};
+
+		RbxUtility.Create "TextLabel" {
+			Parent = Container.ReflectanceOption;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Name = "Label";
+			Position = UDim2.new( 0, 14, 0, 0 );
+			Size = UDim2.new( 0, 70, 0, 25 );
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "Reflectance";
+			TextColor3 = Color3.new( 1, 1, 1 );
+			TextXAlignment = Enum.TextXAlignment.Left;
+			TextYAlignment = Enum.TextYAlignment.Center;
+			TextStrokeTransparency = 0;
+			TextStrokeColor3 = Color3.new( 0, 0, 0 );
+			TextWrapped = true;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.ReflectanceOption;
+			Name = "ReflectanceInput";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 85, 0, 0 );
+			Size = UDim2.new( 0, 50, 0, 25 );
+		};
+
+		RbxUtility.Create "TextButton" {
+			Parent = Container.ReflectanceOption.ReflectanceInput;
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Size = UDim2.new( 1, 0, 1, 0 );
+			Text = "";
+			ZIndex = 2;
+			AutoButtonColor = false;
+
+			-- Capture focus of the input when clicked
+			-- (so we can detect when it is focused-on)
+			[RbxUtility.Create.E "MouseButton1Down"] = function ()
+				self.State.reflectance_focused = true;
+				Container.ReflectanceOption.ReflectanceInput.TextBox:CaptureFocus();
+			end;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.ReflectanceOption.ReflectanceInput;
+			Name = "SelectedIndicator";
+			BorderSizePixel = 0;
+			BackgroundColor3 = Color3.new( 1, 1, 1 );
+			Size = UDim2.new( 1, -4, 0, 2 );
+			Position = UDim2.new( 0, 5, 0, -2 );
+		};
+
+		RbxUtility.Create "ImageLabel" {
+			Parent = Container.ReflectanceOption.ReflectanceInput;
+			Name = "Background";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Image = light_slanted_rectangle;
+			Size = UDim2.new( 1, 0, 1, 0 );
+		};
+
+		RbxUtility.Create "TextBox" {
+			Parent = Container.ReflectanceOption.ReflectanceInput;
+			BorderSizePixel = 0;
+			BackgroundTransparency = 1;
+			Position = UDim2.new( 0, 5, 0, 0 );
+			Size = UDim2.new( 1, -10, 1, 0 );
+			ZIndex = 1;
+			Font = Enum.Font.ArialBold;
+			FontSize = Enum.FontSize.Size12;
+			Text = "";
+			TextColor3 = Color3.new( 1, 1, 1 );
+
+			-- Change the transparency when the value of the textbox is updated
+			[RbxUtility.Create.E "FocusLost"] = function ( enter_pressed )
+				if enter_pressed then
+					local potential_new = tonumber( Container.ReflectanceOption.ReflectanceInput.TextBox.Text );
+					if potential_new then
+						self:changeReflectance( potential_new );
+					end;
+				end;
+				self.State.reflectance_focused = false;
+			end;
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container;
+			Name = "Bottom";
+			BackgroundTransparency = 1;
+			BorderSizePixel = 0;
+			Position = UDim2.new( 0, 5, 0, 135 );
+			Size = UDim2.new( 1, -5, 0, 20 );
+		};
+
+		RbxUtility.Create "Frame" {
+			Parent = Container.Bottom;
+			Name = "ColorBar";
+			BorderSizePixel = 0;
+			BackgroundColor3 = self.Color.Color;
+			Size = UDim2.new( 1, 0, 0, 2 );
+		};
+
+		self.GUI = Container;
+
+	end;
+
+	-- Reveal the GUI
+	self.GUI.Visible = true;
+
+end;
+
+Tools.Material.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists already
 	if self.GUI then
@@ -5480,6 +6058,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		elseif key == "b" then
 			Options.Tool = Tools.Surface;
+
+		elseif key == "n" then
+			Options.Tool = Tools.Material;
 
 		elseif key == "m" then
 			Options.Tool = Tools.Anchor;
