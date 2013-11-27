@@ -5253,10 +5253,10 @@ Tools.Material.updateGUI = function ( self )
 
 		-- Update the text inputs without interrupting the user
 		if not self.State.transparency_focused then
-			self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = self.State.transparency and tostring( self.State.transparency ) or "*";
+			self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = self.State.transparency and tostring( _round( self.State.transparency, 2 ) ) or "*";
 		end;
 		if not self.State.reflectance_focused then
-			self.GUI.ReflectanceOption.ReflectanceInput.TextBox.Text = self.State.reflectance and tostring( self.State.reflectance ) or "*";
+			self.GUI.ReflectanceOption.ReflectanceInput.TextBox.Text = self.State.reflectance and tostring( _round( self.State.reflectance, 2 ) ) or "*";
 		end;
 
 	else
