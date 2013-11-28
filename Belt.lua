@@ -215,6 +215,7 @@ function _replaceParts( old_parts, new_parts )
 	-- Insert `new_parts
 	for _, NewPart in pairs( new_parts ) do
 		NewPart.Parent = Services.Workspace;
+		NewPart:MakeJoints();
 	end;
 
 end;
