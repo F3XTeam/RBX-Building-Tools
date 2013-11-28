@@ -1732,13 +1732,8 @@ Tools.Rotate.Listeners.Equipped = function ()
 	-- Also enable the ability to select an edge as a pivot
 	SelectEdge:start( function ( EdgeMarker )
 		Tools.Rotate:changePivot( "last" );
-		Tools.Rotate.Temporary.SelectedEdge = EdgeMarker;
-		table.insert( Tools.Rotate.Temporary.Connections, Selection.Changed:connect( function ()
-			if Selection.Last ~= EdgeMarker then
-				EdgeMarker:Destroy();
-				Tools.Rotate.Temporary.SelectedEdge = nil;
-			end;
-		end ) );
+		Tools.Rotate.Options.PivotPoint = EdgeMarker.CFrame;
+		Tools.Rotate:showHandles( EdgeMarker );
 	end );
 
 end;
@@ -1751,8 +1746,8 @@ Tools.Rotate.Listeners.Unequipped = function ()
 
 	-- Disable the ability to select edges
 	SelectEdge:stop();
-	if Tools.Rotate.Temporary.SelectedEdge then
-		Tools.Rotate.Temporary.SelectedEdge:Destroy();
+	if Tools.Rotate.Options.PivotPoint then
+		Tools.Rotate.Options.PivotPoint = nil;
 	end;
 
 	-- Hide the GUI
@@ -1917,9 +1912,8 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 	end;
 
 	-- Remove any temporary edge selection
-	if self.Temporary.SelectedEdge then
-		self.Temporary.SelectedEdge:Destroy();
-		self.Temporary.SelectedEdge = nil;
+	if self.Options.PivotPoint then
+		self.Options.PivotPoint = nil;
 	end;
 
 	if new_pivot == "center" then
@@ -2000,10 +1994,12 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 		self.Temporary.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
 
 			-- Clear out any previous adornee
-			self:hideHandles();
+			if not self.Options.PivotPoint then
+				self:hideHandles();
+			end;
 
 			-- If there /is/ a last item in the selection, attach the handles to it
-			if Selection.Last then
+			if Selection.Last and not self.Options.PivotPoint then
 				self:showHandles( Selection.Last );
 			end;
 
@@ -2161,7 +2157,7 @@ Tools.Rotate.showHandles = function ( self, Part )
 					elseif self.Options.pivot == "local" then
 						Item.CFrame = self.State.PreRotation[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, math.rad( increase ), 0 ) );
 					elseif self.Options.pivot == "last" then
-						Item.CFrame = self.State.PreRotation[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, math.rad( increase ), 0 ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.State.PreRotation[Selection.Last].CFrame ):inverse() );
+						Item.CFrame = ( self.Options.PivotPoint or self.State.PreRotation[Selection.Last].CFrame ):toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, math.rad( increase ), 0 ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.Options.PivotPoint or self.State.PreRotation[Selection.Last].CFrame ):inverse() );
 					end;
 				elseif axis == Enum.Axis.X then
 					if self.Options.pivot == "center" then
@@ -2169,7 +2165,7 @@ Tools.Rotate.showHandles = function ( self, Part )
 					elseif self.Options.pivot == "local" then
 						Item.CFrame = self.State.PreRotation[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( math.rad( increase ), 0, 0 ) );
 					elseif self.Options.pivot == "last" then
-						Item.CFrame = self.State.PreRotation[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( math.rad( increase ), 0, 0 ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.State.PreRotation[Selection.Last].CFrame ):inverse() );
+						Item.CFrame = ( self.Options.PivotPoint or self.State.PreRotation[Selection.Last].CFrame ):toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( math.rad( increase ), 0, 0 ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.Options.PivotPoint or self.State.PreRotation[Selection.Last].CFrame ):inverse() );
 					end;
 				elseif axis == Enum.Axis.Z then
 					if self.Options.pivot == "center" then
@@ -2177,7 +2173,7 @@ Tools.Rotate.showHandles = function ( self, Part )
 					elseif self.Options.pivot == "local" then
 						Item.CFrame = self.State.PreRotation[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, 0, math.rad( increase ) ) );
 					elseif self.Options.pivot == "last" then
-						Item.CFrame = self.State.PreRotation[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, 0, math.rad( increase ) ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.State.PreRotation[Selection.Last].CFrame ):inverse() );
+						Item.CFrame = ( self.Options.PivotPoint or self.State.PreRotation[Selection.Last].CFrame ):toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, 0, math.rad( increase ) ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.Options.PivotPoint or self.State.PreRotation[Selection.Last].CFrame ):inverse() );
 					end;
 				end;
 
@@ -4006,13 +4002,12 @@ SelectEdge = {
 
 		-- Turn the marker into an actual part of the selection
 		self.Marker.Parent = Services.Workspace.CurrentCamera;
-		Selection:add( self.Marker );
+		self.MarkerOutline.Adornee = self.Marker;
 
 		callback( self.Marker );
 
 		-- Stop treating it like a marker
 		self.Marker = nil;
-		self.MarkerOutline.Adornee = nil;
 
 		self:disable();
 
@@ -4125,18 +4120,6 @@ History = {
 
 	["add"] = function ( self, old_selection, new_selection )
 
-		-- Purge the selections of any items that shouldn't be there
-		for item_index, Item in pairs( old_selection ) do
-			if Item.Name == "BTEdgeSelectionMarker" then
-				old_selection[item_index] = nil;
-			end;
-		end;
-		for item_index, Item in pairs( new_selection ) do
-			if Item.Name == "BTEdgeSelectionMarker" then
-				new_selection[item_index] = nil;
-			end;
-		end;
-
 		-- Create the history record
 		local Record = {
 			old = old_selection;
@@ -4205,14 +4188,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 				-- Make a copy of every item in the selection and add it to table `item_copies`
 				for _, Item in pairs( Selection.Items ) do
-
-					-- Make sure not to include things like markers
-					if Item.Name ~= "BTEdgeSelectionMarker" then
-						local ItemCopy = Item:Clone();
-						ItemCopy.Parent = Services.Workspace;
-						table.insert( item_copies, ItemCopy );
-					end;
-
+					local ItemCopy = Item:Clone();
+					ItemCopy.Parent = Services.Workspace;
+					table.insert( item_copies, ItemCopy );
 				end;
 
 				-- Replace the selection with the copied items
