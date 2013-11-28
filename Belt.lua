@@ -265,46 +265,48 @@ TargetBox = nil;
 Connections = {};
 
 -- Create the handle
-Handle = RbxUtility.Create "Part" {
-	Name = "Handle";
-	Parent = Tool;
-	Locked = true;
-	FormFactor = Enum.FormFactor.Custom;
-	Size = Vector3.new( 0.8, 0.8, 0.8 );
-	TopSurface = Enum.SurfaceType.Smooth;
-	BottomSurface = Enum.SurfaceType.Smooth;
-};
+if not Tool:FindFirstChild( "Handle" ) then
+	Handle = RbxUtility.Create "Part" {
+		Name = "Handle";
+		Parent = Tool;
+		Locked = true;
+		FormFactor = Enum.FormFactor.Custom;
+		Size = Vector3.new( 0.8, 0.8, 0.8 );
+		TopSurface = Enum.SurfaceType.Smooth;
+		BottomSurface = Enum.SurfaceType.Smooth;
+	};
 
-RbxUtility.Create "Decal" {
-	Parent = Handle;
-	Face = Enum.NormalId.Front;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Handle;
-	Face = Enum.NormalId.Back;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Handle;
-	Face = Enum.NormalId.Left;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Handle;
-	Face = Enum.NormalId.Right;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Handle;
-	Face = Enum.NormalId.Top;
-	Texture = tool_decal;
-};
-RbxUtility.Create "Decal" {
-	Parent = Handle;
-	Face = Enum.NormalId.Bottom;
-	Texture = tool_decal;
-};
+	RbxUtility.Create "Decal" {
+		Parent = Handle;
+		Face = Enum.NormalId.Front;
+		Texture = tool_decal;
+	};
+	RbxUtility.Create "Decal" {
+		Parent = Handle;
+		Face = Enum.NormalId.Back;
+		Texture = tool_decal;
+	};
+	RbxUtility.Create "Decal" {
+		Parent = Handle;
+		Face = Enum.NormalId.Left;
+		Texture = tool_decal;
+	};
+	RbxUtility.Create "Decal" {
+		Parent = Handle;
+		Face = Enum.NormalId.Right;
+		Texture = tool_decal;
+	};
+	RbxUtility.Create "Decal" {
+		Parent = Handle;
+		Face = Enum.NormalId.Top;
+		Texture = tool_decal;
+	};
+	RbxUtility.Create "Decal" {
+		Parent = Handle;
+		Face = Enum.NormalId.Bottom;
+		Texture = tool_decal;
+	};
+end;
 
 -- Set the grip for the handle
 Tool.Grip = CFrame.new( 0, 0, 0.4 );
