@@ -224,51 +224,30 @@ end;
 ------------------------------------------
 ActiveKeys = {};
 
-Options = setmetatable( {
+CurrentTool = nil;
 
-	["_options"] = {
-		["Tool"] = nil
-	}
+function equipTool( NewTool )
 
-}, {
+	-- If it's a different tool than the current one
+	if CurrentTool ~= NewTool then
 
-	__newindex = function ( self, key, value )
-
-		-- Do different special things depending on `key`
-		if key == "Tool" then
-
-			-- If it's a different tool than the current one
-			if self.Tool ~= value then
-
-				-- Run (if existent) the old tool's `Unequipped` listener
-				if Options.Tool and Options.Tool.Listeners.Unequipped then
-					Options.Tool.Listeners.Unequipped();
-				end;
-
-				rawget( self, "_options" ).Tool = nil;
-
-				-- Recolor the handle
-				Tool.Handle.BrickColor = value.Color;
-
-				-- Run (if existent) the new tool's `Equipped` listener
-				if value.Listeners.Equipped then
-					value.Listeners.Equipped();
-				end;
-
-			end;
+		-- Run (if existent) the old tool's `Unequipped` listener
+		if CurrentTool and CurrentTool.Listeners.Unequipped then
+			CurrentTool.Listeners.Unequipped();
 		end;
 
-		-- Set the value normally to `self._options`
-		rawget( self, "_options" )[key] = value;
+		CurrentTool = NewTool;
+
+		-- Recolor the handle
+		Tool.Handle.BrickColor = NewTool.Color;
+
+		-- Run (if existent) the new tool's `Equipped` listener
+		if NewTool.Listeners.Equipped then
+			NewTool.Listeners.Equipped();
+		end;
 
 	end;
-
-	-- Get any options from `self._options` instead of `self` directly
-	__index = function ( self, key )
-		return rawget( self, "_options" )[key];
-	end;
-
-} );
+end;
 
 -- Keep some state data
 clicking = false;
@@ -279,6 +258,7 @@ override_selection = false;
 SelectionBoxes = {};
 SelectionExistenceListeners = {};
 SelectionBoxColor = BrickColor.new( "Cyan" );
+TargetBox = nil;
 
 -- Keep a container for temporary connections
 -- from the platform
@@ -387,8 +367,8 @@ Selection = {
 		SelectionBoxes[NewPart].Adornee = NewPart;
 
 		-- Remove any target selection box focus
-		if NewPart == Options.TargetBox.Adornee then
-			Options.TargetBox.Adornee = nil;
+		if NewPart == TargetBox.Adornee then
+			TargetBox.Adornee = nil;
 		end;
 
 		-- Make sure to remove the item from the selection when it's deleted
@@ -565,7 +545,7 @@ Tools.Move.Listeners.Equipped = function ()
 		while wait( 0.1 ) and updater_on do
 
 			-- Make sure the tool's equipped
-			if Options.Tool == Tools.Move then
+			if CurrentTool == Tools.Move then
 
 				-- Update the GUI if it's visible
 				if Tools.Move.Temporary.GUI and Tools.Move.Temporary.GUI.Visible then
@@ -1739,7 +1719,7 @@ Tools.Resize.Listeners.Equipped = function ()
 		while wait( 0.1 ) and updater_on do
 
 			-- Make sure the tool's equipped
-			if Options.Tool == Tools.Resize then
+			if CurrentTool == Tools.Resize then
 
 				-- Update the GUI if it's visible
 				if Tools.Resize.Temporary.GUI and Tools.Resize.Temporary.GUI.Visible then
@@ -2688,7 +2668,7 @@ Tools.Rotate.Listeners.Equipped = function ()
 		while wait( 0.1 ) and updater_on do
 
 			-- Make sure the tool's equipped
-			if Options.Tool == Tools.Rotate then
+			if CurrentTool == Tools.Rotate then
 
 				-- Update the GUI if it's visible
 				if Tools.Rotate.Temporary.GUI and Tools.Rotate.Temporary.GUI.Visible then
@@ -4003,7 +3983,7 @@ Tools.Anchor.Listeners.Equipped = function ()
 		while wait( 0.1 ) and updater_on do
 
 			-- Make sure the tool's equipped
-			if Options.Tool == Tools.Anchor then
+			if CurrentTool == Tools.Anchor then
 
 				-- Update the anchor status of every item in the selection
 				local anchor_status = nil;
@@ -4463,7 +4443,7 @@ Tools.Surface.Listeners.Equipped = function ()
 		while wait( 0.1 ) and updater_on do
 
 			-- Make sure the tool's equipped
-			if Options.Tool == self then
+			if CurrentTool == self then
 
 				-- Update the surface type of every item in the selection
 				local surface_type = nil;
@@ -5002,7 +4982,7 @@ Tools.Material.Listeners.Equipped = function ()
 		while wait( 0.1 ) and updater_on do
 
 			-- Make sure the tool's equipped
-			if Options.Tool == self then
+			if CurrentTool == self then
 
 				-- Update the material type of every item in the selection
 				local material_type, transparency, reflectance = nil, nil, nil;
@@ -5565,7 +5545,7 @@ Tools.Collision.Listeners.Equipped = function ()
 		while wait( 0.1 ) and updater_on do
 
 			-- Make sure the tool's equipped
-			if Options.Tool == Tools.Collision then
+			if CurrentTool == Tools.Collision then
 
 				-- Update the collision status of every item in the selection
 				local colliding = nil;
@@ -6072,7 +6052,7 @@ Tools.NewPart.Listeners.Button1Down = function ()
 
 	-- Switch to the move tool and simulate clicking so
 	-- that the user could easily position their new part
-	Options.Tool = Tools.Move;
+	equipTool( Tools.Move );
 	Tools.Move.ManualTarget = NewPart;
 	NewPart.CFrame = CFrame.new( Mouse.Hit.p );
 	Tools.Move.Listeners.Button1Down();
@@ -6670,9 +6650,11 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 	Mouse = CurrentMouse;
 
-	Options.TargetBox = Instance.new( "SelectionBox", UI );
-	Options.TargetBox.Name = "BTTargetBox";
-	Options.TargetBox.Color = BrickColor.new( "Institutional white" );
+	if not TargetBox then
+		TargetBox = Instance.new( "SelectionBox", UI );
+		TargetBox.Name = "BTTargetBox";
+		TargetBox.Color = BrickColor.new( "Institutional white" );
+	end;
 
 	-- Enable any temporarily-disabled selection boxes
 	for _, SelectionBox in pairs( SelectionBoxes ) do
@@ -6680,8 +6662,8 @@ Tool.Equipped:connect( function ( CurrentMouse )
 	end;
 
 	-- Call the `Equipped` listener of the current tool
-	if Options.Tool and Options.Tool.Listeners.Equipped then
-		Options.Tool.Listeners.Equipped();
+	if CurrentTool and CurrentTool.Listeners.Equipped then
+		CurrentTool.Listeners.Equipped();
 	end;
 
 	table.insert( Connections, Mouse.KeyDown:connect( function ( key )
@@ -6760,31 +6742,31 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		end;
 
 		if key == "z" and not ( ActiveKeys[47] or ActiveKeys[48] ) then
-			Options.Tool = Tools.Move;
+			equipTool( Tools.Move );
 
 		elseif key == "x" then
-			Options.Tool = Tools.Resize;
+			equipTool( Tools.Resize );
 
 		elseif key == "c" then
-			Options.Tool = Tools.Rotate;
+			equipTool( Tools.Rotate );
 
 		elseif key == "v" then
-			Options.Tool = Tools.Paint;
+			equipTool( Tools.Paint );
 
 		elseif key == "b" then
-			Options.Tool = Tools.Surface;
+			equipTool( Tools.Surface );
 
 		elseif key == "n" then
-			Options.Tool = Tools.Material;
+			equipTool( Tools.Material );
 
 		elseif key == "m" then
-			Options.Tool = Tools.Anchor;
+			equipTool( Tools.Anchor );
 
 		elseif key == "k" then
-			Options.Tool = Tools.Collision;
+			equipTool( Tools.Collision );
 
 		elseif key == "j" then
-			Options.Tool = Tools.NewPart;
+			equipTool( Tools.NewPart );
 
 		elseif key == "q" then
 			Selection:clear();
@@ -6841,8 +6823,8 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		end;
 
 		-- Fire tool listeners
-		if Options.Tool and Options.Tool.Listeners.Button1Down then
-			Options.Tool.Listeners.Button1Down();
+		if CurrentTool and CurrentTool.Listeners.Button1Down then
+			CurrentTool.Listeners.Button1Down();
 		end;
 
 	end ) );
@@ -6856,19 +6838,19 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		-- If the target has changed, update the selectionbox appropriately
 		if not override_selection and Mouse.Target then
-			if Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked and Options.TargetBox.Adornee ~= Mouse.Target and not Selection:find( Mouse.Target ) then
-				Options.TargetBox.Adornee = Mouse.Target;
+			if Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked and TargetBox.Adornee ~= Mouse.Target and not Selection:find( Mouse.Target ) then
+				TargetBox.Adornee = Mouse.Target;
 			end;
 		end;
 
 		-- When aiming at something invalid, don't highlight any targets
 		if not override_selection and not Mouse.Target or ( Mouse.Target and Mouse.Target:IsA( "BasePart" ) and Mouse.Target.Locked ) or Selection:find( Mouse.Target ) then
-			Options.TargetBox.Adornee = nil;
+			TargetBox.Adornee = nil;
 		end;
 
 		-- Fire tool listeners
-		if Options.Tool and Options.Tool.Listeners.Move then
-			Options.Tool.Listeners.Move();
+		if CurrentTool and CurrentTool.Listeners.Move then
+			CurrentTool.Listeners.Move();
 		end;
 
 		if override_selection then
@@ -6916,8 +6898,8 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		end;
 
 		-- Fire tool listeners
-		if Options.Tool and Options.Tool.Listeners.Button1Up then
-			Options.Tool.Listeners.Button1Up();
+		if CurrentTool and CurrentTool.Listeners.Button1Up then
+			CurrentTool.Listeners.Button1Up();
 		end;
 
 		if override_selection then
@@ -6928,15 +6910,15 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 	table.insert( Connections, Mouse.Button2Down:connect( function ()
 		-- Fire tool listeners
-		if Options.Tool and Options.Tool.Listeners.Button2Down then
-			Options.Tool.Listeners.Button2Down();
+		if CurrentTool and CurrentTool.Listeners.Button2Down then
+			CurrentTool.Listeners.Button2Down();
 		end;
 	end ) );
 
 	table.insert( Connections, Mouse.Button2Up:connect( function ()
 		-- Fire tool listeners
-		if Options.Tool and Options.Tool.Listeners.Button2Up then
-			Options.Tool.Listeners.Button2Up();
+		if CurrentTool and CurrentTool.Listeners.Button2Up then
+			CurrentTool.Listeners.Button2Up();
 		end;
 	end ) );
 
@@ -6947,9 +6929,9 @@ Tool.Unequipped:connect( function ()
 	Mouse = nil;
 
 	-- Remove the mouse target SelectionBox from `Player`
-	local TargetBox = UI:FindFirstChild( "BTTargetBox" );
 	if TargetBox then
 		TargetBox:Destroy();
+		TargetBox = nil;
 	end;
 
 	-- Disable all the selection boxes temporarily
@@ -6964,11 +6946,11 @@ Tool.Unequipped:connect( function ()
 	end;
 
 	-- Call the `Unequipped` listener of the current tool
-	if Options.Tool and Options.Tool.Listeners.Unequipped then
-		Options.Tool.Listeners.Unequipped();
+	if CurrentTool and CurrentTool.Listeners.Unequipped then
+		CurrentTool.Listeners.Unequipped();
 	end;
 
 end );
 
 -- Enable `Tools.Move` as the first tool
-Options.Tool = Tools.Move;
+equipTool( Tools.Move );
