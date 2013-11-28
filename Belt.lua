@@ -658,11 +658,14 @@ Tools.Move.Listeners.Button1Down = function ()
 	end;
 
 	-- Add a new record to the history system
-	local old_parts = _cloneTable( Selection.Items );
-	local new_parts = _cloneParts( Selection.Items );
+	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
 	_replaceParts( old_parts, new_parts );
 	for _, Item in pairs( new_parts ) do
 		Selection:add( Item );
+	end;
+	if #focus_search > 0 then
+		Selection:focus( new_parts[focus_search[1]] );
 	end;
 	History:add( old_parts, new_parts );
 	Target = new_parts[_findTableOccurrences( old_parts, Target )[1]];
@@ -799,11 +802,14 @@ Tools.Move.showHandles = function ( self, Part )
 			self.State.distance_moved = 0;
 
 			-- Add a new record to the history system
-			local old_parts = _cloneTable( Selection.Items );
-			local new_parts = _cloneParts( Selection.Items );
+			local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+			local focus_search = _findTableOccurrences( old_parts, Selection.Last );
 			_replaceParts( old_parts, new_parts );
 			for _, Item in pairs( new_parts ) do
 				Selection:add( Item );
+			end;
+			if #focus_search > 0 then
+				Selection:focus( new_parts[focus_search[1]] );
 			end;
 			History:add( old_parts, new_parts );
 
@@ -1378,11 +1384,14 @@ Tools.Resize.showHandles = function ( self, Part )
 			self.State.length_resized = 0;
 
 			-- Add a new record to the history system
-			local old_parts = _cloneTable( Selection.Items );
-			local new_parts = _cloneParts( Selection.Items );
+			local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+			local focus_search = _findTableOccurrences( old_parts, Selection.Last );
 			_replaceParts( old_parts, new_parts );
 			for _, Item in pairs( new_parts ) do
 				Selection:add( Item );
+			end;
+			if #focus_search > 0 then
+				Selection:focus( new_parts[focus_search[1]] );
 			end;
 			History:add( old_parts, new_parts );
 
@@ -2059,11 +2068,14 @@ Tools.Rotate.showHandles = function ( self, Part )
 			self.State.rotation_size = 0;
 
 			-- Add a new record to the history system
-			local old_parts = _cloneTable( Selection.Items );
-			local new_parts = _cloneParts( Selection.Items );
+			local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+			local focus_search = _findTableOccurrences( old_parts, Selection.Last );
 			_replaceParts( old_parts, new_parts );
 			for _, Item in pairs( new_parts ) do
 				Selection:add( Item );
+			end;
+			if #focus_search > 0 then
+				Selection:focus( new_parts[focus_search[1]] );
 			end;
 			History:add( old_parts, new_parts );
 
@@ -2274,11 +2286,14 @@ Tools.Paint.Listeners.Button1Up = function ()
 		override_selection = true;
 
 		-- Add a new record to the history system
-		local old_parts = _cloneTable( Selection.Items );
-		local new_parts = _cloneParts( Selection.Items );
+		local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+		local focus_search = _findTableOccurrences( old_parts, Selection.Last );
 		_replaceParts( old_parts, new_parts );
 		for _, Item in pairs( new_parts ) do
 			Selection:add( Item );
+		end;
+		if #focus_search > 0 then
+			Selection:focus( new_parts[focus_search[1]] );
 		end;
 		History:add( old_parts, new_parts );
 
@@ -2302,11 +2317,14 @@ Tools.Paint.changeColor = function ( self, Color )
 		self.Options.Color = Color;
 
 		-- Add a new record to the history system
-		local old_parts = _cloneTable( Selection.Items );
-		local new_parts = _cloneParts( Selection.Items );
+		local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+		local focus_search = _findTableOccurrences( old_parts, Selection.Last );
 		_replaceParts( old_parts, new_parts );
 		for _, Item in pairs( new_parts ) do
 			Selection:add( Item );
+		end;
+		if #focus_search > 0 then
+			Selection:focus( new_parts[focus_search[1]] );
 		end;
 		History:add( old_parts, new_parts );
 
@@ -2754,11 +2772,14 @@ Tools.Surface.SpecialTypeNames = {
 Tools.Surface.changeType = function ( self, surface_type )
 
 	-- Add a new record to the history system
-	local old_parts = _cloneTable( Selection.Items );
-	local new_parts = _cloneParts( Selection.Items );
+	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
 	_replaceParts( old_parts, new_parts );
 	for _, Item in pairs( new_parts ) do
 		Selection:add( Item );
+	end;
+	if #focus_search > 0 then
+		Selection:focus( new_parts[focus_search[1]] );
 	end;
 	History:add( old_parts, new_parts );
 
@@ -3125,11 +3146,14 @@ end;
 Tools.Material.changeMaterial = function ( self, material_type )
 
 	-- Add a new record to the history system
-	local old_parts = _cloneTable( Selection.Items );
-	local new_parts = _cloneParts( Selection.Items );
+	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
 	_replaceParts( old_parts, new_parts );
 	for _, Item in pairs( new_parts ) do
 		Selection:add( Item );
+	end;
+	if #focus_search > 0 then
+		Selection:focus( new_parts[focus_search[1]] );
 	end;
 	History:add( old_parts, new_parts );
 
@@ -3145,11 +3169,14 @@ end;
 Tools.Material.changeTransparency = function ( self, transparency )
 
 	-- Add a new record to the history system
-	local old_parts = _cloneTable( Selection.Items );
-	local new_parts = _cloneParts( Selection.Items );
+	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
 	_replaceParts( old_parts, new_parts );
 	for _, Item in pairs( new_parts ) do
 		Selection:add( Item );
+	end;
+	if #focus_search > 0 then
+		Selection:focus( new_parts[focus_search[1]] );
 	end;
 	History:add( old_parts, new_parts );
 
@@ -3162,11 +3189,14 @@ end;
 Tools.Material.changeReflectance = function ( self, reflectance )
 
 	-- Add a new record to the history system
-	local old_parts = _cloneTable( Selection.Items );
-	local new_parts = _cloneParts( Selection.Items );
+	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
 	_replaceParts( old_parts, new_parts );
 	for _, Item in pairs( new_parts ) do
 		Selection:add( Item );
+	end;
+	if #focus_search > 0 then
+		Selection:focus( new_parts[focus_search[1]] );
 	end;
 	History:add( old_parts, new_parts );
 
@@ -3425,11 +3455,14 @@ end;
 Tools.Collision.enable = function ( self )
 
 	-- Add a new record to the history system
-	local old_parts = _cloneTable( Selection.Items );
-	local new_parts = _cloneParts( Selection.Items );
+	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
 	_replaceParts( old_parts, new_parts );
 	for _, Item in pairs( new_parts ) do
 		Selection:add( Item );
+	end;
+	if #focus_search > 0 then
+		Selection:focus( new_parts[focus_search[1]] );
 	end;
 	History:add( old_parts, new_parts );
 
@@ -3443,11 +3476,14 @@ end;
 Tools.Collision.disable = function ( self )
 
 	-- Add a new record to the history system
-	local old_parts = _cloneTable( Selection.Items );
-	local new_parts = _cloneParts( Selection.Items );
+	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
 	_replaceParts( old_parts, new_parts );
 	for _, Item in pairs( new_parts ) do
 		Selection:add( Item );
+	end;
+	if #focus_search > 0 then
+		Selection:focus( new_parts[focus_search[1]] );
 	end;
 	History:add( old_parts, new_parts );
 
