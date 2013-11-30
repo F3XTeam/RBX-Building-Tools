@@ -3664,6 +3664,8 @@ Tools.NewPart.Listeners.Button1Down = function ()
 		NewPart = Instance.new( "Seat", Services.Workspace );
 	elseif self.Options.type == "vehicle seat" then
 		NewPart = Instance.new( "VehicleSeat", Services.Workspace );
+	elseif self.Options.type == "spawn" then
+		NewPart = Instance.new( "SpawnLocation", Services.Workspace );
 	end;
 	NewPart.Anchored = true;
 
@@ -3730,6 +3732,9 @@ Tools.NewPart.showGUI = function ( self )
 		end );
 		TypeDropdown:addOption( "VEHICLE SEAT" ).MouseButton1Up:connect( function ()
 			self:changeType( "vehicle seat" );
+		end );
+		TypeDropdown:addOption( "SPAWN" ).MouseButton1Up:connect( function ()
+			self:changeType( "spawn" );
 		end );
 
 		self.GUI = Container;
