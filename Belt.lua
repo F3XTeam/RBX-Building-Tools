@@ -187,7 +187,15 @@ function _pointToScreenSpace( Point )
 	local x = ( point.x / point.z ) / -wfactor;
 	local y = ( point.y / point.z ) /  hfactor;
 
-	return Vector2.new( Mouse.ViewSizeX * ( 0.5 + 0.5 * x ), Mouse.ViewSizeY * ( 0.5 + 0.5 * y ) );
+	local screen_pos = Vector2.new( Mouse.ViewSizeX * ( 0.5 + 0.5 * x ), Mouse.ViewSizeY * ( 0.5 + 0.5 * y ) );
+	if ( screen_pos.x < 0 or screen_pos.x > Mouse.ViewSizeX ) or ( screen_pos.y < 0 or screen_pos.y > Mouse.ViewSizeY ) then
+		return nil;
+	end;
+	if Camera.CoordinateFrame:toObjectSpace( CFrame.new( Point ) ).z > 0 then
+		return nil;
+	end;
+
+	return screen_pos;
 
 end;
 
@@ -3823,14 +3831,16 @@ Select2D = {
 
 				-- Check if the part is rendered within the range of the selection area
 				local PartPosition = _pointToScreenSpace( Object.Position );
-				local left_check = PartPosition.x >= self.GUI.Rectangle.AbsolutePosition.x;
-				local right_check = PartPosition.x <= ( self.GUI.Rectangle.AbsolutePosition.x + self.GUI.Rectangle.AbsoluteSize.x );
-				local top_check = PartPosition.y >= self.GUI.Rectangle.AbsolutePosition.y;
-				local bottom_check = PartPosition.y <= ( self.GUI.Rectangle.AbsolutePosition.y + self.GUI.Rectangle.AbsoluteSize.y );
+				if PartPosition then
+					local left_check = PartPosition.x >= self.GUI.Rectangle.AbsolutePosition.x;
+					local right_check = PartPosition.x <= ( self.GUI.Rectangle.AbsolutePosition.x + self.GUI.Rectangle.AbsoluteSize.x );
+					local top_check = PartPosition.y >= self.GUI.Rectangle.AbsolutePosition.y;
+					local bottom_check = PartPosition.y <= ( self.GUI.Rectangle.AbsolutePosition.y + self.GUI.Rectangle.AbsoluteSize.y );
 
-				-- If the part is within the selection area, select it
-				if left_check and right_check and top_check and bottom_check then
-					Selection:add( Object );
+					-- If the part is within the selection area, select it
+					if left_check and right_check and top_check and bottom_check then
+						Selection:add( Object );
+					end;
 				end;
 
 			end;
