@@ -27,8 +27,6 @@ Services = {
 	["StarterPack"] = Game:GetService( "StarterPack" );
 	["StarterGui"] = Game:GetService( "StarterGui" );
 	["TestService"] = Game:GetService( "TestService" );
-	["ServerScriptService"] = Game:GetService( "ServerScriptService" );
-	["ServerStorage"] = Game:GetService( "ServerStorage" );
 	["ReplicatedStorage"] = Game:GetService( "ReplicatedStorage" );
 };
 
@@ -36,6 +34,13 @@ Tool = script.Parent;
 Player = Services.Players.LocalPlayer;
 Mouse = nil;
 Camera = Services.Workspace.CurrentCamera;
+
+GetAsync = function ( ... )
+	return Tool.GetAsync:InvokeServer( ... );
+end;
+PostAsync = function ( ... )
+	return Tool.PostAsync:InvokeServer( ... );
+end;
 
 dark_slanted_rectangle = "http://www.roblox.com/asset/?id=127774197";
 light_slanted_rectangle = "http://www.roblox.com/asset/?id=127772502";
@@ -187,7 +192,15 @@ function _pointToScreenSpace( Point )
 	local x = ( point.x / point.z ) / -wfactor;
 	local y = ( point.y / point.z ) /  hfactor;
 
-	return Vector2.new( Mouse.ViewSizeX * ( 0.5 + 0.5 * x ), Mouse.ViewSizeY * ( 0.5 + 0.5 * y ) );
+	local screen_pos = Vector2.new( Mouse.ViewSizeX * ( 0.5 + 0.5 * x ), Mouse.ViewSizeY * ( 0.5 + 0.5 * y ) );
+	if ( screen_pos.x < 0 or screen_pos.x > Mouse.ViewSizeX ) or ( screen_pos.y < 0 or screen_pos.y > Mouse.ViewSizeY ) then
+		return nil;
+	end;
+	if Camera.CoordinateFrame:toObjectSpace( CFrame.new( Point ) ).z > 0 then
+		return nil;
+	end;
+
+	return screen_pos;
 
 end;
 
@@ -217,6 +230,138 @@ function _replaceParts( old_parts, new_parts )
 		NewPart.Parent = Services.Workspace;
 		NewPart:MakeJoints();
 	end;
+
+end;
+
+function _splitString( str, delimiter )
+	-- Returns a table of string `str` split by pattern `delimiter`
+
+	local parts = {};
+	local pattern = ( "([^%s]+)" ):format( delimiter );
+
+	str:gsub( pattern, function ( part )
+		table.insert( parts, part );
+	end );
+
+	return parts;
+end;
+
+function _generateSerializationID()
+	-- Returns a random 5-character string
+	-- with characters A-Z, a-z, and 0-9
+	-- (there are 916,132,832 unique IDs)
+
+	local characters = {
+		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+		"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+		"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
+
+	local serialization_id = "";
+
+	-- Pick out 5 random characters
+	for _ = 1, 5 do
+		serialization_id = serialization_id .. ( characters[math.random( #characters )] );
+	end;
+
+	return serialization_id;
+end;
+
+function _splitNumberListString( str )
+	-- Returns the contents of _splitString( str, ", " ), except
+	-- each value in the table is turned into a number
+
+	-- Get the number strings
+	local numbers = _splitString( str, ", " );
+
+	-- Turn them into numbers
+	for number_index, number in pairs( numbers ) do
+		numbers[number_index] = tonumber( number );
+	end;
+
+	-- Return `numbers`
+	return numbers;
+end;
+
+function _getSerializationPartType( Part )
+	-- Returns a special number that determines the type of
+	-- part `Part` is
+
+	local Types = {
+		Normal = 1,
+		Truss = 2,
+		Wedge = 3,
+		Corner = 4,
+		Cylinder = 5,
+		Ball = 6,
+		Seat = 7,
+		VehicleSeat = 8,
+		Spawn = 9
+	};
+
+	-- Return the appropriate type number
+	if Part.ClassName == "Part" then
+		if Part.Shape == Enum.PartType.Block then
+			return Types.Normal;
+		elseif Part.Shape == Enum.PartType.Cylinder then
+			return Types.Cylinder;
+		elseif Part.Shape == Enum.PartType.Ball then
+			return Types.Ball;
+		end;
+
+	elseif Part.ClassName == "Seat" then
+		return Types.Seat;
+
+	elseif Part.ClassName == "VehicleSeat" then
+		return Types.VehicleSeat;
+
+	elseif Part.ClassName == "SpawnLocation" then
+		return Types.Spawn;
+
+	elseif Part.ClassName == "WedgePart" then
+		return Types.Wedge;
+
+	elseif Part.ClassName == "CornerWedgePart" then
+		return Types.Corner;
+
+	elseif Part.ClassName == "TrussPart" then
+		return Types.Truss;
+
+	end;
+
+end;
+
+function _serializeParts( parts )
+	-- Returns JSON-encoded data about parts in
+	-- table `parts` that can be used to recreate them
+
+	local data = {
+		version = 1,
+		parts = {}
+	};
+
+	for _, Part in pairs( parts ) do
+		local part_id = _generateSerializationID();
+		local PartData = {
+			_getSerializationPartType( Part ),
+			_splitNumberListString( tostring( Part.Size ) ),
+			_splitNumberListString( tostring( Part.CFrame ) ),
+			Part.BrickColor.Number,
+			Part.Material.Value,
+			Part.Anchored,
+			Part.CanCollide,
+			Part.Reflectance,
+			Part.Transparency,
+			Part.TopSurface.Value,
+			Part.BottomSurface.Value,
+			Part.LeftSurface.Value,
+			Part.RightSurface.Value,
+			Part.FrontSurface.Value,
+			Part.BackSurface.Value
+		};
+		data.parts[part_id] = PartData;
+	end;
+
+	return RbxUtility.EncodeJSON( data );
 
 end;
 
@@ -3664,6 +3809,8 @@ Tools.NewPart.Listeners.Button1Down = function ()
 		NewPart = Instance.new( "Seat", Services.Workspace );
 	elseif self.Options.type == "vehicle seat" then
 		NewPart = Instance.new( "VehicleSeat", Services.Workspace );
+	elseif self.Options.type == "spawn" then
+		NewPart = Instance.new( "SpawnLocation", Services.Workspace );
 	end;
 	NewPart.Anchored = true;
 
@@ -3730,6 +3877,9 @@ Tools.NewPart.showGUI = function ( self )
 		end );
 		TypeDropdown:addOption( "VEHICLE SEAT" ).MouseButton1Up:connect( function ()
 			self:changeType( "vehicle seat" );
+		end );
+		TypeDropdown:addOption( "SPAWN" ).MouseButton1Up:connect( function ()
+			self:changeType( "spawn" );
 		end );
 
 		self.GUI = Container;
@@ -3818,14 +3968,16 @@ Select2D = {
 
 				-- Check if the part is rendered within the range of the selection area
 				local PartPosition = _pointToScreenSpace( Object.Position );
-				local left_check = PartPosition.x >= self.GUI.Rectangle.AbsolutePosition.x;
-				local right_check = PartPosition.x <= ( self.GUI.Rectangle.AbsolutePosition.x + self.GUI.Rectangle.AbsoluteSize.x );
-				local top_check = PartPosition.y >= self.GUI.Rectangle.AbsolutePosition.y;
-				local bottom_check = PartPosition.y <= ( self.GUI.Rectangle.AbsolutePosition.y + self.GUI.Rectangle.AbsoluteSize.y );
+				if PartPosition then
+					local left_check = PartPosition.x >= self.GUI.Rectangle.AbsolutePosition.x;
+					local right_check = PartPosition.x <= ( self.GUI.Rectangle.AbsolutePosition.x + self.GUI.Rectangle.AbsoluteSize.x );
+					local top_check = PartPosition.y >= self.GUI.Rectangle.AbsolutePosition.y;
+					local bottom_check = PartPosition.y <= ( self.GUI.Rectangle.AbsolutePosition.y + self.GUI.Rectangle.AbsoluteSize.y );
 
-				-- If the part is within the selection area, select it
-				if left_check and right_check and top_check and bottom_check then
-					Selection:add( Object );
+					-- If the part is within the selection area, select it
+					if left_check and right_check and top_check and bottom_check then
+						Selection:add( Object );
+					end;
 				end;
 
 			end;
@@ -4135,7 +4287,67 @@ History = {
 
 	end;
 
-}
+};
+
+------------------------------------------
+-- Provide an interface to the
+-- import/export system
+------------------------------------------
+
+IE = {
+
+	["export"] = function ()
+
+		local serialized_selection = _serializeParts( Selection.Items );
+
+		-- Dump to logs
+		Services.TestService:Warn( false, "[Building Tools by F3X] Exported Model: \n" .. serialized_selection );
+
+		-- Upload to the web for retrieval
+		local Dialog = Tool.BTExportDialog:Clone();
+		Dialog.Loading.Size = UDim2.new( 1, 0, 0, 0 );
+		Dialog.Parent = UI;
+		Dialog.Loading:TweenSize( UDim2.new( 1, 0, 0, 50 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
+		local upload_attempt = PostAsync( "http://www.f3xteam.com/bt/export", serialized_selection );
+		if upload_attempt then
+			local attempt_data;
+			if not pcall( function ()
+				attempt_data = RbxUtility.DecodeJSON( upload_attempt );
+			end ) then
+				Dialog:Destroy();
+			end;
+			if attempt_data and attempt_data.success then
+				Dialog.Loading.Visible = false;
+				Dialog.Info.Size = UDim2.new( 1, 0, 0, 0 );
+				Dialog.Info.CreationID.Text = attempt_data.id;
+				Dialog.Info.Visible = true;
+				Dialog.Info:TweenSize( UDim2.new( 1, 0, 0, 75 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
+				Dialog.Tip.Size = UDim2.new( 1, 0, 0, 0 );
+				Dialog.Tip.Visible = true;
+				Dialog.Tip:TweenSize( UDim2.new( 1, 0, 0, 30 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
+				Dialog.Close.Size = UDim2.new( 1, 0, 0, 0 );
+				Dialog.Close.Visible = true;
+				Dialog.Close:TweenSize( UDim2.new( 1, 0, 0, 20 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
+				Dialog.Close.Button.MouseButton1Up:connect( function ()
+					Dialog:Destroy();
+				end );
+			end;
+		end;
+
+		-- Play a confirmation sound
+		local Sound = RbxUtility.Create "Sound" {
+			Name = "BTActionCompletionSound";
+			Pitch = 1.5;
+			SoundId = action_completion_sound;
+			Volume = 1;
+			Parent = Player;
+		};
+		Sound:Play();
+		Sound:Destroy();
+
+	end;
+
+};
 
 ------------------------------------------
 -- Attach listeners
@@ -4270,6 +4482,11 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		-- Redo if shift+y is pressed
 		elseif key == "y" and ( ActiveKeys[47] or ActiveKeys[48] ) then
 			History:redo();
+		end;
+
+		-- Serialize and dump selection to logs if shift+p is pressed
+		if key == "p" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+			IE:export();
 		end;
 
 		ActiveKeys[key_code] = key_code;
