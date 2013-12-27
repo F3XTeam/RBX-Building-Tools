@@ -1,9 +1,3 @@
--- ROBLOX Object Properties =========
--- [Name] Building Tools by F3X
--- [ClassName] LocalScript
--- [Parent] Building Tools
--- ==================================
-
 ------------------------------------------
 -- Create references to important objects
 ------------------------------------------
