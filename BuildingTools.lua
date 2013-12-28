@@ -4549,47 +4549,77 @@ IE = {
 		-- Dump to logs
 		Services.TestService:Warn( false, "[Building Tools by F3X] Exported Model: \n" .. serialized_selection );
 
-		-- Upload to the web for retrieval
+		-- Get ready to upload to the web for retrieval
+		local upload_data;
+		local cancelUpload;
+
+		-- Create the export dialog
 		local Dialog = Tool.BTExportDialog:Clone();
 		Dialog.Loading.Size = UDim2.new( 1, 0, 0, 0 );
 		Dialog.Parent = UI;
-		Dialog.Loading:TweenSize( UDim2.new( 1, 0, 0, 50 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
-		local upload_attempt = PostAsync( "http://www.f3xteam.com/bt/export", serialized_selection );
-		if upload_attempt then
-			local attempt_data;
-			if not pcall( function ()
-				attempt_data = RbxUtility.DecodeJSON( upload_attempt );
-			end ) then
-				Dialog:Destroy();
-			end;
-			if attempt_data and attempt_data.success then
-				Dialog.Loading.Visible = false;
-				Dialog.Info.Size = UDim2.new( 1, 0, 0, 0 );
-				Dialog.Info.CreationID.Text = attempt_data.id;
-				Dialog.Info.Visible = true;
-				Dialog.Info:TweenSize( UDim2.new( 1, 0, 0, 75 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
-				Dialog.Tip.Size = UDim2.new( 1, 0, 0, 0 );
-				Dialog.Tip.Visible = true;
-				Dialog.Tip:TweenSize( UDim2.new( 1, 0, 0, 30 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
-				Dialog.Close.Size = UDim2.new( 1, 0, 0, 0 );
-				Dialog.Close.Visible = true;
-				Dialog.Close:TweenSize( UDim2.new( 1, 0, 0, 20 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
-				Dialog.Close.Button.MouseButton1Up:connect( function ()
-					Dialog:Destroy();
-				end );
-			end;
-		end;
+		Dialog.Loading:TweenSize( UDim2.new( 1, 0, 0, 80 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
+		Dialog.Loading.CloseButton.MouseButton1Up:connect( function ()
+			cancelUpload();
+			Dialog:Destroy();
+		end );
 
-		-- Play a confirmation sound
-		local Sound = RbxUtility.Create "Sound" {
-			Name = "BTActionCompletionSound";
-			Pitch = 1.5;
-			SoundId = action_completion_sound;
-			Volume = 1;
-			Parent = Player;
-		};
-		Sound:Play();
-		Sound:Destroy();
+		-- Run the upload/post-upload/failure code in a coroutine
+		-- so it can be cancelled
+		coroutine.resume( coroutine.create( function ()
+			cancelUpload = function ()
+				coroutine.yield();
+			end;
+			local upload_attempt = ypcall( function ()
+				upload_data = PostAsync( "http://www.f3xteam.com/bt/export", serialized_selection );
+			end );
+
+			-- Fail graciously
+			if not upload_attempt then
+				Dialog.Loading.TextLabel.Text = "Upload failed";
+				Dialog.Loading.CloseButton.Text = 'Ok :(';
+				return;
+			end;
+			if not ( upload_data and type( upload_data ) == 'string' and upload_data:len() > 0 ) then
+				Dialog.Loading.TextLabel.Text = "Upload failed";
+				Dialog.Loading.CloseButton.Text = 'Ok ;(';
+				return;
+			end;
+			if not pcall( function () upload_data = RbxUtility.DecodeJSON( upload_data ); end ) or not upload_data then
+				Dialog.Loading.TextLabel.Text = "Upload failed";
+				Dialog.Loading.CloseButton.Text = "Ok :'(";
+				return;
+			end;
+			if not upload_data.success then
+				Dialog.Loading.TextLabel.Text = "Upload failed";
+				Dialog.Loading.CloseButton.Text = "Ok :''(";
+			end;
+
+			Dialog.Loading.Visible = false;
+			Dialog.Info.Size = UDim2.new( 1, 0, 0, 0 );
+			Dialog.Info.CreationID.Text = upload_data.id;
+			Dialog.Info.Visible = true;
+			Dialog.Info:TweenSize( UDim2.new( 1, 0, 0, 75 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
+			Dialog.Tip.Size = UDim2.new( 1, 0, 0, 0 );
+			Dialog.Tip.Visible = true;
+			Dialog.Tip:TweenSize( UDim2.new( 1, 0, 0, 30 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
+			Dialog.Close.Size = UDim2.new( 1, 0, 0, 0 );
+			Dialog.Close.Visible = true;
+			Dialog.Close:TweenSize( UDim2.new( 1, 0, 0, 20 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
+			Dialog.Close.Button.MouseButton1Up:connect( function ()
+				Dialog:Destroy();
+			end );
+
+			-- Play a confirmation sound
+			local Sound = RbxUtility.Create "Sound" {
+				Name = "BTActionCompletionSound";
+				Pitch = 1.5;
+				SoundId = action_completion_sound;
+				Volume = 1;
+				Parent = Player;
+			};
+			Sound:Play();
+			Sound:Destroy();
+		end ) );
 
 	end;
 
