@@ -214,15 +214,54 @@ end;
 function _replaceParts( old_parts, new_parts )
 	-- Removes `old_parts` and inserts `new_parts`
 
-	-- Remove `old_parts`
-	for _, OldPart in pairs( old_parts ) do
-		OldPart.Parent = nil;
-	end;
+	if #old_parts == #new_parts then
+		local welds = {
+			[0] = {};
+			[1] = {};
+		};
+		for old_part_index, OldPart in pairs( old_parts ) do
 
-	-- Insert `new_parts
-	for _, NewPart in pairs( new_parts ) do
-		NewPart.Parent = Services.Workspace;
-		NewPart:MakeJoints();
+			-- Preserve welds we created
+			for _, Joint in pairs( Services.JointsService:GetChildren() ) do
+				if Joint.Name == "BTWeld" then
+					if Joint.Part0 == OldPart then
+						welds[0][OldPart] = Joint;
+					end;
+					if Joint.Part1 == OldPart then
+						welds[1][OldPart] = Joint;
+					end;
+				end;
+			end;
+
+			-- Swap the parts
+			local NewPart = new_parts[old_part_index];
+			NewPart.Parent = Services.Workspace;
+			NewPart:MakeJoints();
+			for old_welded_part, Weld in pairs( welds[0] ) do
+				if old_welded_part == OldPart then
+					Weld.Part0 = NewPart;
+				end;
+			end;
+			for old_welded_part, Weld in pairs( welds[1] ) do
+				if old_welded_part == OldPart then
+					Weld.Part1 = NewPart;
+				end;
+			end;
+			OldPart.Parent = nil;
+
+		end;
+
+	else
+		-- Remove old parts
+		for _, OldPart in pairs( old_parts ) do
+			OldPart.Parent = nil;
+		end;
+
+		-- Insert `new_parts
+		for _, NewPart in pairs( new_parts ) do
+			NewPart.Parent = Services.Workspace;
+			NewPart:MakeJoints();
+		end;
 	end;
 
 end;
@@ -4000,7 +4039,7 @@ Tools.Weld.weld = function ( self )
 		for _, Item in pairs( Selection.Items ) do
 			if Item ~= Selection.Last then
 				weld_count = weld_count + 1;
-				RbxUtility.Create "Weld" {
+				local Weld = RbxUtility.Create "Weld" {
 					Name = 'BTWeld';
 					Parent = Services.JointsService;
 					Part0 = Selection.Last;
@@ -4009,6 +4048,15 @@ Tools.Weld.weld = function ( self )
 					-- Calculate the offset of `Item` from `Selection.Last`
 					C1 = Item.CFrame:toObjectSpace( Selection.Last.CFrame );
 				};
+
+				Weld.AncestryChanged:connect( function ( child, parent )
+					wait( 0 );
+					-- Suppress the error that comes with reparenting it
+					pcall( function ()
+						Weld.Parent = Services.JointsService;
+					end );
+				end );
+
 			end;
 		end;
 
@@ -4036,7 +4084,7 @@ Tools.Weld.breakWelds = function ( self )
 	local weld_count = 0;
 	for _, Item in pairs( Selection.Items ) do
 		for _, Joint in pairs( Services.JointsService:GetChildren() ) do
-			if Joint.Name == "BTWeld" and Joint.Part0 == Item or Joint.Part1 == Item then
+			if Joint.Name == "BTWeld" and ( Joint.Part0 == Item or Joint.Part1 == Item ) then
 				Joint:Destroy();
 				weld_count = weld_count + 1;
 			end;
