@@ -3894,6 +3894,174 @@ Tools.NewPart.hideGUI = function ( self )
 end;
 
 ------------------------------------------
+-- Weld tool
+------------------------------------------
+
+-- Create the tool
+Tools.Weld = {};
+
+-- Define the tool's color
+Tools.Weld.Color = BrickColor.new( "Really black" );
+
+-- Keep a container for state data
+Tools.Weld.State = {};
+
+-- Keep a container for temporary connections
+Tools.Weld.Connections = {};
+
+-- Keep a container for platform event connections
+Tools.Weld.Listeners = {};
+
+-- Start adding functionality to the tool
+Tools.Weld.Listeners.Equipped = function ()
+
+	local self = Tools.Weld;
+
+	-- Change the color of selection boxes temporarily
+	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = self.Color;
+	updateSelectionBoxColor();
+
+	-- Reveal the GUI
+	self:showGUI();
+
+	-- Highlight the last part in the selection
+	if Selection.Last then
+		SelectionBoxes[Selection.Last].Color = BrickColor.new( "Dark stone grey" );
+	end;
+	self.Connections.LastPartHighlighter = Selection.Changed:connect( function ()
+		updateSelectionBoxColor();
+		if Selection.Last then
+			SelectionBoxes[Selection.Last].Color = BrickColor.new( "Dark stone grey" );
+		end;
+	end );
+
+end;
+
+Tools.Weld.Listeners.Unequipped = function ()
+
+	local self = Tools.Weld;
+
+	-- Hide the GUI
+	self:hideGUI();
+
+	-- Disconnect temporary connections
+	for connection_index, Connection in pairs( self.Connections ) do
+		Connection:disconnect();
+		self.Connections[connection_index] = nil;
+	end;
+
+	-- Restore the original color of selection boxes
+	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
+	updateSelectionBoxColor();
+
+end;
+
+Tools.Weld.weld = function ( self )
+
+	-- Keep count of how many welds we create
+	local weld_count = 0;
+
+	-- Make sure there's more than one item
+	if #Selection.Items > 1 and Selection.Last then
+
+		-- Weld all the parts to the last part
+		for _, Item in pairs( Selection.Items ) do
+			if Item ~= Selection.Last then
+				weld_count = weld_count + 1;
+				RbxUtility.Create "Weld" {
+					Name = 'BTWeld';
+					Parent = Services.JointsService;
+					Part0 = Selection.Last;
+					Part1 = Item;
+
+					-- Calculate the offset of `Item` from `Selection.Last`
+					C1 = Item.CFrame:toObjectSpace( Selection.Last.CFrame );
+				};
+			end;
+		end;
+
+	end;
+
+	-- Update the change bar
+	self.GUI.Changes.Text.Text = "created " .. weld_count .. " weld" .. ( weld_count ~= 1 and "s" or "" );
+
+	-- Play a confirmation sound
+	local Sound = RbxUtility.Create "Sound" {
+		Name = "BTActionCompletionSound";
+		Pitch = 1.5;
+		SoundId = action_completion_sound;
+		Volume = 1;
+		Parent = Player;
+	};
+	Sound:Play();
+	Sound:Destroy();
+
+end;
+
+Tools.Weld.breakWelds = function ( self )
+
+	-- Break any welds we created for each item in the selection
+	local weld_count = 0;
+	for _, Item in pairs( Selection.Items ) do
+		for _, Joint in pairs( Services.JointsService:GetChildren() ) do
+			if Joint.Name == "BTWeld" and Joint.Part0 == Item or Joint.Part1 == Item then
+				Joint:Destroy();
+				weld_count = weld_count + 1;
+			end;
+		end;
+	end;
+
+	-- Update the change bar
+	self.GUI.Changes.Text.Text = "broke " .. weld_count .. " weld" .. ( weld_count ~= 1 and "s" or "" );
+
+	-- Play a confirmation sound
+	local Sound = RbxUtility.Create "Sound" {
+		Name = "BTActionCompletionSound";
+		Pitch = 1.5;
+		SoundId = action_completion_sound;
+		Volume = 1;
+		Parent = Player;
+	};
+	Sound:Play();
+	Sound:Destroy();
+
+end;
+
+Tools.Weld.showGUI = function ( self )
+
+	-- Initialize the GUI if it's not ready yet
+	if not self.GUI then
+
+		local Container = Tool:WaitForChild( "BTWeldToolGUI" ):Clone();
+		Container.Parent = UI;
+
+		Container.Interface.WeldButton.MouseButton1Up:connect( function ()
+			self:weld();
+		end );
+
+		Container.Interface.BreakWeldsButton.MouseButton1Up:connect( function ()
+			self:breakWelds();
+		end );
+
+		self.GUI = Container;
+	end;
+
+	-- Reveal the GUI
+	self.GUI.Visible = true;
+
+end;
+
+Tools.Weld.hideGUI = function ( self )
+
+	-- Hide the GUI if it exists already
+	if self.GUI then
+		self.GUI.Visible = false;
+	end;
+
+end;
+
+------------------------------------------
 -- Provide an interface to the 2D
 -- selection system
 ------------------------------------------
@@ -4463,6 +4631,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		elseif key == "j" then
 			equipTool( Tools.NewPart );
+
+		elseif key == "f" then
+			equipTool( Tools.Weld );
 
 		elseif key == "q" then
 			Selection:clear();
