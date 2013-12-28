@@ -360,9 +360,13 @@ function _serializeParts( parts )
 
 &#9;local data = {
 &#9;&#9;version = 1,
-&#9;&#9;parts = {}
+&#9;&#9;parts = {},
+&#9;&#9;welds = {}
 &#9;};
 
+&#9;local objects = {};
+
+&#9;-- Store part data
 &#9;for _, Part in pairs( parts ) do
 &#9;&#9;local part_id = _generateSerializationID();
 &#9;&#9;local PartData = {
@@ -383,6 +387,33 @@ function _serializeParts( parts )
 &#9;&#9;&#9;Part.BackSurface.Value
 &#9;&#9;};
 &#9;&#9;data.parts[part_id] = PartData;
+&#9;&#9;objects[part_id] = Part;
+&#9;end;
+
+&#9;-- Store weld data
+&#9;for object_id, Object in pairs( objects ) do
+&#9;&#9;if Object:IsA( &quot;BasePart&quot; ) then
+
+&#9;&#9;&#9;-- Look for any of `Object`&apos;s welds
+&#9;&#9;&#9;for _, Joint in pairs( Services.JointsService:GetChildren() ) do
+&#9;&#9;&#9;&#9;if Joint.Name == &quot;BTWeld&quot; then
+&#9;&#9;&#9;&#9;&#9;if Joint.Part1 == Object and #_findTableOccurrences( objects, Joint.Part0 ) &gt; 0 then
+
+&#9;&#9;&#9;&#9;&#9;&#9;-- Serialize the weld data
+&#9;&#9;&#9;&#9;&#9;&#9;local weld_id = _generateSerializationID();
+&#9;&#9;&#9;&#9;&#9;&#9;local WeldData = {
+&#9;&#9;&#9;&#9;&#9;&#9;&#9;_findTableOccurrences( objects, Joint.Part0 )[1],
+&#9;&#9;&#9;&#9;&#9;&#9;&#9;object_id,
+&#9;&#9;&#9;&#9;&#9;&#9;&#9;_splitNumberListString( tostring( Joint.C1 ) )
+&#9;&#9;&#9;&#9;&#9;&#9;};
+&#9;&#9;&#9;&#9;&#9;&#9;data.welds[weld_id] = WeldData;
+&#9;&#9;&#9;&#9;&#9;&#9;objects[weld_id] = Joint;
+
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+
+&#9;&#9;end;
 &#9;end;
 
 &#9;return RbxUtility.EncodeJSON( data );
@@ -4014,7 +4045,7 @@ Tools.Weld.weld = function ( self )
 &#9;end;
 
 &#9;-- Update the change bar
-&#9;self.GUI.Changes.Text.Text = &quot;created &quot; .. weld_count .. &quot; welds&quot;;
+&#9;self.GUI.Changes.Text.Text = &quot;created &quot; .. weld_count .. &quot; weld&quot; .. ( weld_count ~= 1 and &quot;s&quot; or &quot;&quot; );
 
 &#9;-- Play a confirmation sound
 &#9;local Sound = RbxUtility.Create &quot;Sound&quot; {
@@ -4043,7 +4074,7 @@ Tools.Weld.breakWelds = function ( self )
 &#9;end;
 
 &#9;-- Update the change bar
-&#9;self.GUI.Changes.Text.Text = &quot;broke &quot; .. weld_count .. &quot; welds&quot;;
+&#9;self.GUI.Changes.Text.Text = &quot;broke &quot; .. weld_count .. &quot; weld&quot; .. ( weld_count ~= 1 and &quot;s&quot; or &quot;&quot; );
 
 &#9;-- Play a confirmation sound
 &#9;local Sound = RbxUtility.Create &quot;Sound&quot; {

@@ -330,9 +330,13 @@ function _serializeParts( parts )
 
 	local data = {
 		version = 1,
-		parts = {}
+		parts = {},
+		welds = {}
 	};
 
+	local objects = {};
+
+	-- Store part data
 	for _, Part in pairs( parts ) do
 		local part_id = _generateSerializationID();
 		local PartData = {
@@ -353,6 +357,33 @@ function _serializeParts( parts )
 			Part.BackSurface.Value
 		};
 		data.parts[part_id] = PartData;
+		objects[part_id] = Part;
+	end;
+
+	-- Store weld data
+	for object_id, Object in pairs( objects ) do
+		if Object:IsA( "BasePart" ) then
+
+			-- Look for any of `Object`'s welds
+			for _, Joint in pairs( Services.JointsService:GetChildren() ) do
+				if Joint.Name == "BTWeld" then
+					if Joint.Part1 == Object and #_findTableOccurrences( objects, Joint.Part0 ) > 0 then
+
+						-- Serialize the weld data
+						local weld_id = _generateSerializationID();
+						local WeldData = {
+							_findTableOccurrences( objects, Joint.Part0 )[1],
+							object_id,
+							_splitNumberListString( tostring( Joint.C1 ) )
+						};
+						data.welds[weld_id] = WeldData;
+						objects[weld_id] = Joint;
+
+					end;
+				end;
+			end;
+
+		end;
 	end;
 
 	return RbxUtility.EncodeJSON( data );
