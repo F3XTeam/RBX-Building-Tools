@@ -729,7 +729,7 @@ Tools.Move.Listeners.Equipped = function ()
 
 		-- Rotate along the Z axis if `r` is pressed
 		if key == "r" then
-			Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.Z );
+			Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.Y );
 
 		-- Rotate along the X axis if `t` is pressed
 		elseif key == "t" then
@@ -737,7 +737,7 @@ Tools.Move.Listeners.Equipped = function ()
 
 		-- Rotate along the Y axis if `y` is pressed
 		elseif key == "y" then
-			Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.Y );
+			Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.Z );
 		end;
 
 		-- Simulate a mouse move so that it applies the changes
@@ -865,6 +865,11 @@ Tools.Move.Listeners.Button1Down = function ()
 	if not Selection:find( Target ) then
 		Selection:clear();
 		Selection:add( Target );
+	end;
+
+	for _, Item in pairs( Selection.Items ) do
+		Item.RotVelocity = Vector3.new( 0, 0, 0 );
+		Item.Velocity = Vector3.new( 0, 0, 0 );
 	end;
 
 	-- Add a new record to the history system

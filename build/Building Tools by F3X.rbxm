@@ -244,15 +244,54 @@ end;
 function _replaceParts( old_parts, new_parts )
 &#9;-- Removes `old_parts` and inserts `new_parts`
 
-&#9;-- Remove `old_parts`
-&#9;for _, OldPart in pairs( old_parts ) do
-&#9;&#9;OldPart.Parent = nil;
-&#9;end;
+&#9;if #old_parts == #new_parts then
+&#9;&#9;local welds = {
+&#9;&#9;&#9;[0] = {};
+&#9;&#9;&#9;[1] = {};
+&#9;&#9;};
+&#9;&#9;for old_part_index, OldPart in pairs( old_parts ) do
 
-&#9;-- Insert `new_parts
-&#9;for _, NewPart in pairs( new_parts ) do
-&#9;&#9;NewPart.Parent = Services.Workspace;
-&#9;&#9;NewPart:MakeJoints();
+&#9;&#9;&#9;-- Preserve welds we created
+&#9;&#9;&#9;for _, Joint in pairs( Services.JointsService:GetChildren() ) do
+&#9;&#9;&#9;&#9;if Joint.Name == &quot;BTWeld&quot; then
+&#9;&#9;&#9;&#9;&#9;if Joint.Part0 == OldPart then
+&#9;&#9;&#9;&#9;&#9;&#9;welds[0][OldPart] = Joint;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;&#9;if Joint.Part1 == OldPart then
+&#9;&#9;&#9;&#9;&#9;&#9;welds[1][OldPart] = Joint;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+
+&#9;&#9;&#9;-- Swap the parts
+&#9;&#9;&#9;local NewPart = new_parts[old_part_index];
+&#9;&#9;&#9;NewPart.Parent = Services.Workspace;
+&#9;&#9;&#9;NewPart:MakeJoints();
+&#9;&#9;&#9;for old_welded_part, Weld in pairs( welds[0] ) do
+&#9;&#9;&#9;&#9;if old_welded_part == OldPart then
+&#9;&#9;&#9;&#9;&#9;Weld.Part0 = NewPart;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;for old_welded_part, Weld in pairs( welds[1] ) do
+&#9;&#9;&#9;&#9;if old_welded_part == OldPart then
+&#9;&#9;&#9;&#9;&#9;Weld.Part1 = NewPart;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;OldPart.Parent = nil;
+
+&#9;&#9;end;
+
+&#9;else
+&#9;&#9;-- Remove old parts
+&#9;&#9;for _, OldPart in pairs( old_parts ) do
+&#9;&#9;&#9;OldPart.Parent = nil;
+&#9;&#9;end;
+
+&#9;&#9;-- Insert `new_parts
+&#9;&#9;for _, NewPart in pairs( new_parts ) do
+&#9;&#9;&#9;NewPart.Parent = Services.Workspace;
+&#9;&#9;&#9;NewPart:MakeJoints();
+&#9;&#9;end;
 &#9;end;
 
 end;
@@ -720,7 +759,7 @@ Tools.Move.Listeners.Equipped = function ()
 
 &#9;&#9;-- Rotate along the Z axis if `r` is pressed
 &#9;&#9;if key == &quot;r&quot; then
-&#9;&#9;&#9;Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.Z );
+&#9;&#9;&#9;Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.Y );
 
 &#9;&#9;-- Rotate along the X axis if `t` is pressed
 &#9;&#9;elseif key == &quot;t&quot; then
@@ -728,7 +767,7 @@ Tools.Move.Listeners.Equipped = function ()
 
 &#9;&#9;-- Rotate along the Y axis if `y` is pressed
 &#9;&#9;elseif key == &quot;y&quot; then
-&#9;&#9;&#9;Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.Y );
+&#9;&#9;&#9;Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.Z );
 &#9;&#9;end;
 
 &#9;&#9;-- Simulate a mouse move so that it applies the changes
@@ -856,6 +895,11 @@ Tools.Move.Listeners.Button1Down = function ()
 &#9;if not Selection:find( Target ) then
 &#9;&#9;Selection:clear();
 &#9;&#9;Selection:add( Target );
+&#9;end;
+
+&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;Item.RotVelocity = Vector3.new( 0, 0, 0 );
+&#9;&#9;Item.Velocity = Vector3.new( 0, 0, 0 );
 &#9;end;
 
 &#9;-- Add a new record to the history system
@@ -4030,7 +4074,7 @@ Tools.Weld.weld = function ( self )
 &#9;&#9;for _, Item in pairs( Selection.Items ) do
 &#9;&#9;&#9;if Item ~= Selection.Last then
 &#9;&#9;&#9;&#9;weld_count = weld_count + 1;
-&#9;&#9;&#9;&#9;RbxUtility.Create &quot;Weld&quot; {
+&#9;&#9;&#9;&#9;local Weld = RbxUtility.Create &quot;Weld&quot; {
 &#9;&#9;&#9;&#9;&#9;Name = &apos;BTWeld&apos;;
 &#9;&#9;&#9;&#9;&#9;Parent = Services.JointsService;
 &#9;&#9;&#9;&#9;&#9;Part0 = Selection.Last;
@@ -4039,6 +4083,15 @@ Tools.Weld.weld = function ( self )
 &#9;&#9;&#9;&#9;&#9;-- Calculate the offset of `Item` from `Selection.Last`
 &#9;&#9;&#9;&#9;&#9;C1 = Item.CFrame:toObjectSpace( Selection.Last.CFrame );
 &#9;&#9;&#9;&#9;};
+
+&#9;&#9;&#9;&#9;Weld.AncestryChanged:connect( function ( child, parent )
+&#9;&#9;&#9;&#9;&#9;wait( 0 );
+&#9;&#9;&#9;&#9;&#9;-- Suppress the error that comes with reparenting it
+&#9;&#9;&#9;&#9;&#9;pcall( function ()
+&#9;&#9;&#9;&#9;&#9;&#9;Weld.Parent = Services.JointsService;
+&#9;&#9;&#9;&#9;&#9;end );
+&#9;&#9;&#9;&#9;end );
+
 &#9;&#9;&#9;end;
 &#9;&#9;end;
 
@@ -4066,7 +4119,7 @@ Tools.Weld.breakWelds = function ( self )
 &#9;local weld_count = 0;
 &#9;for _, Item in pairs( Selection.Items ) do
 &#9;&#9;for _, Joint in pairs( Services.JointsService:GetChildren() ) do
-&#9;&#9;&#9;if Joint.Name == &quot;BTWeld&quot; and Joint.Part0 == Item or Joint.Part1 == Item then
+&#9;&#9;&#9;if Joint.Name == &quot;BTWeld&quot; and ( Joint.Part0 == Item or Joint.Part1 == Item ) then
 &#9;&#9;&#9;&#9;Joint:Destroy();
 &#9;&#9;&#9;&#9;weld_count = weld_count + 1;
 &#9;&#9;&#9;end;
