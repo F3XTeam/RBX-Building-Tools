@@ -214,54 +214,15 @@ end;
 function _replaceParts( old_parts, new_parts )
 	-- Removes `old_parts` and inserts `new_parts`
 
-	if #old_parts == #new_parts then
-		local welds = {
-			[0] = {};
-			[1] = {};
-		};
-		for old_part_index, OldPart in pairs( old_parts ) do
+	-- Remove old parts
+	for _, OldPart in pairs( old_parts ) do
+		OldPart.Parent = nil;
+	end;
 
-			-- Preserve welds we created
-			for _, Joint in pairs( Services.JointsService:GetChildren() ) do
-				if Joint.Name == "BTWeld" then
-					if Joint.Part0 == OldPart then
-						welds[0][OldPart] = Joint;
-					end;
-					if Joint.Part1 == OldPart then
-						welds[1][OldPart] = Joint;
-					end;
-				end;
-			end;
-
-			-- Swap the parts
-			local NewPart = new_parts[old_part_index];
-			NewPart.Parent = Services.Workspace;
-			NewPart:MakeJoints();
-			for old_welded_part, Weld in pairs( welds[0] ) do
-				if old_welded_part == OldPart then
-					Weld.Part0 = NewPart;
-				end;
-			end;
-			for old_welded_part, Weld in pairs( welds[1] ) do
-				if old_welded_part == OldPart then
-					Weld.Part1 = NewPart;
-				end;
-			end;
-			OldPart.Parent = nil;
-
-		end;
-
-	else
-		-- Remove old parts
-		for _, OldPart in pairs( old_parts ) do
-			OldPart.Parent = nil;
-		end;
-
-		-- Insert `new_parts
-		for _, NewPart in pairs( new_parts ) do
-			NewPart.Parent = Services.Workspace;
-			NewPart:MakeJoints();
-		end;
+	-- Insert `new_parts
+	for _, NewPart in pairs( new_parts ) do
+		NewPart.Parent = Services.Workspace;
+		NewPart:MakeJoints();
 	end;
 
 end;
@@ -369,8 +330,7 @@ function _serializeParts( parts )
 
 	local data = {
 		version = 1,
-		parts = {},
-		welds = {}
+		parts = {}
 	};
 
 	local objects = {};
@@ -397,32 +357,6 @@ function _serializeParts( parts )
 		};
 		data.parts[part_id] = PartData;
 		objects[part_id] = Part;
-	end;
-
-	-- Store weld data
-	for object_id, Object in pairs( objects ) do
-		if Object:IsA( "BasePart" ) then
-
-			-- Look for any of `Object`'s welds
-			for _, Joint in pairs( Services.JointsService:GetChildren() ) do
-				if Joint.Name == "BTWeld" then
-					if Joint.Part1 == Object and #_findTableOccurrences( objects, Joint.Part0 ) > 0 then
-
-						-- Serialize the weld data
-						local weld_id = _generateSerializationID();
-						local WeldData = {
-							_findTableOccurrences( objects, Joint.Part0 )[1],
-							object_id,
-							_splitNumberListString( tostring( Joint.C1 ) )
-						};
-						data.welds[weld_id] = WeldData;
-						objects[weld_id] = Joint;
-
-					end;
-				end;
-			end;
-
-		end;
 	end;
 
 	return RbxUtility.EncodeJSON( data );
@@ -4021,210 +3955,6 @@ Tools.NewPart.hideGUI = function ( self )
 
 end;
 
-------------------------------------------
--- Weld tool
-------------------------------------------
-
--- Create the tool
-Tools.Weld = {};
-
--- Define the tool's color
-Tools.Weld.Color = BrickColor.new( "Really black" );
-
--- Keep a container for state data
-Tools.Weld.State = {};
-
--- Keep a container for temporary connections
-Tools.Weld.Connections = {};
-
--- Keep a container for platform event connections
-Tools.Weld.Listeners = {};
-
--- Start adding functionality to the tool
-Tools.Weld.Listeners.Equipped = function ()
-
-	local self = Tools.Weld;
-
-	-- Change the color of selection boxes temporarily
-	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = self.Color;
-	updateSelectionBoxColor();
-
-	-- Reveal the GUI
-	self:showGUI();
-
-	-- Highlight the last part in the selection
-	if Selection.Last then
-		SelectionBoxes[Selection.Last].Color = BrickColor.new( "Dark stone grey" );
-	end;
-	self.Connections.LastPartHighlighter = Selection.Changed:connect( function ()
-		updateSelectionBoxColor();
-		if Selection.Last then
-			SelectionBoxes[Selection.Last].Color = BrickColor.new( "Dark stone grey" );
-		end;
-	end );
-
-end;
-
-Tools.Weld.Listeners.Unequipped = function ()
-
-	local self = Tools.Weld;
-
-	-- Hide the GUI
-	self:hideGUI();
-
-	-- Disconnect temporary connections
-	for connection_index, Connection in pairs( self.Connections ) do
-		Connection:disconnect();
-		self.Connections[connection_index] = nil;
-	end;
-
-	-- Restore the original color of selection boxes
-	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
-
-end;
-
-Tools.Weld.Listeners.Button2Down = function ()
-
-	local self = Tools.Weld;
-
-	-- Capture the camera rotation (for later use
-	-- in determining whether a surface was being
-	-- selected or the camera was being rotated
-	-- with the right mouse button)
-	local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
-	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
-
-end;
-
-Tools.Weld.Listeners.Button2Up = function ()
-
-	local self = Tools.Weld;
-
-	local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
-	local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
-
-	-- If a part is selected
-	if Selection:find( Mouse.Target ) and self.State.PreB2DownCameraRotation == CameraRotation then
-		Selection:focus( Mouse.Target );
-	end;
-
-end;
-
-Tools.Weld.weld = function ( self )
-
-	-- Keep count of how many welds we create
-	local weld_count = 0;
-
-	-- Make sure there's more than one item
-	if #Selection.Items > 1 and Selection.Last then
-
-		-- Weld all the parts to the last part
-		for _, Item in pairs( Selection.Items ) do
-			if Item ~= Selection.Last then
-				weld_count = weld_count + 1;
-				local Weld = RbxUtility.Create "Weld" {
-					Name = 'BTWeld';
-					Parent = Services.JointsService;
-					Part0 = Selection.Last;
-					Part1 = Item;
-
-					-- Calculate the offset of `Item` from `Selection.Last`
-					C1 = Item.CFrame:toObjectSpace( Selection.Last.CFrame );
-				};
-
-				Weld.AncestryChanged:connect( function ( child, parent )
-					wait( 0 );
-					-- Suppress the error that comes with reparenting it
-					pcall( function ()
-						Weld.Parent = Services.JointsService;
-					end );
-				end );
-
-			end;
-		end;
-
-	end;
-
-	-- Update the change bar
-	self.GUI.Changes.Text.Text = "created " .. weld_count .. " weld" .. ( weld_count ~= 1 and "s" or "" );
-
-	-- Play a confirmation sound
-	local Sound = RbxUtility.Create "Sound" {
-		Name = "BTActionCompletionSound";
-		Pitch = 1.5;
-		SoundId = action_completion_sound;
-		Volume = 1;
-		Parent = Player;
-	};
-	Sound:Play();
-	Sound:Destroy();
-
-end;
-
-Tools.Weld.breakWelds = function ( self )
-
-	-- Break any welds we created for each item in the selection
-	local weld_count = 0;
-	for _, Item in pairs( Selection.Items ) do
-		for _, Joint in pairs( Services.JointsService:GetChildren() ) do
-			if Joint.Name == "BTWeld" and ( Joint.Part0 == Item or Joint.Part1 == Item ) then
-				Joint:Destroy();
-				weld_count = weld_count + 1;
-			end;
-		end;
-	end;
-
-	-- Update the change bar
-	self.GUI.Changes.Text.Text = "broke " .. weld_count .. " weld" .. ( weld_count ~= 1 and "s" or "" );
-
-	-- Play a confirmation sound
-	local Sound = RbxUtility.Create "Sound" {
-		Name = "BTActionCompletionSound";
-		Pitch = 1.5;
-		SoundId = action_completion_sound;
-		Volume = 1;
-		Parent = Player;
-	};
-	Sound:Play();
-	Sound:Destroy();
-
-end;
-
-Tools.Weld.showGUI = function ( self )
-
-	-- Initialize the GUI if it's not ready yet
-	if not self.GUI then
-
-		local Container = Tool:WaitForChild( "BTWeldToolGUI" ):Clone();
-		Container.Parent = UI;
-
-		Container.Interface.WeldButton.MouseButton1Up:connect( function ()
-			self:weld();
-		end );
-
-		Container.Interface.BreakWeldsButton.MouseButton1Up:connect( function ()
-			self:breakWelds();
-		end );
-
-		self.GUI = Container;
-	end;
-
-	-- Reveal the GUI
-	self.GUI.Visible = true;
-
-end;
-
-Tools.Weld.hideGUI = function ( self )
-
-	-- Hide the GUI if it exists already
-	if self.GUI then
-		self.GUI.Visible = false;
-	end;
-
-end;
-
 
 ------------------------------------------
 -- Mesh tool
@@ -5497,9 +5227,6 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		elseif key == "j" then
 			equipTool( Tools.NewPart );
-
-		elseif key == "f" then
-			equipTool( Tools.Weld );
 
 		elseif key == "h" then
 			equipTool( Tools.Mesh );
