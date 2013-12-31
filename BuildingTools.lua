@@ -4085,6 +4085,33 @@ Tools.Weld.Listeners.Unequipped = function ()
 
 end;
 
+Tools.Weld.Listeners.Button2Down = function ()
+
+	local self = Tools.Weld;
+
+	-- Capture the camera rotation (for later use
+	-- in determining whether a surface was being
+	-- selected or the camera was being rotated
+	-- with the right mouse button)
+	local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
+
+end;
+
+Tools.Weld.Listeners.Button2Up = function ()
+
+	local self = Tools.Weld;
+
+	local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+	local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
+
+	-- If a part is selected
+	if Selection:find( Mouse.Target ) and self.State.PreB2DownCameraRotation == CameraRotation then
+		Selection:focus( Mouse.Target );
+	end;
+
+end;
+
 Tools.Weld.weld = function ( self )
 
 	-- Keep count of how many welds we create
