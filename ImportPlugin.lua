@@ -27,6 +27,23 @@ Services.ContentProvider:Preload( bt_logo );
 Services.HttpService.HttpEnabled = true;
 
 ------------------------------------------
+-- Define functions that are depended-upon
+------------------------------------------
+function _findTableOccurrences( haystack, needle )
+	-- Returns the positions of instances of `needle` in table `haystack`
+	local positions = {};
+
+	-- Add any indexes from `haystack` that have `needle`
+	for index, value in pairs( haystack ) do
+		if value == needle then
+			table.insert( positions, index );
+		end;
+	end;
+
+	return positions;
+end;
+
+------------------------------------------
 -- Provide actual functionality
 ------------------------------------------
 function showGUI( message, ok_text )
@@ -312,6 +329,9 @@ function import( creation_id )
 	Container.Name = 'BTExport';
 
 	if creation_data.version == 1 then
+
+		local objects = {};
+
 		for part_id, part_data in pairs( creation_data.parts ) do
 			local Part;
 
@@ -337,6 +357,7 @@ function import( creation_id )
 			elseif part_type == 9 then
 				Part = Instance.new( "SpawnLocation" );
 			end;
+			objects[part_id] = Part;
 
 			if ( pcall( function () local test = Part.FormFactor; end ) ) then
 				Part.FormFactor = "Custom";
@@ -359,6 +380,23 @@ function import( creation_id )
 
 			Part.Parent = Container;
 
+		end;
+
+		if creation_data.meshes then
+			for mesh_id, mesh_data in pairs( creation_data.meshes ) do
+
+				-- Create, place, and register the mesh
+				local Mesh = Instance.new( "SpecialMesh", objects[mesh_data[1]] );
+				objects[mesh_id] = Mesh;
+
+				-- Set the mesh's properties
+				Mesh.MeshType = mesh_data[2];
+				Mesh.Scale = Vector3.new( unpack( mesh_data[3] ) );
+				Mesh.MeshId = mesh_data[4];
+				Mesh.TextureId = mesh_data[5];
+				Mesh.VertexColor = Vector3.new( unpack( mesh_data[6] ) );
+
+			end;
 		end;
 
 		Container:MakeJoints();

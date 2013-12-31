@@ -389,6 +389,33 @@ function _serializeParts( parts )
 &#9;&#9;objects[part_id] = Part;
 &#9;end;
 
+&#9;-- Get any meshes in the selection
+&#9;local meshes = {};
+&#9;for _, Part in pairs( parts ) do
+&#9;&#9;local Mesh = _getChildOfClass( Part, &quot;SpecialMesh&quot; );
+&#9;&#9;if Mesh then
+&#9;&#9;&#9;table.insert( meshes, Mesh );
+&#9;&#9;end;
+&#9;end;
+
+&#9;-- Serialize any meshes
+&#9;if #meshes &gt; 0 then
+&#9;&#9;data.meshes = {};
+&#9;&#9;for _, Mesh in pairs( meshes ) do
+&#9;&#9;&#9;local mesh_id = _generateSerializationID();
+&#9;&#9;&#9;local MeshData = {
+&#9;&#9;&#9;&#9;_findTableOccurrences( objects, Mesh.Parent )[1],
+&#9;&#9;&#9;&#9;Mesh.MeshType.Value,
+&#9;&#9;&#9;&#9;_splitNumberListString( tostring( Mesh.Scale ) ),
+&#9;&#9;&#9;&#9;Mesh.MeshId,
+&#9;&#9;&#9;&#9;Mesh.TextureId,
+&#9;&#9;&#9;&#9;_splitNumberListString( tostring( Mesh.VertexColor ) )
+&#9;&#9;&#9;};
+&#9;&#9;&#9;data.meshes[mesh_id] = MeshData;
+&#9;&#9;&#9;objects[mesh_id] = Mesh;
+&#9;&#9;end;
+&#9;end;
+
 &#9;return RbxUtility.EncodeJSON( data );
 
 end;
