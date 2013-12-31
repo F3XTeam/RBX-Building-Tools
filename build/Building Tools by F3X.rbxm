@@ -1599,11 +1599,83 @@ Tools.Resize.showGUI = function ( self )
 &#9;&#9;&#9;end;
 &#9;&#9;end );
 
+&#9;&#9;-- Add functionality to the size inputs
+&#9;&#9;Container.Info.SizeInfo.X.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.size_x_focused = true;
+&#9;&#9;&#9;Container.Info.SizeInfo.X.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.Info.SizeInfo.X.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local potential_new = tonumber( Container.Info.SizeInfo.X.TextBox.Text );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;self:changeSize( &apos;x&apos;, potential_new );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.size_x_focused = false;
+&#9;&#9;end );
+&#9;&#9;Container.Info.SizeInfo.Y.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.size_y_focused = true;
+&#9;&#9;&#9;Container.Info.SizeInfo.Y.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.Info.SizeInfo.Y.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local potential_new = tonumber( Container.Info.SizeInfo.Y.TextBox.Text );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;self:changeSize( &apos;y&apos;, potential_new );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.size_y_focused = false;
+&#9;&#9;end );
+&#9;&#9;Container.Info.SizeInfo.Z.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.size_z_focused = true;
+&#9;&#9;&#9;Container.Info.SizeInfo.Z.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.Info.SizeInfo.Z.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local potential_new = tonumber( Container.Info.SizeInfo.Z.TextBox.Text );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;self:changeSize( &apos;z&apos;, potential_new );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.size_z_focused = false;
+&#9;&#9;end );
+
 &#9;&#9;self.Temporary.GUI = Container;
 &#9;end;
 
 &#9;-- Reveal the GUI
 &#9;self.Temporary.GUI.Visible = true;
+
+end;
+
+Tools.Resize.changeSize = function ( self, component, new_value )
+
+&#9;-- Add a new record to the history system
+&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+&#9;_replaceParts( old_parts, new_parts );
+&#9;for _, Item in pairs( new_parts ) do
+&#9;&#9;Selection:add( Item );
+&#9;end;
+&#9;if #focus_search &gt; 0 then
+&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
+&#9;end;
+&#9;History:add( old_parts, new_parts );
+
+&#9;-- Change the size of each item selected
+&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;local OldCFrame = Item.CFrame;
+&#9;&#9;-- Make the item be able to be freely resized
+&#9;&#9;if ( pcall( function () local test = Item.FormFactor; end ) ) then
+&#9;&#9;&#9;Item.FormFactor = Enum.FormFactor.Custom;
+&#9;&#9;end;
+&#9;&#9;Item.Size = Vector3.new(
+&#9;&#9;&#9;component == &apos;x&apos; and new_value or Item.Size.x,
+&#9;&#9;&#9;component == &apos;y&apos; and new_value or Item.Size.y,
+&#9;&#9;&#9;component == &apos;z&apos; and new_value or Item.Size.z
+&#9;&#9;);
+&#9;&#9;Item.CFrame = OldCFrame;
+&#9;end;
 
 end;
 
@@ -1642,9 +1714,15 @@ Tools.Resize.updateGUI = function ( self )
 &#9;&#9;end;
 
 &#9;&#9;-- Update the size info on the GUI
-&#9;&#9;GUI.Info.SizeInfo.X.TextLabel.Text = size_x and tostring( size_x ) or &quot;*&quot;;
-&#9;&#9;GUI.Info.SizeInfo.Y.TextLabel.Text = size_y and tostring( size_y ) or &quot;*&quot;;
-&#9;&#9;GUI.Info.SizeInfo.Z.TextLabel.Text = size_z and tostring( size_z ) or &quot;*&quot;;
+&#9;&#9;if not self.State.size_x_focused then
+&#9;&#9;&#9;GUI.Info.SizeInfo.X.TextBox.Text = size_x and tostring( size_x ) or &quot;*&quot;;
+&#9;&#9;end;
+&#9;&#9;if not self.State.size_y_focused then
+&#9;&#9;&#9;GUI.Info.SizeInfo.Y.TextBox.Text = size_y and tostring( size_y ) or &quot;*&quot;;
+&#9;&#9;end;
+&#9;&#9;if not self.State.size_z_focused then
+&#9;&#9;&#9;GUI.Info.SizeInfo.Z.TextBox.Text = size_z and tostring( size_z ) or &quot;*&quot;;
+&#9;&#9;end;
 
 &#9;&#9;GUI.Info.Visible = true;
 &#9;else
