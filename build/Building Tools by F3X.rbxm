@@ -2196,11 +2196,78 @@ Tools.Rotate.showGUI = function ( self )
 &#9;&#9;&#9;end;
 &#9;&#9;end );
 
+&#9;&#9;-- Add functionality to the rotation inputs
+&#9;&#9;Container.Info.RotationInfo.X.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.rot_x_focused = true;
+&#9;&#9;&#9;Container.Info.RotationInfo.X.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.Info.RotationInfo.X.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local potential_new = tonumber( Container.Info.RotationInfo.X.TextBox.Text );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;self:changeRotation( &apos;x&apos;, math.rad( potential_new ) );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.rot_x_focused = false;
+&#9;&#9;end );
+&#9;&#9;Container.Info.RotationInfo.Y.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.rot_y_focused = true;
+&#9;&#9;&#9;Container.Info.RotationInfo.Y.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.Info.RotationInfo.Y.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local potential_new = tonumber( Container.Info.RotationInfo.Y.TextBox.Text );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;self:changeRotation( &apos;y&apos;, math.rad( potential_new ) );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.rot_y_focused = false;
+&#9;&#9;end );
+&#9;&#9;Container.Info.RotationInfo.Z.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.rot_z_focused = true;
+&#9;&#9;&#9;Container.Info.RotationInfo.Z.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.Info.RotationInfo.Z.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local potential_new = tonumber( Container.Info.RotationInfo.Z.TextBox.Text );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;self:changeRotation( &apos;z&apos;, math.rad( potential_new ) );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.rot_z_focused = false;
+&#9;&#9;end );
+
 &#9;&#9;self.Temporary.GUI = Container;
 &#9;end;
 
 &#9;-- Reveal the GUI
 &#9;self.Temporary.GUI.Visible = true;
+
+end;
+
+Tools.Rotate.changeRotation = function ( self, component, new_value )
+
+&#9;-- Add a new record to the history system
+&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+&#9;_replaceParts( old_parts, new_parts );
+&#9;for _, Item in pairs( new_parts ) do
+&#9;&#9;Selection:add( Item );
+&#9;end;
+&#9;if #focus_search &gt; 0 then
+&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
+&#9;end;
+&#9;History:add( old_parts, new_parts );
+
+&#9;-- Change the rotation of each item selected
+&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;local old_x_rot, old_y_rot, old_z_rot = Item.CFrame:toEulerAnglesXYZ();
+&#9;&#9;Item.CFrame = CFrame.new( Item.Position ) * CFrame.Angles(
+&#9;&#9;&#9;component == &apos;x&apos; and new_value or old_x_rot,
+&#9;&#9;&#9;component == &apos;y&apos; and new_value or old_y_rot,
+&#9;&#9;&#9;component == &apos;z&apos; and new_value or old_z_rot
+&#9;&#9;);
+&#9;end;
 
 end;
 
@@ -2241,9 +2308,15 @@ Tools.Rotate.updateGUI = function ( self )
 &#9;&#9;end;
 
 &#9;&#9;-- Update the size info on the GUI
-&#9;&#9;GUI.Info.RotationInfo.X.TextLabel.Text = rot_x and tostring( rot_x ) or &quot;*&quot;;
-&#9;&#9;GUI.Info.RotationInfo.Y.TextLabel.Text = rot_y and tostring( rot_y ) or &quot;*&quot;;
-&#9;&#9;GUI.Info.RotationInfo.Z.TextLabel.Text = rot_z and tostring( rot_z ) or &quot;*&quot;;
+&#9;&#9;if not self.State.rot_x_focused then
+&#9;&#9;&#9;GUI.Info.RotationInfo.X.TextBox.Text = rot_x and tostring( rot_x ) or &quot;*&quot;;
+&#9;&#9;end;
+&#9;&#9;if not self.State.rot_y_focused then
+&#9;&#9;&#9;GUI.Info.RotationInfo.Y.TextBox.Text = rot_y and tostring( rot_y ) or &quot;*&quot;;
+&#9;&#9;end;
+&#9;&#9;if not self.State.rot_z_focused then
+&#9;&#9;&#9;GUI.Info.RotationInfo.Z.TextBox.Text = rot_z and tostring( rot_z ) or &quot;*&quot;;
+&#9;&#9;end;
 
 &#9;&#9;GUI.Info.Visible = true;
 &#9;else
