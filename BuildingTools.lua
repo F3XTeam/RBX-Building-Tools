@@ -826,9 +826,15 @@ Tools.Move.updateGUI = function ( self )
 			end;
 
 			-- If each position along each axis is the same, display that number; otherwise, display "*"
-			GUI.Info.Center.X.TextLabel.Text = position_x and tostring( position_x ) or "*";
-			GUI.Info.Center.Y.TextLabel.Text = position_y and tostring( position_y ) or "*";
-			GUI.Info.Center.Z.TextLabel.Text = position_z and tostring( position_z ) or "*";
+			if not self.State.pos_x_focused then
+				GUI.Info.Center.X.TextBox.Text = position_x and tostring( position_x ) or "*";
+			end;
+			if not self.State.pos_y_focused then
+				GUI.Info.Center.Y.TextBox.Text = position_y and tostring( position_y ) or "*";
+			end;
+			if not self.State.pos_z_focused then
+				GUI.Info.Center.Z.TextBox.Text = position_z and tostring( position_z ) or "*";
+			end;
 
 			GUI.Info.Visible = true;
 		else
@@ -843,6 +849,31 @@ Tools.Move.updateGUI = function ( self )
 			GUI.Changes.Text.Text = "";
 			GUI.Changes.Visible = false;
 		end;
+	end;
+
+end;
+
+Tools.Move.changePosition = function ( self, component, new_value )
+
+	-- Add a new record to the history system
+	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	if #focus_search > 0 then
+		Selection:focus( new_parts[focus_search[1]] );
+	end;
+	History:add( old_parts, new_parts );
+
+	-- Change the position of each item selected
+	for _, Item in pairs( Selection.Items ) do
+		Item.CFrame = CFrame.new(
+			component == 'x' and new_value or Item.Position.x,
+			component == 'y' and new_value or Item.Position.y,
+			component == 'z' and new_value or Item.Position.z
+		);
 	end;
 
 end;
@@ -968,6 +999,47 @@ Tools.Move.showGUI = function ( self )
 				self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
 				Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
 			end;
+		end );
+
+		-- Add functionality to the position inputs
+		Container.Info.Center.X.TextButton.MouseButton1Down:connect( function ()
+			self.State.pos_x_focused = true;
+			Container.Info.Center.X.TextBox:CaptureFocus();
+		end );
+		Container.Info.Center.X.TextBox.FocusLost:connect( function ( enter_pressed )
+			if enter_pressed then
+				local potential_new = tonumber( Container.Info.Center.X.TextBox.Text );
+				if potential_new then
+					self:changePosition( 'x', potential_new );
+				end;
+			end;
+			self.State.pos_x_focused = false;
+		end );
+		Container.Info.Center.Y.TextButton.MouseButton1Down:connect( function ()
+			self.State.pos_y_focused = true;
+			Container.Info.Center.Y.TextBox:CaptureFocus();
+		end );
+		Container.Info.Center.Y.TextBox.FocusLost:connect( function ( enter_pressed )
+			if enter_pressed then
+				local potential_new = tonumber( Container.Info.Center.Y.TextBox.Text );
+				if potential_new then
+					self:changePosition( 'y', potential_new );
+				end;
+			end;
+			self.State.pos_y_focused = false;
+		end );
+		Container.Info.Center.Z.TextButton.MouseButton1Down:connect( function ()
+			self.State.pos_z_focused = true;
+			Container.Info.Center.Z.TextBox:CaptureFocus();
+		end );
+		Container.Info.Center.Z.TextBox.FocusLost:connect( function ( enter_pressed )
+			if enter_pressed then
+				local potential_new = tonumber( Container.Info.Center.Z.TextBox.Text );
+				if potential_new then
+					self:changePosition( 'z', potential_new );
+				end;
+			end;
+			self.State.pos_z_focused = false;
 		end );
 
 		self.Temporary.GUI = Container;
