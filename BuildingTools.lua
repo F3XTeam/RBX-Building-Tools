@@ -826,9 +826,15 @@ Tools.Move.updateGUI = function ( self )
 			end;
 
 			-- If each position along each axis is the same, display that number; otherwise, display "*"
-			GUI.Info.Center.X.TextLabel.Text = position_x and tostring( position_x ) or "*";
-			GUI.Info.Center.Y.TextLabel.Text = position_y and tostring( position_y ) or "*";
-			GUI.Info.Center.Z.TextLabel.Text = position_z and tostring( position_z ) or "*";
+			if not self.State.pos_x_focused then
+				GUI.Info.Center.X.TextBox.Text = position_x and tostring( position_x ) or "*";
+			end;
+			if not self.State.pos_y_focused then
+				GUI.Info.Center.Y.TextBox.Text = position_y and tostring( position_y ) or "*";
+			end;
+			if not self.State.pos_z_focused then
+				GUI.Info.Center.Z.TextBox.Text = position_z and tostring( position_z ) or "*";
+			end;
 
 			GUI.Info.Visible = true;
 		else
@@ -843,6 +849,31 @@ Tools.Move.updateGUI = function ( self )
 			GUI.Changes.Text.Text = "";
 			GUI.Changes.Visible = false;
 		end;
+	end;
+
+end;
+
+Tools.Move.changePosition = function ( self, component, new_value )
+
+	-- Add a new record to the history system
+	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	if #focus_search > 0 then
+		Selection:focus( new_parts[focus_search[1]] );
+	end;
+	History:add( old_parts, new_parts );
+
+	-- Change the position of each item selected
+	for _, Item in pairs( Selection.Items ) do
+		Item.CFrame = CFrame.new(
+			component == 'x' and new_value or Item.Position.x,
+			component == 'y' and new_value or Item.Position.y,
+			component == 'z' and new_value or Item.Position.z
+		);
 	end;
 
 end;
@@ -968,6 +999,47 @@ Tools.Move.showGUI = function ( self )
 				self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
 				Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
 			end;
+		end );
+
+		-- Add functionality to the position inputs
+		Container.Info.Center.X.TextButton.MouseButton1Down:connect( function ()
+			self.State.pos_x_focused = true;
+			Container.Info.Center.X.TextBox:CaptureFocus();
+		end );
+		Container.Info.Center.X.TextBox.FocusLost:connect( function ( enter_pressed )
+			if enter_pressed then
+				local potential_new = tonumber( Container.Info.Center.X.TextBox.Text );
+				if potential_new then
+					self:changePosition( 'x', potential_new );
+				end;
+			end;
+			self.State.pos_x_focused = false;
+		end );
+		Container.Info.Center.Y.TextButton.MouseButton1Down:connect( function ()
+			self.State.pos_y_focused = true;
+			Container.Info.Center.Y.TextBox:CaptureFocus();
+		end );
+		Container.Info.Center.Y.TextBox.FocusLost:connect( function ( enter_pressed )
+			if enter_pressed then
+				local potential_new = tonumber( Container.Info.Center.Y.TextBox.Text );
+				if potential_new then
+					self:changePosition( 'y', potential_new );
+				end;
+			end;
+			self.State.pos_y_focused = false;
+		end );
+		Container.Info.Center.Z.TextButton.MouseButton1Down:connect( function ()
+			self.State.pos_z_focused = true;
+			Container.Info.Center.Z.TextBox:CaptureFocus();
+		end );
+		Container.Info.Center.Z.TextBox.FocusLost:connect( function ( enter_pressed )
+			if enter_pressed then
+				local potential_new = tonumber( Container.Info.Center.Z.TextBox.Text );
+				if potential_new then
+					self:changePosition( 'z', potential_new );
+				end;
+			end;
+			self.State.pos_z_focused = false;
 		end );
 
 		self.Temporary.GUI = Container;
@@ -1497,11 +1569,83 @@ Tools.Resize.showGUI = function ( self )
 			end;
 		end );
 
+		-- Add functionality to the size inputs
+		Container.Info.SizeInfo.X.TextButton.MouseButton1Down:connect( function ()
+			self.State.size_x_focused = true;
+			Container.Info.SizeInfo.X.TextBox:CaptureFocus();
+		end );
+		Container.Info.SizeInfo.X.TextBox.FocusLost:connect( function ( enter_pressed )
+			if enter_pressed then
+				local potential_new = tonumber( Container.Info.SizeInfo.X.TextBox.Text );
+				if potential_new then
+					self:changeSize( 'x', potential_new );
+				end;
+			end;
+			self.State.size_x_focused = false;
+		end );
+		Container.Info.SizeInfo.Y.TextButton.MouseButton1Down:connect( function ()
+			self.State.size_y_focused = true;
+			Container.Info.SizeInfo.Y.TextBox:CaptureFocus();
+		end );
+		Container.Info.SizeInfo.Y.TextBox.FocusLost:connect( function ( enter_pressed )
+			if enter_pressed then
+				local potential_new = tonumber( Container.Info.SizeInfo.Y.TextBox.Text );
+				if potential_new then
+					self:changeSize( 'y', potential_new );
+				end;
+			end;
+			self.State.size_y_focused = false;
+		end );
+		Container.Info.SizeInfo.Z.TextButton.MouseButton1Down:connect( function ()
+			self.State.size_z_focused = true;
+			Container.Info.SizeInfo.Z.TextBox:CaptureFocus();
+		end );
+		Container.Info.SizeInfo.Z.TextBox.FocusLost:connect( function ( enter_pressed )
+			if enter_pressed then
+				local potential_new = tonumber( Container.Info.SizeInfo.Z.TextBox.Text );
+				if potential_new then
+					self:changeSize( 'z', potential_new );
+				end;
+			end;
+			self.State.size_z_focused = false;
+		end );
+
 		self.Temporary.GUI = Container;
 	end;
 
 	-- Reveal the GUI
 	self.Temporary.GUI.Visible = true;
+
+end;
+
+Tools.Resize.changeSize = function ( self, component, new_value )
+
+	-- Add a new record to the history system
+	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	if #focus_search > 0 then
+		Selection:focus( new_parts[focus_search[1]] );
+	end;
+	History:add( old_parts, new_parts );
+
+	-- Change the size of each item selected
+	for _, Item in pairs( Selection.Items ) do
+		local OldCFrame = Item.CFrame;
+		-- Make the item be able to be freely resized
+		if ( pcall( function () local test = Item.FormFactor; end ) ) then
+			Item.FormFactor = Enum.FormFactor.Custom;
+		end;
+		Item.Size = Vector3.new(
+			component == 'x' and new_value or Item.Size.x,
+			component == 'y' and new_value or Item.Size.y,
+			component == 'z' and new_value or Item.Size.z
+		);
+		Item.CFrame = OldCFrame;
+	end;
 
 end;
 
@@ -1540,9 +1684,15 @@ Tools.Resize.updateGUI = function ( self )
 		end;
 
 		-- Update the size info on the GUI
-		GUI.Info.SizeInfo.X.TextLabel.Text = size_x and tostring( size_x ) or "*";
-		GUI.Info.SizeInfo.Y.TextLabel.Text = size_y and tostring( size_y ) or "*";
-		GUI.Info.SizeInfo.Z.TextLabel.Text = size_z and tostring( size_z ) or "*";
+		if not self.State.size_x_focused then
+			GUI.Info.SizeInfo.X.TextBox.Text = size_x and tostring( size_x ) or "*";
+		end;
+		if not self.State.size_y_focused then
+			GUI.Info.SizeInfo.Y.TextBox.Text = size_y and tostring( size_y ) or "*";
+		end;
+		if not self.State.size_z_focused then
+			GUI.Info.SizeInfo.Z.TextBox.Text = size_z and tostring( size_z ) or "*";
+		end;
 
 		GUI.Info.Visible = true;
 	else
@@ -2016,11 +2166,78 @@ Tools.Rotate.showGUI = function ( self )
 			end;
 		end );
 
+		-- Add functionality to the rotation inputs
+		Container.Info.RotationInfo.X.TextButton.MouseButton1Down:connect( function ()
+			self.State.rot_x_focused = true;
+			Container.Info.RotationInfo.X.TextBox:CaptureFocus();
+		end );
+		Container.Info.RotationInfo.X.TextBox.FocusLost:connect( function ( enter_pressed )
+			if enter_pressed then
+				local potential_new = tonumber( Container.Info.RotationInfo.X.TextBox.Text );
+				if potential_new then
+					self:changeRotation( 'x', math.rad( potential_new ) );
+				end;
+			end;
+			self.State.rot_x_focused = false;
+		end );
+		Container.Info.RotationInfo.Y.TextButton.MouseButton1Down:connect( function ()
+			self.State.rot_y_focused = true;
+			Container.Info.RotationInfo.Y.TextBox:CaptureFocus();
+		end );
+		Container.Info.RotationInfo.Y.TextBox.FocusLost:connect( function ( enter_pressed )
+			if enter_pressed then
+				local potential_new = tonumber( Container.Info.RotationInfo.Y.TextBox.Text );
+				if potential_new then
+					self:changeRotation( 'y', math.rad( potential_new ) );
+				end;
+			end;
+			self.State.rot_y_focused = false;
+		end );
+		Container.Info.RotationInfo.Z.TextButton.MouseButton1Down:connect( function ()
+			self.State.rot_z_focused = true;
+			Container.Info.RotationInfo.Z.TextBox:CaptureFocus();
+		end );
+		Container.Info.RotationInfo.Z.TextBox.FocusLost:connect( function ( enter_pressed )
+			if enter_pressed then
+				local potential_new = tonumber( Container.Info.RotationInfo.Z.TextBox.Text );
+				if potential_new then
+					self:changeRotation( 'z', math.rad( potential_new ) );
+				end;
+			end;
+			self.State.rot_z_focused = false;
+		end );
+
 		self.Temporary.GUI = Container;
 	end;
 
 	-- Reveal the GUI
 	self.Temporary.GUI.Visible = true;
+
+end;
+
+Tools.Rotate.changeRotation = function ( self, component, new_value )
+
+	-- Add a new record to the history system
+	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+	_replaceParts( old_parts, new_parts );
+	for _, Item in pairs( new_parts ) do
+		Selection:add( Item );
+	end;
+	if #focus_search > 0 then
+		Selection:focus( new_parts[focus_search[1]] );
+	end;
+	History:add( old_parts, new_parts );
+
+	-- Change the rotation of each item selected
+	for _, Item in pairs( Selection.Items ) do
+		local old_x_rot, old_y_rot, old_z_rot = Item.CFrame:toEulerAnglesXYZ();
+		Item.CFrame = CFrame.new( Item.Position ) * CFrame.Angles(
+			component == 'x' and new_value or old_x_rot,
+			component == 'y' and new_value or old_y_rot,
+			component == 'z' and new_value or old_z_rot
+		);
+	end;
 
 end;
 
@@ -2061,9 +2278,15 @@ Tools.Rotate.updateGUI = function ( self )
 		end;
 
 		-- Update the size info on the GUI
-		GUI.Info.RotationInfo.X.TextLabel.Text = rot_x and tostring( rot_x ) or "*";
-		GUI.Info.RotationInfo.Y.TextLabel.Text = rot_y and tostring( rot_y ) or "*";
-		GUI.Info.RotationInfo.Z.TextLabel.Text = rot_z and tostring( rot_z ) or "*";
+		if not self.State.rot_x_focused then
+			GUI.Info.RotationInfo.X.TextBox.Text = rot_x and tostring( rot_x ) or "*";
+		end;
+		if not self.State.rot_y_focused then
+			GUI.Info.RotationInfo.Y.TextBox.Text = rot_y and tostring( rot_y ) or "*";
+		end;
+		if not self.State.rot_z_focused then
+			GUI.Info.RotationInfo.Z.TextBox.Text = rot_z and tostring( rot_z ) or "*";
+		end;
 
 		GUI.Info.Visible = true;
 	else
