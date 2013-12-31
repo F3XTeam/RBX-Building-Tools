@@ -459,6 +459,39 @@ function _serializeParts( parts )
 
 end;
 
+function _getChildOfClass( Parent, class_name )
+&#9;-- Returns the first child of `Parent` that is of class `class_name`
+&#9;-- or nil if it couldn&apos;t find any
+
+&#9;-- Look for a child of `Parent` of class `class_name` and return it
+&#9;for _, Child in pairs( Parent:GetChildren() ) do
+&#9;&#9;if Child:IsA( class_name ) then
+&#9;&#9;&#9;return Child;
+&#9;&#9;end;
+&#9;end;
+
+&#9;return nil;
+
+end;
+
+function _getChildrenOfClass( Parent, class_name )
+&#9;-- Returns a table containing the children of `Parent` that are
+&#9;-- of class `class_name`
+&#9;local matches = {};
+
+&#9;-- Go through each child of `Parent`
+&#9;for _, Child in pairs( Parent:GetChildren() ) do
+
+&#9;&#9;-- If it&apos;s of type `class_name`, add it to the match list
+&#9;&#9;if Child:IsA( class_name ) then
+&#9;&#9;&#9;table.insert( matches, Child );
+&#9;&#9;end;
+
+&#9;end;
+
+&#9;return matches;
+end;
+
 ------------------------------------------
 -- Create data containers
 ------------------------------------------
@@ -1439,7 +1472,7 @@ Tools.Resize.Listeners.Equipped = function ()
 
 &#9;&#9;-- If the target is in the selection, make it the new adornee
 &#9;&#9;if Selection:find( Mouse.Target ) then
-&#9;&#9;&#9;Tools.Resize:showHandles( Mouse.Target );
+&#9;&#9;&#9;Selection:focus( Mouse.Target );
 &#9;&#9;end;
 
 &#9;end ) );
@@ -3455,6 +3488,11 @@ Tools.Material.updateGUI = function ( self )
 &#9;end;
 
 &#9;if #Selection.Items &gt; 0 then
+&#9;&#9;self.GUI.Size = UDim2.new( 0, 200, 0, 145 );
+&#9;&#9;self.GUI.MaterialOption.Visible = true;
+&#9;&#9;self.GUI.ReflectanceOption.Visible = true;
+&#9;&#9;self.GUI.TransparencyOption.Visible = true;
+&#9;&#9;self.GUI.SelectNote.Visible = false;
 &#9;&#9;self.MaterialDropdown:selectOption( self.State.material and ( self.SpecialMaterialNames[self.State.material.Name] or self.State.material.Name:upper() ) or &quot;*&quot; );
 
 &#9;&#9;-- Update the text inputs without interrupting the user
@@ -3466,6 +3504,11 @@ Tools.Material.updateGUI = function ( self )
 &#9;&#9;end;
 
 &#9;else
+&#9;&#9;self.GUI.Size = UDim2.new( 0, 200, 0, 62 );
+&#9;&#9;self.GUI.MaterialOption.Visible = false;
+&#9;&#9;self.GUI.ReflectanceOption.Visible = false;
+&#9;&#9;self.GUI.TransparencyOption.Visible = false;
+&#9;&#9;self.GUI.SelectNote.Visible = true;
 &#9;&#9;self.MaterialDropdown:selectOption( &quot;&quot; );
 &#9;&#9;self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = &quot;&quot;;
 &#9;&#9;self.GUI.ReflectanceOption.ReflectanceInput.TextBox.Text = &quot;&quot;;
@@ -3549,6 +3592,11 @@ Tools.Material.showGUI = function ( self )
 &#9;&#9;&#9;if enter_pressed then
 &#9;&#9;&#9;&#9;local potential_new = tonumber( Container.TransparencyOption.TransparencyInput.TextBox.Text );
 &#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;if potential_new &gt; 1 then
+&#9;&#9;&#9;&#9;&#9;&#9;potential_new = 1;
+&#9;&#9;&#9;&#9;&#9;elseif potential_new &lt; 0 then
+&#9;&#9;&#9;&#9;&#9;&#9;potential_new = 0;
+&#9;&#9;&#9;&#9;&#9;end;
 &#9;&#9;&#9;&#9;&#9;self:changeTransparency( potential_new );
 &#9;&#9;&#9;&#9;end;
 &#9;&#9;&#9;end;
@@ -3561,12 +3609,17 @@ Tools.Material.showGUI = function ( self )
 &#9;&#9;&#9;self.State.reflectance_focused = true;
 &#9;&#9;&#9;Container.ReflectanceOption.ReflectanceInput.TextBox:CaptureFocus();
 &#9;&#9;end );
-&#9;
+
 &#9;&#9;-- Change the reflectance when the value of the textbox is updated
 &#9;&#9;Container.ReflectanceOption.ReflectanceInput.TextBox.FocusLost:connect( function ( enter_pressed )
 &#9;&#9;&#9;if enter_pressed then
 &#9;&#9;&#9;&#9;local potential_new = tonumber( Container.ReflectanceOption.ReflectanceInput.TextBox.Text );
 &#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;if potential_new &gt; 1 then
+&#9;&#9;&#9;&#9;&#9;&#9;potential_new = 1;
+&#9;&#9;&#9;&#9;&#9;elseif potential_new &lt; 0 then
+&#9;&#9;&#9;&#9;&#9;&#9;potential_new = 0;
+&#9;&#9;&#9;&#9;&#9;end;
 &#9;&#9;&#9;&#9;&#9;self:changeReflectance( potential_new );
 &#9;&#9;&#9;&#9;end;
 &#9;&#9;&#9;end;
@@ -4175,6 +4228,673 @@ Tools.Weld.hideGUI = function ( self )
 
 end;
 
+
+------------------------------------------
+-- Mesh tool
+------------------------------------------
+
+-- Create the tool
+Tools.Mesh = {};
+
+-- Define the tool&apos;s color
+Tools.Mesh.Color = BrickColor.new( &quot;Bright violet&quot; );
+
+-- Keep a container for state data
+Tools.Mesh.State = {};
+
+-- Keep a container for temporary connections
+Tools.Mesh.Connections = {};
+
+-- Keep a container for platform event connections
+Tools.Mesh.Listeners = {};
+
+-- Start adding functionality to the tool
+Tools.Mesh.Listeners.Equipped = function ()
+
+&#9;local self = Tools.Mesh;
+
+&#9;-- Change the color of selection boxes temporarily
+&#9;self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+&#9;SelectionBoxColor = self.Color;
+&#9;updateSelectionBoxColor();
+
+&#9;-- Reveal the GUI
+&#9;self:showGUI();
+
+&#9;-- Update the boundingbox and the GUI regularly
+&#9;coroutine.wrap( function ()
+&#9;&#9;local updater_on = true;
+
+&#9;&#9;-- Provide a function to stop the loop
+&#9;&#9;self.stopGUIUpdater = function ( self )
+&#9;&#9;&#9;updater_on = false;
+&#9;&#9;end;
+
+&#9;&#9;while wait( 0.1 ) and updater_on do
+
+&#9;&#9;&#9;-- Make sure the tool&apos;s equipped
+&#9;&#9;&#9;if CurrentTool == self then
+
+&#9;&#9;&#9;&#9;-- Update the GUI if it&apos;s visible
+&#9;&#9;&#9;&#9;if self.GUI and self.GUI.Visible then
+&#9;&#9;&#9;&#9;&#9;self:updateGUI();
+&#9;&#9;&#9;&#9;end;
+
+&#9;&#9;&#9;end;
+
+&#9;&#9;end;
+
+&#9;end )();
+
+end;
+
+Tools.Mesh.Listeners.Unequipped = function ()
+
+&#9;local self = Tools.Mesh;
+
+&#9;-- Stop the GUI updater
+&#9;self:stopGUIUpdater();
+
+&#9;-- Hide the GUI
+&#9;self:hideGUI();
+
+&#9;-- Disconnect temporary connections
+&#9;for connection_index, Connection in pairs( self.Connections ) do
+&#9;&#9;Connection:disconnect();
+&#9;&#9;self.Connections[connection_index] = nil;
+&#9;end;
+
+&#9;-- Restore the original color of selection boxes
+&#9;SelectionBoxColor = self.State.PreviousSelectionBoxColor;
+&#9;updateSelectionBoxColor();
+
+end;
+
+Tools.Mesh.TypeDropdownLabels = {
+&#9;[Enum.MeshType.Brick] = &quot;BLOCK&quot;;
+&#9;[Enum.MeshType.Cylinder] = &quot;CYLINDER&quot;;
+&#9;[Enum.MeshType.FileMesh] = &quot;FILE&quot;;
+&#9;[Enum.MeshType.Head] = &quot;HEAD&quot;;
+&#9;[Enum.MeshType.Sphere] = &quot;SPHERE&quot;;
+&#9;[Enum.MeshType.Torso] = &quot;TRAPEZOID&quot;;
+&#9;[Enum.MeshType.Wedge] = &quot;WEDGE&quot;;
+};
+
+Tools.Mesh.changeType = function ( self, new_type )
+
+&#9;-- Add a new record to the history system
+&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+&#9;_replaceParts( old_parts, new_parts );
+&#9;for _, Item in pairs( new_parts ) do
+&#9;&#9;Selection:add( Item );
+&#9;end;
+&#9;if #focus_search &gt; 0 then
+&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
+&#9;end;
+&#9;History:add( old_parts, new_parts );
+
+&#9;-- Apply type `new_type` to all the meshes in items from the selection
+&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;local Mesh = _getChildOfClass( Item, &quot;SpecialMesh&quot; );
+&#9;&#9;if Mesh then
+&#9;&#9;&#9;Mesh.MeshType = new_type;
+&#9;&#9;end;
+&#9;end;
+
+&#9;if self.TypeDropdown.open then
+&#9;&#9;self.TypeDropdown:toggle();
+&#9;end;
+
+end;
+
+Tools.Mesh.updateGUI = function ( self )
+
+&#9;-- Make sure the GUI exists
+&#9;if not self.GUI then
+&#9;&#9;return;
+&#9;end;
+
+&#9;local GUI = self.GUI;
+
+&#9;if #Selection.Items &gt; 0 then
+
+&#9;&#9;local meshes = {};
+&#9;&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;&#9;local Mesh = _getChildOfClass( Item, &quot;SpecialMesh&quot; );
+&#9;&#9;&#9;if Mesh then
+&#9;&#9;&#9;&#9;table.insert( meshes, Mesh );
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+
+&#9;&#9;local show_add, show_remove, show_mesh_id;
+&#9;&#9;local mesh_type, mesh_scale_x, mesh_scale_y, mesh_scale_z, mesh_id, mesh_texture, mesh_tint_r, mesh_tint_g, mesh_tint_b;
+
+&#9;&#9;-- If every item has a mesh
+&#9;&#9;if #meshes == #Selection.Items then
+&#9;&#9;&#9;show_add = false;
+&#9;&#9;&#9;show_remove = true;
+
+&#9;&#9;-- If no item has a mesh
+&#9;&#9;elseif #meshes == 0 then
+&#9;&#9;&#9;show_add = true;
+&#9;&#9;&#9;show_remove = false;
+
+&#9;&#9;-- If some items have a mesh
+&#9;&#9;else
+&#9;&#9;&#9;show_add = true;
+&#9;&#9;&#9;show_remove = true;
+&#9;&#9;end;
+
+&#9;&#9;-- If there are meshes
+&#9;&#9;if #meshes &gt; 0 then
+&#9;&#9;&#9;show_type = true;
+&#9;&#9;&#9;for mesh_index, Mesh in pairs( meshes ) do
+
+&#9;&#9;&#9;&#9;-- Set the start values for later comparison
+&#9;&#9;&#9;&#9;if mesh_index == 1 then
+&#9;&#9;&#9;&#9;&#9;mesh_type = Mesh.MeshType;
+&#9;&#9;&#9;&#9;&#9;mesh_scale_x, mesh_scale_y, mesh_scale_z = Mesh.Scale.x, Mesh.Scale.y, Mesh.Scale.z;
+&#9;&#9;&#9;&#9;&#9;mesh_id = Mesh.MeshId:lower();
+&#9;&#9;&#9;&#9;&#9;mesh_texture = Mesh.TextureId:lower();
+&#9;&#9;&#9;&#9;&#9;mesh_tint_r, mesh_tint_g, mesh_tint_b = Mesh.VertexColor.x, Mesh.VertexColor.y, Mesh.VertexColor.z;
+
+&#9;&#9;&#9;&#9;-- Set the values to `nil` if they vary across the selection
+&#9;&#9;&#9;&#9;else
+&#9;&#9;&#9;&#9;&#9;if mesh_type ~= Mesh.MeshType then
+&#9;&#9;&#9;&#9;&#9;&#9;mesh_type = nil;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;&#9;if mesh_scale_x ~= Mesh.Scale.x then
+&#9;&#9;&#9;&#9;&#9;&#9;mesh_scale_x = nil;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;&#9;if mesh_scale_y ~= Mesh.Scale.y then
+&#9;&#9;&#9;&#9;&#9;&#9;mesh_scale_y = nil;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;&#9;if mesh_scale_z ~= Mesh.Scale.z then
+&#9;&#9;&#9;&#9;&#9;&#9;mesh_scale_z = nil;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;&#9;if mesh_id ~= Mesh.MeshId:lower() then
+&#9;&#9;&#9;&#9;&#9;&#9;mesh_id = nil;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;&#9;if mesh_texture ~= Mesh.TextureId:lower() then
+&#9;&#9;&#9;&#9;&#9;&#9;mesh_texture = nil;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;&#9;if mesh_tint_r ~= Mesh.VertexColor.x then
+&#9;&#9;&#9;&#9;&#9;&#9;mesh_tint_r = nil;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;&#9;if mesh_tint_g ~= Mesh.VertexColor.y then
+&#9;&#9;&#9;&#9;&#9;&#9;mesh_tint_g = nil;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;&#9;if mesh_tint_b ~= Mesh.VertexColor.z then
+&#9;&#9;&#9;&#9;&#9;&#9;mesh_tint_b = nil;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;end;
+
+&#9;&#9;&#9;&#9;-- If there&apos;s a FileMesh around here, note that
+&#9;&#9;&#9;&#9;if Mesh.MeshType == Enum.MeshType.FileMesh then
+&#9;&#9;&#9;&#9;&#9;show_mesh_id = true;
+&#9;&#9;&#9;&#9;end;
+
+&#9;&#9;&#9;end;
+
+&#9;&#9;&#9;if show_mesh_id and show_add and show_remove then
+&#9;&#9;&#9;&#9;self.GUI.AddButton.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.RemoveButton.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.MeshIDOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.TextureIDOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.ScaleOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.TintOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.TypeOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.TypeOption.Position = UDim2.new( 0, 14, 0, 65 );
+&#9;&#9;&#9;&#9;self.GUI.ScaleOption.Position = UDim2.new( 0, 0, 0, 100 );
+&#9;&#9;&#9;&#9;self.GUI.MeshIDOption.Position = UDim2.new( 0, 14, 0, 135 );
+&#9;&#9;&#9;&#9;self.GUI.TextureIDOption.Position = UDim2.new( 0, 14, 0, 165 );
+&#9;&#9;&#9;&#9;self.GUI.TintOption.Position = UDim2.new( 0, 0, 0, 200 );
+&#9;&#9;&#9;&#9;self.GUI.Size = UDim2.new( 0, 200, 0, 265 );
+&#9;&#9;&#9;elseif show_mesh_id and not show_add and show_remove then
+&#9;&#9;&#9;&#9;self.GUI.AddButton.Visible = false;
+&#9;&#9;&#9;&#9;self.GUI.RemoveButton.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.MeshIDOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.TextureIDOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.ScaleOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.TintOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.TypeOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.TypeOption.Position = UDim2.new( 0, 14, 0, 30 );
+&#9;&#9;&#9;&#9;self.GUI.ScaleOption.Position = UDim2.new( 0, 0, 0, 65 );
+&#9;&#9;&#9;&#9;self.GUI.MeshIDOption.Position = UDim2.new( 0, 14, 0, 100 );
+&#9;&#9;&#9;&#9;self.GUI.TextureIDOption.Position = UDim2.new( 0, 14, 0, 130 );
+&#9;&#9;&#9;&#9;self.GUI.TintOption.Position = UDim2.new( 0, 0, 0, 165 );
+&#9;&#9;&#9;&#9;self.GUI.Size = UDim2.new( 0, 200, 0, 230 );
+
+&#9;&#9;&#9;elseif not show_mesh_id and show_add and show_remove then
+&#9;&#9;&#9;&#9;self.GUI.AddButton.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.RemoveButton.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.MeshIDOption.Visible = false;
+&#9;&#9;&#9;&#9;self.GUI.TextureIDOption.Visible = false;
+&#9;&#9;&#9;&#9;self.GUI.ScaleOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.TintOption.Visible = false;
+&#9;&#9;&#9;&#9;self.GUI.TypeOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.TypeOption.Position = UDim2.new( 0, 14, 0, 65 );
+&#9;&#9;&#9;&#9;self.GUI.ScaleOption.Position = UDim2.new( 0, 0, 0, 100 );
+&#9;&#9;&#9;&#9;self.GUI.Size = UDim2.new( 0, 200, 0, 165 );
+&#9;&#9;&#9;elseif not show_mesh_id and not show_add and show_remove then
+&#9;&#9;&#9;&#9;self.GUI.AddButton.Visible = false;
+&#9;&#9;&#9;&#9;self.GUI.RemoveButton.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.MeshIDOption.Visible = false;
+&#9;&#9;&#9;&#9;self.GUI.TextureIDOption.Visible = false;
+&#9;&#9;&#9;&#9;self.GUI.ScaleOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.TintOption.Visible = false;
+&#9;&#9;&#9;&#9;self.GUI.TypeOption.Visible = true;
+&#9;&#9;&#9;&#9;self.GUI.TypeOption.Position = UDim2.new( 0, 14, 0, 30 );
+&#9;&#9;&#9;&#9;self.GUI.ScaleOption.Position = UDim2.new( 0, 0, 0, 65 );
+&#9;&#9;&#9;&#9;self.GUI.Size = UDim2.new( 0, 200, 0, 130 );
+&#9;&#9;&#9;end;
+
+&#9;&#9;&#9;-- Update the values shown on the GUI
+&#9;&#9;&#9;if not self.State.mesh_id_focused then
+&#9;&#9;&#9;&#9;self.GUI.MeshIDOption.TextBox.Text = mesh_id and ( mesh_id:match( &quot;%?id=([0-9]+)&quot; ) or &quot;&quot; ) or &quot;*&quot;;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;if not self.State.texture_id_focused then
+&#9;&#9;&#9;&#9;self.GUI.TextureIDOption.TextBox.Text = mesh_texture and ( mesh_texture:match( &quot;%?id=([0-9]+)&quot; ) or &quot;&quot; ) or &quot;*&quot;;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.TypeDropdown:selectOption( mesh_type and self.TypeDropdownLabels[mesh_type] or &quot;*&quot; );
+&#9;&#9;&#9;if not self.State.scale_x_focused then
+&#9;&#9;&#9;&#9;self.GUI.ScaleOption.XInput.TextBox.Text = mesh_scale_x and _round( mesh_scale_x, 2 ) or &quot;*&quot;;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;if not self.State.scale_y_focused then
+&#9;&#9;&#9;&#9;self.GUI.ScaleOption.YInput.TextBox.Text = mesh_scale_y and _round( mesh_scale_y, 2 ) or &quot;*&quot;;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;if not self.State.scale_z_focused then
+&#9;&#9;&#9;&#9;self.GUI.ScaleOption.ZInput.TextBox.Text = mesh_scale_z and _round( mesh_scale_z, 2 ) or &quot;*&quot;;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;if not self.State.tint_r_focused then
+&#9;&#9;&#9;&#9;self.GUI.TintOption.RInput.TextBox.Text = mesh_tint_r and _round( mesh_tint_r * 255, 2 ) or &quot;*&quot;;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;if not self.State.tint_g_focused then
+&#9;&#9;&#9;&#9;self.GUI.TintOption.GInput.TextBox.Text = mesh_tint_g and _round( mesh_tint_g * 255, 2 ) or &quot;*&quot;;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;if not self.State.tint_b_focused then
+&#9;&#9;&#9;&#9;self.GUI.TintOption.BInput.TextBox.Text = mesh_tint_b and _round( mesh_tint_b * 255, 2 ) or &quot;*&quot;;
+&#9;&#9;&#9;end;
+
+&#9;&#9;-- If there are no meshes
+&#9;&#9;else
+&#9;&#9;&#9;self.GUI.AddButton.Visible = true;
+&#9;&#9;&#9;self.GUI.RemoveButton.Visible = false;
+&#9;&#9;&#9;self.GUI.MeshIDOption.Visible = false;
+&#9;&#9;&#9;self.GUI.TextureIDOption.Visible = false;
+&#9;&#9;&#9;self.GUI.ScaleOption.Visible = false;
+&#9;&#9;&#9;self.GUI.TintOption.Visible = false;
+&#9;&#9;&#9;self.GUI.TypeOption.Visible = false;
+&#9;&#9;&#9;self.GUI.Size = UDim2.new( 0, 200, 0, 62 );
+&#9;&#9;end;
+&#9;&#9;self.GUI.SelectNote.Visible = false;
+
+&#9;-- Show a note that says to select something
+&#9;else
+&#9;&#9;self.GUI.AddButton.Visible = false;
+&#9;&#9;self.GUI.RemoveButton.Visible = false;
+&#9;&#9;self.GUI.MeshIDOption.Visible = false;
+&#9;&#9;self.GUI.TextureIDOption.Visible = false;
+&#9;&#9;self.GUI.ScaleOption.Visible = false;
+&#9;&#9;self.GUI.TintOption.Visible = false;
+&#9;&#9;self.GUI.TypeOption.Visible = false;
+&#9;&#9;self.GUI.SelectNote.Visible = true;
+&#9;&#9;self.GUI.Size = UDim2.new( 0, 200, 0, 55 );
+&#9;end;
+
+end;
+
+Tools.Mesh.showGUI = function ( self )
+
+&#9;-- Initialize the GUI if it&apos;s not ready yet
+&#9;if not self.GUI then
+&#9;&#9;local Container = Tool:WaitForChild( &quot;BTMeshToolGUI&quot; ):Clone();
+&#9;&#9;Container.Parent = UI;
+
+&#9;&#9;-- Add functionality to the add/remove buttons
+&#9;&#9;Container.AddButton.Button.MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:addMesh();
+&#9;&#9;end );
+&#9;&#9;Container.RemoveButton.Button.MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:removeMesh();
+&#9;&#9;end );
+
+&#9;&#9;-- Add the type dropdown
+&#9;&#9;local TypeDropdown = createDropdown();
+&#9;&#9;self.TypeDropdown = TypeDropdown;
+&#9;&#9;TypeDropdown.Frame.Parent = Container.TypeOption;
+&#9;&#9;TypeDropdown.Frame.Position = UDim2.new( 0, 40, 0, 0 );
+&#9;&#9;TypeDropdown.Frame.Size = UDim2.new( 1, -40, 0, 25 );
+&#9;&#9;TypeDropdown:addOption( &quot;BLOCK&quot; ).MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:changeType( Enum.MeshType.Brick );
+&#9;&#9;end );
+&#9;&#9;TypeDropdown:addOption( &quot;CYLINDER&quot; ).MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:changeType( Enum.MeshType.Cylinder );
+&#9;&#9;end );
+&#9;&#9;TypeDropdown:addOption( &quot;FILE&quot; ).MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:changeType( Enum.MeshType.FileMesh );
+&#9;&#9;end );
+&#9;&#9;TypeDropdown:addOption( &quot;HEAD&quot; ).MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:changeType( Enum.MeshType.Head );
+&#9;&#9;end );
+&#9;&#9;TypeDropdown:addOption( &quot;SPHERE&quot; ).MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:changeType( Enum.MeshType.Sphere );
+&#9;&#9;end );
+&#9;&#9;TypeDropdown:addOption( &quot;TRAPEZOID&quot; ).MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:changeType( Enum.MeshType.Torso );
+&#9;&#9;end );
+&#9;&#9;TypeDropdown:addOption( &quot;WEDGE&quot; ).MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:changeType( Enum.MeshType.Wedge );
+&#9;&#9;end );
+
+&#9;&#9;-- Add functionality to the scale inputs
+&#9;&#9;Container.ScaleOption.XInput.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.scale_x_focused = true;
+&#9;&#9;&#9;Container.ScaleOption.XInput.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.ScaleOption.XInput.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local potential_new = tonumber( Container.ScaleOption.XInput.TextBox.Text );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;self:changeScale( &apos;x&apos;, potential_new );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.scale_x_focused = false;
+&#9;&#9;end );
+
+&#9;&#9;Container.ScaleOption.YInput.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.scale_y_focused = true;
+&#9;&#9;&#9;Container.ScaleOption.YInput.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.ScaleOption.YInput.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local potential_new = tonumber( Container.ScaleOption.YInput.TextBox.Text );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;self:changeScale( &apos;y&apos;, potential_new );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.scale_y_focused = false;
+&#9;&#9;end );
+
+&#9;&#9;Container.ScaleOption.ZInput.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.scale_z_focused = true;
+&#9;&#9;&#9;Container.ScaleOption.ZInput.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.ScaleOption.ZInput.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local potential_new = tonumber( Container.ScaleOption.ZInput.TextBox.Text );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;self:changeScale( &apos;z&apos;, potential_new );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.scale_z_focused = false;
+&#9;&#9;end );
+
+&#9;&#9;-- Add functionality to the mesh/texture ID inputs
+&#9;&#9;Container.MeshIDOption.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.mesh_id_focused = true;
+&#9;&#9;&#9;Container.MeshIDOption.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.MeshIDOption.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local input = Container.MeshIDOption.TextBox.Text;
+&#9;&#9;&#9;&#9;local potential_new = tonumber( input ) or input:lower():match( &quot;%?id=([0-9]+)&quot; );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;self:changeMesh( potential_new );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.mesh_id_focused = false;
+&#9;&#9;end );
+
+&#9;&#9;Container.TextureIDOption.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.texture_id_focused = true;
+&#9;&#9;&#9;Container.TextureIDOption.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.TextureIDOption.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local input = Container.TextureIDOption.TextBox.Text;
+&#9;&#9;&#9;&#9;local potential_new = tonumber( input ) or input:lower():match( &quot;%?id=([0-9]+)&quot; );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;self:changeTexture( potential_new );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.texture_id_focused = false;
+&#9;&#9;end );
+
+&#9;&#9;-- Add functionality to the tint inputs
+&#9;&#9;Container.TintOption.RInput.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.tint_r_focused = true;
+&#9;&#9;&#9;Container.TintOption.RInput.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.TintOption.RInput.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local potential_new = tonumber( Container.TintOption.RInput.TextBox.Text );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;if potential_new &gt; 255 then
+&#9;&#9;&#9;&#9;&#9;&#9;potential_new = 255;
+&#9;&#9;&#9;&#9;&#9;elseif potential_new &lt; 0 then
+&#9;&#9;&#9;&#9;&#9;&#9;potential_new = 0;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;&#9;self:changeTint( &apos;r&apos;, potential_new / 255 );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.tint_r_focused = false;
+&#9;&#9;end );
+
+&#9;&#9;Container.TintOption.GInput.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.tint_g_focused = true;
+&#9;&#9;&#9;Container.TintOption.GInput.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.TintOption.GInput.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local potential_new = tonumber( Container.TintOption.GInput.TextBox.Text );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;if potential_new &gt; 255 then
+&#9;&#9;&#9;&#9;&#9;&#9;potential_new = 255;
+&#9;&#9;&#9;&#9;&#9;elseif potential_new &lt; 0 then
+&#9;&#9;&#9;&#9;&#9;&#9;potential_new = 0;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;&#9;self:changeTint( &apos;g&apos;, potential_new / 255 );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.tint_g_focused = false;
+&#9;&#9;end );
+
+&#9;&#9;Container.TintOption.BInput.TextButton.MouseButton1Down:connect( function ()
+&#9;&#9;&#9;self.State.tint_b_focused = true;
+&#9;&#9;&#9;Container.TintOption.BInput.TextBox:CaptureFocus();
+&#9;&#9;end );
+&#9;&#9;Container.TintOption.BInput.TextBox.FocusLost:connect( function ( enter_pressed )
+&#9;&#9;&#9;if enter_pressed then
+&#9;&#9;&#9;&#9;local potential_new = tonumber( Container.TintOption.BInput.TextBox.Text );
+&#9;&#9;&#9;&#9;if potential_new then
+&#9;&#9;&#9;&#9;&#9;if potential_new &gt; 255 then
+&#9;&#9;&#9;&#9;&#9;&#9;potential_new = 255;
+&#9;&#9;&#9;&#9;&#9;elseif potential_new &lt; 0 then
+&#9;&#9;&#9;&#9;&#9;&#9;potential_new = 0;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;&#9;self:changeTint( &apos;b&apos;, potential_new / 255 );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;self.State.tint_b_focused = false;
+&#9;&#9;end );
+
+
+&#9;&#9;self.GUI = Container;
+&#9;end;
+
+&#9;-- Reveal the GUI
+&#9;self.GUI.Visible = true;
+
+end;
+
+Tools.Mesh.addMesh = function ( self )
+
+&#9;-- Add a new record to the history system
+&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+&#9;_replaceParts( old_parts, new_parts );
+&#9;for _, Item in pairs( new_parts ) do
+&#9;&#9;Selection:add( Item );
+&#9;end;
+&#9;if #focus_search &gt; 0 then
+&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
+&#9;end;
+&#9;History:add( old_parts, new_parts );
+
+&#9;-- Add meshes to all the items from the selection that
+&#9;-- don&apos;t already have one
+&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;local Mesh = _getChildOfClass( Item, &quot;SpecialMesh&quot; );
+&#9;&#9;if not Mesh then
+&#9;&#9;&#9;RbxUtility.Create &quot;SpecialMesh&quot; {
+&#9;&#9;&#9;&#9;Name = &quot;BTMesh&quot;;
+&#9;&#9;&#9;&#9;Parent = Item;
+&#9;&#9;&#9;&#9;MeshType = Enum.MeshType.Brick;
+&#9;&#9;&#9;};
+&#9;&#9;end;
+&#9;end;
+
+end;
+
+Tools.Mesh.removeMesh = function ( self )
+
+&#9;-- Add a new record to the history system
+&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+&#9;_replaceParts( old_parts, new_parts );
+&#9;for _, Item in pairs( new_parts ) do
+&#9;&#9;Selection:add( Item );
+&#9;end;
+&#9;if #focus_search &gt; 0 then
+&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
+&#9;end;
+&#9;History:add( old_parts, new_parts );
+
+&#9;-- Remove meshes from all the selected items
+&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;local meshes = _getChildrenOfClass( Item, &quot;SpecialMesh&quot; );
+&#9;&#9;for _, Mesh in pairs( meshes ) do
+&#9;&#9;&#9;Mesh:Destroy();
+&#9;&#9;end;
+&#9;end;
+
+end;
+
+Tools.Mesh.changeMesh = function ( self, mesh_id )
+
+&#9;-- Add a new record to the history system
+&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+&#9;_replaceParts( old_parts, new_parts );
+&#9;for _, Item in pairs( new_parts ) do
+&#9;&#9;Selection:add( Item );
+&#9;end;
+&#9;if #focus_search &gt; 0 then
+&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
+&#9;end;
+&#9;History:add( old_parts, new_parts );
+
+&#9;-- Apply type `new_type` to all the meshes in items from the selection
+&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;local Mesh = _getChildOfClass( Item, &quot;SpecialMesh&quot; );
+&#9;&#9;if Mesh then
+&#9;&#9;&#9;Mesh.MeshId = &quot;http://www.roblox.com/asset/?id=&quot; .. mesh_id;
+&#9;&#9;end;
+&#9;end;
+
+end;
+
+Tools.Mesh.changeTexture = function ( self, texture_id )
+
+&#9;-- Add a new record to the history system
+&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+&#9;_replaceParts( old_parts, new_parts );
+&#9;for _, Item in pairs( new_parts ) do
+&#9;&#9;Selection:add( Item );
+&#9;end;
+&#9;if #focus_search &gt; 0 then
+&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
+&#9;end;
+&#9;History:add( old_parts, new_parts );
+
+&#9;-- Apply type `new_type` to all the meshes in items from the selection
+&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;local Mesh = _getChildOfClass( Item, &quot;SpecialMesh&quot; );
+&#9;&#9;if Mesh then
+&#9;&#9;&#9;Mesh.TextureId = &quot;http://www.roblox.com/asset/?id=&quot; .. texture_id;
+&#9;&#9;end;
+&#9;end;
+
+end;
+
+Tools.Mesh.changeScale = function ( self, component, new_value )
+
+&#9;-- Add a new record to the history system
+&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+&#9;_replaceParts( old_parts, new_parts );
+&#9;for _, Item in pairs( new_parts ) do
+&#9;&#9;Selection:add( Item );
+&#9;end;
+&#9;if #focus_search &gt; 0 then
+&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
+&#9;end;
+&#9;History:add( old_parts, new_parts );
+
+&#9;-- Apply type `new_type` to all the meshes in items from the selection
+&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;local Mesh = _getChildOfClass( Item, &quot;SpecialMesh&quot; );
+&#9;&#9;if Mesh then
+&#9;&#9;&#9;Mesh.Scale = Vector3.new(
+&#9;&#9;&#9;&#9;component == &apos;x&apos; and new_value or Mesh.Scale.x,
+&#9;&#9;&#9;&#9;component == &apos;y&apos; and new_value or Mesh.Scale.y,
+&#9;&#9;&#9;&#9;component == &apos;z&apos; and new_value or Mesh.Scale.z
+&#9;&#9;&#9;);
+&#9;&#9;end;
+&#9;end;
+
+end;
+
+Tools.Mesh.changeTint = function ( self, component, new_value )
+
+&#9;-- Add a new record to the history system
+&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
+&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
+&#9;_replaceParts( old_parts, new_parts );
+&#9;for _, Item in pairs( new_parts ) do
+&#9;&#9;Selection:add( Item );
+&#9;end;
+&#9;if #focus_search &gt; 0 then
+&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
+&#9;end;
+&#9;History:add( old_parts, new_parts );
+
+&#9;-- Apply type `new_type` to all the meshes in items from the selection
+&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;local Mesh = _getChildOfClass( Item, &quot;SpecialMesh&quot; );
+&#9;&#9;if Mesh then
+&#9;&#9;&#9;Mesh.VertexColor = Vector3.new(
+&#9;&#9;&#9;&#9;component == &apos;r&apos; and new_value or Mesh.VertexColor.x,
+&#9;&#9;&#9;&#9;component == &apos;g&apos; and new_value or Mesh.VertexColor.y,
+&#9;&#9;&#9;&#9;component == &apos;b&apos; and new_value or Mesh.VertexColor.z
+&#9;&#9;&#9;);
+&#9;&#9;end;
+&#9;end;
+
+end;
+
+Tools.Mesh.hideGUI = function ( self )
+
+&#9;-- Hide the GUI if it exists already
+&#9;if self.GUI then
+&#9;&#9;self.GUI.Visible = false;
+&#9;end;
+
+end;
+
 ------------------------------------------
 -- Provide an interface to the 2D
 -- selection system
@@ -4318,7 +5038,7 @@ SelectEdge = {
 &#9;&#9;&#9;local key = key:lower();
 &#9;&#9;&#9;local key_code = key:byte();
 
-&#9;&#9;&#9;if key == &quot;e&quot; then
+&#9;&#9;&#9;if key == &quot;e&quot; and #Selection.Items &gt; 0 then
 &#9;&#9;&#9;&#9;self:enable( edgeSelectionCallback );
 &#9;&#9;&#9;end;
 
@@ -4561,6 +5281,11 @@ History = {
 &#9;&#9;-- Advance the history index
 &#9;&#9;self.index = self.index + 1;
 
+&#9;&#9;-- Clear out the following history
+&#9;&#9;for index = self.index + 1, #self.Data do
+&#9;&#9;&#9;self.Data[index] = nil;
+&#9;&#9;end;
+
 &#9;end;
 
 };
@@ -4778,6 +5503,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 &#9;&#9;elseif key == &quot;f&quot; then
 &#9;&#9;&#9;equipTool( Tools.Weld );
+
+&#9;&#9;elseif key == &quot;h&quot; then
+&#9;&#9;&#9;equipTool( Tools.Mesh );
 
 &#9;&#9;elseif key == &quot;q&quot; then
 &#9;&#9;&#9;Selection:clear();
@@ -13008,7 +13736,7 @@ equipTool( Tools.Move );</ProtectedString>
 					<XS>0</XS>
 					<XO>200</XO>
 					<YS>0</YS>
-					<YO>135</YO>
+					<YO>145</YO>
 				</UDim2>
 				<token name="SizeConstraint">0</token>
 				<token name="Style">0</token>
@@ -13726,8 +14454,8 @@ equipTool( Tools.Move );</ProtectedString>
 					<UDim2 name="Position">
 						<XS>0</XS>
 						<XO>5</XO>
-						<YS>0</YS>
-						<YO>135</YO>
+						<YS>1</YS>
+						<YO>-10</YO>
 					</UDim2>
 					<float name="Rotation">0</float>
 					<UDim2 name="Size">
@@ -13771,8 +14499,47 @@ equipTool( Tools.Move );</ProtectedString>
 					</Properties>
 				</Item>
 			</Item>
+			<Item class="TextLabel" referent="RBX244">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4294967295</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<token name="Font">3</token>
+					<token name="FontSize">5</token>
+					<string name="Name">SelectNote</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>10</XO>
+						<YS>0</YS>
+						<YO>27</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-10</XO>
+						<YS>0</YS>
+						<YO>15</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<string name="Text">Select something to use this tool.</string>
+					<Color3 name="TextColor3">4294967295</Color3>
+					<bool name="TextScaled">true</bool>
+					<Color3 name="TextStrokeColor3">4278190080</Color3>
+					<float name="TextStrokeTransparency">0.5</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">true</bool>
+					<token name="TextXAlignment">0</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">false</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+			</Item>
 		</Item>
-		<Item class="Frame" referent="RBX244">
+		<Item class="Frame" referent="RBX245">
 			<Properties>
 				<bool name="Active">true</bool>
 				<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13800,7 +14567,7 @@ equipTool( Tools.Move );</ProtectedString>
 				<bool name="Visible">true</bool>
 				<int name="ZIndex">1</int>
 			</Properties>
-			<Item class="Frame" referent="RBX245">
+			<Item class="Frame" referent="RBX246">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13828,7 +14595,7 @@ equipTool( Tools.Move );</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX246">
+				<Item class="Frame" referent="RBX247">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -13857,7 +14624,7 @@ equipTool( Tools.Move );</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX247">
+				<Item class="TextLabel" referent="RBX248">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13896,7 +14663,7 @@ equipTool( Tools.Move );</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX248">
+				<Item class="TextLabel" referent="RBX249">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13936,7 +14703,7 @@ equipTool( Tools.Move );</ProtectedString>
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX249">
+			<Item class="Frame" referent="RBX250">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13964,7 +14731,7 @@ equipTool( Tools.Move );</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="TextLabel" referent="RBX250">
+				<Item class="TextLabel" referent="RBX251">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14003,7 +14770,7 @@ equipTool( Tools.Move );</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="Frame" referent="RBX251">
+				<Item class="Frame" referent="RBX252">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14031,7 +14798,7 @@ equipTool( Tools.Move );</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX252">
+					<Item class="Frame" referent="RBX253">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -14060,7 +14827,7 @@ equipTool( Tools.Move );</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX253">
+					<Item class="TextButton" referent="RBX254">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -14103,7 +14870,7 @@ equipTool( Tools.Move );</ProtectedString>
 							<int name="ZIndex">2</int>
 						</Properties>
 					</Item>
-					<Item class="ImageLabel" referent="RBX254">
+					<Item class="ImageLabel" referent="RBX255">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14140,7 +14907,7 @@ equipTool( Tools.Move );</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX255">
+					<Item class="TextLabel" referent="RBX256">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14180,7 +14947,7 @@ equipTool( Tools.Move );</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX256">
+				<Item class="Frame" referent="RBX257">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14208,7 +14975,7 @@ equipTool( Tools.Move );</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX257">
+					<Item class="Frame" referent="RBX258">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -14237,7 +15004,7 @@ equipTool( Tools.Move );</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX258">
+					<Item class="TextButton" referent="RBX259">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -14280,7 +15047,7 @@ equipTool( Tools.Move );</ProtectedString>
 							<int name="ZIndex">2</int>
 						</Properties>
 					</Item>
-					<Item class="ImageLabel" referent="RBX259">
+					<Item class="ImageLabel" referent="RBX260">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14317,7 +15084,7 @@ equipTool( Tools.Move );</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX260">
+					<Item class="TextLabel" referent="RBX261">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14358,7 +15125,7 @@ equipTool( Tools.Move );</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX261">
+			<Item class="Frame" referent="RBX262">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14386,7 +15153,7 @@ equipTool( Tools.Move );</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX262">
+				<Item class="Frame" referent="RBX263">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -14415,7 +15182,7 @@ equipTool( Tools.Move );</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX263">
+				<Item class="TextLabel" referent="RBX264">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14456,7 +15223,7 @@ equipTool( Tools.Move );</ProtectedString>
 				</Item>
 			</Item>
 		</Item>
-		<Item class="Frame" referent="RBX264">
+		<Item class="Frame" referent="RBX265">
 			<Properties>
 				<bool name="Active">true</bool>
 				<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14484,7 +15251,7 @@ equipTool( Tools.Move );</ProtectedString>
 				<bool name="Visible">true</bool>
 				<int name="ZIndex">1</int>
 			</Properties>
-			<Item class="Frame" referent="RBX265">
+			<Item class="Frame" referent="RBX266">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14512,7 +15279,7 @@ equipTool( Tools.Move );</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX266">
+				<Item class="Frame" referent="RBX267">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -14541,7 +15308,7 @@ equipTool( Tools.Move );</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX267">
+				<Item class="TextLabel" referent="RBX268">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14580,7 +15347,7 @@ equipTool( Tools.Move );</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX268">
+				<Item class="TextLabel" referent="RBX269">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14620,7 +15387,7 @@ equipTool( Tools.Move );</ProtectedString>
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX269">
+			<Item class="Frame" referent="RBX270">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14648,7 +15415,7 @@ equipTool( Tools.Move );</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="TextLabel" referent="RBX270">
+				<Item class="TextLabel" referent="RBX271">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14688,7 +15455,7 @@ equipTool( Tools.Move );</ProtectedString>
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX271">
+			<Item class="Frame" referent="RBX272">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14716,7 +15483,7 @@ equipTool( Tools.Move );</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX272">
+				<Item class="Frame" referent="RBX273">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -14745,7 +15512,7 @@ equipTool( Tools.Move );</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX273">
+				<Item class="TextLabel" referent="RBX274">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14786,11 +15553,11 @@ equipTool( Tools.Move );</ProtectedString>
 				</Item>
 			</Item>
 		</Item>
-		<Item class="RemoteFunction" referent="RBX274">
+		<Item class="RemoteFunction" referent="RBX275">
 			<Properties>
 				<string name="Name">GetAsync</string>
 			</Properties>
-			<Item class="Script" referent="RBX275">
+			<Item class="Script" referent="RBX276">
 				<Properties>
 					<bool name="Disabled">false</bool>
 					<Content name="LinkedSource"><null></null></Content>
@@ -14805,11 +15572,11 @@ end;</ProtectedString>
 				</Properties>
 			</Item>
 		</Item>
-		<Item class="RemoteFunction" referent="RBX276">
+		<Item class="RemoteFunction" referent="RBX277">
 			<Properties>
 				<string name="Name">PostAsync</string>
 			</Properties>
-			<Item class="Script" referent="RBX277">
+			<Item class="Script" referent="RBX278">
 				<Properties>
 					<bool name="Disabled">false</bool>
 					<Content name="LinkedSource"><null></null></Content>
@@ -14824,7 +15591,7 @@ end;</ProtectedString>
 				</Properties>
 			</Item>
 		</Item>
-		<Item class="Frame" referent="RBX278">
+		<Item class="Frame" referent="RBX279">
 			<Properties>
 				<bool name="Active">true</bool>
 				<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14852,7 +15619,7 @@ end;</ProtectedString>
 				<bool name="Visible">true</bool>
 				<int name="ZIndex">1</int>
 			</Properties>
-			<Item class="Frame" referent="RBX279">
+			<Item class="Frame" referent="RBX280">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14880,7 +15647,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX280">
+				<Item class="Frame" referent="RBX281">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -14909,7 +15676,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX281">
+				<Item class="TextLabel" referent="RBX282">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14948,7 +15715,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX282">
+				<Item class="TextLabel" referent="RBX283">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14988,7 +15755,7 @@ end;</ProtectedString>
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX283">
+			<Item class="Frame" referent="RBX284">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15016,7 +15783,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="TextLabel" referent="RBX284">
+				<Item class="TextLabel" referent="RBX285">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15055,7 +15822,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="Frame" referent="RBX285">
+				<Item class="Frame" referent="RBX286">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15083,7 +15850,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX286">
+					<Item class="Frame" referent="RBX287">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -15112,7 +15879,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX287">
+					<Item class="TextButton" referent="RBX288">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15155,7 +15922,7 @@ end;</ProtectedString>
 							<int name="ZIndex">2</int>
 						</Properties>
 					</Item>
-					<Item class="ImageLabel" referent="RBX288">
+					<Item class="ImageLabel" referent="RBX289">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15192,7 +15959,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX289">
+					<Item class="TextLabel" referent="RBX290">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15232,7 +15999,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX290">
+				<Item class="Frame" referent="RBX291">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15260,7 +16027,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX291">
+					<Item class="Frame" referent="RBX292">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -15289,7 +16056,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX292">
+					<Item class="TextButton" referent="RBX293">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15332,7 +16099,7 @@ end;</ProtectedString>
 							<int name="ZIndex">2</int>
 						</Properties>
 					</Item>
-					<Item class="ImageLabel" referent="RBX293">
+					<Item class="ImageLabel" referent="RBX294">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15369,7 +16136,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX294">
+					<Item class="TextLabel" referent="RBX295">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15410,7 +16177,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX295">
+			<Item class="Frame" referent="RBX296">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15438,7 +16205,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX296">
+				<Item class="Frame" referent="RBX297">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -15467,7 +16234,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX297">
+				<Item class="TextLabel" referent="RBX298">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15508,7 +16275,7 @@ end;</ProtectedString>
 				</Item>
 			</Item>
 		</Item>
-		<Item class="Frame" referent="RBX298">
+		<Item class="Frame" referent="RBX299">
 			<Properties>
 				<bool name="Active">true</bool>
 				<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15536,7 +16303,7 @@ end;</ProtectedString>
 				<bool name="Visible">true</bool>
 				<int name="ZIndex">1</int>
 			</Properties>
-			<Item class="Frame" referent="RBX299">
+			<Item class="Frame" referent="RBX300">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15564,7 +16331,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX300">
+				<Item class="Frame" referent="RBX301">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -15593,7 +16360,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX301">
+				<Item class="TextLabel" referent="RBX302">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15632,7 +16399,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX302">
+				<Item class="TextLabel" referent="RBX303">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15672,7 +16439,7 @@ end;</ProtectedString>
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX303">
+			<Item class="Frame" referent="RBX304">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15700,7 +16467,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="TextButton" referent="RBX304">
+				<Item class="TextButton" referent="RBX305">
 					<Properties>
 						<bool name="Active">true</bool>
 						<bool name="AutoButtonColor">true</bool>
@@ -15742,7 +16509,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX305">
+					<Item class="Frame" referent="RBX306">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -15772,7 +16539,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="TextButton" referent="RBX306">
+				<Item class="TextButton" referent="RBX307">
 					<Properties>
 						<bool name="Active">true</bool>
 						<bool name="AutoButtonColor">true</bool>
@@ -15814,7 +16581,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX307">
+					<Item class="Frame" referent="RBX308">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -15845,7 +16612,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX308">
+			<Item class="Frame" referent="RBX309">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15873,7 +16640,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX309">
+				<Item class="Frame" referent="RBX310">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -15902,7 +16669,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX310">
+				<Item class="TextLabel" referent="RBX311">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15943,7 +16710,7 @@ end;</ProtectedString>
 				</Item>
 			</Item>
 		</Item>
-		<Item class="Frame" referent="RBX311">
+		<Item class="Frame" referent="RBX312">
 			<Properties>
 				<bool name="Active">true</bool>
 				<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -15971,7 +16738,7 @@ end;</ProtectedString>
 				<bool name="Visible">true</bool>
 				<int name="ZIndex">1</int>
 			</Properties>
-			<Item class="Frame" referent="RBX312">
+			<Item class="Frame" referent="RBX313">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -15999,7 +16766,7 @@ end;</ProtectedString>
 					<bool name="Visible">false</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="TextLabel" referent="RBX313">
+				<Item class="TextLabel" referent="RBX314">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -16038,7 +16805,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="TextLabel" referent="RBX314">
+				<Item class="TextLabel" referent="RBX315">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -16077,7 +16844,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="Frame" referent="RBX315">
+				<Item class="Frame" referent="RBX316">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -16105,7 +16872,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX316">
+					<Item class="Frame" referent="RBX317">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294946560</Color3>
@@ -16134,7 +16901,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX317">
+					<Item class="Frame" referent="RBX318">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4283144011</Color3>
@@ -16163,7 +16930,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX318">
+					<Item class="Frame" referent="RBX319">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278497260</Color3>
@@ -16192,7 +16959,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX319">
+					<Item class="Frame" referent="RBX320">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294901760</Color3>
@@ -16221,7 +16988,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX320">
+					<Item class="Frame" referent="RBX321">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -16252,7 +17019,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX321">
+			<Item class="Frame" referent="RBX322">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -16280,7 +17047,7 @@ end;</ProtectedString>
 					<bool name="Visible">false</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="TextLabel" referent="RBX322">
+				<Item class="TextLabel" referent="RBX323">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -16319,7 +17086,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="Frame" referent="RBX323">
+				<Item class="Frame" referent="RBX324">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -16347,7 +17114,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX324">
+					<Item class="Frame" referent="RBX325">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294946560</Color3>
@@ -16376,7 +17143,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX325">
+					<Item class="Frame" referent="RBX326">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4283144011</Color3>
@@ -16405,7 +17172,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX326">
+					<Item class="Frame" referent="RBX327">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278497260</Color3>
@@ -16434,7 +17201,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX327">
+					<Item class="Frame" referent="RBX328">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294901760</Color3>
@@ -16463,7 +17230,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX328">
+					<Item class="Frame" referent="RBX329">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -16494,7 +17261,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX329">
+			<Item class="Frame" referent="RBX330">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -16522,7 +17289,7 @@ end;</ProtectedString>
 					<bool name="Visible">false</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="TextButton" referent="RBX330">
+				<Item class="TextButton" referent="RBX331">
 					<Properties>
 						<bool name="Active">true</bool>
 						<bool name="AutoButtonColor">true</bool>
@@ -16565,7 +17332,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="Frame" referent="RBX331">
+				<Item class="Frame" referent="RBX332">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -16595,7 +17362,7 @@ end;</ProtectedString>
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX332">
+			<Item class="Frame" referent="RBX333">
 				<Properties>
 					<bool name="Active">false</bool>
 					<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -16623,7 +17390,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX333">
+				<Item class="Frame" referent="RBX334">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -16651,7 +17418,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX334">
+					<Item class="Frame" referent="RBX335">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294946560</Color3>
@@ -16680,7 +17447,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX335">
+					<Item class="Frame" referent="RBX336">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4283144011</Color3>
@@ -16709,7 +17476,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX336">
+					<Item class="Frame" referent="RBX337">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278497260</Color3>
@@ -16738,7 +17505,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX337">
+					<Item class="Frame" referent="RBX338">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294901760</Color3>
@@ -16767,7 +17534,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX338">
+					<Item class="Frame" referent="RBX339">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -16797,7 +17564,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="TextLabel" referent="RBX339">
+				<Item class="TextLabel" referent="RBX340">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -16836,7 +17603,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="Frame" referent="RBX340">
+				<Item class="Frame" referent="RBX341">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -16864,7 +17631,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX341">
+					<Item class="Frame" referent="RBX342">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294946560</Color3>
@@ -16893,7 +17660,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX342">
+					<Item class="Frame" referent="RBX343">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4283144011</Color3>
@@ -16922,7 +17689,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX343">
+					<Item class="Frame" referent="RBX344">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278497260</Color3>
@@ -16951,7 +17718,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX344">
+					<Item class="Frame" referent="RBX345">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294901760</Color3>
@@ -16980,7 +17747,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX345">
+					<Item class="Frame" referent="RBX346">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -17010,7 +17777,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="TextButton" referent="RBX346">
+				<Item class="TextButton" referent="RBX347">
 					<Properties>
 						<bool name="Active">true</bool>
 						<bool name="AutoButtonColor">true</bool>
@@ -17052,7 +17819,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX347">
+					<Item class="Frame" referent="RBX348">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -17082,6 +17849,2313 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
+			</Item>
+		</Item>
+		<Item class="Frame" referent="RBX349">
+			<Properties>
+				<bool name="Active">true</bool>
+				<Color3 name="BackgroundColor3">4288914085</Color3>
+				<float name="BackgroundTransparency">1</float>
+				<Color3 name="BorderColor3">4279970357</Color3>
+				<int name="BorderSizePixel">0</int>
+				<bool name="ClipsDescendants">false</bool>
+				<bool name="Draggable">true</bool>
+				<string name="Name">BTMeshToolGUI</string>
+				<UDim2 name="Position">
+					<XS>0</XS>
+					<XO>0</XO>
+					<YS>0</YS>
+					<YO>172</YO>
+				</UDim2>
+				<float name="Rotation">0</float>
+				<UDim2 name="Size">
+					<XS>0</XS>
+					<XO>200</XO>
+					<YS>0</YS>
+					<YO>55</YO>
+				</UDim2>
+				<token name="SizeConstraint">0</token>
+				<token name="Style">0</token>
+				<bool name="Visible">true</bool>
+				<int name="ZIndex">1</int>
+			</Properties>
+			<Item class="Frame" referent="RBX350">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4288914085</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<string name="Name">Title</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>0</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>20</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<token name="Style">0</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+				<Item class="Frame" referent="RBX351">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4285215356</Color3>
+						<float name="BackgroundTransparency">0</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">ColorBar</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>5</XO>
+							<YS>0</YS>
+							<YO>-3</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>-5</XO>
+							<YS>0</YS>
+							<YO>2</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="TextLabel" referent="RBX352">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">2</token>
+						<token name="FontSize">4</token>
+						<string name="Name">Label</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>10</XO>
+							<YS>0</YS>
+							<YO>1</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>-10</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<string name="Text">MESH TOOL</string>
+						<Color3 name="TextColor3">4294967295</Color3>
+						<bool name="TextScaled">false</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">0</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">0</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="TextLabel" referent="RBX353">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">2</token>
+						<token name="FontSize">5</token>
+						<string name="Name">F3XSignature</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>10</XO>
+							<YS>0</YS>
+							<YO>1</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>-10</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<string name="Text">F3X</string>
+						<Color3 name="TextColor3">4294967295</Color3>
+						<bool name="TextScaled">false</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">0.899999976</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">1</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX354">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4288914085</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<string name="Name">TypeOption</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>14</XO>
+						<YS>0</YS>
+						<YO>65</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-14</XO>
+						<YS>0</YS>
+						<YO>25</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<token name="Style">0</token>
+					<bool name="Visible">false</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+				<Item class="TextLabel" referent="RBX355">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">2</token>
+						<token name="FontSize">4</token>
+						<string name="Name">Label</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>30</XO>
+							<YS>0</YS>
+							<YO>25</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<string name="Text">Type</string>
+						<Color3 name="TextColor3">4294967295</Color3>
+						<bool name="TextScaled">false</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">0</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">0</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX356">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4288914085</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<string name="Name">ScaleOption</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>100</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>0</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<token name="Style">0</token>
+					<bool name="Visible">false</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+				<Item class="TextLabel" referent="RBX357">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">2</token>
+						<token name="FontSize">4</token>
+						<string name="Name">Label</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>14</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>70</XO>
+							<YS>0</YS>
+							<YO>25</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<string name="Text">Scale</string>
+						<Color3 name="TextColor3">4294967295</Color3>
+						<bool name="TextScaled">false</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">0</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">0</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBX358">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">XInput</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>55</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>45</XO>
+							<YS>0</YS>
+							<YO>25</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+					<Item class="TextButton" referent="RBX359">
+						<Properties>
+							<bool name="Active">true</bool>
+							<bool name="AutoButtonColor">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">0</token>
+							<token name="FontSize">0</token>
+							<bool name="Modal">false</bool>
+							<string name="Name">TextButton</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<bool name="Selected">false</bool>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<string name="Text"></string>
+							<Color3 name="TextColor3">4279970357</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">2</int>
+						</Properties>
+					</Item>
+					<Item class="ImageLabel" referent="RBX360">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+							<Vector2 name="ImageRectOffset">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Vector2 name="ImageRectSize">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<string name="Name">Background</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX361">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4294967295</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">SelectedIndicator</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>5</XO>
+								<YS>0</YS>
+								<YO>-2</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-4</XO>
+								<YS>0</YS>
+								<YO>2</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="TextBox" referent="RBX362">
+						<Properties>
+							<bool name="Active">true</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClearTextOnFocus">true</bool>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">2</token>
+							<token name="FontSize">4</token>
+							<bool name="MultiLine">false</bool>
+							<string name="Name">TextBox</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>5</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-10</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<string name="Text">1</string>
+							<Color3 name="TextColor3">4294967295</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX363">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">YInput</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>100</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>45</XO>
+							<YS>0</YS>
+							<YO>25</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+					<Item class="TextButton" referent="RBX364">
+						<Properties>
+							<bool name="Active">true</bool>
+							<bool name="AutoButtonColor">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">0</token>
+							<token name="FontSize">0</token>
+							<bool name="Modal">false</bool>
+							<string name="Name">TextButton</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<bool name="Selected">false</bool>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<string name="Text"></string>
+							<Color3 name="TextColor3">4279970357</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">2</int>
+						</Properties>
+					</Item>
+					<Item class="ImageLabel" referent="RBX365">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+							<Vector2 name="ImageRectOffset">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Vector2 name="ImageRectSize">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<string name="Name">Background</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX366">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4294967295</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">SelectedIndicator</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>5</XO>
+								<YS>0</YS>
+								<YO>-2</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-4</XO>
+								<YS>0</YS>
+								<YO>2</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="TextBox" referent="RBX367">
+						<Properties>
+							<bool name="Active">true</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClearTextOnFocus">true</bool>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">2</token>
+							<token name="FontSize">4</token>
+							<bool name="MultiLine">false</bool>
+							<string name="Name">TextBox</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>5</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-10</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<string name="Text">1</string>
+							<Color3 name="TextColor3">4294967295</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX368">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">ZInput</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>145</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>45</XO>
+							<YS>0</YS>
+							<YO>25</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+					<Item class="TextButton" referent="RBX369">
+						<Properties>
+							<bool name="Active">true</bool>
+							<bool name="AutoButtonColor">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">0</token>
+							<token name="FontSize">0</token>
+							<bool name="Modal">false</bool>
+							<string name="Name">TextButton</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<bool name="Selected">false</bool>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<string name="Text"></string>
+							<Color3 name="TextColor3">4279970357</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">2</int>
+						</Properties>
+					</Item>
+					<Item class="ImageLabel" referent="RBX370">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+							<Vector2 name="ImageRectOffset">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Vector2 name="ImageRectSize">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<string name="Name">Background</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX371">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4294967295</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">SelectedIndicator</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>5</XO>
+								<YS>0</YS>
+								<YO>-2</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-4</XO>
+								<YS>0</YS>
+								<YO>2</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="TextBox" referent="RBX372">
+						<Properties>
+							<bool name="Active">true</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClearTextOnFocus">true</bool>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">2</token>
+							<token name="FontSize">4</token>
+							<bool name="MultiLine">false</bool>
+							<string name="Name">TextBox</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>5</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-10</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<string name="Text">1</string>
+							<Color3 name="TextColor3">4294967295</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX373">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4278190080</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<string name="Name">AddButton</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>10</XO>
+						<YS>0</YS>
+						<YO>30</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-10</XO>
+						<YS>0</YS>
+						<YO>20</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<token name="Style">0</token>
+					<bool name="Visible">false</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+				<Item class="TextButton" referent="RBX374">
+					<Properties>
+						<bool name="Active">true</bool>
+						<bool name="AutoButtonColor">true</bool>
+						<Color3 name="BackgroundColor3">4278190080</Color3>
+						<float name="BackgroundTransparency">0.449999988</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">2</token>
+						<token name="FontSize">4</token>
+						<bool name="Modal">false</bool>
+						<string name="Name">Button</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<bool name="Selected">false</bool>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<string name="Text">ADD MESH</string>
+						<Color3 name="TextColor3">4294967295</Color3>
+						<bool name="TextScaled">false</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">0.800000012</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">false</bool>
+						<token name="TextXAlignment">2</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBX375">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4278190080</Color3>
+						<float name="BackgroundTransparency">0.300000012</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">Shadow</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>2</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">2</int>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX376">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4288914085</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<string name="Name">MeshIDOption</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>14</XO>
+						<YS>0</YS>
+						<YO>135</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>25</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<token name="Style">0</token>
+					<bool name="Visible">false</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+				<Item class="TextLabel" referent="RBX377">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">2</token>
+						<token name="FontSize">4</token>
+						<string name="Name">Label</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>70</XO>
+							<YS>0</YS>
+							<YO>25</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<string name="Text">Mesh ID</string>
+						<Color3 name="TextColor3">4294967295</Color3>
+						<bool name="TextScaled">false</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">0</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">0</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="TextBox" referent="RBX378">
+					<Properties>
+						<bool name="Active">true</bool>
+						<Color3 name="BackgroundColor3">4283760767</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4278190080</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClearTextOnFocus">true</bool>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">4</token>
+						<token name="FontSize">6</token>
+						<bool name="MultiLine">false</bool>
+						<string name="Name">TextBox</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>60</XO>
+							<YS>0</YS>
+							<YO>-1</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>80</XO>
+							<YS>0</YS>
+							<YO>18</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<string name="Text"></string>
+						<Color3 name="TextColor3">4294967295</Color3>
+						<bool name="TextScaled">true</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">0.5</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">0</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBX379">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4294967295</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">TextBoxBorder</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>56</XO>
+							<YS>0</YS>
+							<YO>17</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>85</XO>
+							<YS>0</YS>
+							<YO>3</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+					<Item class="Frame" referent="RBX380">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4283760767</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">BottomBorder</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>-1</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>1</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX381">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4283760767</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">LeftBorder</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>1</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX382">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4283760767</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">RightBorder</string>
+							<UDim2 name="Position">
+								<XS>1</XS>
+								<XO>-1</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>1</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX383">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4283760767</Color3>
+						<float name="BackgroundTransparency">0.899999976</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">TextBoxBackground</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>55</XO>
+							<YS>0</YS>
+							<YO>-2</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>86</XO>
+							<YS>0</YS>
+							<YO>22</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="TextButton" referent="RBX384">
+					<Properties>
+						<bool name="Active">true</bool>
+						<bool name="AutoButtonColor">true</bool>
+						<Color3 name="BackgroundColor3">4294967295</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">3</token>
+						<token name="FontSize">5</token>
+						<bool name="Modal">false</bool>
+						<string name="Name">TextButton</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>60</XO>
+							<YS>0</YS>
+							<YO>-1</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<bool name="Selected">false</bool>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>80</XO>
+							<YS>0</YS>
+							<YO>18</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<string name="Text"></string>
+						<Color3 name="TextColor3">4279970357</Color3>
+						<bool name="TextScaled">false</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">1</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">false</bool>
+						<token name="TextXAlignment">2</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">2</int>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX385">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4285215356</Color3>
+					<float name="BackgroundTransparency">0</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<string name="Name">BottomColorBar</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>5</XO>
+						<YS>1</YS>
+						<YO>-2</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>2</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<token name="Style">0</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+			</Item>
+			<Item class="Frame" referent="RBX386">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4288914085</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<string name="Name">TextureIDOption</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>14</XO>
+						<YS>0</YS>
+						<YO>165</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>25</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<token name="Style">0</token>
+					<bool name="Visible">false</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+				<Item class="TextLabel" referent="RBX387">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">2</token>
+						<token name="FontSize">4</token>
+						<string name="Name">Label</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>70</XO>
+							<YS>0</YS>
+							<YO>25</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<string name="Text">Texture ID</string>
+						<Color3 name="TextColor3">4294967295</Color3>
+						<bool name="TextScaled">false</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">0</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">0</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="TextBox" referent="RBX388">
+					<Properties>
+						<bool name="Active">true</bool>
+						<Color3 name="BackgroundColor3">4283760767</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4278190080</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClearTextOnFocus">true</bool>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">4</token>
+						<token name="FontSize">6</token>
+						<bool name="MultiLine">false</bool>
+						<string name="Name">TextBox</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>65</XO>
+							<YS>0</YS>
+							<YO>-1</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>80</XO>
+							<YS>0</YS>
+							<YO>18</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<string name="Text"></string>
+						<Color3 name="TextColor3">4294967295</Color3>
+						<bool name="TextScaled">true</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">0.5</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">0</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBX389">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4294967295</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">TextBoxBorder</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>61</XO>
+							<YS>0</YS>
+							<YO>17</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>85</XO>
+							<YS>0</YS>
+							<YO>3</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+					<Item class="Frame" referent="RBX390">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4283760767</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">BottomBorder</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>-1</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>1</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX391">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4283760767</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">LeftBorder</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>1</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX392">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4283760767</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">RightBorder</string>
+							<UDim2 name="Position">
+								<XS>1</XS>
+								<XO>-1</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>1</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX393">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4283760767</Color3>
+						<float name="BackgroundTransparency">0.899999976</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">TextBoxBackground</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>60</XO>
+							<YS>0</YS>
+							<YO>-2</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>86</XO>
+							<YS>0</YS>
+							<YO>22</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="TextButton" referent="RBX394">
+					<Properties>
+						<bool name="Active">true</bool>
+						<bool name="AutoButtonColor">true</bool>
+						<Color3 name="BackgroundColor3">4294967295</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">3</token>
+						<token name="FontSize">5</token>
+						<bool name="Modal">false</bool>
+						<string name="Name">TextButton</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>65</XO>
+							<YS>0</YS>
+							<YO>-1</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<bool name="Selected">false</bool>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>80</XO>
+							<YS>0</YS>
+							<YO>18</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<string name="Text"></string>
+						<Color3 name="TextColor3">4279970357</Color3>
+						<bool name="TextScaled">false</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">1</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">false</bool>
+						<token name="TextXAlignment">2</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">2</int>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX395">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4278190080</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<string name="Name">RemoveButton</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>10</XO>
+						<YS>1</YS>
+						<YO>-30</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-10</XO>
+						<YS>0</YS>
+						<YO>20</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<token name="Style">0</token>
+					<bool name="Visible">false</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+				<Item class="TextButton" referent="RBX396">
+					<Properties>
+						<bool name="Active">true</bool>
+						<bool name="AutoButtonColor">true</bool>
+						<Color3 name="BackgroundColor3">4278190080</Color3>
+						<float name="BackgroundTransparency">0.449999988</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">2</token>
+						<token name="FontSize">4</token>
+						<bool name="Modal">false</bool>
+						<string name="Name">Button</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<bool name="Selected">false</bool>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<string name="Text">REMOVE MESH</string>
+						<Color3 name="TextColor3">4294967295</Color3>
+						<bool name="TextScaled">false</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">0.800000012</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">false</bool>
+						<token name="TextXAlignment">2</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBX397">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4278190080</Color3>
+						<float name="BackgroundTransparency">0.300000012</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">Shadow</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>2</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">2</int>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX398">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4288914085</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<string name="Name">TintOption</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>200</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>0</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<token name="Style">0</token>
+					<bool name="Visible">false</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+				<Item class="TextLabel" referent="RBX399">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">2</token>
+						<token name="FontSize">4</token>
+						<string name="Name">Label</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>14</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>70</XO>
+							<YS>0</YS>
+							<YO>25</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<string name="Text">Tex. Tint</string>
+						<Color3 name="TextColor3">4294967295</Color3>
+						<bool name="TextScaled">false</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">0</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">0</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBX400">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">RInput</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>65</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>45</XO>
+							<YS>0</YS>
+							<YO>25</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+					<Item class="TextButton" referent="RBX401">
+						<Properties>
+							<bool name="Active">true</bool>
+							<bool name="AutoButtonColor">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">0</token>
+							<token name="FontSize">0</token>
+							<bool name="Modal">false</bool>
+							<string name="Name">TextButton</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<bool name="Selected">false</bool>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<string name="Text"></string>
+							<Color3 name="TextColor3">4279970357</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">2</int>
+						</Properties>
+					</Item>
+					<Item class="ImageLabel" referent="RBX402">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+							<Vector2 name="ImageRectOffset">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Vector2 name="ImageRectSize">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<string name="Name">Background</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX403">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4294901760</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">SelectedIndicator</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>4</XO>
+								<YS>0</YS>
+								<YO>-2</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-4</XO>
+								<YS>0</YS>
+								<YO>2</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="TextBox" referent="RBX404">
+						<Properties>
+							<bool name="Active">true</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClearTextOnFocus">true</bool>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">2</token>
+							<token name="FontSize">4</token>
+							<bool name="MultiLine">false</bool>
+							<string name="Name">TextBox</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>5</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-10</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<string name="Text">255</string>
+							<Color3 name="TextColor3">4294967295</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX405">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">GInput</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>110</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>45</XO>
+							<YS>0</YS>
+							<YO>25</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+					<Item class="TextButton" referent="RBX406">
+						<Properties>
+							<bool name="Active">true</bool>
+							<bool name="AutoButtonColor">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">0</token>
+							<token name="FontSize">0</token>
+							<bool name="Modal">false</bool>
+							<string name="Name">TextButton</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<bool name="Selected">false</bool>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<string name="Text"></string>
+							<Color3 name="TextColor3">4279970357</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">2</int>
+						</Properties>
+					</Item>
+					<Item class="ImageLabel" referent="RBX407">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+							<Vector2 name="ImageRectOffset">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Vector2 name="ImageRectSize">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<string name="Name">Background</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX408">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4278255360</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">SelectedIndicator</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>4</XO>
+								<YS>0</YS>
+								<YO>-2</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-4</XO>
+								<YS>0</YS>
+								<YO>2</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="TextBox" referent="RBX409">
+						<Properties>
+							<bool name="Active">true</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClearTextOnFocus">true</bool>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">2</token>
+							<token name="FontSize">4</token>
+							<bool name="MultiLine">false</bool>
+							<string name="Name">TextBox</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>5</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-10</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<string name="Text">255</string>
+							<Color3 name="TextColor3">4294967295</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX410">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">BInput</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>155</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>0</XS>
+							<XO>45</XO>
+							<YS>0</YS>
+							<YO>25</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+					<Item class="TextButton" referent="RBX411">
+						<Properties>
+							<bool name="Active">true</bool>
+							<bool name="AutoButtonColor">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">0</token>
+							<token name="FontSize">0</token>
+							<bool name="Modal">false</bool>
+							<string name="Name">TextButton</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<bool name="Selected">false</bool>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<string name="Text"></string>
+							<Color3 name="TextColor3">4279970357</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">2</int>
+						</Properties>
+					</Item>
+					<Item class="ImageLabel" referent="RBX412">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+							<Vector2 name="ImageRectOffset">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Vector2 name="ImageRectSize">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<string name="Name">Background</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Frame" referent="RBX413">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4278190335</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">SelectedIndicator</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>4</XO>
+								<YS>0</YS>
+								<YO>-2</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-4</XO>
+								<YS>0</YS>
+								<YO>2</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="TextBox" referent="RBX414">
+						<Properties>
+							<bool name="Active">true</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClearTextOnFocus">true</bool>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">2</token>
+							<token name="FontSize">4</token>
+							<bool name="MultiLine">false</bool>
+							<string name="Name">TextBox</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>5</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-10</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<string name="Text">255</string>
+							<Color3 name="TextColor3">4294967295</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+				</Item>
+			</Item>
+			<Item class="TextLabel" referent="RBX415">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4294967295</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<token name="Font">3</token>
+					<token name="FontSize">5</token>
+					<string name="Name">SelectNote</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>10</XO>
+						<YS>0</YS>
+						<YO>27</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-10</XO>
+						<YS>0</YS>
+						<YO>15</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<string name="Text">Select something to use this tool.</string>
+					<Color3 name="TextColor3">4294967295</Color3>
+					<bool name="TextScaled">true</bool>
+					<Color3 name="TextStrokeColor3">4278190080</Color3>
+					<float name="TextStrokeTransparency">0.5</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">true</bool>
+					<token name="TextXAlignment">0</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
 			</Item>
 		</Item>
 	</Item>
