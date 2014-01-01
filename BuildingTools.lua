@@ -6186,6 +6186,11 @@ Tool.Equipped:connect( function ( CurrentMouse )
 			end;
 		end;
 
+		-- Fire tool listeners
+		if CurrentTool and CurrentTool.Listeners.KeyUp then
+			CurrentTool.Listeners.KeyUp( key );
+		end;
+
 	end ) );
 
 	table.insert( Connections, Mouse.Button1Down:connect( function ()
