@@ -396,7 +396,7 @@ function _getChildOfClass( Parent, class_name )
 
 	-- Look for a child of `Parent` of class `class_name` and return it
 	for _, Child in pairs( Parent:GetChildren() ) do
-		if Child:IsA( class_name ) then
+		if Child.ClassName == class_name then
 			return Child;
 		end;
 	end;
@@ -414,7 +414,7 @@ function _getChildrenOfClass( Parent, class_name )
 	for _, Child in pairs( Parent:GetChildren() ) do
 
 		-- If it's of type `class_name`, add it to the match list
-		if Child:IsA( class_name ) then
+		if Child.ClassName == class_name then
 			table.insert( matches, Child );
 		end;
 
@@ -995,10 +995,8 @@ Tools.Move.showGUI = function ( self )
 
 		-- Change the increment option when the value of the textbox is updated
 		Container.IncrementOption.Increment.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
-				Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
-			end;
+			self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
+			Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
 		end );
 
 		-- Add functionality to the position inputs
@@ -1007,11 +1005,9 @@ Tools.Move.showGUI = function ( self )
 			Container.Info.Center.X.TextBox:CaptureFocus();
 		end );
 		Container.Info.Center.X.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.Info.Center.X.TextBox.Text );
-				if potential_new then
-					self:changePosition( 'x', potential_new );
-				end;
+			local potential_new = tonumber( Container.Info.Center.X.TextBox.Text );
+			if potential_new then
+				self:changePosition( 'x', potential_new );
 			end;
 			self.State.pos_x_focused = false;
 		end );
@@ -1020,11 +1016,9 @@ Tools.Move.showGUI = function ( self )
 			Container.Info.Center.Y.TextBox:CaptureFocus();
 		end );
 		Container.Info.Center.Y.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.Info.Center.Y.TextBox.Text );
-				if potential_new then
-					self:changePosition( 'y', potential_new );
-				end;
+			local potential_new = tonumber( Container.Info.Center.Y.TextBox.Text );
+			if potential_new then
+				self:changePosition( 'y', potential_new );
 			end;
 			self.State.pos_y_focused = false;
 		end );
@@ -1033,11 +1027,9 @@ Tools.Move.showGUI = function ( self )
 			Container.Info.Center.Z.TextBox:CaptureFocus();
 		end );
 		Container.Info.Center.Z.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.Info.Center.Z.TextBox.Text );
-				if potential_new then
-					self:changePosition( 'z', potential_new );
-				end;
+			local potential_new = tonumber( Container.Info.Center.Z.TextBox.Text );
+			if potential_new then
+				self:changePosition( 'z', potential_new );
 			end;
 			self.State.pos_z_focused = false;
 		end );
@@ -1563,10 +1555,8 @@ Tools.Resize.showGUI = function ( self )
 
 		-- Change the increment option when the value of the textbox is updated
 		Container.IncrementOption.Increment.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
-				Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
-			end;
+			self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
+			Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
 		end );
 
 		-- Add functionality to the size inputs
@@ -1575,11 +1565,9 @@ Tools.Resize.showGUI = function ( self )
 			Container.Info.SizeInfo.X.TextBox:CaptureFocus();
 		end );
 		Container.Info.SizeInfo.X.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.Info.SizeInfo.X.TextBox.Text );
-				if potential_new then
-					self:changeSize( 'x', potential_new );
-				end;
+			local potential_new = tonumber( Container.Info.SizeInfo.X.TextBox.Text );
+			if potential_new then
+				self:changeSize( 'x', potential_new );
 			end;
 			self.State.size_x_focused = false;
 		end );
@@ -1588,11 +1576,9 @@ Tools.Resize.showGUI = function ( self )
 			Container.Info.SizeInfo.Y.TextBox:CaptureFocus();
 		end );
 		Container.Info.SizeInfo.Y.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.Info.SizeInfo.Y.TextBox.Text );
-				if potential_new then
-					self:changeSize( 'y', potential_new );
-				end;
+			local potential_new = tonumber( Container.Info.SizeInfo.Y.TextBox.Text );
+			if potential_new then
+				self:changeSize( 'y', potential_new );
 			end;
 			self.State.size_y_focused = false;
 		end );
@@ -1601,11 +1587,9 @@ Tools.Resize.showGUI = function ( self )
 			Container.Info.SizeInfo.Z.TextBox:CaptureFocus();
 		end );
 		Container.Info.SizeInfo.Z.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.Info.SizeInfo.Z.TextBox.Text );
-				if potential_new then
-					self:changeSize( 'z', potential_new );
-				end;
+			local potential_new = tonumber( Container.Info.SizeInfo.Z.TextBox.Text );
+			if potential_new then
+				self:changeSize( 'z', potential_new );
 			end;
 			self.State.size_z_focused = false;
 		end );
@@ -2160,10 +2144,8 @@ Tools.Rotate.showGUI = function ( self )
 
 		-- Change the increment option when the value of the textbox is updated
 		Container.IncrementOption.Increment.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
-				Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
-			end;
+			self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
+			Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
 		end );
 
 		-- Add functionality to the rotation inputs
@@ -2172,11 +2154,9 @@ Tools.Rotate.showGUI = function ( self )
 			Container.Info.RotationInfo.X.TextBox:CaptureFocus();
 		end );
 		Container.Info.RotationInfo.X.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.Info.RotationInfo.X.TextBox.Text );
-				if potential_new then
-					self:changeRotation( 'x', math.rad( potential_new ) );
-				end;
+			local potential_new = tonumber( Container.Info.RotationInfo.X.TextBox.Text );
+			if potential_new then
+				self:changeRotation( 'x', math.rad( potential_new ) );
 			end;
 			self.State.rot_x_focused = false;
 		end );
@@ -2185,11 +2165,9 @@ Tools.Rotate.showGUI = function ( self )
 			Container.Info.RotationInfo.Y.TextBox:CaptureFocus();
 		end );
 		Container.Info.RotationInfo.Y.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.Info.RotationInfo.Y.TextBox.Text );
-				if potential_new then
-					self:changeRotation( 'y', math.rad( potential_new ) );
-				end;
+			local potential_new = tonumber( Container.Info.RotationInfo.Y.TextBox.Text );
+			if potential_new then
+				self:changeRotation( 'y', math.rad( potential_new ) );
 			end;
 			self.State.rot_y_focused = false;
 		end );
@@ -2198,11 +2176,9 @@ Tools.Rotate.showGUI = function ( self )
 			Container.Info.RotationInfo.Z.TextBox:CaptureFocus();
 		end );
 		Container.Info.RotationInfo.Z.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.Info.RotationInfo.Z.TextBox.Text );
-				if potential_new then
-					self:changeRotation( 'z', math.rad( potential_new ) );
-				end;
+			local potential_new = tonumber( Container.Info.RotationInfo.Z.TextBox.Text );
+			if potential_new then
+				self:changeRotation( 'z', math.rad( potential_new ) );
 			end;
 			self.State.rot_z_focused = false;
 		end );
@@ -3074,7 +3050,7 @@ Tools.Surface.State = {
 
 -- Maintain a container for options
 Tools.Surface.Options = {
-	["side"] = Enum.NormalId.Top;
+	["side"] = Enum.NormalId.Front;
 };
 
 -- Keep a container for platform event connections
@@ -3743,16 +3719,14 @@ Tools.Material.showGUI = function ( self )
 
 		-- Change the transparency when the value of the textbox is updated
 		Container.TransparencyOption.TransparencyInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.TransparencyOption.TransparencyInput.TextBox.Text );
-				if potential_new then
-					if potential_new > 1 then
-						potential_new = 1;
-					elseif potential_new < 0 then
-						potential_new = 0;
-					end;
-					self:changeTransparency( potential_new );
+			local potential_new = tonumber( Container.TransparencyOption.TransparencyInput.TextBox.Text );
+			if potential_new then
+				if potential_new > 1 then
+					potential_new = 1;
+				elseif potential_new < 0 then
+					potential_new = 0;
 				end;
+				self:changeTransparency( potential_new );
 			end;
 			self.State.transparency_focused = false;
 		end );
@@ -3766,16 +3740,14 @@ Tools.Material.showGUI = function ( self )
 
 		-- Change the reflectance when the value of the textbox is updated
 		Container.ReflectanceOption.ReflectanceInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.ReflectanceOption.ReflectanceInput.TextBox.Text );
-				if potential_new then
-					if potential_new > 1 then
-						potential_new = 1;
-					elseif potential_new < 0 then
-						potential_new = 0;
-					end;
-					self:changeReflectance( potential_new );
+			local potential_new = tonumber( Container.ReflectanceOption.ReflectanceInput.TextBox.Text );
+			if potential_new then
+				if potential_new > 1 then
+					potential_new = 1;
+				elseif potential_new < 0 then
+					potential_new = 0;
 				end;
+				self:changeReflectance( potential_new );
 			end;
 			self.State.reflectance_focused = false;
 		end );
@@ -4238,7 +4210,7 @@ Tools.Mesh.Listeners.Equipped = function ()
 	-- Reveal the GUI
 	self:showGUI();
 
-	-- Update the boundingbox and the GUI regularly
+	-- Update the GUI regularly
 	coroutine.wrap( function ()
 		local updater_on = true;
 
@@ -4571,11 +4543,9 @@ Tools.Mesh.showGUI = function ( self )
 			Container.ScaleOption.XInput.TextBox:CaptureFocus();
 		end );
 		Container.ScaleOption.XInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.ScaleOption.XInput.TextBox.Text );
-				if potential_new then
-					self:changeScale( 'x', potential_new );
-				end;
+			local potential_new = tonumber( Container.ScaleOption.XInput.TextBox.Text );
+			if potential_new then
+				self:changeScale( 'x', potential_new );
 			end;
 			self.State.scale_x_focused = false;
 		end );
@@ -4585,11 +4555,9 @@ Tools.Mesh.showGUI = function ( self )
 			Container.ScaleOption.YInput.TextBox:CaptureFocus();
 		end );
 		Container.ScaleOption.YInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.ScaleOption.YInput.TextBox.Text );
-				if potential_new then
-					self:changeScale( 'y', potential_new );
-				end;
+			local potential_new = tonumber( Container.ScaleOption.YInput.TextBox.Text );
+			if potential_new then
+				self:changeScale( 'y', potential_new );
 			end;
 			self.State.scale_y_focused = false;
 		end );
@@ -4599,11 +4567,9 @@ Tools.Mesh.showGUI = function ( self )
 			Container.ScaleOption.ZInput.TextBox:CaptureFocus();
 		end );
 		Container.ScaleOption.ZInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.ScaleOption.ZInput.TextBox.Text );
-				if potential_new then
-					self:changeScale( 'z', potential_new );
-				end;
+			local potential_new = tonumber( Container.ScaleOption.ZInput.TextBox.Text );
+			if potential_new then
+				self:changeScale( 'z', potential_new );
 			end;
 			self.State.scale_z_focused = false;
 		end );
@@ -4614,12 +4580,10 @@ Tools.Mesh.showGUI = function ( self )
 			Container.MeshIDOption.TextBox:CaptureFocus();
 		end );
 		Container.MeshIDOption.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local input = Container.MeshIDOption.TextBox.Text;
-				local potential_new = tonumber( input ) or input:lower():match( "%?id=([0-9]+)" );
-				if potential_new then
-					self:changeMesh( potential_new );
-				end;
+			local input = Container.MeshIDOption.TextBox.Text;
+			local potential_new = tonumber( input ) or input:lower():match( "%?id=([0-9]+)" );
+			if potential_new then
+				self:changeMesh( potential_new );
 			end;
 			self.State.mesh_id_focused = false;
 		end );
@@ -4629,12 +4593,10 @@ Tools.Mesh.showGUI = function ( self )
 			Container.TextureIDOption.TextBox:CaptureFocus();
 		end );
 		Container.TextureIDOption.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local input = Container.TextureIDOption.TextBox.Text;
-				local potential_new = tonumber( input ) or input:lower():match( "%?id=([0-9]+)" );
-				if potential_new then
-					self:changeTexture( potential_new );
-				end;
+			local input = Container.TextureIDOption.TextBox.Text;
+			local potential_new = tonumber( input ) or input:lower():match( "%?id=([0-9]+)" );
+			if potential_new then
+				self:changeTexture( potential_new );
 			end;
 			self.State.texture_id_focused = false;
 		end );
@@ -4645,16 +4607,14 @@ Tools.Mesh.showGUI = function ( self )
 			Container.TintOption.RInput.TextBox:CaptureFocus();
 		end );
 		Container.TintOption.RInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.TintOption.RInput.TextBox.Text );
-				if potential_new then
-					if potential_new > 255 then
-						potential_new = 255;
-					elseif potential_new < 0 then
-						potential_new = 0;
-					end;
-					self:changeTint( 'r', potential_new / 255 );
+			local potential_new = tonumber( Container.TintOption.RInput.TextBox.Text );
+			if potential_new then
+				if potential_new > 255 then
+					potential_new = 255;
+				elseif potential_new < 0 then
+					potential_new = 0;
 				end;
+				self:changeTint( 'r', potential_new / 255 );
 			end;
 			self.State.tint_r_focused = false;
 		end );
@@ -4664,16 +4624,14 @@ Tools.Mesh.showGUI = function ( self )
 			Container.TintOption.GInput.TextBox:CaptureFocus();
 		end );
 		Container.TintOption.GInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.TintOption.GInput.TextBox.Text );
-				if potential_new then
-					if potential_new > 255 then
-						potential_new = 255;
-					elseif potential_new < 0 then
-						potential_new = 0;
-					end;
-					self:changeTint( 'g', potential_new / 255 );
+			local potential_new = tonumber( Container.TintOption.GInput.TextBox.Text );
+			if potential_new then
+				if potential_new > 255 then
+					potential_new = 255;
+				elseif potential_new < 0 then
+					potential_new = 0;
 				end;
+				self:changeTint( 'g', potential_new / 255 );
 			end;
 			self.State.tint_g_focused = false;
 		end );
@@ -4683,16 +4641,14 @@ Tools.Mesh.showGUI = function ( self )
 			Container.TintOption.BInput.TextBox:CaptureFocus();
 		end );
 		Container.TintOption.BInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			if enter_pressed then
-				local potential_new = tonumber( Container.TintOption.BInput.TextBox.Text );
-				if potential_new then
-					if potential_new > 255 then
-						potential_new = 255;
-					elseif potential_new < 0 then
-						potential_new = 0;
-					end;
-					self:changeTint( 'b', potential_new / 255 );
+			local potential_new = tonumber( Container.TintOption.BInput.TextBox.Text );
+			if potential_new then
+				if potential_new > 255 then
+					potential_new = 255;
+				elseif potential_new < 0 then
+					potential_new = 0;
 				end;
+				self:changeTint( 'b', potential_new / 255 );
 			end;
 			self.State.tint_b_focused = false;
 		end );
@@ -4726,7 +4682,6 @@ Tools.Mesh.addMesh = function ( self )
 		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
 		if not Mesh then
 			RbxUtility.Create "SpecialMesh" {
-				Name = "BTMesh";
 				Parent = Item;
 				MeshType = Enum.MeshType.Brick;
 			};
@@ -4864,6 +4819,668 @@ Tools.Mesh.changeTint = function ( self, component, new_value )
 end;
 
 Tools.Mesh.hideGUI = function ( self )
+
+	-- Hide the GUI if it exists already
+	if self.GUI then
+		self.GUI.Visible = false;
+	end;
+
+end;
+
+------------------------------------------
+-- Texture tool
+------------------------------------------
+
+-- Create the tool
+Tools.Texture = {};
+
+-- Define the tool's color
+Tools.Texture.Color = BrickColor.new( "Bright violet" );
+
+-- Keep a container for state data
+Tools.Texture.Options = {
+	side = Enum.NormalId.Front;
+	mode = "decal";
+};
+Tools.Texture.State = {};
+
+-- Keep a container for temporary connections
+Tools.Texture.Connections = {};
+
+-- Keep a container for platform event connections
+Tools.Texture.Listeners = {};
+
+-- Start adding functionality to the tool
+Tools.Texture.Listeners.Equipped = function ()
+
+	local self = Tools.Texture;
+
+	-- Change the color of selection boxes temporarily
+	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = self.Color;
+	updateSelectionBoxColor();
+
+	-- Reveal the GUI
+	self:showGUI();
+
+	-- Prepare the GUI
+	self:changeSide( self.Options.side );
+	self:changeMode( self.Options.mode );
+
+	-- Update the GUI regularly
+	coroutine.wrap( function ()
+		local updater_on = true;
+
+		-- Provide a function to stop the loop
+		self.stopGUIUpdater = function ( self )
+			updater_on = false;
+		end;
+
+		while wait( 0.1 ) and updater_on do
+
+			-- Make sure the tool's equipped
+			if CurrentTool == self then
+
+				-- Update the GUI if it's visible
+				if self.GUI and self.GUI.Visible then
+					self:updateGUI();
+				end;
+
+			end;
+
+		end;
+
+	end )();
+
+end;
+
+Tools.Texture.Listeners.Unequipped = function ()
+
+	local self = Tools.Texture;
+
+	-- Stop the GUI updater
+	self:stopGUIUpdater();
+
+	-- Hide the GUI
+	self:hideGUI();
+
+	-- Disconnect temporary connections
+	for connection_index, Connection in pairs( self.Connections ) do
+		Connection:disconnect();
+		self.Connections[connection_index] = nil;
+	end;
+
+	-- Restore the original color of selection boxes
+	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
+	updateSelectionBoxColor();
+
+end;
+
+Tools.Texture.Listeners.Button2Down = function ()
+
+	local self = Tools.Texture;
+
+	-- Capture the camera rotation (for later use
+	-- in determining whether a surface was being
+	-- selected or the camera was being rotated
+	-- with the right mouse button)
+	local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
+
+end;
+
+Tools.Texture.Listeners.Button2Up = function ()
+
+	local self = Tools.Texture;
+
+	local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+	local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
+
+	-- If a surface is selected, change the side option
+	if Selection:find( Mouse.Target ) and self.State.PreB2DownCameraRotation == CameraRotation then
+		self:changeSide( Mouse.TargetSurface );
+	end;
+
+end;
+
+Tools.Texture.Listeners.KeyUp = function ( key )
+
+	local self = Tools.Texture;
+
+	local key = key:lower();
+	local key_code = key:byte();
+
+	-- Toggle modes if the enter button is pressed
+	if key_code == 13 then
+		if self.Options.mode == "decal" then
+			self:changeMode( "texture" );
+		elseif self.Options.mode == "texture" then
+			self:changeMode( "decal" );
+		end;
+	end;
+
+end;
+
+Tools.Texture.changeMode = function ( self, new_mode )
+
+	-- Set the option
+	self.Options.mode = new_mode;
+
+	-- Make sure the GUI exists
+	if not self.GUI then
+		return;
+	end;
+
+	-- Update the GUI
+	if new_mode == "decal" then
+		self.GUI.ModeOption.Decal.SelectedIndicator.Transparency = 0;
+		self.GUI.ModeOption.Texture.SelectedIndicator.Transparency = 1;
+		self.GUI.ModeOption.Decal.Background.Image = dark_slanted_rectangle;
+		self.GUI.ModeOption.Texture.Background.Image = light_slanted_rectangle;
+		self.GUI.AddButton.Button.Text = "ADD DECAL";
+		self.GUI.RemoveButton.Button.Text = "REMOVE DECAL";
+	elseif new_mode == "texture" then
+		self.GUI.ModeOption.Decal.SelectedIndicator.Transparency = 1;
+		self.GUI.ModeOption.Texture.SelectedIndicator.Transparency = 0;
+		self.GUI.ModeOption.Decal.Background.Image = light_slanted_rectangle;
+		self.GUI.ModeOption.Texture.Background.Image = dark_slanted_rectangle;
+		self.GUI.AddButton.Button.Text = "ADD TEXTURE";
+		self.GUI.RemoveButton.Button.Text = "REMOVE TEXTURE";
+	end;
+
+end;
+
+Tools.Texture.changeSide = function ( self, new_side )
+
+	-- Set the option
+	self.Options.side = new_side;
+
+	-- Update the GUI
+	if self.SideDropdown then
+		self.SideDropdown:selectOption( new_side.Name:upper() );
+		if self.SideDropdown.open then
+			self.SideDropdown:toggle();
+		end;
+	end;
+
+end;
+
+Tools.Texture.changeTexture = function ( self, new_texture )
+
+	-- Apply the new texture to any items w/ textures in the selection
+	-- that are on the side in the options
+	for _, Item in pairs( Selection.Items ) do
+		local textures = _getChildrenOfClass( Item, "Texture" );
+		for _, Texture in pairs( textures ) do
+			if Texture.Face == self.Options.side then
+				Texture.Texture = "http://www.roblox.com/asset/?id=" .. new_texture;
+			end;
+		end;
+	end;
+
+end;
+
+Tools.Texture.changeDecal = function ( self, new_decal )
+
+	-- Apply the new decal to any items w/ decals in the selection
+	-- that are on the side in the options
+	for _, Item in pairs( Selection.Items ) do
+		local decals = _getChildrenOfClass( Item, "Decal" );
+		for _, Decal in pairs( decals ) do
+			if Decal.Face == self.Options.side then
+				Decal.Texture = "http://www.roblox.com/asset/?id=" .. new_decal;
+			end;
+		end;
+	end;
+
+end;
+
+Tools.Texture.changeTransparency = function ( self, new_transparency )
+
+	-- Apply the new transparency to any items w/
+	-- decals/textures in the selectionthat are on
+	-- the side in the options
+	for _, Item in pairs( Selection.Items ) do
+
+		if self.Options.mode == "texture" then
+			local textures = _getChildrenOfClass( Item, "Texture" );
+			for _, Texture in pairs( textures ) do
+				if Texture.Face == self.Options.side then
+					Texture.Transparency = new_transparency;
+				end;
+			end;
+
+		elseif self.Options.mode == "decal" then
+			local decals = _getChildrenOfClass( Item, "Decal" );
+			for _, Decal in pairs( decals ) do
+				if Decal.Face == self.Options.side then
+					Decal.Transparency = new_transparency;
+				end;
+			end;
+		end;
+
+	end;
+
+end;
+
+Tools.Texture.changeFrequency = function ( self, direction, new_frequency )
+
+	-- Apply the new frequency to any items w/ textures
+	-- in the selection that are on the side in the options
+	for _, Item in pairs( Selection.Items ) do
+		local textures = _getChildrenOfClass( Item, "Texture" );
+		for _, Texture in pairs( textures ) do
+			if Texture.Face == self.Options.side then
+
+				-- Apply the new frequency to the right direction
+				if direction == "x" then
+					Texture.StudsPerTileU = new_frequency;
+				elseif direction == "y" then
+					Texture.StudsPerTileV = new_frequency;
+				end;
+
+			end;
+		end;
+	end;
+
+end;
+
+Tools.Texture.addTexture = function ( self )
+
+	for _, Item in pairs( Selection.Items ) do
+
+		-- Check if the item has a texture already
+		local textures = _getChildrenOfClass( Item, "Texture" );
+		local has_texture = false;
+		for _, Texture in pairs( textures ) do
+			if Texture.Face == self.Options.side then
+				has_texture = true;
+				break;
+			end;
+		end;
+
+		-- Only add a texture if it doesn't already exist
+		if not has_texture then
+			RbxUtility.Create "Texture" {
+				Parent = Item;
+				Face = self.Options.side;
+			};
+		end;
+
+	end;
+
+end;
+
+Tools.Texture.addDecal = function ( self )
+
+	for _, Item in pairs( Selection.Items ) do
+
+		-- Check if the item has a decal already
+		local decals = _getChildrenOfClass( Item, "Decal" );
+		local has_decal = false;
+		for _, Decal in pairs( decals ) do
+			if Decal.Face == self.Options.side then
+				has_decal = true;
+				break;
+			end;
+		end;
+
+		-- Only add a decal if it doesn't already exist
+		if not has_decal then
+			RbxUtility.Create "Decal" {
+				Parent = Item;
+				Face = self.Options.side;
+			};
+		end;
+
+	end;
+
+end;
+
+Tools.Texture.removeTexture = function ( self )
+
+	-- Remove any textures on the selected side
+	for _, Item in pairs( Selection.Items ) do
+		local textures = _getChildrenOfClass( Item, "Texture" );
+		for _, Texture in pairs( textures ) do
+			if Texture.Face == self.Options.side then
+				Texture:Destroy();
+			end;
+		end;
+	end;
+
+end;
+
+Tools.Texture.removeDecal = function ( self )
+
+	-- Remove any decals on the selected side
+	for _, Item in pairs( Selection.Items ) do
+		local decals = _getChildrenOfClass( Item, "Decal" );
+		for _, Decal in pairs( decals ) do
+			if Decal.Face == self.Options.side then
+				Decal:Destroy();
+			end;
+		end;
+	end;
+
+end;
+
+Tools.Texture.updateGUI = function ( self )
+
+	-- Make sure the GUI exists
+	if not self.GUI then
+		return;
+	end;
+
+	local GUI = self.GUI;
+
+	-- If there are no items selected, just minimize
+	-- non-tool-option controls
+	if #Selection.Items == 0 then
+		self.GUI.AddButton.Visible = false;
+		self.GUI.RemoveButton.Visible = false;
+		self.GUI.ImageIDOption.Visible = false;
+		self.GUI.TransparencyOption.Visible = false;
+		self.GUI.RepeatOption.Visible = false;
+		self.GUI.Size = UDim2.new( 0, 200, 0, 100 );
+
+	else
+		if self.Options.mode == "texture" then
+
+			-- Get the applicable textures
+			local textures = {};
+			for _, Item in pairs( Selection.Items ) do
+				local textures_found = _getChildrenOfClass( Item, "Texture" );
+				for _, Texture in pairs( textures_found ) do
+					if Texture.Face == self.Options.side then
+						table.insert( textures, Texture );
+						break;
+					end;
+				end;
+			end;
+
+			-- If there are no textures
+			if #textures == 0 then
+				self.GUI.AddButton.Visible = true;
+				self.GUI.RemoveButton.Visible = false;
+				self.GUI.ImageIDOption.Visible = false;
+				self.GUI.TransparencyOption.Visible = false;
+				self.GUI.RepeatOption.Visible = false;
+				self.GUI.Size = UDim2.new( 0, 200, 0, 130 );
+
+			-- If only some parts have textures
+			elseif #textures ~= #Selection.Items then
+				self.GUI.AddButton.Visible = true;
+				self.GUI.RemoveButton.Visible = true;
+				self.GUI.ImageIDOption.Visible = true;
+				self.GUI.TransparencyOption.Visible = true;
+				self.GUI.RepeatOption.Visible = true;
+				self.GUI.ImageIDOption.Position = UDim2.new( 0, 14, 0, 135 );
+				self.GUI.TransparencyOption.Position = UDim2.new( 0, 14, 0, 170 );
+				self.GUI.RepeatOption.Position = UDim2.new( 0, 0, 0, 205 );
+				self.GUI.Size = UDim2.new( 0, 200, 0, 280 );
+
+			-- If every item has a texture
+			elseif #textures == #Selection.Items then
+				self.GUI.AddButton.Visible = false;
+				self.GUI.RemoveButton.Visible = true;
+				self.GUI.ImageIDOption.Visible = true;
+				self.GUI.TransparencyOption.Visible = true;
+				self.GUI.RepeatOption.Visible = true;
+				self.GUI.ImageIDOption.Position = UDim2.new( 0, 14, 0, 100 );
+				self.GUI.TransparencyOption.Position = UDim2.new( 0, 14, 0, 135 );
+				self.GUI.RepeatOption.Position = UDim2.new( 0, 0, 0, 170 );
+				self.GUI.Size = UDim2.new( 0, 200, 0, 245 );
+			end;
+
+			-- Get the values to display on the GUI
+			local texture_id, texture_transparency, texture_repeat_x, texture_repeat_y;
+			for texture_index, Texture in pairs( textures ) do
+
+				-- Set the start values for later comparison
+				if texture_index == 1 then
+					texture_id = Texture.Texture:lower();
+					texture_transparency = Texture.Transparency;
+					texture_repeat_x = Texture.StudsPerTileU;
+					texture_repeat_y = Texture.StudsPerTileV;
+
+				-- Set the values to `nil` if they vary across the selection
+				else
+					if texture_id ~= Texture.Texture:lower() then
+						texture_id = nil;
+					end;
+					if texture_transparency ~= Texture.Transparency then
+						texture_transparency = nil;
+					end;
+					if texture_repeat_x ~= Texture.StudsPerTileU then
+						texture_repeat_x = nil;
+					end;
+					if texture_repeat_y ~= Texture.StudsPerTileV then
+						texture_repeat_y = nil;
+					end;
+				end;
+
+			end;
+
+			-- Update the GUI's values
+			if not self.State.image_id_focused then
+				self.GUI.ImageIDOption.TextBox.Text = texture_id and ( texture_id:match( "%?id=([0-9]+)" ) or "" ) or "*";
+			end;
+			if not self.State.transparency_focused then
+				self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = texture_transparency and _round( texture_transparency, 2 ) or "*";
+			end;
+			if not self.State.rep_x_focused then
+				self.GUI.RepeatOption.XInput.TextBox.Text = texture_repeat_x and _round( texture_repeat_x, 2 ) or "*";
+			end;
+			if not self.State.rep_y_focused then
+				self.GUI.RepeatOption.YInput.TextBox.Text = texture_repeat_y and _round( texture_repeat_y, 2 ) or "*";
+			end;
+
+		elseif self.Options.mode == "decal" then
+
+			-- Get the applicable decals
+			local decals = {};
+			for _, Item in pairs( Selection.Items ) do
+				local decals_found = _getChildrenOfClass( Item, "Decal" );
+				for _, Decal in pairs( decals_found ) do
+					if Decal.Face == self.Options.side then
+						table.insert( decals, Decal );
+						break;
+					end;
+				end;
+			end;
+
+			-- If there are no decals
+			if #decals == 0 then
+				self.GUI.AddButton.Visible = true;
+				self.GUI.RemoveButton.Visible = false;
+				self.GUI.ImageIDOption.Visible = false;
+				self.GUI.TransparencyOption.Visible = false;
+				self.GUI.RepeatOption.Visible = false;
+				self.GUI.Size = UDim2.new( 0, 200, 0, 130 );
+
+			-- If only some parts have decals
+			elseif #decals ~= #Selection.Items then
+				self.GUI.AddButton.Visible = true;
+				self.GUI.RemoveButton.Visible = true;
+				self.GUI.ImageIDOption.Visible = true;
+				self.GUI.TransparencyOption.Visible = true;
+				self.GUI.RepeatOption.Visible = false;
+				self.GUI.ImageIDOption.Position = UDim2.new( 0, 14, 0, 135 );
+				self.GUI.TransparencyOption.Position = UDim2.new( 0, 14, 0, 170 );
+				self.GUI.Size = UDim2.new( 0, 200, 0, 245 );
+
+			-- If every item has a decal
+			elseif #decals == #Selection.Items then
+				self.GUI.AddButton.Visible = false;
+				self.GUI.RemoveButton.Visible = true;
+				self.GUI.ImageIDOption.Visible = true;
+				self.GUI.TransparencyOption.Visible = true;
+				self.GUI.RepeatOption.Visible = false;
+				self.GUI.ImageIDOption.Position = UDim2.new( 0, 14, 0, 100 );
+				self.GUI.TransparencyOption.Position = UDim2.new( 0, 14, 0, 135 );
+				self.GUI.Size = UDim2.new( 0, 200, 0, 205 );
+			end;
+
+			-- Get the values to display on the GUI
+			local decal_id, decal_transparency;
+			for decal_index, Decal in pairs( decals ) do
+
+				-- Set the start values for later comparison
+				if decal_index == 1 then
+					decal_id = Decal.Texture:lower();
+					decal_transparency = Decal.Transparency;
+
+				-- Set the values to `nil` if they vary across the selection
+				else
+					if decal_id ~= Decal.Texture:lower() then
+						decal_id = nil;
+					end;
+					if decal_transparency ~= Decal.Transparency then
+						decal_transparency = nil;
+					end;
+				end;
+
+			end;
+
+			-- Update the GUI's values
+			if not self.State.image_id_focused then
+				self.GUI.ImageIDOption.TextBox.Text = decal_id and ( decal_id:match( "%?id=([0-9]+)" ) or "" ) or "*";
+			end;
+			if not self.State.transparency_focused then
+				self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = decal_transparency and _round( decal_transparency, 2 ) or "*";
+			end;
+
+		end;
+	end;
+
+end;
+
+Tools.Texture.showGUI = function ( self )
+
+	-- Initialize the GUI if it's not ready yet
+	if not self.GUI then
+		local Container = Tool:WaitForChild( "BTTextureToolGUI" ):Clone();
+		Container.Parent = UI;
+
+		-- Add functionality to the add/remove buttons
+		Container.AddButton.Button.MouseButton1Up:connect( function ()
+			if self.Options.mode == "decal" then
+				self:addDecal();
+			elseif self.Options.mode == "texture" then
+				self:addTexture();
+			end;
+		end );
+		Container.RemoveButton.Button.MouseButton1Up:connect( function ()
+			if self.Options.mode == "decal" then
+				self:removeDecal();
+			elseif self.Options.mode == "texture" then
+				self:removeTexture();
+			end;
+		end );
+
+		-- Add functionality to the mode selectors
+		Container.ModeOption.Decal.Button.MouseButton1Down:connect( function ()
+			self:changeMode( "decal" );
+		end );
+		Container.ModeOption.Texture.Button.MouseButton1Down:connect( function ()
+			self:changeMode( "texture" );
+		end );
+
+		-- Add the side dropdown
+		local SideDropdown = createDropdown();
+		self.SideDropdown = SideDropdown;
+		SideDropdown.Frame.Parent = Container.SideOption;
+		SideDropdown.Frame.Position = UDim2.new( 0, 35, 0, 0 );
+		SideDropdown.Frame.Size = UDim2.new( 1, -50, 0, 25 );
+		SideDropdown:addOption( "TOP" ).MouseButton1Up:connect( function ()
+			self:changeSide( Enum.NormalId.Top );
+		end );
+		SideDropdown:addOption( "BOTTOM" ).MouseButton1Up:connect( function ()
+			self:changeSide( Enum.NormalId.Bottom );
+		end );
+		SideDropdown:addOption( "FRONT" ).MouseButton1Up:connect( function ()
+			self:changeSide( Enum.NormalId.Front );
+		end );
+		SideDropdown:addOption( "BACK" ).MouseButton1Up:connect( function ()
+			self:changeSide( Enum.NormalId.Back );
+		end );
+		SideDropdown:addOption( "LEFT" ).MouseButton1Up:connect( function ()
+			self:changeSide( Enum.NormalId.Left );
+		end );
+		SideDropdown:addOption( "RIGHT" ).MouseButton1Up:connect( function ()
+			self:changeSide( Enum.NormalId.Right );
+		end );
+
+		-- Add functionality to the repeat inputs
+		Container.RepeatOption.XInput.TextButton.MouseButton1Down:connect( function ()
+			self.State.rep_x_focused = true;
+			Container.RepeatOption.XInput.TextBox:CaptureFocus();
+		end );
+		Container.RepeatOption.XInput.TextBox.FocusLost:connect( function ( enter_pressed )
+			local potential_new = tonumber( Container.RepeatOption.XInput.TextBox.Text );
+			if potential_new then
+				self:changeFrequency( 'x', potential_new );
+			end;
+			self.State.rep_x_focused = false;
+		end );
+
+		Container.RepeatOption.YInput.TextButton.MouseButton1Down:connect( function ()
+			self.State.rep_y_focused = true;
+			Container.RepeatOption.YInput.TextBox:CaptureFocus();
+		end );
+		Container.RepeatOption.YInput.TextBox.FocusLost:connect( function ( enter_pressed )
+			local potential_new = tonumber( Container.RepeatOption.YInput.TextBox.Text );
+			if potential_new then
+				self:changeFrequency( 'y', potential_new );
+			end;
+			self.State.rep_y_focused = false;
+		end );
+
+		-- Add functionality to the decal/texture ID inputs
+		Container.ImageIDOption.TextButton.MouseButton1Down:connect( function ()
+			self.State.image_id_focused = true;
+			Container.ImageIDOption.TextBox:CaptureFocus();
+		end );
+		Container.ImageIDOption.TextBox.FocusLost:connect( function ( enter_pressed )
+			local input = Container.ImageIDOption.TextBox.Text;
+			local potential_new = tonumber( input ) or input:lower():match( "%?id=([0-9]+)" );
+			if potential_new then
+				if self.Options.mode == "decal" then
+					self:changeDecal( potential_new );
+				elseif self.Options.mode == "texture" then
+					self:changeTexture( potential_new );
+				end;
+			end;
+			self.State.image_id_focused = false;
+		end );
+
+		Container.TransparencyOption.TransparencyInput.TextButton.MouseButton1Down:connect( function ()
+			self.State.transparency_focused = true;
+			Container.TransparencyOption.TransparencyInput.TextBox:CaptureFocus();
+		end );
+		Container.TransparencyOption.TransparencyInput.TextBox.FocusLost:connect( function ( enter_pressed )
+			local potential_new = tonumber( Container.TransparencyOption.TransparencyInput.TextBox.Text );
+			if potential_new then
+				if potential_new > 1 then
+					potential_new = 1;
+				elseif potential_new < 0 then
+					potential_new = 0;
+				end;
+				self:changeTransparency( potential_new );
+			end;
+			self.State.transparency_focused = false;
+		end );
+
+		self.GUI = Container;
+	end;
+
+	-- Reveal the GUI
+	self.GUI.Visible = true;
+
+end;
+
+Tools.Texture.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists already
 	if self.GUI then
@@ -5480,6 +6097,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		elseif key == "h" then
 			equipTool( Tools.Mesh );
+
+		elseif key == "g" then
+			equipTool( Tools.Texture );
 
 		elseif key == "q" then
 			Selection:clear();
