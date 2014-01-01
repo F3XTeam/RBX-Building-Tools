@@ -699,10 +699,8 @@ Tools.Move = {};
 -- Define the color of the tool
 Tools.Move.Color = BrickColor.new( "Deep orange" );
 
--- Keep a container for the handles and other temporary stuff
-Tools.Move.Temporary = {
-	["Connections"] = {};
-};
+-- Keep a container for temporary connections
+Tools.Move.Connections = {};
 
 -- Keep options in a container too
 Tools.Move.Options = {
@@ -722,58 +720,60 @@ Tools.Move.Listeners = {};
 
 Tools.Move.Listeners.Equipped = function ()
 
+	local self = Tools.Move;
+
 	-- Make sure the tool is actually being equipped (because this is the default tool)
 	if not Mouse then
 		return;
 	end;
 
 	-- Change the color of selection boxes temporarily
-	Tools.Move.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = Tools.Move.Color;
+	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = self.Color;
 	updateSelectionBoxColor();
 
 	-- Reveal the GUI
-	Tools.Move:showGUI();
+	self:showGUI();
 
 	-- Create the boundingbox if it doesn't already exist
-	if not Tools.Move.Temporary.BoundingBox then
-		Tools.Move.Temporary.BoundingBox = RbxUtility.Create "Part" {
+	if not self.BoundingBox then
+		self.BoundingBox = RbxUtility.Create "Part" {
 			Name = "BTBoundingBox";
 			CanCollide = false;
 			Transparency = 1;
 			Anchored = true;
 		};
 	end;
-	Mouse.TargetFilter = Tools.Move.Temporary.BoundingBox;
+	Mouse.TargetFilter = self.BoundingBox;
 
 	-- Refresh the axis type option
-	Tools.Move:changeAxes( Tools.Move.Options.axes );
+	self:changeAxes( self.Options.axes );
 
 	-- Listen for any keystrokes that might affect any dragging operation
-	Tools.Move.Temporary.Connections.DraggerKeyListener = Mouse.KeyDown:connect( function ( key )
+	self.Connections.DraggerKeyListener = Mouse.KeyDown:connect( function ( key )
 
 		local key = key:lower();
 
 		-- Make sure a dragger exists
-		if not Tools.Move.Temporary.Dragger then
+		if not self.Dragger then
 			return;
 		end;
 
 		-- Rotate along the Z axis if `r` is pressed
 		if key == "r" then
-			Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.Y );
+			self.Dragger:AxisRotate( Enum.Axis.Y );
 
 		-- Rotate along the X axis if `t` is pressed
 		elseif key == "t" then
-			Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.X );
+			self.Dragger:AxisRotate( Enum.Axis.X );
 
 		-- Rotate along the Y axis if `y` is pressed
 		elseif key == "y" then
-			Tools.Move.Temporary.Dragger:AxisRotate( Enum.Axis.Z );
+			self.Dragger:AxisRotate( Enum.Axis.Z );
 		end;
 
 		-- Simulate a mouse move so that it applies the changes
-		Tools.Move.Temporary.Dragger:MouseMove( Mouse.UnitRay );
+		self.Dragger:MouseMove( Mouse.UnitRay );
 
 	end );
 
@@ -782,23 +782,23 @@ Tools.Move.Listeners.Equipped = function ()
 		local updater_on = true;
 
 		-- Provide a function to stop the loop
-		Tools.Move.Temporary.Updater = function ()
+		self.Updater = function ()
 			updater_on = false;
 		end;
 
 		while wait( 0.1 ) and updater_on do
 
 			-- Make sure the tool's equipped
-			if CurrentTool == Tools.Move then
+			if CurrentTool == self then
 
 				-- Update the GUI if it's visible
-				if Tools.Move.Temporary.GUI and Tools.Move.Temporary.GUI.Visible then
-					Tools.Move:updateGUI();
+				if self.GUI and self.GUI.Visible then
+					self:updateGUI();
 				end;
 
 				-- Update the boundingbox if it's visible
-				if Tools.Move.Options.axes == "global" then
-					Tools.Move:updateBoundingBox();
+				if self.Options.axes == "global" then
+					self:updateBoundingBox();
 				end;
 
 			end;
@@ -811,32 +811,34 @@ end;
 
 Tools.Move.Listeners.Unequipped = function ()
 
+	local self = Tools.Move;
+
 	-- Stop the update loop
-	Tools.Move.Temporary.Updater();
-	Tools.Move.Temporary.Updater = nil;
+	self.Updater();
+	self.Updater = nil;
 
 	-- Hide the GUI
-	Tools.Move:hideGUI();
+	self:hideGUI();
 
 	-- Hide the handles
-	Tools.Move:hideHandles();
+	self:hideHandles();
 
 	-- Clear out any temporary connections
-	for connection_index, Connection in pairs( Tools.Move.Temporary.Connections ) do
+	for connection_index, Connection in pairs( self.Connections ) do
 		Connection:disconnect();
-		Tools.Move.Temporary.Connections[connection_index] = nil;
+		self.Connections[connection_index] = nil;
 	end;
 
 	-- Restore the original color of the selection boxes
-	SelectionBoxColor = Tools.Move.Temporary.PreviousSelectionBoxColor;
+	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
 	updateSelectionBoxColor();
 
 end;
 
 Tools.Move.updateGUI = function ( self )
 
-	if self.Temporary.GUI then
-		local GUI = self.Temporary.GUI;
+	if self.GUI then
+		local GUI = self.GUI;
 
 		if #Selection.Items > 0 then
 
@@ -893,17 +895,7 @@ end;
 
 Tools.Move.changePosition = function ( self, component, new_value )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	self:startHistoryRecord();
 
 	-- Change the position of each item selected
 	for _, Item in pairs( Selection.Items ) do
@@ -914,12 +906,73 @@ Tools.Move.changePosition = function ( self, component, new_value )
 		);
 	end;
 
+	self:finishHistoryRecord();
+
+end;
+
+-- Provide the following two functions to save space
+Tools.Move.startHistoryRecord = function ( self )
+
+	if self.State.HistoryRecord then
+		self.State.HistoryRecord = nil;
+	end;
+
+	-- Create a history record
+	self.State.HistoryRecord = {
+		targets = _cloneTable( Selection.Items );
+		initial_positions = {};
+		terminal_positions = {};
+		unapply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.CFrame = self.initial_positions[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+		apply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.CFrame = self.terminal_positions[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+	};
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.initial_positions[Item] = Item.CFrame;
+		end;
+	end;
+
+end;
+
+Tools.Move.finishHistoryRecord = function ( self )
+
+	if not self.State.HistoryRecord then
+		return;
+	end;
+
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.terminal_positions[Item] = Item.CFrame;
+		end;
+	end;
+	History:add( self.State.HistoryRecord );
+	self.State.HistoryRecord = nil;
+
 end;
 
 Tools.Move.Listeners.Button1Down = function ()
 
-	local Target = Tools.Move.ManualTarget or Mouse.Target;
-	Tools.Move.ManualTarget = nil;
+	local self = Tools.Move;
+
+	local Target = self.ManualTarget or Mouse.Target;
+	self.ManualTarget = nil;
 
 	if not Target or ( Target:IsA( "BasePart" ) and Target.Locked ) then
 		return;
@@ -935,46 +988,31 @@ Tools.Move.Listeners.Button1Down = function ()
 		Item.Velocity = Vector3.new( 0, 0, 0 );
 	end;
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
-	Target = new_parts[_findTableOccurrences( old_parts, Target )[1]];
+	self:startHistoryRecord();
 
-	Tools.Move.State.dragging = true;
-
+	self.State.dragging = true;
 	override_selection = true;
 
-	Tools.Move.Temporary.Dragger = Instance.new( "Dragger" );
-
-	Tools.Move.Temporary.Dragger:MouseDown( Target, Target.CFrame:toObjectSpace( CFrame.new( Mouse.Hit.p ) ).p, Selection.Items );
-
-	Tools.Move.Temporary.Connections.DraggerConnection = Mouse.Button1Up:connect( function ()
+	self.Dragger = Instance.new( "Dragger" );
+	self.Dragger:MouseDown( Target, Target.CFrame:toObjectSpace( CFrame.new( Mouse.Hit.p ) ).p, Selection.Items );
+	self.Connections.DraggerConnection = Mouse.Button1Up:connect( function ()
 
 		override_selection = true;
 
-		if Tools.Move.Temporary.Connections.DraggerConnection then
-			Tools.Move.Temporary.Connections.DraggerConnection:disconnect();
-			Tools.Move.Temporary.Connections.DraggerConnection = nil;
+		-- Disable the dragger
+		if self.Connections.DraggerConnection then
+			self.Connections.DraggerConnection:disconnect();
+			self.Connections.DraggerConnection = nil;
 		end;
-
-		if not Tools.Move.Temporary.Dragger then
+		if not self.Dragger then
 			return;
 		end;
+		self.Dragger:MouseUp();
+		self.State.dragging = false;
+		self.Dragger:Destroy();
+		self.Dragger = nil;
 
-		Tools.Move.Temporary.Dragger:MouseUp();
-
-		Tools.Move.State.dragging = false;
-
-		Tools.Move.Temporary.Dragger:Destroy();
-		Tools.Move.Temporary.Dragger = nil;
+		self:finishHistoryRecord();
 
 	end );
 
@@ -982,20 +1020,22 @@ end;
 
 Tools.Move.Listeners.Move = function ()
 
-	if not Tools.Move.Temporary.Dragger then
+	local self = Tools.Move;
+
+	if not self.Dragger then
 		return;
 	end;
 
 	override_selection = true;
 
-	Tools.Move.Temporary.Dragger:MouseMove( Mouse.UnitRay );
+	self.Dragger:MouseMove( Mouse.UnitRay );
 
 end;
 
 Tools.Move.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet
-	if not self.Temporary.GUI then
+	if not self.GUI then
 
 		local Container = Tool:WaitForChild( "BTMoveToolGUI" ):Clone();
 		Container.Parent = UI;
@@ -1072,19 +1112,19 @@ Tools.Move.showGUI = function ( self )
 			self.State.pos_z_focused = false;
 		end );
 
-		self.Temporary.GUI = Container;
+		self.GUI = Container;
 	end;
 
 	-- Reveal the GUI
-	self.Temporary.GUI.Visible = true;
+	self.GUI.Visible = true;
 
 end;
 
 Tools.Move.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists
-	if self.Temporary.GUI then
-		self.Temporary.GUI.Visible = false;
+	if self.GUI then
+		self.GUI.Visible = false;
 	end;
 
 end;
@@ -1092,10 +1132,10 @@ end;
 Tools.Move.showHandles = function ( self, Part )
 
 	-- Create the handles if they don't exist yet
-	if not self.Temporary.Handles then
+	if not self.Handles then
 
 		-- Create the object
-		self.Temporary.Handles = RbxUtility.Create "Handles" {
+		self.Handles = RbxUtility.Create "Handles" {
 			Name = "BTMovementHandles";
 			Color = self.Color;
 			Parent = Player.PlayerGui;
@@ -1103,7 +1143,7 @@ Tools.Move.showHandles = function ( self, Part )
 
 		-- Add functionality to the handles
 
-		self.Temporary.Handles.MouseButton1Down:connect( function ()
+		self.Handles.MouseButton1Down:connect( function ()
 
 			-- Prevent the platform from thinking we're selecting
 			override_selection = true;
@@ -1112,17 +1152,7 @@ Tools.Move.showHandles = function ( self, Part )
 			-- Clear the change stats
 			self.State.distance_moved = 0;
 
-			-- Add a new record to the history system
-			local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-			local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-			_replaceParts( old_parts, new_parts );
-			for _, Item in pairs( new_parts ) do
-				Selection:add( Item );
-			end;
-			if #focus_search > 0 then
-				Selection:focus( new_parts[focus_search[1]] );
-			end;
-			History:add( old_parts, new_parts );
+			self:startHistoryRecord();
 
 			-- Do a few things to the selection before manipulating it
 			for _, Item in pairs( Selection.Items ) do
@@ -1136,17 +1166,19 @@ Tools.Move.showHandles = function ( self, Part )
 			end;
 
 			-- Return stuff to normal once the mouse button is released
-			self.Temporary.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
+			self.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
 
 				-- Prevent the platform from thinking we're selecting
 				override_selection = true;
 				self.State.moving = false;
 
 				-- Stop this connection from firing again
-				if self.Temporary.Connections.HandleReleaseListener then
-					self.Temporary.Connections.HandleReleaseListener:disconnect();
-					self.Temporary.Connections.HandleReleaseListener = nil;
+				if self.Connections.HandleReleaseListener then
+					self.Connections.HandleReleaseListener:disconnect();
+					self.Connections.HandleReleaseListener = nil;
 				end;
+
+				self:finishHistoryRecord();
 
 				-- Restore properties that may have been changed temporarily
 				-- from the pre-movement state copies
@@ -1162,7 +1194,7 @@ Tools.Move.showHandles = function ( self, Part )
 
 		end );
 
-		self.Temporary.Handles.MouseDrag:connect( function ( face, drag_distance )
+		self.Handles.MouseDrag:connect( function ( face, drag_distance )
 
 			-- Calculate which multiple of the increment to use based on the current drag distance's
 			-- proximity to their nearest upper and lower multiples
@@ -1255,16 +1287,16 @@ Tools.Move.showHandles = function ( self, Part )
 	end;
 
 	-- Stop listening for the existence of the previous adornee (if any)
-	if self.Temporary.Connections.AdorneeExistenceListener then
-		self.Temporary.Connections.AdorneeExistenceListener:disconnect();
-		self.Temporary.Connections.AdorneeExistenceListener = nil;
+	if self.Connections.AdorneeExistenceListener then
+		self.Connections.AdorneeExistenceListener:disconnect();
+		self.Connections.AdorneeExistenceListener = nil;
 	end;
 
 	-- Attach the handles to `Part`
-	self.Temporary.Handles.Adornee = Part;
+	self.Handles.Adornee = Part;
 
 	-- Make sure to hide the handles if `Part` suddenly stops existing
-	self.Temporary.Connections.AdorneeExistenceListener = Part.AncestryChanged:connect( function ( Object, NewParent )
+	self.Connections.AdorneeExistenceListener = Part.AncestryChanged:connect( function ( Object, NewParent )
 
 		-- Make sure this change in parent applies directly to `Part`
 		if Object ~= Part then
@@ -1285,8 +1317,8 @@ end;
 Tools.Move.hideHandles = function ( self )
 
 	-- Hide the handles if they exist
-	if self.Temporary.Handles then
-		self.Temporary.Handles.Adornee = nil;
+	if self.Handles then
+		self.Handles.Adornee = nil;
 	end;
 
 end;
@@ -1295,9 +1327,9 @@ Tools.Move.updateBoundingBox = function ( self )
 
 	if #Selection.Items > 0 and not self.State.dragging then
 		local SelectionSize, SelectionPosition = _getCollectionInfo( Selection.Items );
-		self.Temporary.BoundingBox.Size = SelectionSize;
-		self.Temporary.BoundingBox.CFrame = SelectionPosition;
-		self:showHandles( self.Temporary.BoundingBox );
+		self.BoundingBox.Size = SelectionSize;
+		self.BoundingBox.CFrame = SelectionPosition;
+		self:showHandles( self.BoundingBox );
 
 	else
 		self:hideHandles();
@@ -1308,18 +1340,18 @@ end;
 Tools.Move.changeAxes = function ( self, new_axes )
 
 	-- Have a quick reference to the GUI (if any)
-	local AxesOptionGUI = self.Temporary.GUI and self.Temporary.GUI.AxesOption or nil;
+	local AxesOptionGUI = self.GUI and self.GUI.AxesOption or nil;
 
 	-- Disconnect any handle-related listeners that are specific to a certain axes option
 
-	if self.Temporary.Connections.HandleFocusChangeListener then
-		self.Temporary.Connections.HandleFocusChangeListener:disconnect();
-		self.Temporary.Connections.HandleFocusChangeListener = nil;
+	if self.Connections.HandleFocusChangeListener then
+		self.Connections.HandleFocusChangeListener:disconnect();
+		self.Connections.HandleFocusChangeListener = nil;
 	end;
 
-	if self.Temporary.Connections.HandleSelectionChangeListener then
-		self.Temporary.Connections.HandleSelectionChangeListener:disconnect();
-		self.Temporary.Connections.HandleSelectionChangeListener = nil;
+	if self.Connections.HandleSelectionChangeListener then
+		self.Connections.HandleSelectionChangeListener:disconnect();
+		self.Connections.HandleSelectionChangeListener = nil;
 	end;
 
 	if new_axes == "global" then
@@ -1331,10 +1363,10 @@ Tools.Move.changeAxes = function ( self, new_axes )
 		self:hideHandles();
 
 		-- Focus the handles on the boundary box
-		self:showHandles( self.Temporary.BoundingBox );
+		self:showHandles( self.BoundingBox );
 
 		-- Update the GUI's option panel
-		if self.Temporary.GUI then
+		if self.GUI then
 			AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 0;
 			AxesOptionGUI.Global.Background.Image = dark_slanted_rectangle;
 			AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
@@ -1351,7 +1383,7 @@ Tools.Move.changeAxes = function ( self, new_axes )
 		self.Options.axes = "local";
 
 		-- Always have the handles on the most recent addition to the selection
-		self.Temporary.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
+		self.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
 
 			-- Clear out any previous adornee
 			self:hideHandles();
@@ -1364,7 +1396,7 @@ Tools.Move.changeAxes = function ( self, new_axes )
 		end );
 
 		-- Switch the adornee of the handles if the second mouse button is pressed
-		self.Temporary.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
+		self.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
 
 			-- Make sure the platform doesn't think we're selecting
 			override_selection = true;
@@ -1383,7 +1415,7 @@ Tools.Move.changeAxes = function ( self, new_axes )
 		end;
 
 		-- Update the GUI's option panel
-		if self.Temporary.GUI then
+		if self.GUI then
 			AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 1;
 			AxesOptionGUI.Global.Background.Image = light_slanted_rectangle;
 			AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 0;
@@ -1400,7 +1432,7 @@ Tools.Move.changeAxes = function ( self, new_axes )
 		self.Options.axes = "last";
 
 		-- Always have the handles on the most recent addition to the selection
-		self.Temporary.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
+		self.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
 
 			-- Clear out any previous adornee
 			self:hideHandles();
@@ -1413,7 +1445,7 @@ Tools.Move.changeAxes = function ( self, new_axes )
 		end );
 
 		-- Switch the adornee of the handles if the second mouse button is pressed
-		self.Temporary.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
+		GUI.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
 
 			-- Make sure the platform doesn't think we're selecting
 			override_selection = true;
@@ -1432,7 +1464,7 @@ Tools.Move.changeAxes = function ( self, new_axes )
 		end;
 
 		-- Update the GUI's option panel
-		if self.Temporary.GUI then
+		if self.GUI then
 			AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 1;
 			AxesOptionGUI.Global.Background.Image = light_slanted_rectangle;
 			AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
@@ -5864,14 +5896,9 @@ History = {
 			return;
 		end;
 
-		-- Fetch the history record
-		local Record = self.Data[self.index];
-
-		_replaceParts( Record.new, Record.old );
-		Selection:clear();
-		for _, Part in pairs( Record.old ) do
-			Selection:add( Part );
-		end;
+		-- Fetch the history record & unapply it
+		local CurrentRecord = self.Data[self.index];
+		CurrentRecord:unapply();
 
 		-- Go back in the history
 		self.index = self.index - 1;
@@ -5888,24 +5915,13 @@ History = {
 		-- Go forward in the history
 		self.index = self.index + 1;
 
-		-- Fetch the history record
-		local Record = self.Data[self.index];
-
-		_replaceParts( Record.old, Record.new );
-		Selection:clear();
-		for _, Part in pairs( Record.new ) do
-			Selection:add( Part );
-		end;
+		-- Fetch the new history record & apply it
+		local NewRecord = self.Data[self.index];
+		NewRecord:apply();
 
 	end;
 
-	["add"] = function ( self, old_selection, new_selection )
-
-		-- Create the history record
-		local Record = {
-			old = old_selection;
-			new = new_selection;
-		};
+	["add"] = function ( self, Record )
 
 		-- Place the record in its right spot
 		self.Data[self.index + 1] = Record;
@@ -6043,14 +6059,39 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		-- Provide the abiltiy to delete via the shift + X key combination
 		if ActiveKeys[47] or ActiveKeys[48] and key == "x" then
-			local SelectionItems = _cloneTable( Selection.Items );
 
-			-- Add a new record to the history system
-			History:add( SelectionItems, {} );
+			local selection_items = _cloneTable( Selection.Items );
 
-			for _, Item in pairs( SelectionItems ) do
+			-- Create a history record
+			local HistoryRecord = {
+				targets = selection_items;
+				parents = {};
+				apply = function ( self )
+					for _, Target in pairs( self.targets ) do
+						if Target then
+							Target.Parent = nil;
+						end;
+					end;
+				end;
+				unapply = function ( self )
+					Selection:clear();
+					for _, Target in pairs( self.targets ) do
+						if Target then
+							Target.Parent = self.parents[Target];
+							Target:MakeJoints();
+							Selection:add( Target );
+						end;
+					end;
+				end;
+			};
+
+			for _, Item in pairs( selection_items ) do
+				HistoryRecord.parents[Item] = Item.Parent;
 				Item.Parent = nil;
 			end;
+
+			History:add( HistoryRecord );
+
 			return;
 		end;
 
@@ -6075,9 +6116,27 @@ Tool.Equipped:connect( function ( CurrentMouse )
 					Selection:add( Item );
 				end;
 
-				-- Add a new record to the history system
-				local new_parts = _cloneTable( Selection.Items );
-				History:add( {}, new_parts );
+				local HistoryRecord = {
+					copies = item_copies;
+					unapply = function ( self )
+						for _, Copy in pairs( self.copies ) do
+							if Copy then
+								Copy.Parent = nil;
+							end;
+						end;
+					end;
+					apply = function ( self )
+						Selection:clear();
+						for _, Copy in pairs( self.copies ) do
+							if Copy then
+								Copy.Parent = Services.Workspace;
+								Copy:MakeJoints();
+								Selection:add( Copy );
+							end;
+						end;
+					end;
+				};
+				History:add( HistoryRecord );
 
 				-- Play a confirmation sound
 				local Sound = RbxUtility.Create "Sound" {
