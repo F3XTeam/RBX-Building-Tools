@@ -386,6 +386,44 @@ function _serializeParts( parts )
 		end;
 	end;
 
+	-- Get any textures in the selection
+	local textures = {};
+	for _, Part in pairs( parts ) do
+		local textures_found = _getChildrenOfClass( Part, "Texture" );
+		for _, Texture in pairs( textures_found ) do
+			table.insert( textures, Texture );
+		end;
+		local decals_found = _getChildrenOfClass( Part, "Decal" );
+		for _, Decal in pairs( decals_found ) do
+			table.insert( textures, Decal );
+		end;
+	end;
+
+	-- Serialize any textures
+	if #textures > 0 then
+		data.textures = {};
+		for _, Texture in pairs( textures ) do
+			local texture_type;
+			if Texture.ClassName == "Decal" then
+				texture_type = 1;
+			elseif Texture.ClassName == "Texture" then
+				texture_type = 2;
+			end;
+			local texture_id = _generateSerializationID();
+			local TextureData = {
+				_findTableOccurrences( objects, Texture.Parent )[1],
+				texture_type,
+				Texture.Face.Value,
+				Texture.Texture,
+				Texture.Transparency,
+				texture_type == 2 and Texture.StudsPerTileU or nil,
+				texture_type == 2 and Texture.StudsPerTileV or nil
+			};
+			data.textures[texture_id] = TextureData;
+			objects[texture_id] = Texture;
+		end;
+	end;
+
 	return RbxUtility.EncodeJSON( data );
 
 end;

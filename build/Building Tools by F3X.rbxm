@@ -416,6 +416,44 @@ function _serializeParts( parts )
 &#9;&#9;end;
 &#9;end;
 
+&#9;-- Get any textures in the selection
+&#9;local textures = {};
+&#9;for _, Part in pairs( parts ) do
+&#9;&#9;local textures_found = _getChildrenOfClass( Part, &quot;Texture&quot; );
+&#9;&#9;for _, Texture in pairs( textures_found ) do
+&#9;&#9;&#9;table.insert( textures, Texture );
+&#9;&#9;end;
+&#9;&#9;local decals_found = _getChildrenOfClass( Part, &quot;Decal&quot; );
+&#9;&#9;for _, Decal in pairs( decals_found ) do
+&#9;&#9;&#9;table.insert( textures, Decal );
+&#9;&#9;end;
+&#9;end;
+
+&#9;-- Serialize any textures
+&#9;if #textures &gt; 0 then
+&#9;&#9;data.textures = {};
+&#9;&#9;for _, Texture in pairs( textures ) do
+&#9;&#9;&#9;local texture_type;
+&#9;&#9;&#9;if Texture.ClassName == &quot;Decal&quot; then
+&#9;&#9;&#9;&#9;texture_type = 1;
+&#9;&#9;&#9;elseif Texture.ClassName == &quot;Texture&quot; then
+&#9;&#9;&#9;&#9;texture_type = 2;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;local texture_id = _generateSerializationID();
+&#9;&#9;&#9;local TextureData = {
+&#9;&#9;&#9;&#9;_findTableOccurrences( objects, Texture.Parent )[1],
+&#9;&#9;&#9;&#9;texture_type,
+&#9;&#9;&#9;&#9;Texture.Face.Value,
+&#9;&#9;&#9;&#9;Texture.Texture,
+&#9;&#9;&#9;&#9;Texture.Transparency,
+&#9;&#9;&#9;&#9;texture_type == 2 and Texture.StudsPerTileU or nil,
+&#9;&#9;&#9;&#9;texture_type == 2 and Texture.StudsPerTileV or nil
+&#9;&#9;&#9;};
+&#9;&#9;&#9;data.textures[texture_id] = TextureData;
+&#9;&#9;&#9;objects[texture_id] = Texture;
+&#9;&#9;end;
+&#9;end;
+
 &#9;return RbxUtility.EncodeJSON( data );
 
 end;
@@ -22606,6 +22644,45 @@ end;</ProtectedString>
 						<int name="ZIndex">2</int>
 					</Properties>
 				</Item>
+			</Item>
+			<Item class="TextLabel" referent="RBX466">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4288914085</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<token name="Font">2</token>
+					<token name="FontSize">3</token>
+					<string name="Name">Text</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>6</XO>
+						<YS>1</YS>
+						<YO>2</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>-6</XO>
+						<YS>0</YS>
+						<YO>20</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<string name="Text">TIP: Select a part &amp; right click on a surface</string>
+					<Color3 name="TextColor3">4294967295</Color3>
+					<bool name="TextScaled">false</bool>
+					<Color3 name="TextStrokeColor3">4278190080</Color3>
+					<float name="TextStrokeTransparency">0.5</float>
+					<float name="TextTransparency">0</float>
+					<bool name="TextWrapped">true</bool>
+					<token name="TextXAlignment">0</token>
+					<token name="TextYAlignment">1</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
 			</Item>
 		</Item>
 	</Item>

@@ -399,6 +399,31 @@ function import( creation_id )
 			end;
 		end;
 
+		if creation_data.textures then
+			for texture_id, texture_data in pairs( creation_data.textures ) do
+
+				-- Create, place, and register the texture
+				local texture_class;
+				if texture_data[2] == 1 then
+					texture_class = 'Decal';
+				elseif texture_data[2] == 2 then
+					texture_class = 'Texture';
+				end;
+				local Texture = Instance.new( texture_class, objects[texture_data[1]] );
+				objects[texture_id] = Texture;
+
+				-- Set the texture's properties
+				Texture.Face = texture_data[3];
+				Texture.Texture = texture_data[4];
+				Texture.Transparency = texture_data[5];
+				if Texture:IsA( "Texture" ) then
+					Texture.StudsPerTileU = texture_data[6];
+					Texture.StudsPerTileV = texture_data[7];
+				end;
+
+			end;
+		end;
+
 		Container:MakeJoints();
 		Services.Selection:Set( { Container } );
 
