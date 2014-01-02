@@ -2112,9 +2112,7 @@ end;
 Tools.Rotate = {};
 
 -- Create structures to hold data that the tool needs
-Tools.Rotate.Temporary = {
-	["Connections"] = {};
-};
+Tools.Rotate.Connections = {};
 
 Tools.Rotate.Options = {
 	["increment"] = 15;
@@ -2137,50 +2135,52 @@ Tools.Rotate.Color = BrickColor.new( "Bright green" );
 -- Start adding functionality to the tool
 Tools.Rotate.Listeners.Equipped = function ()
 
+	local self = Tools.Rotate;
+
 	-- Change the color of selection boxes temporarily
-	Tools.Rotate.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = Tools.Rotate.Color;
+	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = self.Color;
 	updateSelectionBoxColor();
 
 	-- Reveal the GUI
-	Tools.Rotate:showGUI();
+	self:showGUI();
 
 	-- Create the boundingbox if it doesn't already exist
-	if not Tools.Rotate.Temporary.BoundingBox then
-		Tools.Rotate.Temporary.BoundingBox = RbxUtility.Create "Part" {
+	if not self.BoundingBox then
+		self.BoundingBox = RbxUtility.Create "Part" {
 			Name = "BTBoundingBox";
 			CanCollide = false;
 			Transparency = 1;
 			Anchored = true;
 		};
 	end;
-	Mouse.TargetFilter = Tools.Rotate.Temporary.BoundingBox;
+	Mouse.TargetFilter = self.BoundingBox;
 
 	-- Update the pivot option
-	Tools.Rotate:changePivot( Tools.Rotate.Options.pivot );
+	self:changePivot( self.Options.pivot );
 
 	-- Oh, and update the boundingbox and the GUI regularly
 	coroutine.wrap( function ()
 		local updater_on = true;
 
 		-- Provide a function to stop the loop
-		Tools.Rotate.Temporary.Updater = function ()
+		self.Updater = function ()
 			updater_on = false;
 		end;
 
 		while wait( 0.1 ) and updater_on do
 
 			-- Make sure the tool's equipped
-			if CurrentTool == Tools.Rotate then
+			if CurrentTool == self then
 
 				-- Update the GUI if it's visible
-				if Tools.Rotate.Temporary.GUI and Tools.Rotate.Temporary.GUI.Visible then
-					Tools.Rotate:updateGUI();
+				if self.GUI and self.GUI.Visible then
+					self:updateGUI();
 				end;
 
 				-- Update the boundingbox if it's visible
-				if Tools.Rotate.Options.pivot == "center" then
-					Tools.Rotate:updateBoundingBox();
+				if self.Options.pivot == "center" then
+					self:updateBoundingBox();
 				end;
 
 			end;
@@ -2191,39 +2191,41 @@ Tools.Rotate.Listeners.Equipped = function ()
 
 	-- Also enable the ability to select an edge as a pivot
 	SelectEdge:start( function ( EdgeMarker )
-		Tools.Rotate:changePivot( "last" );
-		Tools.Rotate.Options.PivotPoint = EdgeMarker.CFrame;
-		Tools.Rotate:showHandles( EdgeMarker );
+		self:changePivot( "last" );
+		self.Options.PivotPoint = EdgeMarker.CFrame;
+		self:showHandles( EdgeMarker );
 	end );
 
 end;
 
 Tools.Rotate.Listeners.Unequipped = function ()
 
+	local self = Tools.Rotate;
+
 	-- Stop the update loop
-	Tools.Rotate.Temporary.Updater();
-	Tools.Rotate.Temporary.Updater = nil;
+	self.Updater();
+	self.Updater = nil;
 
 	-- Disable the ability to select edges
 	SelectEdge:stop();
-	if Tools.Rotate.Options.PivotPoint then
-		Tools.Rotate.Options.PivotPoint = nil;
+	if self.Options.PivotPoint then
+		self.Options.PivotPoint = nil;
 	end;
 
 	-- Hide the GUI
-	Tools.Rotate:hideGUI();
+	self:hideGUI();
 
 	-- Hide the handles
-	Tools.Rotate:hideHandles();
+	self:hideHandles();
 
 	-- Clear out any temporary connections
-	for connection_index, Connection in pairs( Tools.Rotate.Temporary.Connections ) do
+	for connection_index, Connection in pairs( self.Connections ) do
 		Connection:disconnect();
-		Tools.Rotate.Temporary.Connections[connection_index] = nil;
+		self.Connections[connection_index] = nil;
 	end;
 
 	-- Restore the original color of the selection boxes
-	SelectionBoxColor = Tools.Rotate.Temporary.PreviousSelectionBoxColor;
+	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
 	updateSelectionBoxColor();
 
 end;
@@ -2241,7 +2243,7 @@ end;
 Tools.Rotate.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet
-	if not self.Temporary.GUI then
+	if not self.GUI then
 
 		local Container = Tool:WaitForChild( "BTRotateToolGUI" ):Clone();
 		Container.Parent = UI;
@@ -2300,11 +2302,11 @@ Tools.Rotate.showGUI = function ( self )
 			self.State.rot_z_focused = false;
 		end );
 
-		self.Temporary.GUI = Container;
+		self.GUI = Container;
 	end;
 
 	-- Reveal the GUI
-	self.Temporary.GUI.Visible = true;
+	self.GUI.Visible = true;
 
 end;
 
@@ -2337,11 +2339,11 @@ end;
 Tools.Rotate.updateGUI = function ( self )
 
 	-- Make sure the GUI exists
-	if not self.Temporary.GUI then
+	if not self.GUI then
 		return;
 	end;
 
-	local GUI = self.Temporary.GUI;
+	local GUI = self.GUI;
 
 	if #Selection.Items > 0 then
 
@@ -2400,8 +2402,8 @@ end;
 Tools.Rotate.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists
-	if self.Temporary.GUI then
-		self.Temporary.GUI.Visible = false;
+	if self.GUI then
+		self.GUI.Visible = false;
 	end;
 
 end;
@@ -2410,9 +2412,9 @@ Tools.Rotate.updateBoundingBox = function ( self )
 
 	if #Selection.Items > 0 then
 		local SelectionSize, SelectionPosition = _getCollectionInfo( Selection.Items );
-		self.Temporary.BoundingBox.Size = SelectionSize;
-		self.Temporary.BoundingBox.CFrame = SelectionPosition;
-		self:showHandles( self.Temporary.BoundingBox );
+		self.BoundingBox.Size = SelectionSize;
+		self.BoundingBox.CFrame = SelectionPosition;
+		self:showHandles( self.BoundingBox );
 
 	else
 		self:hideHandles();
@@ -2423,17 +2425,17 @@ end;
 Tools.Rotate.changePivot = function ( self, new_pivot )
 
 	-- Have a quick reference to the GUI (if any)
-	local PivotOptionGUI = self.Temporary.GUI and self.Temporary.GUI.PivotOption or nil;
+	local PivotOptionGUI = self.GUI and self.GUI.PivotOption or nil;
 
 	-- Disconnect any handle-related listeners that are specific to a certain pivot option
-	if self.Temporary.Connections.HandleFocusChangeListener then
-		self.Temporary.Connections.HandleFocusChangeListener:disconnect();
-		self.Temporary.Connections.HandleFocusChangeListener = nil;
+	if self.Connections.HandleFocusChangeListener then
+		self.Connections.HandleFocusChangeListener:disconnect();
+		self.Connections.HandleFocusChangeListener = nil;
 	end;
 
-	if self.Temporary.Connections.HandleSelectionChangeListener then
-		self.Temporary.Connections.HandleSelectionChangeListener:disconnect();
-		self.Temporary.Connections.HandleSelectionChangeListener = nil;
+	if self.Connections.HandleSelectionChangeListener then
+		self.Connections.HandleSelectionChangeListener:disconnect();
+		self.Connections.HandleSelectionChangeListener = nil;
 	end;
 
 	-- Remove any temporary edge selection
@@ -2447,10 +2449,10 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 		self.Options.pivot = "center";
 
 		-- Focus the handles on the boundingbox
-		self:showHandles( self.Temporary.BoundingBox );
+		self:showHandles( self.BoundingBox );
 
 		-- Update the GUI's option panel
-		if self.Temporary.GUI then
+		if self.GUI then
 			PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 0;
 			PivotOptionGUI.Center.Background.Image = dark_slanted_rectangle;
 			PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
@@ -2467,7 +2469,7 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 		self.Options.pivot = "local";
 
 		-- Always have the handles on the most recent addition to the selection
-		self.Temporary.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
+		self.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
 
 			-- Clear out any previous adornee
 			self:hideHandles();
@@ -2480,7 +2482,7 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 		end );
 
 		-- Switch the adornee of the handles if the second mouse button is pressed
-		self.Temporary.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
+		self.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
 
 			-- Make sure the platform doesn't think we're selecting
 			override_selection = true;
@@ -2499,7 +2501,7 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 		end;
 
 		-- Update the GUI's option panel
-		if self.Temporary.GUI then
+		if self.GUI then
 			PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 1;
 			PivotOptionGUI.Center.Background.Image = light_slanted_rectangle;
 			PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 0;
@@ -2516,7 +2518,7 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 		self.Options.pivot = "last";
 
 		-- Always have the handles on the most recent addition to the selection
-		self.Temporary.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
+		self.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
 
 			-- Clear out any previous adornee
 			if not self.Options.PivotPoint then
@@ -2531,7 +2533,7 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 		end );
 
 		-- Switch the adornee of the handles if the second mouse button is pressed
-		self.Temporary.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
+		self.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
 
 			-- Make sure the platform doesn't think we're selecting
 			override_selection = true;
@@ -2550,7 +2552,7 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 		end;
 
 		-- Update the GUI's option panel
-		if self.Temporary.GUI then
+		if self.GUI then
 			PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 1;
 			PivotOptionGUI.Center.Background.Image = light_slanted_rectangle;
 			PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
@@ -2567,10 +2569,10 @@ end;
 Tools.Rotate.showHandles = function ( self, Part )
 
 	-- Create the handles if they don't exist yet
-	if not self.Temporary.Handles then
+	if not self.Handles then
 
 		-- Create the object
-		self.Temporary.Handles = RbxUtility.Create "ArcHandles" {
+		self.Handles = RbxUtility.Create "ArcHandles" {
 			Name = "BTRotationHandles";
 			Color = self.Color;
 			Parent = Player.PlayerGui;
@@ -2578,7 +2580,7 @@ Tools.Rotate.showHandles = function ( self, Part )
 
 		-- Add functionality to the handles
 
-		self.Temporary.Handles.MouseButton1Down:connect( function ()
+		self.Handles.MouseButton1Down:connect( function ()
 
 			-- Prevent the platform from thinking we're selecting
 			override_selection = true;
@@ -2616,16 +2618,16 @@ Tools.Rotate.showHandles = function ( self, Part )
 			self.State.PreRotationPosition = PreRotationPosition;
 
 			-- Return stuff to normal once the mouse button is released
-			self.Temporary.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
+			self.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
 
 				-- Prevent the platform from thinking we're selecting
 				override_selection = true;
 				self.State.rotating = false;
 
 				-- Stop this connection from firing again
-				if self.Temporary.Connections.HandleReleaseListener then
-					self.Temporary.Connections.HandleReleaseListener:disconnect();
-					self.Temporary.Connections.HandleReleaseListener = nil;
+				if self.Connections.HandleReleaseListener then
+					self.Connections.HandleReleaseListener:disconnect();
+					self.Connections.HandleReleaseListener = nil;
 				end;
 
 				-- Restore properties that may have been changed temporarily
@@ -2640,7 +2642,7 @@ Tools.Rotate.showHandles = function ( self, Part )
 
 		end );
 
-		self.Temporary.Handles.MouseDrag:connect( function ( axis, drag_distance )
+		self.Handles.MouseDrag:connect( function ( axis, drag_distance )
 
 			-- Round down and convert the drag distance to degrees to make it easier to work with
 			local drag_distance = math.floor( math.deg( drag_distance ) );
@@ -2712,16 +2714,16 @@ Tools.Rotate.showHandles = function ( self, Part )
 	end;
 
 	-- Stop listening for the existence of the previous adornee (if any)
-	if self.Temporary.Connections.AdorneeExistenceListener then
-		self.Temporary.Connections.AdorneeExistenceListener:disconnect();
-		self.Temporary.Connections.AdorneeExistenceListener = nil;
+	if self.Connections.AdorneeExistenceListener then
+		self.Connections.AdorneeExistenceListener:disconnect();
+		self.Connections.AdorneeExistenceListener = nil;
 	end;
 
 	-- Attach the handles to `Part`
-	self.Temporary.Handles.Adornee = Part;
+	self.Handles.Adornee = Part;
 
 	-- Make sure to hide the handles if `Part` suddenly stops existing
-	self.Temporary.Connections.AdorneeExistenceListener = Part.AncestryChanged:connect( function ( Object, NewParent )
+	self.Connections.AdorneeExistenceListener = Part.AncestryChanged:connect( function ( Object, NewParent )
 
 		-- Make sure this change in parent applies directly to `Part`
 		if Object ~= Part then
@@ -2742,8 +2744,8 @@ end;
 Tools.Rotate.hideHandles = function ( self )
 
 	-- Hide the handles if they exist
-	if self.Temporary.Handles then
-		self.Temporary.Handles.Adornee = nil;
+	if self.Handles then
+		self.Handles.Adornee = nil;
 	end;
 
 end;
