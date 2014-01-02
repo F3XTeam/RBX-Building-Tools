@@ -910,7 +910,6 @@ Tools.Move.changePosition = function ( self, component, new_value )
 
 end;
 
--- Provide the following two functions to save space
 Tools.Move.startHistoryRecord = function ( self )
 
 	if self.State.HistoryRecord then
@@ -1674,19 +1673,71 @@ Tools.Resize.showGUI = function ( self )
 
 end;
 
+Tools.Resize.startHistoryRecord = function ( self )
+
+	if self.State.HistoryRecord then
+		self.State.HistoryRecord = nil;
+	end;
+
+	-- Create a history record
+	self.State.HistoryRecord = {
+		targets = _cloneTable( Selection.Items );
+		initial_positions = {};
+		terminal_positions = {};
+		initial_sizes = {};
+		terminal_sizes = {};
+		unapply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.Size = self.initial_sizes[Target];
+					Target.CFrame = self.initial_positions[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+		apply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.Size = self.terminal_sizes[Target];
+					Target.CFrame = self.terminal_positions[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+	};
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.initial_sizes[Item] = Item.Size;
+			self.State.HistoryRecord.initial_positions[Item] = Item.CFrame;
+		end;
+	end;
+
+end;
+
+Tools.Resize.finishHistoryRecord = function ( self )
+
+	if not self.State.HistoryRecord then
+		return;
+	end;
+
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.terminal_sizes[Item] = Item.Size;
+			self.State.HistoryRecord.terminal_positions[Item] = Item.CFrame;
+		end;
+	end;
+	History:add( self.State.HistoryRecord );
+	self.State.HistoryRecord = nil;
+
+end;
+
 Tools.Resize.changeSize = function ( self, component, new_value )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	self:startHistoryRecord();
 
 	-- Change the size of each item selected
 	for _, Item in pairs( Selection.Items ) do
@@ -1702,6 +1753,8 @@ Tools.Resize.changeSize = function ( self, component, new_value )
 		);
 		Item.CFrame = OldCFrame;
 	end;
+
+	self:finishHistoryRecord();
 
 end;
 
@@ -1798,17 +1851,7 @@ Tools.Resize.showHandles = function ( self, Part )
 			-- Clear the change stats
 			self.State.length_resized = 0;
 
-			-- Add a new record to the history system
-			local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-			local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-			_replaceParts( old_parts, new_parts );
-			for _, Item in pairs( new_parts ) do
-				Selection:add( Item );
-			end;
-			if #focus_search > 0 then
-				Selection:focus( new_parts[focus_search[1]] );
-			end;
-			History:add( old_parts, new_parts );
+			self:startHistoryRecord();
 
 			-- Do a few things to the selection before manipulating it
 			for _, Item in pairs( Selection.Items ) do
@@ -1838,6 +1881,8 @@ Tools.Resize.showHandles = function ( self, Part )
 					self.Connections.HandleReleaseListener:disconnect();
 					self.Connections.HandleReleaseListener = nil;
 				end;
+
+				self:finishHistoryRecord();
 
 				-- Restore properties that may have been changed temporarily
 				-- from the pre-resize state copies
