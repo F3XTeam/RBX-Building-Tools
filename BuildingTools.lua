@@ -3426,6 +3426,63 @@ Tools.Surface.Listeners.Button2Up = function ()
 
 end;
 
+Tools.Surface.startHistoryRecord = function ( self )
+
+	if self.State.HistoryRecord then
+		self.State.HistoryRecord = nil;
+	end;
+
+	-- Create a history record
+	self.State.HistoryRecord = {
+		targets = _cloneTable( Selection.Items );
+		target_surface = self.Options.side;
+		initial_surfaces = {};
+		terminal_surfaces = {};
+		unapply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target[self.target_surface.Name .. "Surface"] = self.initial_surfaces[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+		apply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target[self.target_surface.Name .. "Surface"] = self.terminal_surfaces[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+	};
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.initial_surfaces[Item] = Item[self.Options.side.Name .. "Surface"];
+		end;
+	end;
+
+end;
+
+Tools.Surface.finishHistoryRecord = function ( self )
+
+	if not self.State.HistoryRecord then
+		return;
+	end;
+
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.terminal_surfaces[Item] = Item[self.Options.side.Name .. "Surface"];
+		end;
+	end;
+	History:add( self.State.HistoryRecord );
+	self.State.HistoryRecord = nil;
+
+end;
+
 Tools.Surface.SpecialTypeNames = {
 	SmoothNoOutlines = "NO OUTLINE",
 	Inlet = "INLETS"
@@ -3433,22 +3490,16 @@ Tools.Surface.SpecialTypeNames = {
 
 Tools.Surface.changeType = function ( self, surface_type )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	self:startHistoryRecord();
 
 	-- Apply `surface_type` to all items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item[self.Options.side.Name .. "Surface"] = surface_type;
+		Item:MakeJoints();
 	end;
+
+	self:finishHistoryRecord();
+
 	self.TypeDropdown:selectOption( self.SpecialTypeNames[surface_type.Name] or surface_type.Name:upper() );
 	if self.TypeDropdown.open then
 		self.TypeDropdown:toggle();
