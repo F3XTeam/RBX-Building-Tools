@@ -2340,19 +2340,65 @@ Tools.Rotate.showGUI = function ( self )
 
 end;
 
+Tools.Rotate.startHistoryRecord = function ( self )
+
+&#9;if self.State.HistoryRecord then
+&#9;&#9;self.State.HistoryRecord = nil;
+&#9;end;
+
+&#9;-- Create a history record
+&#9;self.State.HistoryRecord = {
+&#9;&#9;targets = _cloneTable( Selection.Items );
+&#9;&#9;initial_cframes = {};
+&#9;&#9;terminal_cframes = {};
+&#9;&#9;unapply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Target in pairs( self.targets ) do
+&#9;&#9;&#9;&#9;if Target then
+&#9;&#9;&#9;&#9;&#9;Target.CFrame = self.initial_cframes[Target];
+&#9;&#9;&#9;&#9;&#9;Target:MakeJoints();
+&#9;&#9;&#9;&#9;&#9;Selection:add( Target );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;&#9;apply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Target in pairs( self.targets ) do
+&#9;&#9;&#9;&#9;if Target then
+&#9;&#9;&#9;&#9;&#9;Target.CFrame = self.terminal_cframes[Target];
+&#9;&#9;&#9;&#9;&#9;Target:MakeJoints();
+&#9;&#9;&#9;&#9;&#9;Selection:add( Target );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;};
+&#9;for _, Item in pairs( self.State.HistoryRecord.targets ) do
+&#9;&#9;if Item then
+&#9;&#9;&#9;self.State.HistoryRecord.initial_cframes[Item] = Item.CFrame;
+&#9;&#9;end;
+&#9;end;
+
+end;
+
+Tools.Rotate.finishHistoryRecord = function ( self )
+
+&#9;if not self.State.HistoryRecord then
+&#9;&#9;return;
+&#9;end;
+
+&#9;for _, Item in pairs( self.State.HistoryRecord.targets ) do
+&#9;&#9;if Item then
+&#9;&#9;&#9;self.State.HistoryRecord.terminal_cframes[Item] = Item.CFrame;
+&#9;&#9;end;
+&#9;end;
+&#9;History:add( self.State.HistoryRecord );
+&#9;self.State.HistoryRecord = nil;
+
+end;
+
 Tools.Rotate.changeRotation = function ( self, component, new_value )
 
-&#9;-- Add a new record to the history system
-&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-&#9;_replaceParts( old_parts, new_parts );
-&#9;for _, Item in pairs( new_parts ) do
-&#9;&#9;Selection:add( Item );
-&#9;end;
-&#9;if #focus_search &gt; 0 then
-&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
-&#9;end;
-&#9;History:add( old_parts, new_parts );
+&#9;self:startHistoryRecord();
 
 &#9;-- Change the rotation of each item selected
 &#9;for _, Item in pairs( Selection.Items ) do
@@ -2363,6 +2409,8 @@ Tools.Rotate.changeRotation = function ( self, component, new_value )
 &#9;&#9;&#9;component == &apos;z&apos; and new_value or old_z_rot
 &#9;&#9;);
 &#9;end;
+
+&#9;self:finishHistoryRecord();
 
 end;
 
@@ -2620,17 +2668,7 @@ Tools.Rotate.showHandles = function ( self, Part )
 &#9;&#9;&#9;self.State.degrees_rotated = 0;
 &#9;&#9;&#9;self.State.rotation_size = 0;
 
-&#9;&#9;&#9;-- Add a new record to the history system
-&#9;&#9;&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-&#9;&#9;&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-&#9;&#9;&#9;_replaceParts( old_parts, new_parts );
-&#9;&#9;&#9;for _, Item in pairs( new_parts ) do
-&#9;&#9;&#9;&#9;Selection:add( Item );
-&#9;&#9;&#9;end;
-&#9;&#9;&#9;if #focus_search &gt; 0 then
-&#9;&#9;&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
-&#9;&#9;&#9;end;
-&#9;&#9;&#9;History:add( old_parts, new_parts );
+&#9;&#9;&#9;self:startHistoryRecord();
 
 &#9;&#9;&#9;-- Do a few things to the selection before manipulating it
 &#9;&#9;&#9;for _, Item in pairs( Selection.Items ) do
@@ -2659,6 +2697,8 @@ Tools.Rotate.showHandles = function ( self, Part )
 &#9;&#9;&#9;&#9;&#9;self.Connections.HandleReleaseListener:disconnect();
 &#9;&#9;&#9;&#9;&#9;self.Connections.HandleReleaseListener = nil;
 &#9;&#9;&#9;&#9;end;
+
+&#9;&#9;&#9;&#9;self:finishHistoryRecord();
 
 &#9;&#9;&#9;&#9;-- Restore properties that may have been changed temporarily
 &#9;&#9;&#9;&#9;-- from the pre-rotation state copies

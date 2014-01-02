@@ -2310,19 +2310,65 @@ Tools.Rotate.showGUI = function ( self )
 
 end;
 
+Tools.Rotate.startHistoryRecord = function ( self )
+
+	if self.State.HistoryRecord then
+		self.State.HistoryRecord = nil;
+	end;
+
+	-- Create a history record
+	self.State.HistoryRecord = {
+		targets = _cloneTable( Selection.Items );
+		initial_cframes = {};
+		terminal_cframes = {};
+		unapply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.CFrame = self.initial_cframes[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+		apply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.CFrame = self.terminal_cframes[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+	};
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.initial_cframes[Item] = Item.CFrame;
+		end;
+	end;
+
+end;
+
+Tools.Rotate.finishHistoryRecord = function ( self )
+
+	if not self.State.HistoryRecord then
+		return;
+	end;
+
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.terminal_cframes[Item] = Item.CFrame;
+		end;
+	end;
+	History:add( self.State.HistoryRecord );
+	self.State.HistoryRecord = nil;
+
+end;
+
 Tools.Rotate.changeRotation = function ( self, component, new_value )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	self:startHistoryRecord();
 
 	-- Change the rotation of each item selected
 	for _, Item in pairs( Selection.Items ) do
@@ -2333,6 +2379,8 @@ Tools.Rotate.changeRotation = function ( self, component, new_value )
 			component == 'z' and new_value or old_z_rot
 		);
 	end;
+
+	self:finishHistoryRecord();
 
 end;
 
@@ -2590,17 +2638,7 @@ Tools.Rotate.showHandles = function ( self, Part )
 			self.State.degrees_rotated = 0;
 			self.State.rotation_size = 0;
 
-			-- Add a new record to the history system
-			local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-			local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-			_replaceParts( old_parts, new_parts );
-			for _, Item in pairs( new_parts ) do
-				Selection:add( Item );
-			end;
-			if #focus_search > 0 then
-				Selection:focus( new_parts[focus_search[1]] );
-			end;
-			History:add( old_parts, new_parts );
+			self:startHistoryRecord();
 
 			-- Do a few things to the selection before manipulating it
 			for _, Item in pairs( Selection.Items ) do
@@ -2629,6 +2667,8 @@ Tools.Rotate.showHandles = function ( self, Part )
 					self.Connections.HandleReleaseListener:disconnect();
 					self.Connections.HandleReleaseListener = nil;
 				end;
+
+				self:finishHistoryRecord();
 
 				-- Restore properties that may have been changed temporarily
 				-- from the pre-rotation state copies
