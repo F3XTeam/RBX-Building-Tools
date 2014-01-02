@@ -2806,41 +2806,47 @@ Tools.Paint.Options = {
 	["Color"] = nil
 };
 
-Tools.Paint.Temporary = {};
+Tools.Paint.State = {};
 
 -- Add listeners
 Tools.Paint.Listeners = {};
 
 Tools.Paint.Listeners.Equipped = function ()
 
+	local self = Tools.Paint;
+
 	-- Change the color of selection boxes temporarily
-	Tools.Paint.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = Tools.Paint.Color;
+	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = self.Color;
 	updateSelectionBoxColor();
 
 	-- Show the GUI
-	Tools.Paint:showGUI();
+	self:showGUI();
 
 	-- Update the selected color
-	Tools.Paint:changeColor( Tools.Paint.Options.Color );
+	self:changeColor( self.Options.Color );
 
 end;
 
 Tools.Paint.Listeners.Unequipped = function ()
 
+	local self = Tools.Paint;
+
 	-- Clear out the preferred color option
-	Tools.Paint:changeColor( nil );
+	self:changeColor( nil );
 
 	-- Hide the GUI
-	Tools.Paint:hideGUI();
+	self:hideGUI();
 
 	-- Restore the original color of the selection boxes
-	SelectionBoxColor = Tools.Paint.Temporary.PreviousSelectionBoxColor;
+	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
 	updateSelectionBoxColor();
 
 end;
 
 Tools.Paint.Listeners.Button1Up = function ()
+
+	local self = Tools.Paint;
 
 	-- Make sure that they clicked on one of the items in their selection
 	-- (and they weren't multi-selecting)
@@ -2861,9 +2867,9 @@ Tools.Paint.Listeners.Button1Up = function ()
 		History:add( old_parts, new_parts );
 
 		-- Paint all of the selected items `Tools.Paint.Options.Color`
-		if Tools.Paint.Options.Color then
+		if self.Options.Color then
 			for _, Item in pairs( Selection.Items ) do
-				Item.BrickColor = Tools.Paint.Options.Color;
+				Item.BrickColor = self.Options.Color;
 			end;
 		end;
 
@@ -2897,15 +2903,15 @@ Tools.Paint.changeColor = function ( self, Color )
 		end;
 
 		-- After that, we want to mark our new color in the palette
-		if self.Temporary.GUI then
+		if self.GUI then
 
 			-- First clear out any other marks
-			for _, ColorSquare in pairs( self.Temporary.GUI.Palette:GetChildren() ) do
+			for _, ColorSquare in pairs( self.GUI.Palette:GetChildren() ) do
 				ColorSquare.Text = "";
 			end;
 
 			-- Then mark the right square
-			self.Temporary.GUI.Palette[Color.Name].Text = "X";
+			self.GUI.Palette[Color.Name].Text = "X";
 
 		end;
 
@@ -2916,8 +2922,8 @@ Tools.Paint.changeColor = function ( self, Color )
 		self.Options.Color = nil;
 
 		-- Clear out any color option marks on any of the squares
-		if self.Temporary.GUI then
-			for _, ColorSquare in pairs( self.Temporary.GUI.Palette:GetChildren() ) do
+		if self.GUI then
+			for _, ColorSquare in pairs( self.GUI.Palette:GetChildren() ) do
 				ColorSquare.Text = "";
 			end;
 		end;
@@ -2929,7 +2935,7 @@ end;
 Tools.Paint.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet
-	if not self.Temporary.GUI then
+	if not self.GUI then
 
 		local Container = Tool:WaitForChild( "BTPaintToolGUI" ):Clone();
 		Container.Parent = UI;
@@ -2940,19 +2946,19 @@ Tools.Paint.showGUI = function ( self )
 			end );
 		end;
 
-		self.Temporary.GUI = Container;
+		self.GUI = Container;
 	end;
 
 	-- Reveal the GUI
-	self.Temporary.GUI.Visible = true;
+	self.GUI.Visible = true;
 
 end;
 
 Tools.Paint.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists
-	if self.Temporary.GUI then
-		self.Temporary.GUI.Visible = false;
+	if self.GUI then
+		self.GUI.Visible = false;
 	end;
 
 end;
