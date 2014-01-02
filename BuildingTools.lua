@@ -2844,6 +2844,60 @@ Tools.Paint.Listeners.Unequipped = function ()
 
 end;
 
+Tools.Paint.startHistoryRecord = function ( self )
+
+	if self.State.HistoryRecord then
+		self.State.HistoryRecord = nil;
+	end;
+
+	-- Create a history record
+	self.State.HistoryRecord = {
+		targets = _cloneTable( Selection.Items );
+		initial_colors = {};
+		terminal_colors = {};
+		unapply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.BrickColor = self.initial_colors[Target];
+					Selection:add( Target );
+				end;
+			end;
+		end;
+		apply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.BrickColor = self.terminal_colors[Target];
+					Selection:add( Target );
+				end;
+			end;
+		end;
+	};
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.initial_colors[Item] = Item.BrickColor;
+		end;
+	end;
+
+end;
+
+Tools.Paint.finishHistoryRecord = function ( self )
+
+	if not self.State.HistoryRecord then
+		return;
+	end;
+
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.terminal_colors[Item] = Item.BrickColor;
+		end;
+	end;
+	History:add( self.State.HistoryRecord );
+	self.State.HistoryRecord = nil;
+
+end;
+
 Tools.Paint.Listeners.Button1Up = function ()
 
 	local self = Tools.Paint;
@@ -2854,17 +2908,7 @@ Tools.Paint.Listeners.Button1Up = function ()
 
 		override_selection = true;
 
-		-- Add a new record to the history system
-		local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-		local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-		_replaceParts( old_parts, new_parts );
-		for _, Item in pairs( new_parts ) do
-			Selection:add( Item );
-		end;
-		if #focus_search > 0 then
-			Selection:focus( new_parts[focus_search[1]] );
-		end;
-		History:add( old_parts, new_parts );
+		self:startHistoryRecord();
 
 		-- Paint all of the selected items `Tools.Paint.Options.Color`
 		if self.Options.Color then
@@ -2872,6 +2916,8 @@ Tools.Paint.Listeners.Button1Up = function ()
 				Item.BrickColor = self.Options.Color;
 			end;
 		end;
+
+		self:finishHistoryRecord();
 
 	end;
 
@@ -2885,22 +2931,14 @@ Tools.Paint.changeColor = function ( self, Color )
 		-- First of all, change the color option itself
 		self.Options.Color = Color;
 
-		-- Add a new record to the history system
-		local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-		local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-		_replaceParts( old_parts, new_parts );
-		for _, Item in pairs( new_parts ) do
-			Selection:add( Item );
-		end;
-		if #focus_search > 0 then
-			Selection:focus( new_parts[focus_search[1]] );
-		end;
-		History:add( old_parts, new_parts );
+		self:startHistoryRecord();
 
 		-- Then, we want to update the color of any items in the selection
 		for _, Item in pairs( Selection.Items ) do
 			Item.BrickColor = Color;
 		end;
+
+		self:finishHistoryRecord();
 
 		-- After that, we want to mark our new color in the palette
 		if self.GUI then

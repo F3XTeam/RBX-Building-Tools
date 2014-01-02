@@ -2836,41 +2836,101 @@ Tools.Paint.Options = {
 &#9;[&quot;Color&quot;] = nil
 };
 
-Tools.Paint.Temporary = {};
+Tools.Paint.State = {};
 
 -- Add listeners
 Tools.Paint.Listeners = {};
 
 Tools.Paint.Listeners.Equipped = function ()
 
+&#9;local self = Tools.Paint;
+
 &#9;-- Change the color of selection boxes temporarily
-&#9;Tools.Paint.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
-&#9;SelectionBoxColor = Tools.Paint.Color;
+&#9;self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+&#9;SelectionBoxColor = self.Color;
 &#9;updateSelectionBoxColor();
 
 &#9;-- Show the GUI
-&#9;Tools.Paint:showGUI();
+&#9;self:showGUI();
 
 &#9;-- Update the selected color
-&#9;Tools.Paint:changeColor( Tools.Paint.Options.Color );
+&#9;self:changeColor( self.Options.Color );
 
 end;
 
 Tools.Paint.Listeners.Unequipped = function ()
 
+&#9;local self = Tools.Paint;
+
 &#9;-- Clear out the preferred color option
-&#9;Tools.Paint:changeColor( nil );
+&#9;self:changeColor( nil );
 
 &#9;-- Hide the GUI
-&#9;Tools.Paint:hideGUI();
+&#9;self:hideGUI();
 
 &#9;-- Restore the original color of the selection boxes
-&#9;SelectionBoxColor = Tools.Paint.Temporary.PreviousSelectionBoxColor;
+&#9;SelectionBoxColor = self.State.PreviousSelectionBoxColor;
 &#9;updateSelectionBoxColor();
 
 end;
 
+Tools.Paint.startHistoryRecord = function ( self )
+
+&#9;if self.State.HistoryRecord then
+&#9;&#9;self.State.HistoryRecord = nil;
+&#9;end;
+
+&#9;-- Create a history record
+&#9;self.State.HistoryRecord = {
+&#9;&#9;targets = _cloneTable( Selection.Items );
+&#9;&#9;initial_colors = {};
+&#9;&#9;terminal_colors = {};
+&#9;&#9;unapply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Target in pairs( self.targets ) do
+&#9;&#9;&#9;&#9;if Target then
+&#9;&#9;&#9;&#9;&#9;Target.BrickColor = self.initial_colors[Target];
+&#9;&#9;&#9;&#9;&#9;Selection:add( Target );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;&#9;apply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Target in pairs( self.targets ) do
+&#9;&#9;&#9;&#9;if Target then
+&#9;&#9;&#9;&#9;&#9;Target.BrickColor = self.terminal_colors[Target];
+&#9;&#9;&#9;&#9;&#9;Selection:add( Target );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;};
+&#9;for _, Item in pairs( self.State.HistoryRecord.targets ) do
+&#9;&#9;if Item then
+&#9;&#9;&#9;self.State.HistoryRecord.initial_colors[Item] = Item.BrickColor;
+&#9;&#9;end;
+&#9;end;
+
+end;
+
+Tools.Paint.finishHistoryRecord = function ( self )
+
+&#9;if not self.State.HistoryRecord then
+&#9;&#9;return;
+&#9;end;
+
+&#9;for _, Item in pairs( self.State.HistoryRecord.targets ) do
+&#9;&#9;if Item then
+&#9;&#9;&#9;self.State.HistoryRecord.terminal_colors[Item] = Item.BrickColor;
+&#9;&#9;end;
+&#9;end;
+&#9;History:add( self.State.HistoryRecord );
+&#9;self.State.HistoryRecord = nil;
+
+end;
+
 Tools.Paint.Listeners.Button1Up = function ()
+
+&#9;local self = Tools.Paint;
 
 &#9;-- Make sure that they clicked on one of the items in their selection
 &#9;-- (and they weren&apos;t multi-selecting)
@@ -2878,24 +2938,16 @@ Tools.Paint.Listeners.Button1Up = function ()
 
 &#9;&#9;override_selection = true;
 
-&#9;&#9;-- Add a new record to the history system
-&#9;&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-&#9;&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-&#9;&#9;_replaceParts( old_parts, new_parts );
-&#9;&#9;for _, Item in pairs( new_parts ) do
-&#9;&#9;&#9;Selection:add( Item );
-&#9;&#9;end;
-&#9;&#9;if #focus_search &gt; 0 then
-&#9;&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
-&#9;&#9;end;
-&#9;&#9;History:add( old_parts, new_parts );
+&#9;&#9;self:startHistoryRecord();
 
 &#9;&#9;-- Paint all of the selected items `Tools.Paint.Options.Color`
-&#9;&#9;if Tools.Paint.Options.Color then
+&#9;&#9;if self.Options.Color then
 &#9;&#9;&#9;for _, Item in pairs( Selection.Items ) do
-&#9;&#9;&#9;&#9;Item.BrickColor = Tools.Paint.Options.Color;
+&#9;&#9;&#9;&#9;Item.BrickColor = self.Options.Color;
 &#9;&#9;&#9;end;
 &#9;&#9;end;
+
+&#9;&#9;self:finishHistoryRecord();
 
 &#9;end;
 
@@ -2909,33 +2961,25 @@ Tools.Paint.changeColor = function ( self, Color )
 &#9;&#9;-- First of all, change the color option itself
 &#9;&#9;self.Options.Color = Color;
 
-&#9;&#9;-- Add a new record to the history system
-&#9;&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-&#9;&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-&#9;&#9;_replaceParts( old_parts, new_parts );
-&#9;&#9;for _, Item in pairs( new_parts ) do
-&#9;&#9;&#9;Selection:add( Item );
-&#9;&#9;end;
-&#9;&#9;if #focus_search &gt; 0 then
-&#9;&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
-&#9;&#9;end;
-&#9;&#9;History:add( old_parts, new_parts );
+&#9;&#9;self:startHistoryRecord();
 
 &#9;&#9;-- Then, we want to update the color of any items in the selection
 &#9;&#9;for _, Item in pairs( Selection.Items ) do
 &#9;&#9;&#9;Item.BrickColor = Color;
 &#9;&#9;end;
 
+&#9;&#9;self:finishHistoryRecord();
+
 &#9;&#9;-- After that, we want to mark our new color in the palette
-&#9;&#9;if self.Temporary.GUI then
+&#9;&#9;if self.GUI then
 
 &#9;&#9;&#9;-- First clear out any other marks
-&#9;&#9;&#9;for _, ColorSquare in pairs( self.Temporary.GUI.Palette:GetChildren() ) do
+&#9;&#9;&#9;for _, ColorSquare in pairs( self.GUI.Palette:GetChildren() ) do
 &#9;&#9;&#9;&#9;ColorSquare.Text = &quot;&quot;;
 &#9;&#9;&#9;end;
 
 &#9;&#9;&#9;-- Then mark the right square
-&#9;&#9;&#9;self.Temporary.GUI.Palette[Color.Name].Text = &quot;X&quot;;
+&#9;&#9;&#9;self.GUI.Palette[Color.Name].Text = &quot;X&quot;;
 
 &#9;&#9;end;
 
@@ -2946,8 +2990,8 @@ Tools.Paint.changeColor = function ( self, Color )
 &#9;&#9;self.Options.Color = nil;
 
 &#9;&#9;-- Clear out any color option marks on any of the squares
-&#9;&#9;if self.Temporary.GUI then
-&#9;&#9;&#9;for _, ColorSquare in pairs( self.Temporary.GUI.Palette:GetChildren() ) do
+&#9;&#9;if self.GUI then
+&#9;&#9;&#9;for _, ColorSquare in pairs( self.GUI.Palette:GetChildren() ) do
 &#9;&#9;&#9;&#9;ColorSquare.Text = &quot;&quot;;
 &#9;&#9;&#9;end;
 &#9;&#9;end;
@@ -2959,7 +3003,7 @@ end;
 Tools.Paint.showGUI = function ( self )
 
 &#9;-- Initialize the GUI if it&apos;s not ready yet
-&#9;if not self.Temporary.GUI then
+&#9;if not self.GUI then
 
 &#9;&#9;local Container = Tool:WaitForChild( &quot;BTPaintToolGUI&quot; ):Clone();
 &#9;&#9;Container.Parent = UI;
@@ -2970,19 +3014,19 @@ Tools.Paint.showGUI = function ( self )
 &#9;&#9;&#9;end );
 &#9;&#9;end;
 
-&#9;&#9;self.Temporary.GUI = Container;
+&#9;&#9;self.GUI = Container;
 &#9;end;
 
 &#9;-- Reveal the GUI
-&#9;self.Temporary.GUI.Visible = true;
+&#9;self.GUI.Visible = true;
 
 end;
 
 Tools.Paint.hideGUI = function ( self )
 
 &#9;-- Hide the GUI if it exists
-&#9;if self.Temporary.GUI then
-&#9;&#9;self.Temporary.GUI.Visible = false;
+&#9;if self.GUI then
+&#9;&#9;self.GUI.Visible = false;
 &#9;end;
 
 end;
