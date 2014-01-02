@@ -4505,9 +4505,22 @@ Tools.NewPart.Listeners.Button1Down = function ()
 	Selection:clear();
 	Selection:add( NewPart );
 
-	-- Add a new record to the history system
-	local new_parts = { NewPart };
-	History:add( {}, new_parts );
+	local HistoryRecord = {
+		target = NewPart;
+		apply = function ( self )
+			Selection:clear();
+			if self.target then
+				self.target.Parent = Services.Workspace;
+				Selection:add( self.target );
+			end;
+		end;
+		unapply = function ( self )
+			if self.target then
+				self.target.Parent = nil;
+			end;
+		end;
+	};
+	History:add( HistoryRecord );
 
 	-- Switch to the move tool and simulate clicking so
 	-- that the user could easily position their new part
