@@ -3009,9 +3009,7 @@ end;
 Tools.Anchor = {};
 
 -- Create structures to hold data that the tool needs
-Tools.Anchor.Temporary = {
-	["Connections"] = {};
-};
+Tools.Anchor.Connections = {};
 
 Tools.Anchor.State = {
 	["anchored"] = nil;
@@ -3025,27 +3023,29 @@ Tools.Anchor.Color = BrickColor.new( "Really black" );
 -- Start adding functionality to the tool
 Tools.Anchor.Listeners.Equipped = function ()
 
+	local self = Tools.Anchor;
+
 	-- Change the color of selection boxes temporarily
-	Tools.Anchor.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = Tools.Anchor.Color;
+	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = self.Color;
 	updateSelectionBoxColor();
 
 	-- Reveal the GUI
-	Tools.Anchor:showGUI();
+	self:showGUI();
 
 	-- Update the GUI regularly
 	coroutine.wrap( function ()
 		local updater_on = true;
 
 		-- Provide a function to stop the loop
-		Tools.Anchor.Temporary.Updater = function ()
+		self.Updater = function ()
 			updater_on = false;
 		end;
 
 		while wait( 0.1 ) and updater_on do
 
 			-- Make sure the tool's equipped
-			if CurrentTool == Tools.Anchor then
+			if CurrentTool == self then
 
 				-- Update the anchor status of every item in the selection
 				local anchor_status = nil;
@@ -3064,11 +3064,11 @@ Tools.Anchor.Listeners.Equipped = function ()
 
 				end;
 
-				Tools.Anchor.State.anchored = anchor_status;
+				self.State.anchored = anchor_status;
 
 				-- Update the GUI if it's visible
-				if Tools.Anchor.Temporary.GUI and Tools.Anchor.Temporary.GUI.Visible then
-					Tools.Anchor:updateGUI();
+				if self.GUI and self.GUI.Visible then
+					self:updateGUI();
 				end;
 
 			end;
@@ -3078,7 +3078,7 @@ Tools.Anchor.Listeners.Equipped = function ()
 	end )();
 
 	-- Listen for the Enter button to be pressed to toggle the anchor
-	Tools.Anchor.Temporary.Connections.EnterButtonListener = Mouse.KeyDown:connect( function ( key )
+	self.Connections.EnterButtonListener = Mouse.KeyDown:connect( function ( key )
 
 		local key = key:lower();
 		local key_code = key:byte();
@@ -3086,14 +3086,14 @@ Tools.Anchor.Listeners.Equipped = function ()
 		-- If the Enter button is pressed
 		if key_code == 13 then
 
-			if Tools.Anchor.State.anchored == true then
-				Tools.Anchor:unanchor();
+			if self.State.anchored == true then
+				self:unanchor();
 
-			elseif Tools.Anchor.State.anchored == false then
-				Tools.Anchor:anchor();
+			elseif self.State.anchored == false then
+				self:anchor();
 
-			elseif Tools.Anchor.State.anchored == nil then
-				Tools.Anchor:anchor();
+			elseif self.State.anchored == nil then
+				self:anchor();
 
 			end;
 
@@ -3150,7 +3150,7 @@ end;
 Tools.Anchor.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet
-	if not self.Temporary.GUI then
+	if not self.GUI then
 
 		local Container = Tool:WaitForChild( "BTAnchorToolGUI" ):Clone();
 		Container.Parent = UI;
@@ -3164,22 +3164,22 @@ Tools.Anchor.showGUI = function ( self )
 			self:unanchor();
 		end );
 
-		self.Temporary.GUI = Container;
+		self.GUI = Container;
 	end;
 
 	-- Reveal the GUI
-	self.Temporary.GUI.Visible = true;
+	self.GUI.Visible = true;
 
 end;
 
 Tools.Anchor.updateGUI = function ( self )
 
 	-- Make sure the GUI exists
-	if not self.Temporary.GUI then
+	if not self.GUI then
 		return;
 	end;
 
-	local GUI = self.Temporary.GUI;
+	local GUI = self.GUI;
 
 	if self.State.anchored == nil then
 		GUI.Status.Anchored.Background.Image = light_slanted_rectangle;
@@ -3206,29 +3206,31 @@ end;
 Tools.Anchor.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists
-	if self.Temporary.GUI then
-		self.Temporary.GUI.Visible = false;
+	if self.GUI then
+		self.GUI.Visible = false;
 	end;
 
 end;
 
 Tools.Anchor.Listeners.Unequipped = function ()
 
+	local self = Tools.Anchor;
+
 	-- Stop the update loop
-	Tools.Anchor.Temporary.Updater();
-	Tools.Anchor.Temporary.Updater = nil;
+	self.Updater();
+	self.Updater = nil;
 
 	-- Hide the GUI
-	Tools.Anchor:hideGUI();
+	self:hideGUI();
 
 	-- Clear out any temporary connections
-	for connection_index, Connection in pairs( Tools.Anchor.Temporary.Connections ) do
+	for connection_index, Connection in pairs( self.Connections ) do
 		Connection:disconnect();
-		Tools.Anchor.Temporary.Connections[connection_index] = nil;
+		self.Connections[connection_index] = nil;
 	end;
 
 	-- Restore the original color of the selection boxes
-	SelectionBoxColor = Tools.Anchor.Temporary.PreviousSelectionBoxColor;
+	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
 	updateSelectionBoxColor();
 
 end;
