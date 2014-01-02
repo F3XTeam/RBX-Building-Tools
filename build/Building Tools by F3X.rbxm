@@ -3039,9 +3039,7 @@ end;
 Tools.Anchor = {};
 
 -- Create structures to hold data that the tool needs
-Tools.Anchor.Temporary = {
-&#9;[&quot;Connections&quot;] = {};
-};
+Tools.Anchor.Connections = {};
 
 Tools.Anchor.State = {
 &#9;[&quot;anchored&quot;] = nil;
@@ -3055,27 +3053,29 @@ Tools.Anchor.Color = BrickColor.new( &quot;Really black&quot; );
 -- Start adding functionality to the tool
 Tools.Anchor.Listeners.Equipped = function ()
 
+&#9;local self = Tools.Anchor;
+
 &#9;-- Change the color of selection boxes temporarily
-&#9;Tools.Anchor.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
-&#9;SelectionBoxColor = Tools.Anchor.Color;
+&#9;self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+&#9;SelectionBoxColor = self.Color;
 &#9;updateSelectionBoxColor();
 
 &#9;-- Reveal the GUI
-&#9;Tools.Anchor:showGUI();
+&#9;self:showGUI();
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
 &#9;&#9;local updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
-&#9;&#9;Tools.Anchor.Temporary.Updater = function ()
+&#9;&#9;self.Updater = function ()
 &#9;&#9;&#9;updater_on = false;
 &#9;&#9;end;
 
 &#9;&#9;while wait( 0.1 ) and updater_on do
 
 &#9;&#9;&#9;-- Make sure the tool&apos;s equipped
-&#9;&#9;&#9;if CurrentTool == Tools.Anchor then
+&#9;&#9;&#9;if CurrentTool == self then
 
 &#9;&#9;&#9;&#9;-- Update the anchor status of every item in the selection
 &#9;&#9;&#9;&#9;local anchor_status = nil;
@@ -3094,11 +3094,11 @@ Tools.Anchor.Listeners.Equipped = function ()
 
 &#9;&#9;&#9;&#9;end;
 
-&#9;&#9;&#9;&#9;Tools.Anchor.State.anchored = anchor_status;
+&#9;&#9;&#9;&#9;self.State.anchored = anchor_status;
 
 &#9;&#9;&#9;&#9;-- Update the GUI if it&apos;s visible
-&#9;&#9;&#9;&#9;if Tools.Anchor.Temporary.GUI and Tools.Anchor.Temporary.GUI.Visible then
-&#9;&#9;&#9;&#9;&#9;Tools.Anchor:updateGUI();
+&#9;&#9;&#9;&#9;if self.GUI and self.GUI.Visible then
+&#9;&#9;&#9;&#9;&#9;self:updateGUI();
 &#9;&#9;&#9;&#9;end;
 
 &#9;&#9;&#9;end;
@@ -3108,7 +3108,7 @@ Tools.Anchor.Listeners.Equipped = function ()
 &#9;end )();
 
 &#9;-- Listen for the Enter button to be pressed to toggle the anchor
-&#9;Tools.Anchor.Temporary.Connections.EnterButtonListener = Mouse.KeyDown:connect( function ( key )
+&#9;self.Connections.EnterButtonListener = Mouse.KeyDown:connect( function ( key )
 
 &#9;&#9;local key = key:lower();
 &#9;&#9;local key_code = key:byte();
@@ -3116,14 +3116,14 @@ Tools.Anchor.Listeners.Equipped = function ()
 &#9;&#9;-- If the Enter button is pressed
 &#9;&#9;if key_code == 13 then
 
-&#9;&#9;&#9;if Tools.Anchor.State.anchored == true then
-&#9;&#9;&#9;&#9;Tools.Anchor:unanchor();
+&#9;&#9;&#9;if self.State.anchored == true then
+&#9;&#9;&#9;&#9;self:unanchor();
 
-&#9;&#9;&#9;elseif Tools.Anchor.State.anchored == false then
-&#9;&#9;&#9;&#9;Tools.Anchor:anchor();
+&#9;&#9;&#9;elseif self.State.anchored == false then
+&#9;&#9;&#9;&#9;self:anchor();
 
-&#9;&#9;&#9;elseif Tools.Anchor.State.anchored == nil then
-&#9;&#9;&#9;&#9;Tools.Anchor:anchor();
+&#9;&#9;&#9;elseif self.State.anchored == nil then
+&#9;&#9;&#9;&#9;self:anchor();
 
 &#9;&#9;&#9;end;
 
@@ -3133,19 +3133,76 @@ Tools.Anchor.Listeners.Equipped = function ()
 
 end;
 
+
+Tools.Anchor.startHistoryRecord = function ( self )
+
+&#9;if self.State.HistoryRecord then
+&#9;&#9;self.State.HistoryRecord = nil;
+&#9;end;
+
+&#9;-- Create a history record
+&#9;self.State.HistoryRecord = {
+&#9;&#9;targets = _cloneTable( Selection.Items );
+&#9;&#9;initial_positions = {};
+&#9;&#9;terminal_positions = {};
+&#9;&#9;initial_anchors = {};
+&#9;&#9;terminal_anchors = {};
+&#9;&#9;unapply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Target in pairs( self.targets ) do
+&#9;&#9;&#9;&#9;if Target then
+&#9;&#9;&#9;&#9;&#9;Target.RotVelocity = Vector3.new( 0, 0, 0 );
+&#9;&#9;&#9;&#9;&#9;Target.Velocity = Vector3.new( 0, 0, 0 );
+&#9;&#9;&#9;&#9;&#9;Target.CFrame = self.initial_positions[Target];
+&#9;&#9;&#9;&#9;&#9;Target.Anchored = self.initial_anchors[Target];
+&#9;&#9;&#9;&#9;&#9;Target:MakeJoints();
+&#9;&#9;&#9;&#9;&#9;Selection:add( Target );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;&#9;apply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Target in pairs( self.targets ) do
+&#9;&#9;&#9;&#9;if Target then
+&#9;&#9;&#9;&#9;&#9;Target.RotVelocity = Vector3.new( 0, 0, 0 );
+&#9;&#9;&#9;&#9;&#9;Target.Velocity = Vector3.new( 0, 0, 0 );
+&#9;&#9;&#9;&#9;&#9;Target.CFrame = self.terminal_positions[Target];
+&#9;&#9;&#9;&#9;&#9;Target.Anchored = self.terminal_anchors[Target];
+&#9;&#9;&#9;&#9;&#9;Target:MakeJoints();
+&#9;&#9;&#9;&#9;&#9;Selection:add( Target );
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;};
+&#9;for _, Item in pairs( self.State.HistoryRecord.targets ) do
+&#9;&#9;if Item then
+&#9;&#9;&#9;self.State.HistoryRecord.initial_anchors[Item] = Item.Anchored;
+&#9;&#9;&#9;self.State.HistoryRecord.initial_positions[Item] = Item.CFrame;
+&#9;&#9;end;
+&#9;end;
+
+end;
+
+Tools.Anchor.finishHistoryRecord = function ( self )
+
+&#9;if not self.State.HistoryRecord then
+&#9;&#9;return;
+&#9;end;
+
+&#9;for _, Item in pairs( self.State.HistoryRecord.targets ) do
+&#9;&#9;if Item then
+&#9;&#9;&#9;self.State.HistoryRecord.terminal_anchors[Item] = Item.Anchored;
+&#9;&#9;&#9;self.State.HistoryRecord.terminal_positions[Item] = Item.CFrame;
+&#9;&#9;end;
+&#9;end;
+&#9;History:add( self.State.HistoryRecord );
+&#9;self.State.HistoryRecord = nil;
+
+end;
+
 Tools.Anchor.anchor = function ( self )
 
-&#9;-- Add a new record to the history system
-&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-&#9;_replaceParts( old_parts, new_parts );
-&#9;for _, Item in pairs( new_parts ) do
-&#9;&#9;Selection:add( Item );
-&#9;end;
-&#9;if #focus_search &gt; 0 then
-&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
-&#9;end;
-&#9;History:add( old_parts, new_parts );
+&#9;self:startHistoryRecord();
 
 &#9;-- Anchor all the items in the selection
 &#9;for _, Item in pairs( Selection.Items ) do
@@ -3153,34 +3210,30 @@ Tools.Anchor.anchor = function ( self )
 &#9;&#9;Item:MakeJoints();
 &#9;end;
 
+&#9;self:finishHistoryRecord();
+
 end;
 
 Tools.Anchor.unanchor = function ( self )
 
-&#9;-- Add a new record to the history system
-&#9;local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-&#9;local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-&#9;_replaceParts( old_parts, new_parts );
-&#9;for _, Item in pairs( new_parts ) do
-&#9;&#9;Selection:add( Item );
-&#9;end;
-&#9;if #focus_search &gt; 0 then
-&#9;&#9;Selection:focus( new_parts[focus_search[1]] );
-&#9;end;
-&#9;History:add( old_parts, new_parts );
+&#9;self:startHistoryRecord();
 
 &#9;-- Unanchor all the items in the selection
 &#9;for _, Item in pairs( Selection.Items ) do
 &#9;&#9;Item.Anchored = false;
+&#9;&#9;Item.Velocity = Vector3.new( 0, 0, 0 );
+&#9;&#9;Item.RotVelocity = Vector3.new( 0, 0, 0 );
 &#9;&#9;Item:MakeJoints();
 &#9;end;
+
+&#9;self:finishHistoryRecord();
 
 end;
 
 Tools.Anchor.showGUI = function ( self )
 
 &#9;-- Initialize the GUI if it&apos;s not ready yet
-&#9;if not self.Temporary.GUI then
+&#9;if not self.GUI then
 
 &#9;&#9;local Container = Tool:WaitForChild( &quot;BTAnchorToolGUI&quot; ):Clone();
 &#9;&#9;Container.Parent = UI;
@@ -3194,22 +3247,22 @@ Tools.Anchor.showGUI = function ( self )
 &#9;&#9;&#9;self:unanchor();
 &#9;&#9;end );
 
-&#9;&#9;self.Temporary.GUI = Container;
+&#9;&#9;self.GUI = Container;
 &#9;end;
 
 &#9;-- Reveal the GUI
-&#9;self.Temporary.GUI.Visible = true;
+&#9;self.GUI.Visible = true;
 
 end;
 
 Tools.Anchor.updateGUI = function ( self )
 
 &#9;-- Make sure the GUI exists
-&#9;if not self.Temporary.GUI then
+&#9;if not self.GUI then
 &#9;&#9;return;
 &#9;end;
 
-&#9;local GUI = self.Temporary.GUI;
+&#9;local GUI = self.GUI;
 
 &#9;if self.State.anchored == nil then
 &#9;&#9;GUI.Status.Anchored.Background.Image = light_slanted_rectangle;
@@ -3236,29 +3289,31 @@ end;
 Tools.Anchor.hideGUI = function ( self )
 
 &#9;-- Hide the GUI if it exists
-&#9;if self.Temporary.GUI then
-&#9;&#9;self.Temporary.GUI.Visible = false;
+&#9;if self.GUI then
+&#9;&#9;self.GUI.Visible = false;
 &#9;end;
 
 end;
 
 Tools.Anchor.Listeners.Unequipped = function ()
 
+&#9;local self = Tools.Anchor;
+
 &#9;-- Stop the update loop
-&#9;Tools.Anchor.Temporary.Updater();
-&#9;Tools.Anchor.Temporary.Updater = nil;
+&#9;self.Updater();
+&#9;self.Updater = nil;
 
 &#9;-- Hide the GUI
-&#9;Tools.Anchor:hideGUI();
+&#9;self:hideGUI();
 
 &#9;-- Clear out any temporary connections
-&#9;for connection_index, Connection in pairs( Tools.Anchor.Temporary.Connections ) do
+&#9;for connection_index, Connection in pairs( self.Connections ) do
 &#9;&#9;Connection:disconnect();
-&#9;&#9;Tools.Anchor.Temporary.Connections[connection_index] = nil;
+&#9;&#9;self.Connections[connection_index] = nil;
 &#9;end;
 
 &#9;-- Restore the original color of the selection boxes
-&#9;SelectionBoxColor = Tools.Anchor.Temporary.PreviousSelectionBoxColor;
+&#9;SelectionBoxColor = self.State.PreviousSelectionBoxColor;
 &#9;updateSelectionBoxColor();
 
 end;

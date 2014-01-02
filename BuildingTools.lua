@@ -3103,19 +3103,76 @@ Tools.Anchor.Listeners.Equipped = function ()
 
 end;
 
+
+Tools.Anchor.startHistoryRecord = function ( self )
+
+	if self.State.HistoryRecord then
+		self.State.HistoryRecord = nil;
+	end;
+
+	-- Create a history record
+	self.State.HistoryRecord = {
+		targets = _cloneTable( Selection.Items );
+		initial_positions = {};
+		terminal_positions = {};
+		initial_anchors = {};
+		terminal_anchors = {};
+		unapply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.RotVelocity = Vector3.new( 0, 0, 0 );
+					Target.Velocity = Vector3.new( 0, 0, 0 );
+					Target.CFrame = self.initial_positions[Target];
+					Target.Anchored = self.initial_anchors[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+		apply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.RotVelocity = Vector3.new( 0, 0, 0 );
+					Target.Velocity = Vector3.new( 0, 0, 0 );
+					Target.CFrame = self.terminal_positions[Target];
+					Target.Anchored = self.terminal_anchors[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+	};
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.initial_anchors[Item] = Item.Anchored;
+			self.State.HistoryRecord.initial_positions[Item] = Item.CFrame;
+		end;
+	end;
+
+end;
+
+Tools.Anchor.finishHistoryRecord = function ( self )
+
+	if not self.State.HistoryRecord then
+		return;
+	end;
+
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.terminal_anchors[Item] = Item.Anchored;
+			self.State.HistoryRecord.terminal_positions[Item] = Item.CFrame;
+		end;
+	end;
+	History:add( self.State.HistoryRecord );
+	self.State.HistoryRecord = nil;
+
+end;
+
 Tools.Anchor.anchor = function ( self )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	self:startHistoryRecord();
 
 	-- Anchor all the items in the selection
 	for _, Item in pairs( Selection.Items ) do
@@ -3123,27 +3180,23 @@ Tools.Anchor.anchor = function ( self )
 		Item:MakeJoints();
 	end;
 
+	self:finishHistoryRecord();
+
 end;
 
 Tools.Anchor.unanchor = function ( self )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	self:startHistoryRecord();
 
 	-- Unanchor all the items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item.Anchored = false;
+		Item.Velocity = Vector3.new( 0, 0, 0 );
+		Item.RotVelocity = Vector3.new( 0, 0, 0 );
 		Item:MakeJoints();
 	end;
+
+	self:finishHistoryRecord();
 
 end;
 
