@@ -1485,9 +1485,7 @@ end;
 Tools.Resize = {};
 
 -- Create structures that will be used within the tool
-Tools.Resize.Temporary = {
-	["Connections"] = {};
-};
+Tools.Resize.Connections = {};
 
 Tools.Resize.Options = {
 	["increment"] = 1;
@@ -1508,29 +1506,31 @@ Tools.Resize.Color = BrickColor.new( "Cyan" );
 
 Tools.Resize.Listeners.Equipped = function ()
 
+	local self = Tools.Resize;
+
 	-- Change the color of selection boxes temporarily
-	Tools.Resize.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = Tools.Resize.Color;
+	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = self.Color;
 	updateSelectionBoxColor();
 
 	-- Reveal the GUI
-	Tools.Resize:showGUI();
+	self:showGUI();
 
 	-- Always have the handles on the most recent addition to the selection
-	table.insert( Tools.Resize.Temporary.Connections, Selection.Changed:connect( function ()
+	table.insert( self.Connections, Selection.Changed:connect( function ()
 
 		-- Clear out any previous adornee
-		Tools.Resize:hideHandles();
+		self:hideHandles();
 
 		-- If there /is/ a last item in the selection, attach the handles to it
 		if Selection.Last then
-			Tools.Resize:showHandles( Selection.Last );
+			self:showHandles( Selection.Last );
 		end;
 
 	end ) );
 
 	-- Switch the adornee of the handles if the second mouse button is pressed
-	table.insert( Tools.Resize.Temporary.Connections, Mouse.Button2Up:connect( function ()
+	table.insert( self.Connections, Mouse.Button2Up:connect( function ()
 
 		-- Make sure the platform doesn't think we're selecting
 		override_selection = true;
@@ -1544,7 +1544,7 @@ Tools.Resize.Listeners.Equipped = function ()
 
 	-- Finally, attach the handles to the last item added to the selection (if any)
 	if Selection.Last then
-		Tools.Resize:showHandles( Selection.Last );
+		self:showHandles( Selection.Last );
 	end;
 
 	-- Update the GUI regularly
@@ -1552,18 +1552,18 @@ Tools.Resize.Listeners.Equipped = function ()
 		local updater_on = true;
 
 		-- Provide a function to stop the loop
-		Tools.Resize.Temporary.Updater = function ()
+		self.Updater = function ()
 			updater_on = false;
 		end;
 
 		while wait( 0.1 ) and updater_on do
 
 			-- Make sure the tool's equipped
-			if CurrentTool == Tools.Resize then
+			if CurrentTool == self then
 
 				-- Update the GUI if it's visible
-				if Tools.Resize.Temporary.GUI and Tools.Resize.Temporary.GUI.Visible then
-					Tools.Resize:updateGUI();
+				if self.GUI and self.GUI.Visible then
+					self:updateGUI();
 				end;
 
 			end;
@@ -1576,24 +1576,26 @@ end;
 
 Tools.Resize.Listeners.Unequipped = function ()
 
+	local self = Tools.Resize;
+
 	-- Stop the update loop
-	Tools.Resize.Temporary.Updater();
-	Tools.Resize.Temporary.Updater = nil;
+	self.Updater();
+	self.Updater = nil;
 
 	-- Hide the GUI
-	Tools.Resize:hideGUI();
+	self:hideGUI();
 
 	-- Hide the handles
-	Tools.Resize:hideHandles();
+	self:hideHandles();
 
 	-- Clear out any temporary connections
-	for connection_index, Connection in pairs( Tools.Resize.Temporary.Connections ) do
+	for connection_index, Connection in pairs( self.Connections ) do
 		Connection:disconnect();
-		Tools.Resize.Temporary.Connections[connection_index] = nil;
+		self.Connections[connection_index] = nil;
 	end;
 
 	-- Restore the original color of the selection boxes
-	SelectionBoxColor = Tools.Resize.Temporary.PreviousSelectionBoxColor;
+	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
 	updateSelectionBoxColor();
 
 end;
@@ -1601,7 +1603,7 @@ end;
 Tools.Resize.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet
-	if not self.Temporary.GUI then
+	if not self.GUI then
 
 		local Container = Tool:WaitForChild( "BTResizeToolGUI" ):Clone();
 		Container.Parent = UI;
@@ -1664,11 +1666,11 @@ Tools.Resize.showGUI = function ( self )
 			self.State.size_z_focused = false;
 		end );
 
-		self.Temporary.GUI = Container;
+		self.GUI = Container;
 	end;
 
 	-- Reveal the GUI
-	self.Temporary.GUI.Visible = true;
+	self.GUI.Visible = true;
 
 end;
 
@@ -1706,11 +1708,11 @@ end;
 Tools.Resize.updateGUI = function ( self )
 
 	-- Make sure the GUI exists
-	if not self.Temporary.GUI then
+	if not self.GUI then
 		return;
 	end;
 
-	local GUI = self.Temporary.GUI;
+	local GUI = self.GUI;
 
 	if #Selection.Items > 0 then
 
@@ -1767,8 +1769,8 @@ end;
 Tools.Resize.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists
-	if self.Temporary.GUI then
-		self.Temporary.GUI.Visible = false;
+	if self.GUI then
+		self.GUI.Visible = false;
 	end;
 
 end;
@@ -1776,10 +1778,10 @@ end;
 Tools.Resize.showHandles = function ( self, Part )
 
 	-- Create the handles if they don't exist yet
-	if not self.Temporary.Handles then
+	if not self.Handles then
 
 		-- Create the object
-		self.Temporary.Handles = RbxUtility.Create "Handles" {
+		self.Handles = RbxUtility.Create "Handles" {
 			Name = "BTResizeHandles";
 			Style = Enum.HandlesStyle.Resize;
 			Color = self.Color;
@@ -1787,7 +1789,7 @@ Tools.Resize.showHandles = function ( self, Part )
 		};
 
 		-- Add functionality to the handles
-		self.Temporary.Handles.MouseButton1Down:connect( function ()
+		self.Handles.MouseButton1Down:connect( function ()
 
 			-- Prevent the platform from thinking we're selecting
 			override_selection = true;
@@ -1825,16 +1827,16 @@ Tools.Resize.showHandles = function ( self, Part )
 			end;
 
 			-- Return stuff to normal once the mouse button is released
-			self.Temporary.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
+			self.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
 
 				-- Prevent the platform from thinking we're selecting
 				override_selection = true;
 				self.State.resizing = false;
 
 				-- Stop this connection from firing again
-				if self.Temporary.Connections.HandleReleaseListener then
-					self.Temporary.Connections.HandleReleaseListener:disconnect();
-					self.Temporary.Connections.HandleReleaseListener = nil;
+				if self.Connections.HandleReleaseListener then
+					self.Connections.HandleReleaseListener:disconnect();
+					self.Connections.HandleReleaseListener = nil;
 				end;
 
 				-- Restore properties that may have been changed temporarily
@@ -1849,7 +1851,7 @@ Tools.Resize.showHandles = function ( self, Part )
 
 		end );
 
-		self.Temporary.Handles.MouseDrag:connect( function ( face, drag_distance )
+		self.Handles.MouseDrag:connect( function ( face, drag_distance )
 
 			-- Calculate which multiple of the increment to use based on the current drag distance's
 			-- proximity to their nearest upper and lower multiples
@@ -2021,16 +2023,16 @@ Tools.Resize.showHandles = function ( self, Part )
 	end;
 
 	-- Stop listening for the existence of the previous adornee (if any)
-	if self.Temporary.Connections.AdorneeExistenceListener then
-		self.Temporary.Connections.AdorneeExistenceListener:disconnect();
-		self.Temporary.Connections.AdorneeExistenceListener = nil;
+	if self.Connections.AdorneeExistenceListener then
+		self.Connections.AdorneeExistenceListener:disconnect();
+		self.Connections.AdorneeExistenceListener = nil;
 	end;
 
 	-- Attach the handles to `Part`
-	self.Temporary.Handles.Adornee = Part;
+	self.Handles.Adornee = Part;
 
 	-- Make sure to hide the handles if `Part` suddenly stops existing
-	self.Temporary.Connections.AdorneeExistenceListener = Part.AncestryChanged:connect( function ( Object, NewParent )
+	self.Connections.AdorneeExistenceListener = Part.AncestryChanged:connect( function ( Object, NewParent )
 
 		-- Make sure this change in parent applies directly to `Part`
 		if Object ~= Part then
@@ -2051,8 +2053,8 @@ end;
 Tools.Resize.hideHandles = function ( self )
 
 	-- Hide the handles if they exist
-	if self.Temporary.Handles then
-		self.Temporary.Handles.Adornee = nil;
+	if self.Handles then
+		self.Handles.Adornee = nil;
 	end;
 
 end;
