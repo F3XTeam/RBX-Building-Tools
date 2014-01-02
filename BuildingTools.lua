@@ -3856,24 +3856,83 @@ Tools.Material.Listeners.Unequipped = function ()
 
 end;
 
+Tools.Material.startHistoryRecord = function ( self )
+
+	if self.State.HistoryRecord then
+		self.State.HistoryRecord = nil;
+	end;
+
+	-- Create a history record
+	self.State.HistoryRecord = {
+		targets = _cloneTable( Selection.Items );
+		initial_material = {};
+		terminal_material = {};
+		initial_transparency = {};
+		terminal_transparency = {};
+		initial_reflectance = {};
+		terminal_reflectance = {};
+		unapply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.Material = self.initial_material[Target];
+					Target.Transparency = self.initial_transparency[Target];
+					Target.Reflectance = self.initial_reflectance[Target];
+					Selection:add( Target );
+				end;
+			end;
+		end;
+		apply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.Material = self.terminal_material[Target];
+					Target.Transparency = self.terminal_transparency[Target];
+					Target.Reflectance = self.terminal_reflectance[Target];
+					Selection:add( Target );
+				end;
+			end;
+		end;
+	};
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.initial_material[Item] = Item.Material;
+			self.State.HistoryRecord.initial_transparency[Item] = Item.Transparency;
+			self.State.HistoryRecord.initial_reflectance[Item] = Item.Reflectance;
+		end;
+	end;
+
+end;
+
+Tools.Material.finishHistoryRecord = function ( self )
+
+	if not self.State.HistoryRecord then
+		return;
+	end;
+
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.terminal_material[Item] = Item.Material;
+			self.State.HistoryRecord.terminal_transparency[Item] = Item.Transparency;
+			self.State.HistoryRecord.terminal_reflectance[Item] = Item.Reflectance;
+		end;
+	end;
+	History:add( self.State.HistoryRecord );
+	self.State.HistoryRecord = nil;
+
+end;
+
 Tools.Material.changeMaterial = function ( self, material_type )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	self:startHistoryRecord();
 
 	-- Apply `material_type` to all items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item.Material = material_type;
 	end;
+
+	self:finishHistoryRecord();
+
 	if self.MaterialDropdown.open then
 		self.MaterialDropdown:toggle();
 	end;
@@ -3881,42 +3940,28 @@ end;
 
 Tools.Material.changeTransparency = function ( self, transparency )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	self:startHistoryRecord();
 
 	-- Apply `transparency` to all items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item.Transparency = transparency;
 	end;
+
+	self:finishHistoryRecord();
+
 end;
 
 Tools.Material.changeReflectance = function ( self, reflectance )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	self:startHistoryRecord();
 
 	-- Apply `reflectance` to all items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item.Reflectance = reflectance;
 	end;
+
+	self:finishHistoryRecord();
+
 end;
 
 Tools.Material.updateGUI = function ( self )
