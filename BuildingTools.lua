@@ -596,6 +596,11 @@ Selection = {
 	-- Provide a method to add items to the selection
 	["add"] = function ( self, NewPart )
 
+		-- Make sure `NewPart` is selectable
+		if not NewPart or not NewPart:IsA( "BasePart" ) or NewPart.Locked or NewPart.Parent == nil then
+			return false;
+		end;
+
 		-- Make sure `NewPart` isn't already in the selection
 		if #_findTableOccurrences( self.Items, NewPart ) > 0 then
 			return false;
@@ -4132,9 +4137,7 @@ end;
 Tools.Collision = {};
 
 -- Create structures to hold data that the tool needs
-Tools.Collision.Temporary = {
-	["Connections"] = {};
-};
+Tools.Collision.Connections = {};
 
 Tools.Collision.State = {
 	["colliding"] = nil;
@@ -4148,27 +4151,29 @@ Tools.Collision.Color = BrickColor.new( "Really black" );
 -- Start adding functionality to the tool
 Tools.Collision.Listeners.Equipped = function ()
 
+	local self = Tools.Collision;
+
 	-- Change the color of selection boxes temporarily
-	Tools.Collision.Temporary.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = Tools.Collision.Color;
+	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+	SelectionBoxColor = self.Color;
 	updateSelectionBoxColor();
 
 	-- Reveal the GUI
-	Tools.Collision:showGUI();
+	self:showGUI();
 
 	-- Update the GUI regularly
 	coroutine.wrap( function ()
 		local updater_on = true;
 
 		-- Provide a function to stop the loop
-		Tools.Collision.Temporary.Updater = function ()
+		self.Updater = function ()
 			updater_on = false;
 		end;
 
 		while wait( 0.1 ) and updater_on do
 
 			-- Make sure the tool's equipped
-			if CurrentTool == Tools.Collision then
+			if CurrentTool == self then
 
 				-- Update the collision status of every item in the selection
 				local colliding = nil;
@@ -4187,11 +4192,11 @@ Tools.Collision.Listeners.Equipped = function ()
 
 				end;
 
-				Tools.Collision.State.colliding = colliding;
+				self.State.colliding = colliding;
 
 				-- Update the GUI if it's visible
-				if Tools.Collision.Temporary.GUI and Tools.Collision.Temporary.GUI.Visible then
-					Tools.Collision:updateGUI();
+				if self.GUI and self.GUI.Visible then
+					self:updateGUI();
 				end;
 
 			end;
@@ -4201,7 +4206,7 @@ Tools.Collision.Listeners.Equipped = function ()
 	end )();
 
 	-- Listen for the Enter button to be pressed to toggle collision
-	Tools.Collision.Temporary.Connections.EnterButtonListener = Mouse.KeyDown:connect( function ( key )
+	self.Connections.EnterButtonListener = Mouse.KeyDown:connect( function ( key )
 
 		local key = key:lower();
 		local key_code = key:byte();
@@ -4209,14 +4214,14 @@ Tools.Collision.Listeners.Equipped = function ()
 		-- If the Enter button is pressed
 		if key_code == 13 then
 
-			if Tools.Collision.State.colliding == true then
-				Tools.Collision:disable();
+			if self.State.colliding == true then
+				self:disable();
 
-			elseif Tools.Collision.State.colliding == false then
-				Tools.Collision:enable();
+			elseif self.State.colliding == false then
+				self:enable();
 
-			elseif Tools.Collision.State.colliding == nil then
-				Tools.Collision:enable();
+			elseif self.State.colliding == nil then
+				self:enable();
 
 			end;
 
@@ -4226,52 +4231,100 @@ Tools.Collision.Listeners.Equipped = function ()
 
 end;
 
+Tools.Collision.startHistoryRecord = function ( self )
+
+	if self.State.HistoryRecord then
+		self.State.HistoryRecord = nil;
+	end;
+
+	-- Create a history record
+	self.State.HistoryRecord = {
+		targets = _cloneTable( Selection.Items );
+		initial_collide = {};
+		terminal_collide = {};
+		initial_cframe = {};
+		terminal_cframe = {};
+		unapply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.CanCollide = self.initial_collide[Target];
+					Target.CFrame = self.initial_cframe[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+		apply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.CanCollide = self.terminal_collide[Target];
+					Target.CFrame = self.terminal_cframe[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+	};
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.initial_collide[Item] = Item.CanCollide;
+			self.State.HistoryRecord.initial_cframe[Item] = Item.CFrame;
+		end;
+	end;
+
+end;
+
+Tools.Collision.finishHistoryRecord = function ( self )
+
+	if not self.State.HistoryRecord then
+		return;
+	end;
+
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.terminal_collide[Item] = Item.CanCollide;
+			self.State.HistoryRecord.terminal_cframe[Item] = Item.CFrame;
+		end;
+	end;
+	History:add( self.State.HistoryRecord );
+	self.State.HistoryRecord = nil;
+
+end;
+
 Tools.Collision.enable = function ( self )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	self:startHistoryRecord();
 
 	-- Enable collision for all the items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item.CanCollide = true;
+		Item:MakeJoints();
 	end;
+
+	self:finishHistoryRecord();
 
 end;
 
 Tools.Collision.disable = function ( self )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	self:startHistoryRecord();
 
 	-- Disable collision for all the items in the selection
 	for _, Item in pairs( Selection.Items ) do
 		Item.CanCollide = false;
+		Item:MakeJoints();
 	end;
+
+	self:finishHistoryRecord();
 
 end;
 
 Tools.Collision.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet
-	if not self.Temporary.GUI then
+	if not self.GUI then
 
 		local Container = Tool:WaitForChild( "BTCollisionToolGUI" ):Clone();
 		Container.Parent = UI;
@@ -4284,22 +4337,22 @@ Tools.Collision.showGUI = function ( self )
 			self:disable();
 		end );
 
-		self.Temporary.GUI = Container;
+		self.GUI = Container;
 	end;
 
 	-- Reveal the GUI
-	self.Temporary.GUI.Visible = true;
+	self.GUI.Visible = true;
 
 end;
 
 Tools.Collision.updateGUI = function ( self )
 
 	-- Make sure the GUI exists
-	if not self.Temporary.GUI then
+	if not self.GUI then
 		return;
 	end;
 
-	local GUI = self.Temporary.GUI;
+	local GUI = self.GUI;
 
 	if self.State.colliding == nil then
 		GUI.Status.On.Background.Image = light_slanted_rectangle;
@@ -4326,29 +4379,31 @@ end;
 Tools.Collision.hideGUI = function ( self )
 
 	-- Hide the GUI if it exists
-	if self.Temporary.GUI then
-		self.Temporary.GUI.Visible = false;
+	if self.GUI then
+		self.GUI.Visible = false;
 	end;
 
 end;
 
 Tools.Collision.Listeners.Unequipped = function ()
 
+	local self = Tools.Collision;
+
 	-- Stop the update loop
-	Tools.Collision.Temporary.Updater();
-	Tools.Collision.Temporary.Updater = nil;
+	self.Updater();
+	self.Updater = nil;
 
 	-- Hide the GUI
-	Tools.Collision:hideGUI();
+	self:hideGUI();
 
 	-- Clear out any temporary connections
-	for connection_index, Connection in pairs( Tools.Collision.Temporary.Connections ) do
+	for connection_index, Connection in pairs( self.Connections ) do
 		Connection:disconnect();
-		Tools.Collision.Temporary.Connections[connection_index] = nil;
+		self.Connections[connection_index] = nil;
 	end;
 
 	-- Restore the original color of the selection boxes
-	SelectionBoxColor = Tools.Collision.Temporary.PreviousSelectionBoxColor;
+	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
 	updateSelectionBoxColor();
 
 end;
