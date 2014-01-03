@@ -4693,17 +4693,7 @@ Tools.Mesh.TypeDropdownLabels = {
 
 Tools.Mesh.changeType = function ( self, new_type )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	self:startHistoryRecord();
 
 	-- Apply type `new_type` to all the meshes in items from the selection
 	for _, Item in pairs( Selection.Items ) do
@@ -4716,6 +4706,8 @@ Tools.Mesh.changeType = function ( self, new_type )
 	if self.TypeDropdown.open then
 		self.TypeDropdown:toggle();
 	end;
+
+	self:finishHistoryRecord();
 
 end;
 
@@ -5086,157 +5078,233 @@ end;
 
 Tools.Mesh.addMesh = function ( self )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	local HistoryRecord = {
+		apply = function ( self )
+			Selection:clear();
+			for _, Mesh in pairs( self.meshes ) do
+				Mesh.Parent = self.mesh_parents[Mesh];
+				Selection:add( Mesh.Parent );
+			end;
+		end;
+		unapply = function ( self )
+			Selection:clear();
+			for _, Mesh in pairs( self.meshes ) do
+				Selection:add( Mesh.Parent );
+				Mesh.Parent = nil;
+			end;
+		end;
+	};
 
 	-- Add meshes to all the items from the selection that
 	-- don't already have one
+	local meshes = {};
+	local mesh_parents = {};
 	for _, Item in pairs( Selection.Items ) do
 		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
 		if not Mesh then
-			RbxUtility.Create "SpecialMesh" {
+			local Mesh = RbxUtility.Create "SpecialMesh" {
 				Parent = Item;
 				MeshType = Enum.MeshType.Brick;
 			};
+			table.insert( meshes, Mesh );
+			mesh_parents[Mesh] = Item;
 		end;
 	end;
+
+	HistoryRecord.meshes = meshes;
+	HistoryRecord.mesh_parents = mesh_parents;
+	History:add( HistoryRecord );
 
 end;
 
 Tools.Mesh.removeMesh = function ( self )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	local HistoryRecord = {
+		apply = function ( self )
+			Selection:clear();
+			for _, Mesh in pairs( self.meshes ) do
+				Selection:add( Mesh.Parent );
+				Mesh.Parent = nil;
+			end;
+		end;
+		unapply = function ( self )
+			Selection:clear();
+			for _, Mesh in pairs( self.meshes ) do
+				Mesh.Parent = self.mesh_parents[Mesh];
+				Selection:add( Mesh.Parent );
+			end;
+		end;
+	};
 
+	local meshes = {};
+	local mesh_parents = {};
 	-- Remove meshes from all the selected items
 	for _, Item in pairs( Selection.Items ) do
-		local meshes = _getChildrenOfClass( Item, "SpecialMesh" );
-		for _, Mesh in pairs( meshes ) do
-			Mesh:Destroy();
+		local meshes_found = _getChildrenOfClass( Item, "SpecialMesh" );
+		for _, Mesh in pairs( meshes_found ) do
+			table.insert( meshes, Mesh );
+			mesh_parents[Mesh] = Mesh.Parent;
+			Mesh.Parent = nil;
 		end;
 	end;
+
+	HistoryRecord.meshes = meshes;
+	HistoryRecord.mesh_parents = mesh_parents;
+	History:add( HistoryRecord );
+
+end;
+
+Tools.Mesh.startHistoryRecord = function ( self, meshes )
+
+	if self.State.HistoryRecord then
+		self.State.HistoryRecord = nil;
+	end;
+
+	-- Create a history record
+	self.State.HistoryRecord = {
+		targets = _cloneTable( meshes );
+		initial_mesh = {};
+		terminal_mesh = {};
+		initial_texture = {};
+		terminal_texture = {};
+		initial_scale = {};
+		terminal_scale = {};
+		initial_tint = {};
+		terminal_tint = {};
+		unapply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Selection:add( Target.Parent );
+					Target.MeshId = self.initial_mesh[Target];
+					Target.TextureId = self.initial_texture[Target];
+					Target.Scale = self.initial_scale[Target];
+					Target.VertexColor = self.initial_tint[Target];
+				end;
+			end;
+		end;
+		apply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Selection:add( Target.Parent );
+					Target.MeshId = self.terminal_mesh[Target];
+					Target.TextureId = self.terminal_texture[Target];
+					Target.Scale = self.terminal_scale[Target];
+					Target.VertexColor = self.terminal_tint[Target];
+				end;
+			end;
+		end;
+	};
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.initial_mesh[Item] = Item.MeshId;
+			self.State.HistoryRecord.initial_texture[Item] = Item.TextureId;
+			self.State.HistoryRecord.initial_scale[Item] = Item.Scale;
+			self.State.HistoryRecord.initial_tint[Item] = Item.VertexColor;
+		end;
+	end;
+
+end;
+
+Tools.Mesh.finishHistoryRecord = function ( self )
+
+	if not self.State.HistoryRecord then
+		return;
+	end;
+
+	for _, Item in pairs( self.State.HistoryRecord.targets ) do
+		if Item then
+			self.State.HistoryRecord.terminal_mesh[Item] = Item.MeshId;
+			self.State.HistoryRecord.terminal_texture[Item] = Item.TextureId;
+			self.State.HistoryRecord.terminal_scale[Item] = Item.Scale;
+			self.State.HistoryRecord.terminal_tint[Item] = Item.VertexColor;
+		end;
+	end;
+	History:add( self.State.HistoryRecord );
+	self.State.HistoryRecord = nil;
 
 end;
 
 Tools.Mesh.changeMesh = function ( self, mesh_id )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	local meshes = {};
 
-	-- Apply type `new_type` to all the meshes in items from the selection
 	for _, Item in pairs( Selection.Items ) do
 		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
 		if Mesh then
-			Mesh.MeshId = "http://www.roblox.com/asset/?id=" .. mesh_id;
+			table.insert( meshes, Mesh );
 		end;
 	end;
+	self:startHistoryRecord( meshes );
+	for _, Mesh in pairs( meshes ) do
+		Mesh.MeshId = "http://www.roblox.com/asset/?id=" .. mesh_id;
+	end;
+	self:finishHistoryRecord();
 
 end;
 
 Tools.Mesh.changeTexture = function ( self, texture_id )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	local meshes = {};
 
-	-- Apply type `new_type` to all the meshes in items from the selection
 	for _, Item in pairs( Selection.Items ) do
 		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
 		if Mesh then
-			Mesh.TextureId = "http://www.roblox.com/asset/?id=" .. texture_id;
+			table.insert( meshes, Mesh );
 		end;
 	end;
+	self:startHistoryRecord( meshes );
+	for _, Mesh in pairs( meshes ) do
+		Mesh.TextureId = "http://www.roblox.com/asset/?id=" .. texture_id;
+	end;
+	self:finishHistoryRecord();
 
 end;
 
 Tools.Mesh.changeScale = function ( self, component, new_value )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	local meshes = {};
 
-	-- Apply type `new_type` to all the meshes in items from the selection
 	for _, Item in pairs( Selection.Items ) do
 		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
 		if Mesh then
-			Mesh.Scale = Vector3.new(
-				component == 'x' and new_value or Mesh.Scale.x,
-				component == 'y' and new_value or Mesh.Scale.y,
-				component == 'z' and new_value or Mesh.Scale.z
-			);
+			table.insert( meshes, Mesh );
 		end;
 	end;
+
+	self:startHistoryRecord( meshes );
+	for _, Mesh in pairs( meshes ) do
+		Mesh.Scale = Vector3.new(
+			component == 'x' and new_value or Mesh.Scale.x,
+			component == 'y' and new_value or Mesh.Scale.y,
+			component == 'z' and new_value or Mesh.Scale.z
+		);
+	end;
+	self:finishHistoryRecord();
 
 end;
 
 Tools.Mesh.changeTint = function ( self, component, new_value )
 
-	-- Add a new record to the history system
-	local old_parts, new_parts = _cloneTable( Selection.Items ), _cloneParts( Selection.Items );
-	local focus_search = _findTableOccurrences( old_parts, Selection.Last );
-	_replaceParts( old_parts, new_parts );
-	for _, Item in pairs( new_parts ) do
-		Selection:add( Item );
-	end;
-	if #focus_search > 0 then
-		Selection:focus( new_parts[focus_search[1]] );
-	end;
-	History:add( old_parts, new_parts );
+	local meshes = {};
 
-	-- Apply type `new_type` to all the meshes in items from the selection
 	for _, Item in pairs( Selection.Items ) do
 		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
 		if Mesh then
-			Mesh.VertexColor = Vector3.new(
-				component == 'r' and new_value or Mesh.VertexColor.x,
-				component == 'g' and new_value or Mesh.VertexColor.y,
-				component == 'b' and new_value or Mesh.VertexColor.z
-			);
+			table.insert( meshes, Mesh );
 		end;
 	end;
+
+	self:startHistoryRecord();
+	for _, Mesh in pairs( meshes ) do
+		Mesh.VertexColor = Vector3.new(
+			component == 'r' and new_value or Mesh.VertexColor.x,
+			component == 'g' and new_value or Mesh.VertexColor.y,
+			component == 'b' and new_value or Mesh.VertexColor.z
+		);
+	end;
+	self:finishHistoryRecord();
 
 end;
 
