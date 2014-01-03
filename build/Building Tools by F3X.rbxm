@@ -1479,7 +1479,7 @@ Tools.Move.changeAxes = function ( self, new_axes )
 &#9;&#9;end );
 
 &#9;&#9;-- Switch the adornee of the handles if the second mouse button is pressed
-&#9;&#9;GUI.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
+&#9;&#9;self.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
 
 &#9;&#9;&#9;-- Make sure the platform doesn&apos;t think we&apos;re selecting
 &#9;&#9;&#9;override_selection = true;
@@ -5463,21 +5463,85 @@ Tools.Texture.Listeners.Button2Up = function ()
 
 end;
 
-Tools.Texture.Listeners.KeyUp = function ( key )
+Tools.Texture.startHistoryRecord = function ( self, textures )
 
-&#9;local self = Tools.Texture;
+&#9;if self.State.HistoryRecord then
+&#9;&#9;self.State.HistoryRecord = nil;
+&#9;end;
 
-&#9;local key = key:lower();
-&#9;local key_code = key:byte();
-
-&#9;-- Toggle modes if the enter button is pressed
-&#9;if key_code == 13 then
-&#9;&#9;if self.Options.mode == &quot;decal&quot; then
-&#9;&#9;&#9;self:changeMode( &quot;texture&quot; );
-&#9;&#9;elseif self.Options.mode == &quot;texture&quot; then
-&#9;&#9;&#9;self:changeMode( &quot;decal&quot; );
+&#9;-- Create a history record
+&#9;self.State.HistoryRecord = {
+&#9;&#9;targets = _cloneTable( textures );
+&#9;&#9;initial_texture = {};
+&#9;&#9;terminal_texture = {};
+&#9;&#9;initial_transparency = {};
+&#9;&#9;terminal_transparency = {};
+&#9;&#9;initial_repeat = {};
+&#9;&#9;terminal_repeat = {};
+&#9;&#9;initial_side = {};
+&#9;&#9;terminal_side = {};
+&#9;&#9;unapply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Target in pairs( self.targets ) do
+&#9;&#9;&#9;&#9;if Target then
+&#9;&#9;&#9;&#9;&#9;Selection:add( Target.Parent );
+&#9;&#9;&#9;&#9;&#9;Target.Texture = self.initial_texture[Target];
+&#9;&#9;&#9;&#9;&#9;Target.Transparency = self.initial_transparency[Target];
+&#9;&#9;&#9;&#9;&#9;Target.Face = self.initial_side[Target];
+&#9;&#9;&#9;&#9;&#9;if Target:IsA( &quot;Texture&quot; ) then
+&#9;&#9;&#9;&#9;&#9;&#9;Target.StudsPerTileU = self.initial_repeat[Target].x;
+&#9;&#9;&#9;&#9;&#9;&#9;Target.StudsPerTileV = self.initial_repeat[Target].y;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;&#9;apply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Target in pairs( self.targets ) do
+&#9;&#9;&#9;&#9;if Target then
+&#9;&#9;&#9;&#9;&#9;Selection:add( Target.Parent );
+&#9;&#9;&#9;&#9;&#9;Target.Texture = self.terminal_texture[Target];
+&#9;&#9;&#9;&#9;&#9;Target.Transparency = self.terminal_transparency[Target];
+&#9;&#9;&#9;&#9;&#9;Target.Face = self.terminal_side[Target];
+&#9;&#9;&#9;&#9;&#9;if Target:IsA( &quot;Texture&quot; ) then
+&#9;&#9;&#9;&#9;&#9;&#9;Target.StudsPerTileU = self.terminal_repeat[Target].x;
+&#9;&#9;&#9;&#9;&#9;&#9;Target.StudsPerTileV = self.terminal_repeat[Target].y;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;};
+&#9;for _, Item in pairs( self.State.HistoryRecord.targets ) do
+&#9;&#9;if Item then
+&#9;&#9;&#9;self.State.HistoryRecord.initial_texture[Item] = Item.Texture;
+&#9;&#9;&#9;self.State.HistoryRecord.initial_transparency[Item] = Item.Transparency;
+&#9;&#9;&#9;self.State.HistoryRecord.initial_side[Item] = Item.Face;
+&#9;&#9;&#9;if Item:IsA( &quot;Texture&quot; ) then
+&#9;&#9;&#9;&#9;self.State.HistoryRecord.initial_repeat[Item] = Vector2.new( Item.StudsPerTileU, Item.StudsPerTileV );
+&#9;&#9;&#9;end;
 &#9;&#9;end;
 &#9;end;
+
+end;
+
+Tools.Texture.finishHistoryRecord = function ( self )
+
+&#9;if not self.State.HistoryRecord then
+&#9;&#9;return;
+&#9;end;
+
+&#9;for _, Item in pairs( self.State.HistoryRecord.targets ) do
+&#9;&#9;if Item then
+&#9;&#9;&#9;self.State.HistoryRecord.terminal_texture[Item] = Item.Texture;
+&#9;&#9;&#9;self.State.HistoryRecord.terminal_transparency[Item] = Item.Transparency;
+&#9;&#9;&#9;self.State.HistoryRecord.terminal_side[Item] = Item.Face;
+&#9;&#9;&#9;if Item:IsA( &quot;Texture&quot; ) then
+&#9;&#9;&#9;&#9;self.State.HistoryRecord.terminal_repeat[Item] = Vector2.new( Item.StudsPerTileU, Item.StudsPerTileV );
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;end;
+&#9;History:add( self.State.HistoryRecord );
+&#9;self.State.HistoryRecord = nil;
 
 end;
 
@@ -5527,35 +5591,53 @@ end;
 
 Tools.Texture.changeTexture = function ( self, new_texture )
 
+&#9;local textures = {};
+
 &#9;-- Apply the new texture to any items w/ textures in the selection
 &#9;-- that are on the side in the options
 &#9;for _, Item in pairs( Selection.Items ) do
-&#9;&#9;local textures = _getChildrenOfClass( Item, &quot;Texture&quot; );
-&#9;&#9;for _, Texture in pairs( textures ) do
+&#9;&#9;local textures_found = _getChildrenOfClass( Item, &quot;Texture&quot; );
+&#9;&#9;for _, Texture in pairs( textures_found ) do
 &#9;&#9;&#9;if Texture.Face == self.Options.side then
-&#9;&#9;&#9;&#9;Texture.Texture = &quot;http://www.roblox.com/asset/?id=&quot; .. new_texture;
+&#9;&#9;&#9;&#9;table.insert( textures, Texture );
 &#9;&#9;&#9;end;
 &#9;&#9;end;
 &#9;end;
+
+&#9;self:startHistoryRecord( textures );
+&#9;for _, Texture in pairs( textures ) do
+&#9;&#9;Texture.Texture = &quot;http://www.roblox.com/asset/?id=&quot; .. new_texture;
+&#9;end;
+&#9;self:finishHistoryRecord();
 
 end;
 
 Tools.Texture.changeDecal = function ( self, new_decal )
 
+&#9;local decals = {};
+
 &#9;-- Apply the new decal to any items w/ decals in the selection
 &#9;-- that are on the side in the options
 &#9;for _, Item in pairs( Selection.Items ) do
-&#9;&#9;local decals = _getChildrenOfClass( Item, &quot;Decal&quot; );
-&#9;&#9;for _, Decal in pairs( decals ) do
+&#9;&#9;local decals_found = _getChildrenOfClass( Item, &quot;Decal&quot; );
+&#9;&#9;for _, Decal in pairs( decals_found ) do
 &#9;&#9;&#9;if Decal.Face == self.Options.side then
-&#9;&#9;&#9;&#9;Decal.Texture = &quot;http://www.roblox.com/asset/?id=&quot; .. new_decal;
+&#9;&#9;&#9;&#9;table.insert( decals, Decal );
 &#9;&#9;&#9;end;
 &#9;&#9;end;
 &#9;end;
 
+&#9;self:startHistoryRecord( decals );
+&#9;for _, Decal in pairs( decals ) do
+&#9;&#9;Decal.Texture = &quot;http://www.roblox.com/asset/?id=&quot; .. new_decal;
+&#9;end;
+&#9;self:finishHistoryRecord();
+
 end;
 
 Tools.Texture.changeTransparency = function ( self, new_transparency )
+
+&#9;local textures = {};
 
 &#9;-- Apply the new transparency to any items w/
 &#9;-- decals/textures in the selectionthat are on
@@ -5563,56 +5645,88 @@ Tools.Texture.changeTransparency = function ( self, new_transparency )
 &#9;for _, Item in pairs( Selection.Items ) do
 
 &#9;&#9;if self.Options.mode == &quot;texture&quot; then
-&#9;&#9;&#9;local textures = _getChildrenOfClass( Item, &quot;Texture&quot; );
-&#9;&#9;&#9;for _, Texture in pairs( textures ) do
+&#9;&#9;&#9;local textures_found = _getChildrenOfClass( Item, &quot;Texture&quot; );
+&#9;&#9;&#9;for _, Texture in pairs( textures_found ) do
 &#9;&#9;&#9;&#9;if Texture.Face == self.Options.side then
-&#9;&#9;&#9;&#9;&#9;Texture.Transparency = new_transparency;
+&#9;&#9;&#9;&#9;&#9;table.insert( textures, Texture );
 &#9;&#9;&#9;&#9;end;
 &#9;&#9;&#9;end;
 
 &#9;&#9;elseif self.Options.mode == &quot;decal&quot; then
-&#9;&#9;&#9;local decals = _getChildrenOfClass( Item, &quot;Decal&quot; );
-&#9;&#9;&#9;for _, Decal in pairs( decals ) do
+&#9;&#9;&#9;local decals_found = _getChildrenOfClass( Item, &quot;Decal&quot; );
+&#9;&#9;&#9;for _, Decal in pairs( decals_found ) do
 &#9;&#9;&#9;&#9;if Decal.Face == self.Options.side then
-&#9;&#9;&#9;&#9;&#9;Decal.Transparency = new_transparency;
+&#9;&#9;&#9;&#9;&#9;table.insert( textures, Decal );
 &#9;&#9;&#9;&#9;end;
 &#9;&#9;&#9;end;
 &#9;&#9;end;
 
 &#9;end;
+
+&#9;self:startHistoryRecord( textures );
+&#9;for _, Texture in pairs( textures ) do
+&#9;&#9;Texture.Transparency = new_transparency;
+&#9;end;
+&#9;self:finishHistoryRecord();
 
 end;
 
 Tools.Texture.changeFrequency = function ( self, direction, new_frequency )
 
+&#9;local textures = {};
+
 &#9;-- Apply the new frequency to any items w/ textures
 &#9;-- in the selection that are on the side in the options
 &#9;for _, Item in pairs( Selection.Items ) do
-&#9;&#9;local textures = _getChildrenOfClass( Item, &quot;Texture&quot; );
-&#9;&#9;for _, Texture in pairs( textures ) do
+&#9;&#9;local textures_found = _getChildrenOfClass( Item, &quot;Texture&quot; );
+&#9;&#9;for _, Texture in pairs( textures_found ) do
 &#9;&#9;&#9;if Texture.Face == self.Options.side then
-
-&#9;&#9;&#9;&#9;-- Apply the new frequency to the right direction
-&#9;&#9;&#9;&#9;if direction == &quot;x&quot; then
-&#9;&#9;&#9;&#9;&#9;Texture.StudsPerTileU = new_frequency;
-&#9;&#9;&#9;&#9;elseif direction == &quot;y&quot; then
-&#9;&#9;&#9;&#9;&#9;Texture.StudsPerTileV = new_frequency;
-&#9;&#9;&#9;&#9;end;
-
+&#9;&#9;&#9;&#9;table.insert( textures, Texture );
 &#9;&#9;&#9;end;
 &#9;&#9;end;
 &#9;end;
+
+&#9;self:startHistoryRecord( textures );
+&#9;for _, Texture in pairs( textures ) do
+&#9;&#9;-- Apply the new frequency to the right direction
+&#9;&#9;if direction == &quot;x&quot; then
+&#9;&#9;&#9;Texture.StudsPerTileU = new_frequency;
+&#9;&#9;elseif direction == &quot;y&quot; then
+&#9;&#9;&#9;Texture.StudsPerTileV = new_frequency;
+&#9;&#9;end;
+&#9;end;
+&#9;self:finishHistoryRecord();
 
 end;
 
 Tools.Texture.addTexture = function ( self )
 
+&#9;local HistoryRecord = {
+&#9;&#9;apply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Texture in pairs( self.textures ) do
+&#9;&#9;&#9;&#9;Texture.Parent = self.texture_parents[Texture];
+&#9;&#9;&#9;&#9;Selection:add( Texture.Parent );
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;&#9;unapply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Texture in pairs( self.textures ) do
+&#9;&#9;&#9;&#9;Selection:add( Texture.Parent );
+&#9;&#9;&#9;&#9;Texture.Parent = nil;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;};
+
+&#9;local textures = {};
+&#9;local texture_parents = {};
+
 &#9;for _, Item in pairs( Selection.Items ) do
 
 &#9;&#9;-- Check if the item has a texture already
-&#9;&#9;local textures = _getChildrenOfClass( Item, &quot;Texture&quot; );
+&#9;&#9;local textures_found = _getChildrenOfClass( Item, &quot;Texture&quot; );
 &#9;&#9;local has_texture = false;
-&#9;&#9;for _, Texture in pairs( textures ) do
+&#9;&#9;for _, Texture in pairs( textures_found ) do
 &#9;&#9;&#9;if Texture.Face == self.Options.side then
 &#9;&#9;&#9;&#9;has_texture = true;
 &#9;&#9;&#9;&#9;break;
@@ -5621,67 +5735,145 @@ Tools.Texture.addTexture = function ( self )
 
 &#9;&#9;-- Only add a texture if it doesn&apos;t already exist
 &#9;&#9;if not has_texture then
-&#9;&#9;&#9;RbxUtility.Create &quot;Texture&quot; {
+&#9;&#9;&#9;local Texture = RbxUtility.Create &quot;Texture&quot; {
 &#9;&#9;&#9;&#9;Parent = Item;
 &#9;&#9;&#9;&#9;Face = self.Options.side;
 &#9;&#9;&#9;};
+&#9;&#9;&#9;table.insert( textures, Texture );
+&#9;&#9;&#9;texture_parents[Texture] = Item;
 &#9;&#9;end;
 
 &#9;end;
+
+&#9;HistoryRecord.textures = textures;
+&#9;HistoryRecord.texture_parents = texture_parents;
+&#9;History:add( HistoryRecord );
 
 end;
 
 Tools.Texture.addDecal = function ( self )
 
+&#9;local HistoryRecord = {
+&#9;&#9;apply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Decal in pairs( self.decals ) do
+&#9;&#9;&#9;&#9;Decal.Parent = self.decal_parents[Decal];
+&#9;&#9;&#9;&#9;Selection:add( Decal.Parent );
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;&#9;unapply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Decal in pairs( self.decals ) do
+&#9;&#9;&#9;&#9;Selection:add( Decal.Parent );
+&#9;&#9;&#9;&#9;Decal.Parent = nil;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;};
+
+&#9;local decals = {};
+&#9;local decal_parents = {};
+
 &#9;for _, Item in pairs( Selection.Items ) do
 
 &#9;&#9;-- Check if the item has a decal already
-&#9;&#9;local decals = _getChildrenOfClass( Item, &quot;Decal&quot; );
+&#9;&#9;local decals_found = _getChildrenOfClass( Item, &quot;Decal&quot; );
 &#9;&#9;local has_decal = false;
-&#9;&#9;for _, Decal in pairs( decals ) do
+&#9;&#9;for _, Decal in pairs( decals_found ) do
 &#9;&#9;&#9;if Decal.Face == self.Options.side then
 &#9;&#9;&#9;&#9;has_decal = true;
 &#9;&#9;&#9;&#9;break;
 &#9;&#9;&#9;end;
 &#9;&#9;end;
 
-&#9;&#9;-- Only add a decal if it doesn&apos;t already exist
+&#9;&#9;-- Only add a texture if it doesn&apos;t already exist
 &#9;&#9;if not has_decal then
-&#9;&#9;&#9;RbxUtility.Create &quot;Decal&quot; {
+&#9;&#9;&#9;local Decal = RbxUtility.Create &quot;Decal&quot; {
 &#9;&#9;&#9;&#9;Parent = Item;
 &#9;&#9;&#9;&#9;Face = self.Options.side;
 &#9;&#9;&#9;};
+&#9;&#9;&#9;table.insert( decals, Decal );
+&#9;&#9;&#9;decal_parents[Decal] = Item;
 &#9;&#9;end;
 
 &#9;end;
 
+&#9;HistoryRecord.decals = decals;
+&#9;HistoryRecord.decal_parents = decal_parents;
+&#9;History:add( HistoryRecord );
+
 end;
 
 Tools.Texture.removeTexture = function ( self )
+
+&#9;local HistoryRecord = {
+&#9;&#9;textures = {};
+&#9;&#9;texture_parents = {};
+&#9;&#9;apply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Texture in pairs( self.textures ) do
+&#9;&#9;&#9;&#9;Selection:add( Texture.Parent );
+&#9;&#9;&#9;&#9;Texture.Parent = nil;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;&#9;unapply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Texture in pairs( self.textures ) do
+&#9;&#9;&#9;&#9;Texture.Parent = self.texture_parents[Texture];
+&#9;&#9;&#9;&#9;Selection:add( Texture.Parent );
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;};
 
 &#9;-- Remove any textures on the selected side
 &#9;for _, Item in pairs( Selection.Items ) do
 &#9;&#9;local textures = _getChildrenOfClass( Item, &quot;Texture&quot; );
 &#9;&#9;for _, Texture in pairs( textures ) do
 &#9;&#9;&#9;if Texture.Face == self.Options.side then
-&#9;&#9;&#9;&#9;Texture:Destroy();
+&#9;&#9;&#9;&#9;table.insert( HistoryRecord.textures, Texture );
+&#9;&#9;&#9;&#9;HistoryRecord.texture_parents[Texture] = Texture.Parent;
+&#9;&#9;&#9;&#9;Texture.Parent = nil;
 &#9;&#9;&#9;end;
 &#9;&#9;end;
 &#9;end;
 
+&#9;History:add( HistoryRecord );
+
 end;
 
 Tools.Texture.removeDecal = function ( self )
+
+&#9;local HistoryRecord = {
+&#9;&#9;decals = {};
+&#9;&#9;decal_parents = {};
+&#9;&#9;apply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Decal in pairs( self.decals ) do
+&#9;&#9;&#9;&#9;Selection:add( Decal.Parent );
+&#9;&#9;&#9;&#9;Decal.Parent = nil;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;&#9;unapply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Decal in pairs( self.decals ) do
+&#9;&#9;&#9;&#9;Decal.Parent = self.decal_parents[Decal];
+&#9;&#9;&#9;&#9;Selection:add( Decal.Parent );
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;};
 
 &#9;-- Remove any decals on the selected side
 &#9;for _, Item in pairs( Selection.Items ) do
 &#9;&#9;local decals = _getChildrenOfClass( Item, &quot;Decal&quot; );
 &#9;&#9;for _, Decal in pairs( decals ) do
 &#9;&#9;&#9;if Decal.Face == self.Options.side then
-&#9;&#9;&#9;&#9;Decal:Destroy();
+&#9;&#9;&#9;&#9;table.insert( HistoryRecord.decals, Decal );
+&#9;&#9;&#9;&#9;HistoryRecord.decal_parents[Decal] = Decal.Parent;
+&#9;&#9;&#9;&#9;Decal.Parent = nil;
 &#9;&#9;&#9;end;
 &#9;&#9;end;
 &#9;end;
+
+&#9;History:add( HistoryRecord );
 
 end;
 
