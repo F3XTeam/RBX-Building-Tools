@@ -1466,6 +1466,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		elseif key == "g" then
 			equipTool( Tools.Texture );
 
+		elseif key == "f" then
+			equipTool( Tools.Weld );
+
 		elseif key == "q" then
 			Selection:clear();
 
@@ -1677,7 +1680,8 @@ local tool_list = {
 	"Resize",
 	"Rotate",
 	"Surface",
-	"Texture"
+	"Texture",
+	"Weld"
 };
 
 -- Make sure all the tool scripts are in the tool & deactivate them
