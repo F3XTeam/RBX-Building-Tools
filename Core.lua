@@ -362,6 +362,35 @@ function _serializeParts( parts )
 		objects[part_id] = Part;
 	end;
 
+	-- Get any welds in the selection
+	local welds = {};
+	for object_id, Object in pairs( objects ) do
+		if Object:IsA( "BasePart" ) then
+			for _, Joint in pairs( _getAllDescendants( Services.Workspace ) ) do
+				if Joint:IsA( "Weld" ) and Joint.Name == "BTWeld" then
+					if Joint.Part0 == Object and #_findTableOccurrences( objects, Joint.Part1 ) > 0 then
+						table.insert( welds, Joint );
+					end;
+				end;
+			end;
+		end;
+	end;
+
+	-- Serialize any welds
+	if #welds > 0 then
+		data.welds = {};
+		for _, Weld in pairs( welds ) do
+			local weld_id = _generateSerializationID();
+			local WeldData = {
+				_findTableOccurrences( objects, Weld.Part0 )[1],
+				_findTableOccurrences( objects, Weld.Part1 )[1],
+				_splitNumberListString( tostring( Weld.C1 ) )
+			};
+			data.welds[weld_id] = WeldData;
+			objects[weld_id] = Weld;
+		end;
+	end;
+
 	-- Get any meshes in the selection
 	local meshes = {};
 	for _, Part in pairs( parts ) do
@@ -1225,7 +1254,7 @@ IE = {
 		local cancelUpload;
 
 		-- Create the export dialog
-		local Dialog = Tool.BTExportDialog:Clone();
+		local Dialog = Tool.Interfaces.BTExportDialog:Clone();
 		Dialog.Loading.Size = UDim2.new( 1, 0, 0, 0 );
 		Dialog.Parent = UI;
 		Dialog.Loading:TweenSize( UDim2.new( 1, 0, 0, 80 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
@@ -1466,6 +1495,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		elseif key == "g" then
 			equipTool( Tools.Texture );
 
+		elseif key == "f" then
+			equipTool( Tools.Weld );
+
 		elseif key == "q" then
 			Selection:clear();
 
@@ -1677,7 +1709,8 @@ local tool_list = {
 	"Resize",
 	"Rotate",
 	"Surface",
-	"Texture"
+	"Texture",
+	"Weld"
 };
 
 -- Make sure all the tool scripts are in the tool & deactivate them

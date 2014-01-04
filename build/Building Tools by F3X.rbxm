@@ -392,6 +392,35 @@ function _serializeParts( parts )
 &#9;&#9;objects[part_id] = Part;
 &#9;end;
 
+&#9;-- Get any welds in the selection
+&#9;local welds = {};
+&#9;for object_id, Object in pairs( objects ) do
+&#9;&#9;if Object:IsA( &quot;BasePart&quot; ) then
+&#9;&#9;&#9;for _, Joint in pairs( _getAllDescendants( Services.Workspace ) ) do
+&#9;&#9;&#9;&#9;if Joint:IsA( &quot;Weld&quot; ) and Joint.Name == &quot;BTWeld&quot; then
+&#9;&#9;&#9;&#9;&#9;if Joint.Part0 == Object and #_findTableOccurrences( objects, Joint.Part1 ) &gt; 0 then
+&#9;&#9;&#9;&#9;&#9;&#9;table.insert( welds, Joint );
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;end;
+
+&#9;-- Serialize any welds
+&#9;if #welds &gt; 0 then
+&#9;&#9;data.welds = {};
+&#9;&#9;for _, Weld in pairs( welds ) do
+&#9;&#9;&#9;local weld_id = _generateSerializationID();
+&#9;&#9;&#9;local WeldData = {
+&#9;&#9;&#9;&#9;_findTableOccurrences( objects, Weld.Part0 )[1],
+&#9;&#9;&#9;&#9;_findTableOccurrences( objects, Weld.Part1 )[1],
+&#9;&#9;&#9;&#9;_splitNumberListString( tostring( Weld.C1 ) )
+&#9;&#9;&#9;};
+&#9;&#9;&#9;data.welds[weld_id] = WeldData;
+&#9;&#9;&#9;objects[weld_id] = Weld;
+&#9;&#9;end;
+&#9;end;
+
 &#9;-- Get any meshes in the selection
 &#9;local meshes = {};
 &#9;for _, Part in pairs( parts ) do
@@ -1255,7 +1284,7 @@ IE = {
 &#9;&#9;local cancelUpload;
 
 &#9;&#9;-- Create the export dialog
-&#9;&#9;local Dialog = Tool.BTExportDialog:Clone();
+&#9;&#9;local Dialog = Tool.Interfaces.BTExportDialog:Clone();
 &#9;&#9;Dialog.Loading.Size = UDim2.new( 1, 0, 0, 0 );
 &#9;&#9;Dialog.Parent = UI;
 &#9;&#9;Dialog.Loading:TweenSize( UDim2.new( 1, 0, 0, 80 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
@@ -1496,6 +1525,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 &#9;&#9;elseif key == &quot;g&quot; then
 &#9;&#9;&#9;equipTool( Tools.Texture );
 
+&#9;&#9;elseif key == &quot;f&quot; then
+&#9;&#9;&#9;equipTool( Tools.Weld );
+
 &#9;&#9;elseif key == &quot;q&quot; then
 &#9;&#9;&#9;Selection:clear();
 
@@ -1707,7 +1739,8 @@ local tool_list = {
 &#9;&quot;Resize&quot;,
 &#9;&quot;Rotate&quot;,
 &#9;&quot;Surface&quot;,
-&#9;&quot;Texture&quot;
+&#9;&quot;Texture&quot;,
+&#9;&quot;Weld&quot;
 };
 
 -- Make sure all the tool scripts are in the tool &amp; deactivate them
@@ -7262,12 +7295,277 @@ end;
 Tools.Texture.Loaded = true;</ProtectedString>
 				</Properties>
 			</Item>
+			<Item class="LocalScript" referent="RBX13">
+				<Properties>
+					<bool name="Disabled">true</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">BTWeldTool</string>
+					<ProtectedString name="Source">-- Load the main tool&apos;s core environment when it&apos;s ready
+repeat wait() until (
+&#9;_G.BTCoreEnv and
+&#9;_G.BTCoreEnv[script.Parent.Parent] and
+&#9;_G.BTCoreEnv[script.Parent.Parent].CoreReady
+);
+setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
+
+------------------------------------------
+-- Weld tool
+------------------------------------------
+
+-- Create the tool
+Tools.Weld = {};
+
+-- Define the tool&apos;s color
+Tools.Weld.Color = BrickColor.new( &quot;Really black&quot; );
+
+-- Keep a container for state data
+Tools.Weld.State = {};
+
+-- Keep a container for temporary connections
+Tools.Weld.Connections = {};
+
+-- Keep a container for platform event connections
+Tools.Weld.Listeners = {};
+
+-- Start adding functionality to the tool
+Tools.Weld.Listeners.Equipped = function ()
+
+&#9;local self = Tools.Weld;
+
+&#9;-- Change the color of selection boxes temporarily
+&#9;self.State.PreviousSelectionBoxColor = SelectionBoxColor;
+&#9;SelectionBoxColor = self.Color;
+&#9;updateSelectionBoxColor();
+
+&#9;-- Reveal the GUI
+&#9;self:showGUI();
+
+&#9;-- Highlight the last part in the selection
+&#9;if Selection.Last then
+&#9;&#9;SelectionBoxes[Selection.Last].Color = BrickColor.new( &quot;Dark stone grey&quot; );
+&#9;end;
+&#9;self.Connections.LastPartHighlighter = Selection.Changed:connect( function ()
+&#9;&#9;updateSelectionBoxColor();
+&#9;&#9;if Selection.Last then
+&#9;&#9;&#9;SelectionBoxes[Selection.Last].Color = BrickColor.new( &quot;Dark stone grey&quot; );
+&#9;&#9;end;
+&#9;end );
+
+end;
+
+Tools.Weld.Listeners.Unequipped = function ()
+
+&#9;local self = Tools.Weld;
+
+&#9;-- Hide the GUI
+&#9;self:hideGUI();
+
+&#9;-- Disconnect temporary connections
+&#9;for connection_index, Connection in pairs( self.Connections ) do
+&#9;&#9;Connection:disconnect();
+&#9;&#9;self.Connections[connection_index] = nil;
+&#9;end;
+
+&#9;-- Restore the original color of selection boxes
+&#9;SelectionBoxColor = self.State.PreviousSelectionBoxColor;
+&#9;updateSelectionBoxColor();
+
+end;
+
+Tools.Weld.Listeners.Button2Down = function ()
+
+&#9;local self = Tools.Weld;
+
+&#9;-- Capture the camera rotation (for later use
+&#9;-- in determining whether a surface was being
+&#9;-- selected or the camera was being rotated
+&#9;-- with the right mouse button)
+&#9;local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+&#9;self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
+
+end;
+
+Tools.Weld.Listeners.Button2Up = function ()
+
+&#9;local self = Tools.Weld;
+
+&#9;local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+&#9;local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
+
+&#9;-- If a part is selected
+&#9;if Selection:find( Mouse.Target ) and self.State.PreB2DownCameraRotation == CameraRotation then
+&#9;&#9;Selection:focus( Mouse.Target );
+&#9;end;
+
+end;
+
+Tools.Weld.weld = function ( self )
+
+&#9;local HistoryRecord = {
+&#9;&#9;weld_parents = {};
+&#9;&#9;unapply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Weld in pairs( self.welds ) do
+&#9;&#9;&#9;&#9;Selection:add( Weld.Part0 );
+&#9;&#9;&#9;&#9;Selection:add( Weld.Part1 );
+&#9;&#9;&#9;&#9;Weld.Parent = nil;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;&#9;apply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Weld in pairs( self.welds ) do
+&#9;&#9;&#9;&#9;Weld.Parent = self.weld_parents[Weld];
+&#9;&#9;&#9;&#9;Selection:add( Weld.Part0 );
+&#9;&#9;&#9;&#9;Selection:add( Weld.Part1 );
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;};
+
+&#9;-- Keep track of the welds we create
+&#9;local welds = {};
+
+&#9;-- Make sure there&apos;s more than one item
+&#9;if #Selection.Items &gt; 1 and Selection.Last then
+
+&#9;&#9;-- Weld all the parts to the last part
+&#9;&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;&#9;if Item ~= Selection.Last then
+&#9;&#9;&#9;&#9;local Weld = RbxUtility.Create &quot;Weld&quot; {
+&#9;&#9;&#9;&#9;&#9;Name = &apos;BTWeld&apos;;
+&#9;&#9;&#9;&#9;&#9;Parent = Selection.Last;
+&#9;&#9;&#9;&#9;&#9;Part0 = Selection.Last;
+&#9;&#9;&#9;&#9;&#9;Part1 = Item;
+&#9;&#9;&#9;&#9;&#9;Archivable = false;
+
+&#9;&#9;&#9;&#9;&#9;-- Calculate the offset of `Item` from `Selection.Last`
+&#9;&#9;&#9;&#9;&#9;C1 = Item.CFrame:toObjectSpace( Selection.Last.CFrame );
+&#9;&#9;&#9;&#9;};
+&#9;&#9;&#9;&#9;table.insert( welds, Weld );
+&#9;&#9;&#9;&#9;HistoryRecord.weld_parents[Weld] = Weld.Parent;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+
+&#9;end;
+
+&#9;HistoryRecord.welds = welds;
+&#9;History:add( HistoryRecord );
+
+&#9;-- Update the change bar
+&#9;self.GUI.Changes.Text.Text = &quot;created &quot; .. #welds .. &quot; weld&quot; .. ( #welds ~= 1 and &quot;s&quot; or &quot;&quot; );
+
+&#9;-- Play a confirmation sound
+&#9;local Sound = RbxUtility.Create &quot;Sound&quot; {
+&#9;&#9;Name = &quot;BTActionCompletionSound&quot;;
+&#9;&#9;Pitch = 1.5;
+&#9;&#9;SoundId = action_completion_sound;
+&#9;&#9;Volume = 1;
+&#9;&#9;Parent = Player;
+&#9;};
+&#9;Sound:Play();
+&#9;Sound:Destroy();
+
+end;
+
+Tools.Weld.breakWelds = function ( self )
+
+&#9;local HistoryRecord = {
+&#9;&#9;weld_parents = {};
+&#9;&#9;apply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Weld in pairs( self.welds ) do
+&#9;&#9;&#9;&#9;Selection:add( Weld.Part0 );
+&#9;&#9;&#9;&#9;Selection:add( Weld.Part1 );
+&#9;&#9;&#9;&#9;Weld.Parent = nil;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;&#9;unapply = function ( self )
+&#9;&#9;&#9;Selection:clear();
+&#9;&#9;&#9;for _, Weld in pairs( self.welds ) do
+&#9;&#9;&#9;&#9;Selection:add( Weld.Part1 );
+&#9;&#9;&#9;&#9;Selection:add( Weld.Part0 );
+&#9;&#9;&#9;&#9;Weld.Parent = self.weld_parents[Weld];
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;};
+
+&#9;-- Break any welds we created for each item in the selection
+&#9;local welds = {};
+&#9;local all_objects = _getAllDescendants( Game.Workspace );
+&#9;for _, Weld in pairs( all_objects ) do
+&#9;&#9;if Weld:IsA( &quot;Weld&quot; ) and Weld.Name == &quot;BTWeld&quot; then
+&#9;&#9;&#9;for _, Item in pairs( Selection.Items ) do
+&#9;&#9;&#9;&#9;if Weld.Part0 == Item or Weld.Part1 == Item then
+&#9;&#9;&#9;&#9;&#9;if not HistoryRecord.weld_parents[Weld] then
+&#9;&#9;&#9;&#9;&#9;&#9;table.insert( welds, Weld );
+&#9;&#9;&#9;&#9;&#9;&#9;HistoryRecord.weld_parents[Weld] = Weld.Parent;
+&#9;&#9;&#9;&#9;&#9;&#9;Weld.Parent = nil;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;end;
+
+&#9;HistoryRecord.welds = welds;
+&#9;History:add( HistoryRecord );
+
+&#9;-- Update the change bar
+&#9;self.GUI.Changes.Text.Text = &quot;broke &quot; .. #welds .. &quot; weld&quot; .. ( #welds ~= 1 and &quot;s&quot; or &quot;&quot; );
+
+&#9;-- Play a confirmation sound
+&#9;local Sound = RbxUtility.Create &quot;Sound&quot; {
+&#9;&#9;Name = &quot;BTActionCompletionSound&quot;;
+&#9;&#9;Pitch = 1.5;
+&#9;&#9;SoundId = action_completion_sound;
+&#9;&#9;Volume = 1;
+&#9;&#9;Parent = Player;
+&#9;};
+&#9;Sound:Play();
+&#9;Sound:Destroy();
+
+end;
+
+Tools.Weld.showGUI = function ( self )
+
+&#9;-- Initialize the GUI if it&apos;s not ready yet
+&#9;if not self.GUI then
+
+&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTWeldToolGUI&quot; ):Clone();
+&#9;&#9;Container.Parent = UI;
+
+&#9;&#9;Container.Interface.WeldButton.MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:weld();
+&#9;&#9;end );
+
+&#9;&#9;Container.Interface.BreakWeldsButton.MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:breakWelds();
+&#9;&#9;end );
+
+&#9;&#9;self.GUI = Container;
+&#9;end;
+
+&#9;-- Reveal the GUI
+&#9;self.GUI.Visible = true;
+
+end;
+
+Tools.Weld.hideGUI = function ( self )
+
+&#9;-- Hide the GUI if it exists already
+&#9;if self.GUI then
+&#9;&#9;self.GUI.Visible = false;
+&#9;end;
+
+end;
+
+Tools.Weld.Loaded = true;</ProtectedString>
+				</Properties>
+			</Item>
 		</Item>
-		<Item class="RemoteFunction" referent="RBX13">
+		<Item class="RemoteFunction" referent="RBX14">
 			<Properties>
 				<string name="Name">GetAsync</string>
 			</Properties>
-			<Item class="Script" referent="RBX14">
+			<Item class="Script" referent="RBX15">
 				<Properties>
 					<bool name="Disabled">false</bool>
 					<Content name="LinkedSource"><null></null></Content>
@@ -7282,11 +7580,11 @@ end;</ProtectedString>
 				</Properties>
 			</Item>
 		</Item>
-		<Item class="RemoteFunction" referent="RBX15">
+		<Item class="RemoteFunction" referent="RBX16">
 			<Properties>
 				<string name="Name">PostAsync</string>
 			</Properties>
-			<Item class="Script" referent="RBX16">
+			<Item class="Script" referent="RBX17">
 				<Properties>
 					<bool name="Disabled">false</bool>
 					<Content name="LinkedSource"><null></null></Content>
@@ -7301,7 +7599,7 @@ end;</ProtectedString>
 				</Properties>
 			</Item>
 		</Item>
-		<Item class="Frame" referent="RBX17">
+		<Item class="Frame" referent="RBX18">
 			<Properties>
 				<bool name="Active">false</bool>
 				<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -7329,7 +7627,7 @@ end;</ProtectedString>
 				<bool name="Visible">true</bool>
 				<int name="ZIndex">1</int>
 			</Properties>
-			<Item class="Frame" referent="RBX18">
+			<Item class="Frame" referent="RBX19">
 				<Properties>
 					<bool name="Active">true</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7357,7 +7655,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX19">
+				<Item class="Frame" referent="RBX20">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7385,7 +7683,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX20">
+					<Item class="Frame" referent="RBX21">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -7414,7 +7712,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX21">
+					<Item class="TextLabel" referent="RBX22">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7453,7 +7751,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX22">
+					<Item class="TextLabel" referent="RBX23">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7493,7 +7791,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX23">
+				<Item class="Frame" referent="RBX24">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7521,7 +7819,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX24">
+					<Item class="TextLabel" referent="RBX25">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7560,7 +7858,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX25">
+					<Item class="Frame" referent="RBX26">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7588,7 +7886,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX26">
+						<Item class="Frame" referent="RBX27">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -7617,7 +7915,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX27">
+						<Item class="TextButton" referent="RBX28">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -7660,7 +7958,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX28">
+						<Item class="ImageLabel" referent="RBX29">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7697,7 +7995,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX29">
+						<Item class="TextLabel" referent="RBX30">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7737,7 +8035,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX30">
+					<Item class="Frame" referent="RBX31">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7765,7 +8063,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX31">
+						<Item class="Frame" referent="RBX32">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -7794,7 +8092,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX32">
+						<Item class="TextButton" referent="RBX33">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -7837,7 +8135,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX33">
+						<Item class="ImageLabel" referent="RBX34">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7874,7 +8172,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX34">
+						<Item class="TextLabel" referent="RBX35">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7915,7 +8213,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX35">
+				<Item class="Frame" referent="RBX36">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -7943,7 +8241,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX36">
+					<Item class="Frame" referent="RBX37">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -7972,7 +8270,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX37">
+					<Item class="TextLabel" referent="RBX38">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8013,7 +8311,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX38">
+			<Item class="Frame" referent="RBX39">
 				<Properties>
 					<bool name="Active">true</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8041,7 +8339,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX39">
+				<Item class="Frame" referent="RBX40">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8069,7 +8367,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX40">
+					<Item class="Frame" referent="RBX41">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -8098,7 +8396,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX41">
+					<Item class="TextLabel" referent="RBX42">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8137,7 +8435,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX42">
+					<Item class="TextLabel" referent="RBX43">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8177,7 +8475,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX43">
+				<Item class="Frame" referent="RBX44">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8205,7 +8503,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX44">
+					<Item class="TextLabel" referent="RBX45">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8244,7 +8542,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX45">
+					<Item class="Frame" referent="RBX46">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8272,7 +8570,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX46">
+						<Item class="Frame" referent="RBX47">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -8301,7 +8599,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX47">
+						<Item class="TextButton" referent="RBX48">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -8344,7 +8642,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX48">
+						<Item class="ImageLabel" referent="RBX49">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8381,7 +8679,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX49">
+						<Item class="TextLabel" referent="RBX50">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8421,7 +8719,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX50">
+					<Item class="Frame" referent="RBX51">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8449,7 +8747,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX51">
+						<Item class="Frame" referent="RBX52">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -8478,7 +8776,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX52">
+						<Item class="TextButton" referent="RBX53">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -8521,7 +8819,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX53">
+						<Item class="ImageLabel" referent="RBX54">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8558,7 +8856,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX54">
+						<Item class="TextLabel" referent="RBX55">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8599,7 +8897,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX55">
+				<Item class="Frame" referent="RBX56">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8627,7 +8925,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX56">
+					<Item class="Frame" referent="RBX57">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -8656,7 +8954,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX57">
+					<Item class="TextLabel" referent="RBX58">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -8697,7 +8995,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX58">
+			<Item class="Frame" referent="RBX59">
 				<Properties>
 					<bool name="Active">true</bool>
 					<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -8725,7 +9023,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX59">
+				<Item class="Frame" referent="RBX60">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -8753,7 +9051,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX60">
+					<Item class="TextLabel" referent="RBX61">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -8792,7 +9090,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX61">
+					<Item class="TextLabel" referent="RBX62">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -8831,7 +9129,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX62">
+					<Item class="Frame" referent="RBX63">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -8859,7 +9157,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX63">
+						<Item class="Frame" referent="RBX64">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294946560</Color3>
@@ -8888,7 +9186,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX64">
+						<Item class="Frame" referent="RBX65">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283144011</Color3>
@@ -8917,7 +9215,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX65">
+						<Item class="Frame" referent="RBX66">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4278497260</Color3>
@@ -8946,7 +9244,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX66">
+						<Item class="Frame" referent="RBX67">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294901760</Color3>
@@ -8975,7 +9273,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX67">
+						<Item class="Frame" referent="RBX68">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -9006,7 +9304,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX68">
+				<Item class="Frame" referent="RBX69">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -9034,7 +9332,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX69">
+					<Item class="TextLabel" referent="RBX70">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -9073,7 +9371,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX70">
+					<Item class="Frame" referent="RBX71">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -9101,7 +9399,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX71">
+						<Item class="Frame" referent="RBX72">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294946560</Color3>
@@ -9130,7 +9428,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX72">
+						<Item class="Frame" referent="RBX73">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283144011</Color3>
@@ -9159,7 +9457,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX73">
+						<Item class="Frame" referent="RBX74">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4278497260</Color3>
@@ -9188,7 +9486,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX74">
+						<Item class="Frame" referent="RBX75">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294901760</Color3>
@@ -9217,7 +9515,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX75">
+						<Item class="Frame" referent="RBX76">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -9248,7 +9546,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX76">
+				<Item class="Frame" referent="RBX77">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -9276,7 +9574,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextButton" referent="RBX77">
+					<Item class="TextButton" referent="RBX78">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -9319,7 +9617,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX78">
+					<Item class="Frame" referent="RBX79">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -9349,7 +9647,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX79">
+				<Item class="Frame" referent="RBX80">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -9377,7 +9675,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX80">
+					<Item class="Frame" referent="RBX81">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -9405,7 +9703,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX81">
+						<Item class="Frame" referent="RBX82">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294946560</Color3>
@@ -9434,7 +9732,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX82">
+						<Item class="Frame" referent="RBX83">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283144011</Color3>
@@ -9463,7 +9761,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX83">
+						<Item class="Frame" referent="RBX84">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4278497260</Color3>
@@ -9492,7 +9790,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX84">
+						<Item class="Frame" referent="RBX85">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294901760</Color3>
@@ -9521,7 +9819,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX85">
+						<Item class="Frame" referent="RBX86">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -9551,7 +9849,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="TextLabel" referent="RBX86">
+					<Item class="TextLabel" referent="RBX87">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -9590,7 +9888,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX87">
+					<Item class="Frame" referent="RBX88">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -9618,7 +9916,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX88">
+						<Item class="Frame" referent="RBX89">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294946560</Color3>
@@ -9647,7 +9945,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX89">
+						<Item class="Frame" referent="RBX90">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283144011</Color3>
@@ -9676,7 +9974,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX90">
+						<Item class="Frame" referent="RBX91">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4278497260</Color3>
@@ -9705,7 +10003,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX91">
+						<Item class="Frame" referent="RBX92">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294901760</Color3>
@@ -9734,7 +10032,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX92">
+						<Item class="Frame" referent="RBX93">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -9764,7 +10062,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="TextButton" referent="RBX93">
+					<Item class="TextButton" referent="RBX94">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -9806,7 +10104,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX94">
+						<Item class="Frame" referent="RBX95">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -9838,7 +10136,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX95">
+			<Item class="Frame" referent="RBX96">
 				<Properties>
 					<bool name="Active">true</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -9866,7 +10164,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX96">
+				<Item class="Frame" referent="RBX97">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -9894,7 +10192,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX97">
+					<Item class="Frame" referent="RBX98">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -9923,7 +10221,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX98">
+					<Item class="TextLabel" referent="RBX99">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -9962,7 +10260,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX99">
+					<Item class="TextLabel" referent="RBX100">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10002,7 +10300,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX100">
+				<Item class="Frame" referent="RBX101">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10030,7 +10328,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX101">
+					<Item class="TextLabel" referent="RBX102">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10070,7 +10368,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX102">
+				<Item class="Frame" referent="RBX103">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10098,7 +10396,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX103">
+					<Item class="TextLabel" referent="RBX104">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10137,7 +10435,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX104">
+					<Item class="Frame" referent="RBX105">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10165,7 +10463,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextButton" referent="RBX105">
+						<Item class="TextButton" referent="RBX106">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">false</bool>
@@ -10208,7 +10506,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX106">
+						<Item class="ImageLabel" referent="RBX107">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10245,7 +10543,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX107">
+						<Item class="Frame" referent="RBX108">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -10274,7 +10572,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX108">
+						<Item class="TextBox" referent="RBX109">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10317,7 +10615,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX109">
+				<Item class="Frame" referent="RBX110">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10345,7 +10643,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX110">
+					<Item class="TextLabel" referent="RBX111">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10384,7 +10682,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX111">
+					<Item class="Frame" referent="RBX112">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10412,7 +10710,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextButton" referent="RBX112">
+						<Item class="TextButton" referent="RBX113">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">false</bool>
@@ -10455,7 +10753,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX113">
+						<Item class="Frame" referent="RBX114">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -10484,7 +10782,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX114">
+						<Item class="ImageLabel" referent="RBX115">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10521,7 +10819,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX115">
+						<Item class="TextBox" referent="RBX116">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10564,7 +10862,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX116">
+				<Item class="Frame" referent="RBX117">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10592,7 +10890,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX117">
+					<Item class="Frame" referent="RBX118">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -10622,7 +10920,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="TextLabel" referent="RBX118">
+				<Item class="TextLabel" referent="RBX119">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -10662,7 +10960,7 @@ end;</ProtectedString>
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX119">
+			<Item class="Frame" referent="RBX120">
 				<Properties>
 					<bool name="Active">true</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10690,7 +10988,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX120">
+				<Item class="Frame" referent="RBX121">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10718,7 +11016,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX121">
+					<Item class="Frame" referent="RBX122">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -10747,7 +11045,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX122">
+					<Item class="TextLabel" referent="RBX123">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10786,7 +11084,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX123">
+					<Item class="TextLabel" referent="RBX124">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10826,7 +11124,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX124">
+				<Item class="Frame" referent="RBX125">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10854,7 +11152,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX125">
+					<Item class="TextLabel" referent="RBX126">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10894,7 +11192,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX126">
+				<Item class="Frame" referent="RBX127">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10922,7 +11220,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX127">
+					<Item class="TextLabel" referent="RBX128">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10961,7 +11259,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX128">
+					<Item class="Frame" referent="RBX129">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -10989,7 +11287,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextButton" referent="RBX129">
+						<Item class="TextButton" referent="RBX130">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">false</bool>
@@ -11032,7 +11330,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX130">
+						<Item class="ImageLabel" referent="RBX131">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -11069,7 +11367,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX131">
+						<Item class="Frame" referent="RBX132">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -11098,7 +11396,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX132">
+						<Item class="TextBox" referent="RBX133">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -11140,7 +11438,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX133">
+					<Item class="Frame" referent="RBX134">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -11168,7 +11466,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextButton" referent="RBX134">
+						<Item class="TextButton" referent="RBX135">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">false</bool>
@@ -11211,7 +11509,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX135">
+						<Item class="ImageLabel" referent="RBX136">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -11248,7 +11546,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX136">
+						<Item class="Frame" referent="RBX137">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -11277,7 +11575,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX137">
+						<Item class="TextBox" referent="RBX138">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -11319,7 +11617,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX138">
+					<Item class="Frame" referent="RBX139">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -11347,7 +11645,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextButton" referent="RBX139">
+						<Item class="TextButton" referent="RBX140">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">false</bool>
@@ -11390,7 +11688,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX140">
+						<Item class="ImageLabel" referent="RBX141">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -11427,7 +11725,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX141">
+						<Item class="Frame" referent="RBX142">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -11456,7 +11754,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX142">
+						<Item class="TextBox" referent="RBX143">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -11499,7 +11797,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX143">
+				<Item class="Frame" referent="RBX144">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -11527,7 +11825,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextButton" referent="RBX144">
+					<Item class="TextButton" referent="RBX145">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -11570,7 +11868,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX145">
+					<Item class="Frame" referent="RBX146">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -11600,7 +11898,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX146">
+				<Item class="Frame" referent="RBX147">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -11628,7 +11926,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX147">
+					<Item class="TextLabel" referent="RBX148">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -11667,7 +11965,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextBox" referent="RBX148">
+					<Item class="TextBox" referent="RBX149">
 						<Properties>
 							<bool name="Active">true</bool>
 							<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -11708,7 +12006,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX149">
+					<Item class="Frame" referent="RBX150">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -11736,7 +12034,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX150">
+						<Item class="Frame" referent="RBX151">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -11765,7 +12063,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX151">
+						<Item class="Frame" referent="RBX152">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -11794,7 +12092,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX152">
+						<Item class="Frame" referent="RBX153">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -11824,7 +12122,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX153">
+					<Item class="Frame" referent="RBX154">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -11853,7 +12151,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX154">
+					<Item class="TextButton" referent="RBX155">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -11897,7 +12195,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX155">
+				<Item class="Frame" referent="RBX156">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -11926,7 +12224,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="Frame" referent="RBX156">
+				<Item class="Frame" referent="RBX157">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -11954,7 +12252,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX157">
+					<Item class="TextLabel" referent="RBX158">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -11993,7 +12291,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextBox" referent="RBX158">
+					<Item class="TextBox" referent="RBX159">
 						<Properties>
 							<bool name="Active">true</bool>
 							<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -12034,7 +12332,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX159">
+					<Item class="Frame" referent="RBX160">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -12062,7 +12360,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX160">
+						<Item class="Frame" referent="RBX161">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -12091,7 +12389,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX161">
+						<Item class="Frame" referent="RBX162">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -12120,7 +12418,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX162">
+						<Item class="Frame" referent="RBX163">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -12150,7 +12448,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX163">
+					<Item class="Frame" referent="RBX164">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -12179,7 +12477,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX164">
+					<Item class="TextButton" referent="RBX165">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -12223,7 +12521,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX165">
+				<Item class="Frame" referent="RBX166">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -12251,7 +12549,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextButton" referent="RBX166">
+					<Item class="TextButton" referent="RBX167">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -12294,7 +12592,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX167">
+					<Item class="Frame" referent="RBX168">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -12324,7 +12622,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX168">
+				<Item class="Frame" referent="RBX169">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -12352,7 +12650,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX169">
+					<Item class="TextLabel" referent="RBX170">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -12391,7 +12689,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX170">
+					<Item class="Frame" referent="RBX171">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -12419,7 +12717,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextButton" referent="RBX171">
+						<Item class="TextButton" referent="RBX172">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">false</bool>
@@ -12462,7 +12760,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX172">
+						<Item class="ImageLabel" referent="RBX173">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -12499,7 +12797,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX173">
+						<Item class="Frame" referent="RBX174">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294901760</Color3>
@@ -12528,7 +12826,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX174">
+						<Item class="TextBox" referent="RBX175">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -12570,7 +12868,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX175">
+					<Item class="Frame" referent="RBX176">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -12598,7 +12896,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextButton" referent="RBX176">
+						<Item class="TextButton" referent="RBX177">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">false</bool>
@@ -12641,7 +12939,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX177">
+						<Item class="ImageLabel" referent="RBX178">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -12678,7 +12976,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX178">
+						<Item class="Frame" referent="RBX179">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4278255360</Color3>
@@ -12707,7 +13005,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX179">
+						<Item class="TextBox" referent="RBX180">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -12749,7 +13047,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX180">
+					<Item class="Frame" referent="RBX181">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -12777,7 +13075,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextButton" referent="RBX181">
+						<Item class="TextButton" referent="RBX182">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">false</bool>
@@ -12820,7 +13118,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX182">
+						<Item class="ImageLabel" referent="RBX183">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -12857,7 +13155,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX183">
+						<Item class="Frame" referent="RBX184">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4278190335</Color3>
@@ -12886,7 +13184,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX184">
+						<Item class="TextBox" referent="RBX185">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -12929,7 +13227,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="TextLabel" referent="RBX185">
+				<Item class="TextLabel" referent="RBX186">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -12969,7 +13267,7 @@ end;</ProtectedString>
 					</Properties>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX186">
+			<Item class="Frame" referent="RBX187">
 				<Properties>
 					<bool name="Active">true</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -12997,7 +13295,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX187">
+				<Item class="Frame" referent="RBX188">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13025,7 +13323,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX188">
+					<Item class="Frame" referent="RBX189">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13053,7 +13351,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX189">
+						<Item class="Frame" referent="RBX190">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -13082,7 +13380,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX190">
+						<Item class="TextButton" referent="RBX191">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -13125,7 +13423,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX191">
+						<Item class="ImageLabel" referent="RBX192">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13162,7 +13460,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX192">
+						<Item class="TextLabel" referent="RBX193">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13202,7 +13500,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX193">
+					<Item class="Frame" referent="RBX194">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13230,7 +13528,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX194">
+						<Item class="Frame" referent="RBX195">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -13259,7 +13557,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX195">
+						<Item class="TextButton" referent="RBX196">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -13302,7 +13600,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX196">
+						<Item class="ImageLabel" referent="RBX197">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13339,7 +13637,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX197">
+						<Item class="TextLabel" referent="RBX198">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13379,7 +13677,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX198">
+					<Item class="Frame" referent="RBX199">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13407,7 +13705,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX199">
+						<Item class="Frame" referent="RBX200">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -13436,7 +13734,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX200">
+						<Item class="TextButton" referent="RBX201">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -13479,7 +13777,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX201">
+						<Item class="ImageLabel" referent="RBX202">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13516,7 +13814,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX202">
+						<Item class="TextLabel" referent="RBX203">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13556,7 +13854,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX203">
+					<Item class="Frame" referent="RBX204">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13584,7 +13882,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextLabel" referent="RBX204">
+						<Item class="TextLabel" referent="RBX205">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13625,7 +13923,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX205">
+				<Item class="Frame" referent="RBX206">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13653,7 +13951,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX206">
+					<Item class="Frame" referent="RBX207">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294945280</Color3>
@@ -13682,7 +13980,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX207">
+					<Item class="TextLabel" referent="RBX208">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13721,7 +14019,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX208">
+					<Item class="TextLabel" referent="RBX209">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13761,7 +14059,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX209">
+				<Item class="Frame" referent="RBX210">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13789,7 +14087,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX210">
+					<Item class="Frame" referent="RBX211">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13817,7 +14115,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX211">
+						<Item class="Frame" referent="RBX212">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -13846,7 +14144,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX212">
+						<Item class="TextBox" referent="RBX213">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13887,7 +14185,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX213">
+						<Item class="ImageLabel" referent="RBX214">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13925,7 +14223,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX214">
+					<Item class="Frame" referent="RBX215">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13953,7 +14251,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextLabel" referent="RBX215">
+						<Item class="TextLabel" referent="RBX216">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -13994,7 +14292,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX216">
+				<Item class="Frame" referent="RBX217">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14022,7 +14320,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX217">
+					<Item class="Frame" referent="RBX218">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294945280</Color3>
@@ -14051,7 +14349,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX218">
+					<Item class="TextLabel" referent="RBX219">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14090,7 +14388,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX219">
+					<Item class="Frame" referent="RBX220">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14118,7 +14416,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextLabel" referent="RBX220">
+						<Item class="TextLabel" referent="RBX221">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14157,7 +14455,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX221">
+						<Item class="Frame" referent="RBX222">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14185,7 +14483,7 @@ end;</ProtectedString>
 								<bool name="Visible">true</bool>
 								<int name="ZIndex">1</int>
 							</Properties>
-							<Item class="ImageLabel" referent="RBX222">
+							<Item class="ImageLabel" referent="RBX223">
 								<Properties>
 									<bool name="Active">false</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14222,7 +14520,7 @@ end;</ProtectedString>
 									<int name="ZIndex">1</int>
 								</Properties>
 							</Item>
-							<Item class="TextButton" referent="RBX223">
+							<Item class="TextButton" referent="RBX224">
 								<Properties>
 									<bool name="Active">true</bool>
 									<bool name="AutoButtonColor">false</bool>
@@ -14265,7 +14563,7 @@ end;</ProtectedString>
 									<int name="ZIndex">2</int>
 								</Properties>
 							</Item>
-							<Item class="TextBox" referent="RBX224">
+							<Item class="TextBox" referent="RBX225">
 								<Properties>
 									<bool name="Active">true</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14307,7 +14605,7 @@ end;</ProtectedString>
 								</Properties>
 							</Item>
 						</Item>
-						<Item class="Frame" referent="RBX225">
+						<Item class="Frame" referent="RBX226">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14335,7 +14633,7 @@ end;</ProtectedString>
 								<bool name="Visible">true</bool>
 								<int name="ZIndex">1</int>
 							</Properties>
-							<Item class="ImageLabel" referent="RBX226">
+							<Item class="ImageLabel" referent="RBX227">
 								<Properties>
 									<bool name="Active">false</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14372,7 +14670,7 @@ end;</ProtectedString>
 									<int name="ZIndex">1</int>
 								</Properties>
 							</Item>
-							<Item class="TextBox" referent="RBX227">
+							<Item class="TextBox" referent="RBX228">
 								<Properties>
 									<bool name="Active">true</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14413,7 +14711,7 @@ end;</ProtectedString>
 									<int name="ZIndex">1</int>
 								</Properties>
 							</Item>
-							<Item class="TextButton" referent="RBX228">
+							<Item class="TextButton" referent="RBX229">
 								<Properties>
 									<bool name="Active">true</bool>
 									<bool name="AutoButtonColor">false</bool>
@@ -14457,7 +14755,7 @@ end;</ProtectedString>
 								</Properties>
 							</Item>
 						</Item>
-						<Item class="Frame" referent="RBX229">
+						<Item class="Frame" referent="RBX230">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14485,7 +14783,7 @@ end;</ProtectedString>
 								<bool name="Visible">true</bool>
 								<int name="ZIndex">1</int>
 							</Properties>
-							<Item class="TextBox" referent="RBX230">
+							<Item class="TextBox" referent="RBX231">
 								<Properties>
 									<bool name="Active">true</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14526,7 +14824,7 @@ end;</ProtectedString>
 									<int name="ZIndex">1</int>
 								</Properties>
 							</Item>
-							<Item class="TextButton" referent="RBX231">
+							<Item class="TextButton" referent="RBX232">
 								<Properties>
 									<bool name="Active">true</bool>
 									<bool name="AutoButtonColor">false</bool>
@@ -14569,7 +14867,7 @@ end;</ProtectedString>
 									<int name="ZIndex">2</int>
 								</Properties>
 							</Item>
-							<Item class="ImageLabel" referent="RBX232">
+							<Item class="ImageLabel" referent="RBX233">
 								<Properties>
 									<bool name="Active">false</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14609,7 +14907,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX233">
+				<Item class="Frame" referent="RBX234">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14637,7 +14935,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX234">
+					<Item class="Frame" referent="RBX235">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294945280</Color3>
@@ -14666,7 +14964,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX235">
+					<Item class="TextLabel" referent="RBX236">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14707,7 +15005,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX236">
+			<Item class="Frame" referent="RBX237">
 				<Properties>
 					<bool name="Active">true</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14735,7 +15033,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX237">
+				<Item class="Frame" referent="RBX238">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14763,7 +15061,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX238">
+					<Item class="Frame" referent="RBX239">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -14792,7 +15090,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX239">
+					<Item class="TextLabel" referent="RBX240">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14831,7 +15129,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX240">
+					<Item class="TextLabel" referent="RBX241">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14871,7 +15169,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX241">
+				<Item class="Frame" referent="RBX242">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14899,7 +15197,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX242">
+					<Item class="TextLabel" referent="RBX243">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14939,7 +15237,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX243">
+				<Item class="Frame" referent="RBX244">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -14967,7 +15265,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX244">
+					<Item class="Frame" referent="RBX245">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4279308561</Color3>
@@ -14996,7 +15294,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX245">
+					<Item class="TextLabel" referent="RBX246">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15037,7 +15335,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX246">
+			<Item class="Frame" referent="RBX247">
 				<Properties>
 					<bool name="Active">true</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15065,7 +15363,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX247">
+				<Item class="Frame" referent="RBX248">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15093,7 +15391,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX248">
+					<Item class="Frame" referent="RBX249">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294901760</Color3>
@@ -15122,7 +15420,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX249">
+					<Item class="TextLabel" referent="RBX250">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15161,7 +15459,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX250">
+					<Item class="TextLabel" referent="RBX251">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -15201,7 +15499,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX251">
+				<Item class="Frame" referent="RBX252">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -15229,7 +15527,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextButton" referent="RBX252">
+					<Item class="TextButton" referent="RBX253">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15272,7 +15570,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX253">
+					<Item class="TextButton" referent="RBX254">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15315,7 +15613,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX254">
+					<Item class="TextButton" referent="RBX255">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15358,7 +15656,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX255">
+					<Item class="TextButton" referent="RBX256">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15401,7 +15699,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX256">
+					<Item class="TextButton" referent="RBX257">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15444,7 +15742,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX257">
+					<Item class="TextButton" referent="RBX258">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15487,7 +15785,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX258">
+					<Item class="TextButton" referent="RBX259">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15530,7 +15828,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX259">
+					<Item class="TextButton" referent="RBX260">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15573,7 +15871,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX260">
+					<Item class="TextButton" referent="RBX261">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15616,7 +15914,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX261">
+					<Item class="TextButton" referent="RBX262">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15659,7 +15957,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX262">
+					<Item class="TextButton" referent="RBX263">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15702,7 +16000,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX263">
+					<Item class="TextButton" referent="RBX264">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15745,7 +16043,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX264">
+					<Item class="TextButton" referent="RBX265">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15788,7 +16086,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX265">
+					<Item class="TextButton" referent="RBX266">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15831,7 +16129,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX266">
+					<Item class="TextButton" referent="RBX267">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15874,7 +16172,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX267">
+					<Item class="TextButton" referent="RBX268">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15917,7 +16215,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX268">
+					<Item class="TextButton" referent="RBX269">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -15960,7 +16258,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX269">
+					<Item class="TextButton" referent="RBX270">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16003,7 +16301,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX270">
+					<Item class="TextButton" referent="RBX271">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16046,7 +16344,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX271">
+					<Item class="TextButton" referent="RBX272">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16089,7 +16387,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX272">
+					<Item class="TextButton" referent="RBX273">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16132,7 +16430,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX273">
+					<Item class="TextButton" referent="RBX274">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16175,7 +16473,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX274">
+					<Item class="TextButton" referent="RBX275">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16218,7 +16516,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX275">
+					<Item class="TextButton" referent="RBX276">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16261,7 +16559,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX276">
+					<Item class="TextButton" referent="RBX277">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16304,7 +16602,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX277">
+					<Item class="TextButton" referent="RBX278">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16347,7 +16645,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX278">
+					<Item class="TextButton" referent="RBX279">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16390,7 +16688,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX279">
+					<Item class="TextButton" referent="RBX280">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16433,7 +16731,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX280">
+					<Item class="TextButton" referent="RBX281">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16476,7 +16774,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX281">
+					<Item class="TextButton" referent="RBX282">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16519,7 +16817,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX282">
+					<Item class="TextButton" referent="RBX283">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16562,7 +16860,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX283">
+					<Item class="TextButton" referent="RBX284">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16605,7 +16903,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX284">
+					<Item class="TextButton" referent="RBX285">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16648,7 +16946,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX285">
+					<Item class="TextButton" referent="RBX286">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16691,7 +16989,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX286">
+					<Item class="TextButton" referent="RBX287">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16734,7 +17032,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX287">
+					<Item class="TextButton" referent="RBX288">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16777,7 +17075,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX288">
+					<Item class="TextButton" referent="RBX289">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16820,7 +17118,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX289">
+					<Item class="TextButton" referent="RBX290">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16863,7 +17161,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX290">
+					<Item class="TextButton" referent="RBX291">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16906,7 +17204,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX291">
+					<Item class="TextButton" referent="RBX292">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16949,7 +17247,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX292">
+					<Item class="TextButton" referent="RBX293">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -16992,7 +17290,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX293">
+					<Item class="TextButton" referent="RBX294">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17035,7 +17333,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX294">
+					<Item class="TextButton" referent="RBX295">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17078,7 +17376,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX295">
+					<Item class="TextButton" referent="RBX296">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17121,7 +17419,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX296">
+					<Item class="TextButton" referent="RBX297">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17164,7 +17462,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX297">
+					<Item class="TextButton" referent="RBX298">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17207,7 +17505,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX298">
+					<Item class="TextButton" referent="RBX299">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17250,7 +17548,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX299">
+					<Item class="TextButton" referent="RBX300">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17293,7 +17591,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX300">
+					<Item class="TextButton" referent="RBX301">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17336,7 +17634,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX301">
+					<Item class="TextButton" referent="RBX302">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17379,7 +17677,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX302">
+					<Item class="TextButton" referent="RBX303">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17422,7 +17720,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX303">
+					<Item class="TextButton" referent="RBX304">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17465,7 +17763,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX304">
+					<Item class="TextButton" referent="RBX305">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17508,7 +17806,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX305">
+					<Item class="TextButton" referent="RBX306">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17551,7 +17849,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX306">
+					<Item class="TextButton" referent="RBX307">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17594,7 +17892,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX307">
+					<Item class="TextButton" referent="RBX308">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17637,7 +17935,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX308">
+					<Item class="TextButton" referent="RBX309">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17680,7 +17978,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX309">
+					<Item class="TextButton" referent="RBX310">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17723,7 +18021,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX310">
+					<Item class="TextButton" referent="RBX311">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17766,7 +18064,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX311">
+					<Item class="TextButton" referent="RBX312">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17809,7 +18107,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX312">
+					<Item class="TextButton" referent="RBX313">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17852,7 +18150,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX313">
+					<Item class="TextButton" referent="RBX314">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17895,7 +18193,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX314">
+					<Item class="TextButton" referent="RBX315">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17938,7 +18236,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX315">
+					<Item class="TextButton" referent="RBX316">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -17983,7 +18281,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX316">
+			<Item class="Frame" referent="RBX317">
 				<Properties>
 					<bool name="Active">true</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18011,7 +18309,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX317">
+				<Item class="Frame" referent="RBX318">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18039,7 +18337,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX318">
+					<Item class="Frame" referent="RBX319">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18067,7 +18365,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX319">
+						<Item class="Frame" referent="RBX320">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -18096,7 +18394,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX320">
+						<Item class="TextButton" referent="RBX321">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -18139,7 +18437,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX321">
+						<Item class="ImageLabel" referent="RBX322">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18176,7 +18474,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX322">
+						<Item class="TextLabel" referent="RBX323">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18216,7 +18514,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX323">
+					<Item class="Frame" referent="RBX324">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18244,7 +18542,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX324">
+						<Item class="Frame" referent="RBX325">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -18273,7 +18571,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX325">
+						<Item class="TextButton" referent="RBX326">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -18316,7 +18614,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX326">
+						<Item class="ImageLabel" referent="RBX327">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18353,7 +18651,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX327">
+						<Item class="TextLabel" referent="RBX328">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18393,7 +18691,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX328">
+					<Item class="Frame" referent="RBX329">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18421,7 +18719,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextLabel" referent="RBX329">
+						<Item class="TextLabel" referent="RBX330">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18462,7 +18760,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX330">
+				<Item class="Frame" referent="RBX331">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18490,7 +18788,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX331">
+					<Item class="Frame" referent="RBX332">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278497260</Color3>
@@ -18519,7 +18817,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX332">
+					<Item class="TextLabel" referent="RBX333">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18558,7 +18856,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX333">
+					<Item class="TextLabel" referent="RBX334">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18598,7 +18896,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX334">
+				<Item class="Frame" referent="RBX335">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18626,7 +18924,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX335">
+					<Item class="Frame" referent="RBX336">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18654,7 +18952,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX336">
+						<Item class="Frame" referent="RBX337">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -18683,7 +18981,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX337">
+						<Item class="TextBox" referent="RBX338">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18724,7 +19022,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX338">
+						<Item class="ImageLabel" referent="RBX339">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18762,7 +19060,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX339">
+					<Item class="Frame" referent="RBX340">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18790,7 +19088,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextLabel" referent="RBX340">
+						<Item class="TextLabel" referent="RBX341">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18831,7 +19129,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX341">
+				<Item class="Frame" referent="RBX342">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18859,7 +19157,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX342">
+					<Item class="Frame" referent="RBX343">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278497260</Color3>
@@ -18888,7 +19186,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX343">
+					<Item class="TextLabel" referent="RBX344">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18927,7 +19225,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX344">
+					<Item class="Frame" referent="RBX345">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18955,7 +19253,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextLabel" referent="RBX345">
+						<Item class="TextLabel" referent="RBX346">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -18994,7 +19292,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX346">
+						<Item class="Frame" referent="RBX347">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19022,7 +19320,7 @@ end;</ProtectedString>
 								<bool name="Visible">true</bool>
 								<int name="ZIndex">1</int>
 							</Properties>
-							<Item class="TextBox" referent="RBX347">
+							<Item class="TextBox" referent="RBX348">
 								<Properties>
 									<bool name="Active">true</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19063,7 +19361,7 @@ end;</ProtectedString>
 									<int name="ZIndex">1</int>
 								</Properties>
 							</Item>
-							<Item class="TextButton" referent="RBX348">
+							<Item class="TextButton" referent="RBX349">
 								<Properties>
 									<bool name="Active">true</bool>
 									<bool name="AutoButtonColor">false</bool>
@@ -19106,7 +19404,7 @@ end;</ProtectedString>
 									<int name="ZIndex">2</int>
 								</Properties>
 							</Item>
-							<Item class="ImageLabel" referent="RBX349">
+							<Item class="ImageLabel" referent="RBX350">
 								<Properties>
 									<bool name="Active">false</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19144,7 +19442,7 @@ end;</ProtectedString>
 								</Properties>
 							</Item>
 						</Item>
-						<Item class="Frame" referent="RBX350">
+						<Item class="Frame" referent="RBX351">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19172,7 +19470,7 @@ end;</ProtectedString>
 								<bool name="Visible">true</bool>
 								<int name="ZIndex">1</int>
 							</Properties>
-							<Item class="TextBox" referent="RBX351">
+							<Item class="TextBox" referent="RBX352">
 								<Properties>
 									<bool name="Active">true</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19213,7 +19511,7 @@ end;</ProtectedString>
 									<int name="ZIndex">1</int>
 								</Properties>
 							</Item>
-							<Item class="TextButton" referent="RBX352">
+							<Item class="TextButton" referent="RBX353">
 								<Properties>
 									<bool name="Active">true</bool>
 									<bool name="AutoButtonColor">false</bool>
@@ -19256,7 +19554,7 @@ end;</ProtectedString>
 									<int name="ZIndex">2</int>
 								</Properties>
 							</Item>
-							<Item class="ImageLabel" referent="RBX353">
+							<Item class="ImageLabel" referent="RBX354">
 								<Properties>
 									<bool name="Active">false</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19294,7 +19592,7 @@ end;</ProtectedString>
 								</Properties>
 							</Item>
 						</Item>
-						<Item class="Frame" referent="RBX354">
+						<Item class="Frame" referent="RBX355">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19322,7 +19620,7 @@ end;</ProtectedString>
 								<bool name="Visible">true</bool>
 								<int name="ZIndex">1</int>
 							</Properties>
-							<Item class="TextBox" referent="RBX355">
+							<Item class="TextBox" referent="RBX356">
 								<Properties>
 									<bool name="Active">true</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19363,7 +19661,7 @@ end;</ProtectedString>
 									<int name="ZIndex">1</int>
 								</Properties>
 							</Item>
-							<Item class="TextButton" referent="RBX356">
+							<Item class="TextButton" referent="RBX357">
 								<Properties>
 									<bool name="Active">true</bool>
 									<bool name="AutoButtonColor">false</bool>
@@ -19406,7 +19704,7 @@ end;</ProtectedString>
 									<int name="ZIndex">2</int>
 								</Properties>
 							</Item>
-							<Item class="ImageLabel" referent="RBX357">
+							<Item class="ImageLabel" referent="RBX358">
 								<Properties>
 									<bool name="Active">false</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19446,7 +19744,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX358">
+				<Item class="Frame" referent="RBX359">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19474,7 +19772,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX359">
+					<Item class="Frame" referent="RBX360">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278497260</Color3>
@@ -19503,7 +19801,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX360">
+					<Item class="TextLabel" referent="RBX361">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19544,7 +19842,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX361">
+			<Item class="Frame" referent="RBX362">
 				<Properties>
 					<bool name="Active">true</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19572,7 +19870,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX362">
+				<Item class="Frame" referent="RBX363">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19600,7 +19898,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX363">
+					<Item class="Frame" referent="RBX364">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19628,7 +19926,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX364">
+						<Item class="Frame" referent="RBX365">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -19657,7 +19955,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX365">
+						<Item class="TextButton" referent="RBX366">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -19700,7 +19998,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX366">
+						<Item class="ImageLabel" referent="RBX367">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19737,7 +20035,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX367">
+						<Item class="TextLabel" referent="RBX368">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19777,7 +20075,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX368">
+					<Item class="Frame" referent="RBX369">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19805,7 +20103,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX369">
+						<Item class="Frame" referent="RBX370">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -19834,7 +20132,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX370">
+						<Item class="TextButton" referent="RBX371">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -19877,7 +20175,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX371">
+						<Item class="ImageLabel" referent="RBX372">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19914,7 +20212,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX372">
+						<Item class="TextLabel" referent="RBX373">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19954,7 +20252,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX373">
+					<Item class="Frame" referent="RBX374">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -19982,7 +20280,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX374">
+						<Item class="Frame" referent="RBX375">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -20011,7 +20309,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX375">
+						<Item class="TextButton" referent="RBX376">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -20054,7 +20352,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX376">
+						<Item class="ImageLabel" referent="RBX377">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20091,7 +20389,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX377">
+						<Item class="TextLabel" referent="RBX378">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20131,7 +20429,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX378">
+					<Item class="Frame" referent="RBX379">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20159,7 +20457,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextLabel" referent="RBX379">
+						<Item class="TextLabel" referent="RBX380">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20200,7 +20498,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX380">
+				<Item class="Frame" referent="RBX381">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20228,7 +20526,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX381">
+					<Item class="Frame" referent="RBX382">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4283144011</Color3>
@@ -20257,7 +20555,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX382">
+					<Item class="TextLabel" referent="RBX383">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20296,7 +20594,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX383">
+					<Item class="TextLabel" referent="RBX384">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20336,7 +20634,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX384">
+				<Item class="Frame" referent="RBX385">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20364,7 +20662,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX385">
+					<Item class="Frame" referent="RBX386">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20392,7 +20690,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX386">
+						<Item class="Frame" referent="RBX387">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -20421,7 +20719,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX387">
+						<Item class="TextBox" referent="RBX388">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20462,7 +20760,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX388">
+						<Item class="ImageLabel" referent="RBX389">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20500,7 +20798,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX389">
+					<Item class="Frame" referent="RBX390">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20528,7 +20826,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextLabel" referent="RBX390">
+						<Item class="TextLabel" referent="RBX391">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20569,7 +20867,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX391">
+				<Item class="Frame" referent="RBX392">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20597,7 +20895,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX392">
+					<Item class="Frame" referent="RBX393">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4283144011</Color3>
@@ -20626,7 +20924,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX393">
+					<Item class="TextLabel" referent="RBX394">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20665,7 +20963,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX394">
+					<Item class="Frame" referent="RBX395">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20693,7 +20991,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextLabel" referent="RBX395">
+						<Item class="TextLabel" referent="RBX396">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20732,7 +21030,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX396">
+						<Item class="Frame" referent="RBX397">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20760,7 +21058,7 @@ end;</ProtectedString>
 								<bool name="Visible">true</bool>
 								<int name="ZIndex">1</int>
 							</Properties>
-							<Item class="TextBox" referent="RBX397">
+							<Item class="TextBox" referent="RBX398">
 								<Properties>
 									<bool name="Active">true</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20801,7 +21099,7 @@ end;</ProtectedString>
 									<int name="ZIndex">1</int>
 								</Properties>
 							</Item>
-							<Item class="TextButton" referent="RBX398">
+							<Item class="TextButton" referent="RBX399">
 								<Properties>
 									<bool name="Active">true</bool>
 									<bool name="AutoButtonColor">false</bool>
@@ -20844,7 +21142,7 @@ end;</ProtectedString>
 									<int name="ZIndex">2</int>
 								</Properties>
 							</Item>
-							<Item class="ImageLabel" referent="RBX399">
+							<Item class="ImageLabel" referent="RBX400">
 								<Properties>
 									<bool name="Active">false</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20882,7 +21180,7 @@ end;</ProtectedString>
 								</Properties>
 							</Item>
 						</Item>
-						<Item class="Frame" referent="RBX400">
+						<Item class="Frame" referent="RBX401">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20910,7 +21208,7 @@ end;</ProtectedString>
 								<bool name="Visible">true</bool>
 								<int name="ZIndex">1</int>
 							</Properties>
-							<Item class="TextBox" referent="RBX401">
+							<Item class="TextBox" referent="RBX402">
 								<Properties>
 									<bool name="Active">true</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -20951,7 +21249,7 @@ end;</ProtectedString>
 									<int name="ZIndex">1</int>
 								</Properties>
 							</Item>
-							<Item class="TextButton" referent="RBX402">
+							<Item class="TextButton" referent="RBX403">
 								<Properties>
 									<bool name="Active">true</bool>
 									<bool name="AutoButtonColor">false</bool>
@@ -20994,7 +21292,7 @@ end;</ProtectedString>
 									<int name="ZIndex">2</int>
 								</Properties>
 							</Item>
-							<Item class="ImageLabel" referent="RBX403">
+							<Item class="ImageLabel" referent="RBX404">
 								<Properties>
 									<bool name="Active">false</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21032,7 +21330,7 @@ end;</ProtectedString>
 								</Properties>
 							</Item>
 						</Item>
-						<Item class="Frame" referent="RBX404">
+						<Item class="Frame" referent="RBX405">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21060,7 +21358,7 @@ end;</ProtectedString>
 								<bool name="Visible">true</bool>
 								<int name="ZIndex">1</int>
 							</Properties>
-							<Item class="TextBox" referent="RBX405">
+							<Item class="TextBox" referent="RBX406">
 								<Properties>
 									<bool name="Active">true</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21101,7 +21399,7 @@ end;</ProtectedString>
 									<int name="ZIndex">1</int>
 								</Properties>
 							</Item>
-							<Item class="TextButton" referent="RBX406">
+							<Item class="TextButton" referent="RBX407">
 								<Properties>
 									<bool name="Active">true</bool>
 									<bool name="AutoButtonColor">false</bool>
@@ -21144,7 +21442,7 @@ end;</ProtectedString>
 									<int name="ZIndex">2</int>
 								</Properties>
 							</Item>
-							<Item class="ImageLabel" referent="RBX407">
+							<Item class="ImageLabel" referent="RBX408">
 								<Properties>
 									<bool name="Active">false</bool>
 									<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21184,7 +21482,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX408">
+				<Item class="Frame" referent="RBX409">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21212,7 +21510,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX409">
+					<Item class="Frame" referent="RBX410">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4283144011</Color3>
@@ -21241,7 +21539,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX410">
+					<Item class="TextLabel" referent="RBX411">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21280,7 +21578,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX411">
+					<Item class="TextLabel" referent="RBX412">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21321,7 +21619,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX412">
+			<Item class="Frame" referent="RBX413">
 				<Properties>
 					<bool name="Active">true</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21349,7 +21647,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX413">
+				<Item class="Frame" referent="RBX414">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21377,7 +21675,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX414">
+					<Item class="Frame" referent="RBX415">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -21406,7 +21704,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX415">
+					<Item class="TextLabel" referent="RBX416">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21445,7 +21743,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX416">
+					<Item class="TextLabel" referent="RBX417">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21485,7 +21783,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX417">
+				<Item class="Frame" referent="RBX418">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21513,7 +21811,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX418">
+					<Item class="TextLabel" referent="RBX419">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21553,7 +21851,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX419">
+				<Item class="Frame" referent="RBX420">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21581,7 +21879,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX420">
+					<Item class="TextLabel" referent="RBX421">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21621,7 +21919,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX421">
+				<Item class="Frame" referent="RBX422">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21649,7 +21947,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX422">
+					<Item class="Frame" referent="RBX423">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -21678,7 +21976,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX423">
+					<Item class="TextLabel" referent="RBX424">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21719,7 +22017,7 @@ end;</ProtectedString>
 					</Item>
 				</Item>
 			</Item>
-			<Item class="Frame" referent="RBX424">
+			<Item class="Frame" referent="RBX425">
 				<Properties>
 					<bool name="Active">true</bool>
 					<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21747,7 +22045,7 @@ end;</ProtectedString>
 					<bool name="Visible">true</bool>
 					<int name="ZIndex">1</int>
 				</Properties>
-				<Item class="Frame" referent="RBX425">
+				<Item class="Frame" referent="RBX426">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21775,7 +22073,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="Frame" referent="RBX426">
+					<Item class="Frame" referent="RBX427">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -21804,7 +22102,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX427">
+					<Item class="TextLabel" referent="RBX428">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21843,7 +22141,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextLabel" referent="RBX428">
+					<Item class="TextLabel" referent="RBX429">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21883,7 +22181,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX429">
+				<Item class="Frame" referent="RBX430">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21911,7 +22209,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX430">
+					<Item class="TextLabel" referent="RBX431">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21951,7 +22249,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX431">
+				<Item class="Frame" referent="RBX432">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -21979,7 +22277,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX432">
+					<Item class="TextLabel" referent="RBX433">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22018,7 +22316,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX433">
+					<Item class="Frame" referent="RBX434">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22046,7 +22344,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextButton" referent="RBX434">
+						<Item class="TextButton" referent="RBX435">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">false</bool>
@@ -22089,7 +22387,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX435">
+						<Item class="ImageLabel" referent="RBX436">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22126,7 +22424,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX436">
+						<Item class="Frame" referent="RBX437">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -22155,7 +22453,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX437">
+						<Item class="TextBox" referent="RBX438">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22197,7 +22495,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX438">
+					<Item class="Frame" referent="RBX439">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22225,7 +22523,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextButton" referent="RBX439">
+						<Item class="TextButton" referent="RBX440">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">false</bool>
@@ -22268,7 +22566,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX440">
+						<Item class="ImageLabel" referent="RBX441">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22305,7 +22603,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX441">
+						<Item class="Frame" referent="RBX442">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -22334,7 +22632,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX442">
+						<Item class="TextBox" referent="RBX443">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22377,7 +22675,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX443">
+				<Item class="Frame" referent="RBX444">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4285215356</Color3>
@@ -22406,7 +22704,7 @@ end;</ProtectedString>
 						<int name="ZIndex">1</int>
 					</Properties>
 				</Item>
-				<Item class="Frame" referent="RBX444">
+				<Item class="Frame" referent="RBX445">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22434,7 +22732,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX445">
+					<Item class="TextLabel" referent="RBX446">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22473,7 +22771,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX446">
+					<Item class="Frame" referent="RBX447">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22501,7 +22799,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextButton" referent="RBX447">
+						<Item class="TextButton" referent="RBX448">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">false</bool>
@@ -22544,7 +22842,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX448">
+						<Item class="ImageLabel" referent="RBX449">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22581,7 +22879,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX449">
+						<Item class="Frame" referent="RBX450">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -22610,7 +22908,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextBox" referent="RBX450">
+						<Item class="TextBox" referent="RBX451">
 							<Properties>
 								<bool name="Active">true</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22653,7 +22951,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX451">
+				<Item class="Frame" referent="RBX452">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22681,7 +22979,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX452">
+					<Item class="TextLabel" referent="RBX453">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22720,7 +23018,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX453">
+					<Item class="Frame" referent="RBX454">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22748,7 +23046,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX454">
+						<Item class="Frame" referent="RBX455">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -22777,7 +23075,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextButton" referent="RBX455">
+						<Item class="TextButton" referent="RBX456">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -22820,7 +23118,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX456">
+						<Item class="ImageLabel" referent="RBX457">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22857,7 +23155,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX457">
+						<Item class="TextLabel" referent="RBX458">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22897,7 +23195,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX458">
+					<Item class="Frame" referent="RBX459">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -22925,7 +23223,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="TextButton" referent="RBX459">
+						<Item class="TextButton" referent="RBX460">
 							<Properties>
 								<bool name="Active">true</bool>
 								<bool name="AutoButtonColor">true</bool>
@@ -22968,7 +23266,7 @@ end;</ProtectedString>
 								<int name="ZIndex">2</int>
 							</Properties>
 						</Item>
-						<Item class="ImageLabel" referent="RBX460">
+						<Item class="ImageLabel" referent="RBX461">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -23005,7 +23303,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="TextLabel" referent="RBX461">
+						<Item class="TextLabel" referent="RBX462">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -23044,7 +23342,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX462">
+						<Item class="Frame" referent="RBX463">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -23075,7 +23373,7 @@ end;</ProtectedString>
 						</Item>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX463">
+				<Item class="Frame" referent="RBX464">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -23103,7 +23401,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextLabel" referent="RBX464">
+					<Item class="TextLabel" referent="RBX465">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -23142,7 +23440,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX465">
+					<Item class="Frame" referent="RBX466">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4294967295</Color3>
@@ -23170,7 +23468,7 @@ end;</ProtectedString>
 							<bool name="Visible">true</bool>
 							<int name="ZIndex">1</int>
 						</Properties>
-						<Item class="Frame" referent="RBX466">
+						<Item class="Frame" referent="RBX467">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -23199,7 +23497,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX467">
+						<Item class="Frame" referent="RBX468">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -23228,7 +23526,7 @@ end;</ProtectedString>
 								<int name="ZIndex">1</int>
 							</Properties>
 						</Item>
-						<Item class="Frame" referent="RBX468">
+						<Item class="Frame" referent="RBX469">
 							<Properties>
 								<bool name="Active">false</bool>
 								<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -23258,7 +23556,7 @@ end;</ProtectedString>
 							</Properties>
 						</Item>
 					</Item>
-					<Item class="Frame" referent="RBX469">
+					<Item class="Frame" referent="RBX470">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -23287,7 +23585,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="TextButton" referent="RBX470">
+					<Item class="TextButton" referent="RBX471">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -23330,7 +23628,7 @@ end;</ProtectedString>
 							<int name="ZIndex">2</int>
 						</Properties>
 					</Item>
-					<Item class="TextBox" referent="RBX471">
+					<Item class="TextBox" referent="RBX472">
 						<Properties>
 							<bool name="Active">true</bool>
 							<Color3 name="BackgroundColor3">4283760767</Color3>
@@ -23372,7 +23670,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX472">
+				<Item class="Frame" referent="RBX473">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -23400,7 +23698,7 @@ end;</ProtectedString>
 						<bool name="Visible">false</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextButton" referent="RBX473">
+					<Item class="TextButton" referent="RBX474">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -23443,7 +23741,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX474">
+					<Item class="Frame" referent="RBX475">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -23473,7 +23771,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="Frame" referent="RBX475">
+				<Item class="Frame" referent="RBX476">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -23501,7 +23799,7 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
-					<Item class="TextButton" referent="RBX476">
+					<Item class="TextButton" referent="RBX477">
 						<Properties>
 							<bool name="Active">true</bool>
 							<bool name="AutoButtonColor">true</bool>
@@ -23544,7 +23842,7 @@ end;</ProtectedString>
 							<int name="ZIndex">1</int>
 						</Properties>
 					</Item>
-					<Item class="Frame" referent="RBX477">
+					<Item class="Frame" referent="RBX478">
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4278190080</Color3>
@@ -23574,7 +23872,7 @@ end;</ProtectedString>
 						</Properties>
 					</Item>
 				</Item>
-				<Item class="TextLabel" referent="RBX478">
+				<Item class="TextLabel" referent="RBX479">
 					<Properties>
 						<bool name="Active">false</bool>
 						<Color3 name="BackgroundColor3">4288914085</Color3>
@@ -23612,6 +23910,441 @@ end;</ProtectedString>
 						<bool name="Visible">true</bool>
 						<int name="ZIndex">1</int>
 					</Properties>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX480">
+				<Properties>
+					<bool name="Active">true</bool>
+					<Color3 name="BackgroundColor3">4288914085</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">true</bool>
+					<string name="Name">BTWeldToolGUI</string>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>280</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>220</XO>
+						<YS>0</YS>
+						<YO>90</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<token name="Style">0</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+				<Item class="Frame" referent="RBX481">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">Title</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>20</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+					<Item class="Frame" referent="RBX482">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4279308561</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">ColorBar</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>5</XO>
+								<YS>0</YS>
+								<YO>-3</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-5</XO>
+								<YS>0</YS>
+								<YO>2</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="TextLabel" referent="RBX483">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">2</token>
+							<token name="FontSize">4</token>
+							<string name="Name">Label</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>10</XO>
+								<YS>0</YS>
+								<YO>1</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-10</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<string name="Text">WELD TOOL</string>
+							<Color3 name="TextColor3">4294967295</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">0</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">true</bool>
+							<token name="TextXAlignment">0</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="TextLabel" referent="RBX484">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">2</token>
+							<token name="FontSize">5</token>
+							<string name="Name">F3XSignature</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>10</XO>
+								<YS>0</YS>
+								<YO>1</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>-10</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<string name="Text">F3X</string>
+							<Color3 name="TextColor3">4294967295</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">0.899999976</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">true</bool>
+							<token name="TextXAlignment">1</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX485">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">Interface</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>10</XO>
+							<YS>0</YS>
+							<YO>30</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>-10</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+					<Item class="TextButton" referent="RBX486">
+						<Properties>
+							<bool name="Active">true</bool>
+							<bool name="AutoButtonColor">true</bool>
+							<Color3 name="BackgroundColor3">4278190080</Color3>
+							<float name="BackgroundTransparency">0.400000006</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">2</token>
+							<token name="FontSize">4</token>
+							<bool name="Modal">false</bool>
+							<string name="Name">WeldButton</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<bool name="Selected">false</bool>
+							<UDim2 name="Size">
+								<XS>0.479999989</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>25</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<string name="Text">WELD TO LAST</string>
+							<Color3 name="TextColor3">4294967295</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">0.850000024</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+						<Item class="Frame" referent="RBX487">
+							<Properties>
+								<bool name="Active">false</bool>
+								<Color3 name="BackgroundColor3">4278190080</Color3>
+								<float name="BackgroundTransparency">0.150000006</float>
+								<Color3 name="BorderColor3">4279970357</Color3>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<string name="Name">Shadow</string>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>0</XO>
+									<YS>1</YS>
+									<YO>-2</YO>
+								</UDim2>
+								<float name="Rotation">0</float>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>2</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<token name="Style">0</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+						</Item>
+					</Item>
+					<Item class="TextButton" referent="RBX488">
+						<Properties>
+							<bool name="Active">true</bool>
+							<bool name="AutoButtonColor">true</bool>
+							<Color3 name="BackgroundColor3">4278190080</Color3>
+							<float name="BackgroundTransparency">0.400000006</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">2</token>
+							<token name="FontSize">4</token>
+							<bool name="Modal">false</bool>
+							<string name="Name">BreakWeldsButton</string>
+							<UDim2 name="Position">
+								<XS>0.519999981</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<bool name="Selected">false</bool>
+							<UDim2 name="Size">
+								<XS>0.479999989</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>25</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<string name="Text">BREAK WELDS</string>
+							<Color3 name="TextColor3">4294967295</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">0.850000024</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">false</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+						<Item class="Frame" referent="RBX489">
+							<Properties>
+								<bool name="Active">false</bool>
+								<Color3 name="BackgroundColor3">4278190080</Color3>
+								<float name="BackgroundTransparency">0.150000006</float>
+								<Color3 name="BorderColor3">4279970357</Color3>
+								<int name="BorderSizePixel">0</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<string name="Name">Shadow</string>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>0</XO>
+									<YS>1</YS>
+									<YO>-2</YO>
+								</UDim2>
+								<float name="Rotation">0</float>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>2</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<token name="Style">0</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+						</Item>
+					</Item>
+				</Item>
+				<Item class="Frame" referent="RBX490">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4288914085</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">Changes</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>5</XO>
+							<YS>0</YS>
+							<YO>70</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>-5</XO>
+							<YS>0</YS>
+							<YO>20</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+					<Item class="Frame" referent="RBX491">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4279308561</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<string name="Name">ColorBar</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>0</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>2</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<token name="Style">0</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="TextLabel" referent="RBX492">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Color3 name="BackgroundColor3">4288914085</Color3>
+							<float name="BackgroundTransparency">1</float>
+							<Color3 name="BorderColor3">4279970357</Color3>
+							<int name="BorderSizePixel">0</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">2</token>
+							<token name="FontSize">3</token>
+							<string name="Name">Text</string>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>2</YO>
+							</UDim2>
+							<float name="Rotation">0</float>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>20</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<string name="Text"></string>
+							<Color3 name="TextColor3">4294967295</Color3>
+							<bool name="TextScaled">false</bool>
+							<Color3 name="TextStrokeColor3">4278190080</Color3>
+							<float name="TextStrokeTransparency">0.5</float>
+							<float name="TextTransparency">0</float>
+							<bool name="TextWrapped">true</bool>
+							<token name="TextXAlignment">1</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
 				</Item>
 			</Item>
 		</Item>
