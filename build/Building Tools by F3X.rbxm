@@ -392,6 +392,35 @@ function _serializeParts( parts )
 &#9;&#9;objects[part_id] = Part;
 &#9;end;
 
+&#9;-- Get any welds in the selection
+&#9;local welds = {};
+&#9;for object_id, Object in pairs( objects ) do
+&#9;&#9;if Object:IsA( &quot;BasePart&quot; ) then
+&#9;&#9;&#9;for _, Joint in pairs( _getAllDescendants( Services.Workspace ) ) do
+&#9;&#9;&#9;&#9;if Joint:IsA( &quot;Weld&quot; ) and Joint.Name == &quot;BTWeld&quot; then
+&#9;&#9;&#9;&#9;&#9;if Joint.Part0 == Object and #_findTableOccurrences( objects, Joint.Part1 ) &gt; 0 then
+&#9;&#9;&#9;&#9;&#9;&#9;table.insert( welds, Joint );
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;end;
+
+&#9;-- Serialize any welds
+&#9;if #welds &gt; 0 then
+&#9;&#9;data.welds = {};
+&#9;&#9;for _, Weld in pairs( welds ) do
+&#9;&#9;&#9;local weld_id = _generateSerializationID();
+&#9;&#9;&#9;local WeldData = {
+&#9;&#9;&#9;&#9;_findTableOccurrences( objects, Weld.Part0 )[1],
+&#9;&#9;&#9;&#9;_findTableOccurrences( objects, Weld.Part1 )[1],
+&#9;&#9;&#9;&#9;_splitNumberListString( tostring( Weld.C1 ) )
+&#9;&#9;&#9;};
+&#9;&#9;&#9;data.welds[weld_id] = WeldData;
+&#9;&#9;&#9;objects[weld_id] = Weld;
+&#9;&#9;end;
+&#9;end;
+
 &#9;-- Get any meshes in the selection
 &#9;local meshes = {};
 &#9;for _, Part in pairs( parts ) do
@@ -1255,7 +1284,7 @@ IE = {
 &#9;&#9;local cancelUpload;
 
 &#9;&#9;-- Create the export dialog
-&#9;&#9;local Dialog = Tool.BTExportDialog:Clone();
+&#9;&#9;local Dialog = Tool.Interfaces.BTExportDialog:Clone();
 &#9;&#9;Dialog.Loading.Size = UDim2.new( 1, 0, 0, 0 );
 &#9;&#9;Dialog.Parent = UI;
 &#9;&#9;Dialog.Loading:TweenSize( UDim2.new( 1, 0, 0, 80 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
