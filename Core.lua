@@ -460,14 +460,22 @@ function _serializeParts( parts )
 
 end;
 
-function _getChildOfClass( Parent, class_name )
+function _getChildOfClass( Parent, class_name, inherit )
 	-- Returns the first child of `Parent` that is of class `class_name`
 	-- or nil if it couldn't find any
 
 	-- Look for a child of `Parent` of class `class_name` and return it
-	for _, Child in pairs( Parent:GetChildren() ) do
-		if Child.ClassName == class_name then
-			return Child;
+	if not inherit then
+		for _, Child in pairs( Parent:GetChildren() ) do
+			if Child.ClassName == class_name then
+				return Child;
+			end;
+		end;
+	else
+		for _, Child in pairs( Parent:GetChildren() ) do
+			if Child:IsA( class_name ) then
+				return Child;
+			end;
 		end;
 	end;
 
@@ -475,22 +483,99 @@ function _getChildOfClass( Parent, class_name )
 
 end;
 
-function _getChildrenOfClass( Parent, class_name )
+function _getChildrenOfClass( Parent, class_name, inherit )
 	-- Returns a table containing the children of `Parent` that are
 	-- of class `class_name`
 	local matches = {};
 
-	-- Go through each child of `Parent`
-	for _, Child in pairs( Parent:GetChildren() ) do
 
-		-- If it's of type `class_name`, add it to the match list
-		if Child.ClassName == class_name then
-			table.insert( matches, Child );
+	if not inherit then
+		for _, Child in pairs( Parent:GetChildren() ) do
+			if Child.ClassName == class_name then
+				table.insert( matches, Child );
+			end;
 		end;
-
+	else
+		for _, Child in pairs( Parent:GetChildren() ) do
+			if Child:IsA( class_name ) then
+				table.insert( matches, Child );
+			end;
+		end;
 	end;
 
 	return matches;
+end;
+
+function _HSVToRGB( hue, saturation, value )
+	-- Returns the RGB equivalent of the given HSV-defined color
+	-- (adapted from some code found around the web)
+
+	-- If it's achromatic, just return the value
+	if saturation == 0 then
+		return value;
+	end;
+
+	-- Get the hue sector
+	local hue_sector = math.floor( hue / 60 );
+	local hue_sector_offset = ( hue / 60 ) - hue_sector;
+
+	local p = value * ( 1 - saturation );
+	local q = value * ( 1 - saturation * hue_sector_offset );
+	local t = value * ( 1 - saturation * ( 1 - hue_sector_offset ) );
+
+	if hue_sector == 0 then
+		return value, t, p;
+	elseif hue_sector == 1 then
+		return q, value, p;
+	elseif hue_sector == 2 then
+		return p, value, t;
+	elseif hue_sector == 3 then
+		return p, q, value;
+	elseif hue_sector == 4 then
+		return t, p, value;
+	elseif hue_sector == 5 then
+		return value, p, q;
+	end;
+end;
+
+function _RGBToHSV( red, green, blue )
+	-- Returns the HSV equivalent of the given RGB-defined color
+	-- (adapted from some code found around the web)
+
+	local hue, saturation, value;
+
+	local min_value = math.min( red, green, blue );
+	local max_value = math.max( red, green, blue );
+
+	value = max_value;
+
+	local value_delta = max_value - min_value;
+
+	-- If the color is not black
+	if max_value ~= 0 then
+		saturation = value_delta / max_value;
+
+	-- If the color is purely black
+	else
+		saturation = 0;
+		hue = -1;
+		return hue, saturation, value;
+	end;
+
+	if red == max_value then
+		hue = ( green - blue ) / value_delta;
+	elseif green == max_value then
+		hue = 2 + ( blue - red ) / value_delta;
+	else
+		hue = 4 + ( red - green ) / value_delta;
+	end;
+
+	hue = hue * 60;
+	if hue < 0 then
+		hue = hue + 360;
+	end;
+
+	return hue, saturation, value;
 end;
 
 ------------------------------------------
@@ -725,6 +810,10 @@ Selection = {
 };
 
 Tools = {};
+
+------------------------------------------
+-- Define other utilities needed by tools
+------------------------------------------
 
 function createDropdown()
 
@@ -1235,11 +1324,257 @@ History = {
 
 };
 
+
+------------------------------------------
+-- Provide an interface color picker
+-- system
+------------------------------------------
+ColorPicker = {
+	
+	-- Keep some state data
+	["enabled"] = false;
+	["callback"] = nil;
+	["track_mouse"] = nil;
+	["hue"] = 0;
+	["saturation"] = 1;
+	["value"] = 1;
+
+	-- Keep the current GUI here
+	["GUI"] = nil;
+
+	-- Keep temporary, disposable connections here
+	["Connections"] = {};
+
+	-- Provide an interface to the functions
+	["start"] = function ( self, callback, start_color )
+
+		-- Replace any existing color pickers
+		if self.enabled then
+			self:cancel();
+		end;
+		self.enabled = true;
+
+		-- Create the GUI
+		self.GUI = Tool.Interfaces.BTHSVColorPicker:Clone();
+		self.GUI.Parent = UI;
+
+		-- Register the callback function for when we're done here
+		self.callback = callback;
+
+		-- Update the GUI
+		local start_color = start_color or Color3.new( 1, 0, 0 );
+		self:_changeColor( _RGBToHSV( start_color.r, start_color.g, start_color.b ) );
+
+		-- Add functionality to the GUI's interactive elements
+		table.insert( self.Connections, self.GUI.HueSaturation.MouseButton1Down:connect( function ( x, y )
+			self.track_mouse = 'hue-saturation';
+			self:_onMouseMove( x, y );
+		end ) );
+
+		table.insert( self.Connections, self.GUI.HueSaturation.MouseButton1Up:connect( function ()
+			self.track_mouse = nil;
+		end ) );
+
+		table.insert( self.Connections, self.GUI.MouseMoved:connect( function ( x, y )
+			self:_onMouseMove( x, y );
+		end ) );
+
+		table.insert( self.Connections, self.GUI.Value.MouseButton1Down:connect( function ( x, y )
+			self.track_mouse = 'value';
+			self:_onMouseMove( x, y );
+		end ) );
+
+		table.insert( self.Connections, self.GUI.Value.MouseButton1Up:connect( function ()
+			self.track_mouse = nil;
+		end ) );
+
+		table.insert( self.Connections, self.GUI.OkButton.MouseButton1Up:connect( function ()
+			self:finish();
+		end ) );
+
+		table.insert( self.Connections, self.GUI.CancelButton.MouseButton1Up:connect( function ()
+			self:cancel();
+		end ) );
+
+		table.insert( self.Connections, self.GUI.HueOption.Input.TextButton.MouseButton1Down:connect( function ()
+			self.GUI.HueOption.Input.TextBox:CaptureFocus();
+		end ) );
+		table.insert( self.Connections, self.GUI.HueOption.Input.TextBox.FocusLost:connect( function ( enter_pressed )
+			local potential_new = tonumber( self.GUI.HueOption.Input.TextBox.Text );
+			if potential_new then
+				if potential_new > 360 then
+					potential_new = 360;
+				elseif potential_new < 0 then
+					potential_new = 0;
+				end;
+				self:_changeColor( potential_new, self.saturation, self.value );
+			else
+				self:_updateGUI();
+			end;
+		end ) );
+
+		table.insert( self.Connections, self.GUI.SaturationOption.Input.TextButton.MouseButton1Down:connect( function ()
+			self.GUI.SaturationOption.Input.TextBox:CaptureFocus();
+		end ) );
+		table.insert( self.Connections, self.GUI.SaturationOption.Input.TextBox.FocusLost:connect( function ( enter_pressed )
+			local potential_new = tonumber( ( self.GUI.SaturationOption.Input.TextBox.Text:gsub( '%%', '' ) ) );
+			if potential_new then
+				if potential_new > 100 then
+					potential_new = 100;
+				elseif potential_new < 0 then
+					potential_new = 0;
+				end;
+				self:_changeColor( self.hue, potential_new / 100, self.value );
+			else
+				self:_updateGUI();
+			end;
+		end ) );
+
+		table.insert( self.Connections, self.GUI.ValueOption.Input.TextButton.MouseButton1Down:connect( function ()
+			self.GUI.ValueOption.Input.TextBox:CaptureFocus();
+		end ) );
+		table.insert( self.Connections, self.GUI.ValueOption.Input.TextBox.FocusLost:connect( function ( enter_pressed )
+			local potential_new = tonumber( ( self.GUI.ValueOption.Input.TextBox.Text:gsub( '%%', '' ) ) );
+			if potential_new then
+				if potential_new < 0 then
+					potential_new = 0;
+				elseif potential_new > 100 then
+					potential_new = 100;
+				end;
+				self:_changeColor( self.hue, self.saturation, potential_new / 100 );
+			else
+				self:_updateGUI();
+			end;
+		end ) );
+
+	end;
+
+	["_onMouseMove"] = function ( self, x, y )
+		if not self.track_mouse then
+			return;
+		end;
+
+		if self.track_mouse == 'hue-saturation' then
+			-- Calculate the mouse position relative to the graph
+			local graph_x, graph_y = x - self.GUI.HueSaturation.AbsolutePosition.x, y - self.GUI.HueSaturation.AbsolutePosition.y;
+
+			-- Make sure we're not going out of bounds
+			if graph_x < 0 then
+				graph_x = 0;
+			elseif graph_x > self.GUI.HueSaturation.AbsoluteSize.x then
+				graph_x = self.GUI.HueSaturation.AbsoluteSize.x;
+			end;
+			if graph_y < 0 then
+				graph_y = 0;
+			elseif graph_y > self.GUI.HueSaturation.AbsoluteSize.y then
+				graph_y = self.GUI.HueSaturation.AbsoluteSize.y;
+			end;
+
+			-- Calculate the new color and change it
+			self:_changeColor( 359 * graph_x / 209, 1 - graph_y / 200, self.value );
+
+		elseif self.track_mouse == 'value' then
+			-- Calculate the mouse position relative to the value bar
+			local bar_y = y - self.GUI.Value.AbsolutePosition.y;
+
+			-- Make sure we're not going out of bounds
+			if bar_y < 0 then
+				bar_y = 0;
+			elseif bar_y > self.GUI.Value.AbsoluteSize.y then
+				bar_y = self.GUI.Value.AbsoluteSize.y;
+			end;
+
+			-- Calculate the new color and change it
+			self:_changeColor( self.hue, self.saturation, 1 - bar_y / 200 );
+		end;
+	end;
+
+	["_changeColor"] = function ( self, hue, saturation, value )
+		self.hue = hue;
+		self.saturation = saturation == 0 and 0.01 or saturation;
+		self.value = value;
+		self:_updateGUI();
+	end;
+
+	["_updateGUI"] = function ( self )
+
+		self.GUI.HueSaturation.Cursor.Position = UDim2.new( 0, 209 * self.hue / 360 - 8, 0, ( 1 - self.saturation ) * 200 - 8 );
+		self.GUI.Value.Cursor.Position = UDim2.new( 0, -2, 0, ( 1 - self.value ) * 200 - 8 );
+
+		local color = Color3.new( _HSVToRGB( self.hue, self.saturation, self.value ) );
+		self.GUI.ColorDisplay.BackgroundColor3 = color;
+		self.GUI.Value.ColorBG.BackgroundColor3 = Color3.new( _HSVToRGB( self.hue, self.saturation, 1 ) );
+
+		self.GUI.HueOption.Bar.BackgroundColor3 = color;
+		self.GUI.SaturationOption.Bar.BackgroundColor3 = color;
+		self.GUI.ValueOption.Bar.BackgroundColor3 = color;
+
+		self.GUI.HueOption.Input.TextBox.Text = math.floor( self.hue );
+		self.GUI.SaturationOption.Input.TextBox.Text = math.floor( self.saturation * 100 ) .. "%";
+		self.GUI.ValueOption.Input.TextBox.Text = math.floor( self.value * 100 ) .. "%";
+
+	end;
+
+	["finish"] = function ( self )
+
+		if not self.enabled then
+			return;
+		end;
+
+		-- Remove the GUI
+		if self.GUI then
+			self.GUI:Destroy();
+		end;
+		self.GUI = nil;
+		self.track_mouse = nil;
+
+		-- Disconnect all temporary connections
+		for connection_index, connection in pairs( self.Connections ) do
+			connection:disconnect();
+			self.Connections[connection_index] = nil;
+		end;
+
+		-- Call the callback function that was provided to us
+		self.callback( self.hue, self.saturation, self.value );
+		self.callback = nil;
+
+		self.enabled = false;
+
+	end;
+
+	["cancel"] = function ( self )
+
+		if not self.enabled then
+			return;
+		end;
+
+		-- Remove the GUI
+		if self.GUI then
+			self.GUI:Destroy();
+		end;
+		self.GUI = nil;
+		self.track_mouse = nil;
+
+		-- Disconnect all temporary connections
+		for connection_index, connection in pairs( self.Connections ) do
+			connection:disconnect();
+			self.Connections[connection_index] = nil;
+		end;
+
+		-- Call the callback function that was provided to us
+		self.callback();
+		self.callback = nil;
+
+		self.enabled = false;
+
+	end;
+
+};
+
 ------------------------------------------
 -- Provide an interface to the
 -- import/export system
 ------------------------------------------
-
 IE = {
 
 	["export"] = function ()
@@ -1293,6 +1628,8 @@ IE = {
 				Dialog.Loading.TextLabel.Text = "Upload failed";
 				Dialog.Loading.CloseButton.Text = "Ok :''(";
 			end;
+
+			print( "[Building Tools by F3X] Uploaded Export: " .. upload_data.id );
 
 			Dialog.Loading.Visible = false;
 			Dialog.Info.Size = UDim2.new( 1, 0, 0, 0 );
@@ -1462,7 +1799,24 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		end;
 
-		if key == "z" and not ( ActiveKeys[47] or ActiveKeys[48] ) then
+		-- Undo if shift+z is pressed
+		if key == "z" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+			History:undo();
+			return;
+
+		-- Redo if shift+y is pressed
+		elseif key == "y" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+			History:redo();
+			return;
+		end;
+
+		-- Serialize and dump selection to logs if shift+p is pressed
+		if key == "p" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+			IE:export();
+			return;
+		end;
+
+		if key == "z" then
 			equipTool( Tools.Move );
 
 		elseif key == "x" then
@@ -1498,23 +1852,12 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		elseif key == "f" then
 			equipTool( Tools.Weld );
 
+		elseif key == "u" then
+			equipTool( Tools.Lighting );
+
 		elseif key == "q" then
 			Selection:clear();
 
-		end;
-
-		-- Undo if shift+z is pressed
-		if key == "z" and ( ActiveKeys[47] or ActiveKeys[48] ) then
-			History:undo();
-
-		-- Redo if shift+y is pressed
-		elseif key == "y" and ( ActiveKeys[47] or ActiveKeys[48] ) then
-			History:redo();
-		end;
-
-		-- Serialize and dump selection to logs if shift+p is pressed
-		if key == "p" and ( ActiveKeys[47] or ActiveKeys[48] ) then
-			IE:export();
 		end;
 
 		ActiveKeys[key_code] = key_code;
@@ -1710,7 +2053,8 @@ local tool_list = {
 	"Rotate",
 	"Surface",
 	"Texture",
-	"Weld"
+	"Weld",
+	"Lighting"
 };
 
 -- Make sure all the tool scripts are in the tool & deactivate them
