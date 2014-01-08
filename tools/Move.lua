@@ -78,7 +78,7 @@ Tools.Move.Listeners.Equipped = function ()
 
 		-- Rotate along the Z axis if `r` is pressed
 		if key == "r" then
-			self.Dragger:AxisRotate( Enum.Axis.Y );
+			self.Dragger:AxisRotate( Enum.Axis.Z );
 
 		-- Rotate along the X axis if `t` is pressed
 		elseif key == "t" then
@@ -86,7 +86,7 @@ Tools.Move.Listeners.Equipped = function ()
 
 		-- Rotate along the Y axis if `y` is pressed
 		elseif key == "y" then
-			self.Dragger:AxisRotate( Enum.Axis.Z );
+			self.Dragger:AxisRotate( Enum.Axis.Y );
 		end;
 
 		-- Simulate a mouse move so that it applies the changes

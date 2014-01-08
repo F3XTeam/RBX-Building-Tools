@@ -268,16 +268,21 @@ function showGUI( message, ok_text )
 		Size = UDim2.new( 1, 0, 1, 0 );
 	};
 
-	Create 'ImageLabel' {
+	local Logo = Create 'ImageLabel' {
 		Name = 'Logo';
 		Parent = Container;
 		BackgroundTransparency = 1;
 		BorderSizePixel = 0;
 		Image = bt_logo;
-		Position = UDim2.new( 0, 62, 0, 0 );
+		Position = UDim2.new( 0, GUI.AbsoluteSize.x / 2 - 128, 0, 0 );
 		Size = UDim2.new( 0, 256, 0, 256 );
 		ZIndex = 2;
 	};
+	GUI.Changed:connect( function ( property )
+		if property == 'AbsoluteSize' then
+			Logo.Position = UDim2.new( 0, GUI.AbsoluteSize.x / 2 - 128, 0, 0 );
+		end;
+	end );
 
 	Container:TweenSize( UDim2.new( 1, 0, 1, 0 ), Enum.EasingDirection.Out, Enum.EasingStyle.Bounce, 0.5, true );
 
@@ -499,6 +504,32 @@ function import( creation_id )
 				if Texture:IsA( "Texture" ) then
 					Texture.StudsPerTileU = texture_data[6];
 					Texture.StudsPerTileV = texture_data[7];
+				end;
+
+			end;
+		end;
+
+		if creation_data.lights then
+			for light_id, light_data in pairs( creation_data.lights ) do
+
+				-- Create, place, and register the light
+				local light_class;
+				if light_data[2] == 1 then
+					light_class = 'PointLight';
+				elseif light_data[2] == 2 then
+					light_class = 'SpotLight';
+				end;
+				local Light = Instance.new( light_class, objects[light_data[1]] )
+				objects[light_id] = Light;
+
+				-- Set the light's properties
+				Light.Color = Color3.new( unpack( light_data[3] ) );
+				Light.Brightness = light_data[4];
+				Light.Range = light_data[5];
+				Light.Shadows = light_data[6];
+				if Light:IsA( 'SpotLight' ) then
+					Light.Angle = light_data[7];
+					Light.Face = light_data[8];
 				end;
 
 			end;
