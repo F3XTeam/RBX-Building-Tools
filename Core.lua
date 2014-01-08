@@ -456,6 +456,41 @@ function _serializeParts( parts )
 		end;
 	end;
 
+	-- Get any lights in the selection
+	local lights = {};
+	for _, Part in pairs( parts ) do
+		local lights_found = _getChildrenOfClass( Part, "Light", true );
+		for _, Light in pairs( lights_found ) do
+			table.insert( lights, Light );
+		end;
+	end;
+
+	-- Serialize any lights
+	if #lights > 0 then
+		data.lights = {};
+		for _, Light in pairs( lights ) do
+			local light_type;
+			if Light:IsA( "PointLight" ) then
+				light_type = 1;
+			elseif Light:IsA( "SpotLight" ) then
+				light_type = 2;
+			end;
+			local light_id = _generateSerializationID();
+			local LightData = {
+				_findTableOccurrences( objects, Light.Parent )[1];
+				light_type,
+				_splitNumberListString( tostring( Light.Color ) ),
+				Light.Brightness,
+				Light.Range,
+				Light.Shadows,
+				light_type == 2 and Light.Angle or nil,
+				light_type == 2 and Light.Face.Value or nil
+			};
+			data.lights[light_id] = LightData;
+			objects[light_id] = Light;
+		end;
+	end;
+
 	return RbxUtility.EncodeJSON( data );
 
 end;

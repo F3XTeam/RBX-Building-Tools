@@ -486,6 +486,41 @@ function _serializeParts( parts )
 &#9;&#9;end;
 &#9;end;
 
+&#9;-- Get any lights in the selection
+&#9;local lights = {};
+&#9;for _, Part in pairs( parts ) do
+&#9;&#9;local lights_found = _getChildrenOfClass( Part, &quot;Light&quot;, true );
+&#9;&#9;for _, Light in pairs( lights_found ) do
+&#9;&#9;&#9;table.insert( lights, Light );
+&#9;&#9;end;
+&#9;end;
+
+&#9;-- Serialize any lights
+&#9;if #lights &gt; 0 then
+&#9;&#9;data.lights = {};
+&#9;&#9;for _, Light in pairs( lights ) do
+&#9;&#9;&#9;local light_type;
+&#9;&#9;&#9;if Light:IsA( &quot;PointLight&quot; ) then
+&#9;&#9;&#9;&#9;light_type = 1;
+&#9;&#9;&#9;elseif Light:IsA( &quot;SpotLight&quot; ) then
+&#9;&#9;&#9;&#9;light_type = 2;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;local light_id = _generateSerializationID();
+&#9;&#9;&#9;local LightData = {
+&#9;&#9;&#9;&#9;_findTableOccurrences( objects, Light.Parent )[1];
+&#9;&#9;&#9;&#9;light_type,
+&#9;&#9;&#9;&#9;_splitNumberListString( tostring( Light.Color ) ),
+&#9;&#9;&#9;&#9;Light.Brightness,
+&#9;&#9;&#9;&#9;Light.Range,
+&#9;&#9;&#9;&#9;Light.Shadows,
+&#9;&#9;&#9;&#9;light_type == 2 and Light.Angle or nil,
+&#9;&#9;&#9;&#9;light_type == 2 and Light.Face.Value or nil
+&#9;&#9;&#9;};
+&#9;&#9;&#9;data.lights[light_id] = LightData;
+&#9;&#9;&#9;objects[light_id] = Light;
+&#9;&#9;end;
+&#9;end;
+
 &#9;return RbxUtility.EncodeJSON( data );
 
 end;
