@@ -1490,6 +1490,9 @@ ColorPicker = {
 	end;
 
 	["_changeColor"] = function ( self, hue, saturation, value )
+		if hue ~= hue then
+			hue = 359;
+		end;
 		self.hue = hue;
 		self.saturation = saturation == 0 and 0.01 or saturation;
 		self.value = value;

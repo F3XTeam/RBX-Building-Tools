@@ -99,15 +99,20 @@ Tools.Mesh.TypeDropdownLabels = {
 
 Tools.Mesh.changeType = function ( self, new_type )
 
-	self:startHistoryRecord();
-
 	-- Apply type `new_type` to all the meshes in items from the selection
+	local meshes = {};
 	for _, Item in pairs( Selection.Items ) do
 		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
 		if Mesh then
-			Mesh.MeshType = new_type;
+			table.insert( meshes, Mesh );
 		end;
 	end;
+
+	self:startHistoryRecord( meshes );
+	for _, Mesh in pairs( meshes ) do
+		Mesh.MeshType = new_type;
+	end;
+	self:finishHistoryRecord();
 
 	if self.TypeDropdown.open then
 		self.TypeDropdown:toggle();
@@ -206,6 +211,8 @@ Tools.Mesh.updateGUI = function ( self )
 
 			end;
 
+			self.State.mesh_tint = ( mesh_tint_r and mesh_tint_g and mesh_tint_b ) and Color3.new( mesh_tint_r, mesh_tint_g, mesh_tint_b ) or nil;
+
 			if show_mesh_id and show_add and show_remove then
 				self.GUI.AddButton.Visible = true;
 				self.GUI.RemoveButton.Visible = true;
@@ -277,13 +284,13 @@ Tools.Mesh.updateGUI = function ( self )
 				self.GUI.ScaleOption.ZInput.TextBox.Text = mesh_scale_z and _round( mesh_scale_z, 2 ) or "*";
 			end;
 			if not self.State.tint_r_focused then
-				self.GUI.TintOption.RInput.TextBox.Text = mesh_tint_r and _round( mesh_tint_r * 255, 2 ) or "*";
+				self.GUI.TintOption.RInput.TextBox.Text = mesh_tint_r and _round( mesh_tint_r * 255, 0 ) or "*";
 			end;
 			if not self.State.tint_g_focused then
-				self.GUI.TintOption.GInput.TextBox.Text = mesh_tint_g and _round( mesh_tint_g * 255, 2 ) or "*";
+				self.GUI.TintOption.GInput.TextBox.Text = mesh_tint_g and _round( mesh_tint_g * 255, 0 ) or "*";
 			end;
 			if not self.State.tint_b_focused then
-				self.GUI.TintOption.BInput.TextBox.Text = mesh_tint_b and _round( mesh_tint_b * 255, 2 ) or "*";
+				self.GUI.TintOption.BInput.TextBox.Text = mesh_tint_b and _round( mesh_tint_b * 255, 0 ) or "*";
 			end;
 
 		-- If there are no meshes
@@ -473,6 +480,27 @@ Tools.Mesh.showGUI = function ( self )
 			self.State.tint_b_focused = false;
 		end );
 
+		Container.TintOption.HSVPicker.MouseButton1Up:connect( function ()
+			ColorPicker:start( function ( ... )
+				local args = { ... };
+				-- If a color was picked, change the spotlights' color
+				-- to the selected color
+				if #args == 3 then
+					local meshes = {};
+					for _, Item in pairs( Selection.Items ) do
+						local Mesh = _getChildOfClass( Item, "SpecialMesh" );
+						if Mesh then
+							table.insert( meshes, Mesh );
+						end;
+					end;
+					self:startHistoryRecord( meshes );
+					for _, Mesh in pairs( meshes ) do
+						Mesh.VertexColor = Vector3.new( _HSVToRGB( ... ) );
+					end;
+					self:finishHistoryRecord();
+				end;
+			end, self.State.mesh_tint );
+		end );
 
 		self.GUI = Container;
 	end;
@@ -569,6 +597,8 @@ Tools.Mesh.startHistoryRecord = function ( self, meshes )
 	-- Create a history record
 	self.State.HistoryRecord = {
 		targets = _cloneTable( meshes );
+		initial_type = {};
+		terminal_type = {};
 		initial_mesh = {};
 		terminal_mesh = {};
 		initial_texture = {};
@@ -582,6 +612,7 @@ Tools.Mesh.startHistoryRecord = function ( self, meshes )
 			for _, Target in pairs( self.targets ) do
 				if Target then
 					Selection:add( Target.Parent );
+					Target.MeshType = self.initial_type[Target];
 					Target.MeshId = self.initial_mesh[Target];
 					Target.TextureId = self.initial_texture[Target];
 					Target.Scale = self.initial_scale[Target];
@@ -594,6 +625,7 @@ Tools.Mesh.startHistoryRecord = function ( self, meshes )
 			for _, Target in pairs( self.targets ) do
 				if Target then
 					Selection:add( Target.Parent );
+					Target.MeshType = self.terminal_type[Target];
 					Target.MeshId = self.terminal_mesh[Target];
 					Target.TextureId = self.terminal_texture[Target];
 					Target.Scale = self.terminal_scale[Target];
@@ -604,6 +636,7 @@ Tools.Mesh.startHistoryRecord = function ( self, meshes )
 	};
 	for _, Item in pairs( self.State.HistoryRecord.targets ) do
 		if Item then
+			self.State.HistoryRecord.initial_type[Item] = Item.MeshType;
 			self.State.HistoryRecord.initial_mesh[Item] = Item.MeshId;
 			self.State.HistoryRecord.initial_texture[Item] = Item.TextureId;
 			self.State.HistoryRecord.initial_scale[Item] = Item.Scale;
@@ -621,6 +654,7 @@ Tools.Mesh.finishHistoryRecord = function ( self )
 
 	for _, Item in pairs( self.State.HistoryRecord.targets ) do
 		if Item then
+			self.State.HistoryRecord.terminal_type[Item] = Item.MeshType;
 			self.State.HistoryRecord.terminal_mesh[Item] = Item.MeshId;
 			self.State.HistoryRecord.terminal_texture[Item] = Item.TextureId;
 			self.State.HistoryRecord.terminal_scale[Item] = Item.Scale;
@@ -702,7 +736,7 @@ Tools.Mesh.changeTint = function ( self, component, new_value )
 		end;
 	end;
 
-	self:startHistoryRecord();
+	self:startHistoryRecord( meshes );
 	for _, Mesh in pairs( meshes ) do
 		Mesh.VertexColor = Vector3.new(
 			component == 'r' and new_value or Mesh.VertexColor.x,
