@@ -1893,6 +1893,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		elseif key == "u" then
 			equipTool( Tools.Lighting );
 
+		elseif key == "p" then
+			equipTool( Tools.Decorate );
+
 		elseif key == "q" then
 			Selection:clear();
 
@@ -2092,7 +2095,8 @@ local tool_list = {
 	"Surface",
 	"Texture",
 	"Weld",
-	"Lighting"
+	"Lighting",
+	"Decorate"
 };
 
 -- Make sure all the tool scripts are in the tool & deactivate them
