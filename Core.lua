@@ -491,6 +491,49 @@ function _serializeParts( parts )
 		end;
 	end;
 
+	-- Get any decorations in the selection
+	local decorations = {};
+	for _, Part in pairs( parts ) do
+		table.insert( decorations, _getChildOfClass( Part, 'Smoke' ) )
+		table.insert( decorations, _getChildOfClass( Part, 'Fire' ) );
+		table.insert( decorations, _getChildOfClass( Part, 'Sparkles' ) );
+	end;
+
+	-- Serialize any decorations
+	if #decorations > 0 then
+		data.decorations = {};
+		for _, Decoration in pairs( decorations ) do
+			local decoration_type;
+			if Decoration:IsA( 'Smoke' ) then
+				decoration_type = 1;
+			elseif Decoration:IsA( 'Fire' ) then
+				decoration_type = 2;
+			elseif Decoration:IsA( 'Sparkles' ) then
+				decoration_type = 3;
+			end;
+			local decoration_id = _generateSerializationID();
+			local DecorationData = {
+				_findTableOccurrences( objects, Decoration.Parent )[1],
+				decoration_type
+			};
+			if decoration_type == 1 then
+				DecorationData[3] = _splitNumberListString( tostring( Decoration.Color ) );
+				DecorationData[4] = Decoration.Opacity;
+				DecorationData[5] = Decoration.RiseVelocity;
+				DecorationData[6] = Decoration.Size;
+			elseif decoration_type == 2 then
+				DecorationData[3] = _splitNumberListString( tostring( Decoration.Color ) );
+				DecorationData[4] = _splitNumberListString( tostring( Decoration.SecondaryColor ) );
+				DecorationData[5] = Decoration.Heat;
+				DecorationData[6] = Decoration.Size;
+			elseif decoration_type == 3 then
+				DecorationData[3] = _splitNumberListString( tostring( Decoration.SparkleColor ) );
+			end;
+			data.decorations[decoration_id] = DecorationData;
+			objects[decoration_id] = Decoration;
+		end;
+	end;
+
 	return RbxUtility.EncodeJSON( data );
 
 end;
@@ -1850,7 +1893,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		-- Serialize and dump selection to logs if shift+p is pressed
 		if key == "p" and ( ActiveKeys[47] or ActiveKeys[48] ) then
-			IE:export();
+			if #Selection.Items > 0 then
+				IE:export();
+			end;
 			return;
 		end;
 
@@ -1892,6 +1937,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		elseif key == "u" then
 			equipTool( Tools.Lighting );
+
+		elseif key == "p" then
+			equipTool( Tools.Decorate );
 
 		elseif key == "q" then
 			Selection:clear();
@@ -2092,7 +2140,8 @@ local tool_list = {
 	"Surface",
 	"Texture",
 	"Weld",
-	"Lighting"
+	"Lighting",
+	"Decorate"
 };
 
 -- Make sure all the tool scripts are in the tool & deactivate them
