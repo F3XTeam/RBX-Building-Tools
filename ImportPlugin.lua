@@ -535,6 +535,41 @@ function import( creation_id )
 			end;
 		end;
 
+		if creation_data.decorations then
+			for decoration_id, decoration_data in pairs( creation_data.decorations ) do
+
+				-- Create and register the decoration
+				if decoration_data[2] == 1 then
+					local Smoke = RbxUtility.Create 'Smoke' {
+						Parent = objects[decoration_data[1]];
+						Color = Color3.new( unpack( decoration_data[3] ) );
+						Opacity = decoration_data[4];
+						RiseVelocity = decoration_data[5];
+						Size = decoration_data[6];
+					};
+					objects[decoration_id] = Smoke;
+
+				elseif decoration_data[2] == 2 then
+					local Fire = RbxUtility.Create 'Fire' {
+						Parent = objects[decoration_data[1]];
+						Color = Color3.new( unpack( decoration_data[3] ) );
+						SecondaryColor = Color3.new( unpack( decoration_data[4] ) );
+						Heat = decoration_data[5];
+						Size = decoration_data[6];
+					};
+					objects[decoration_id] = Fire;
+
+				elseif decoration_data[2] == 3 then
+					local Sparkles = RbxUtility.Create 'Sparkles' {
+						Parent = objects[decoration_data[1]];
+						SparkleColor = Color3.new( unpack( decoration_data[3] ) );
+					};
+					objects[decoration_id] = Sparkles;
+				end;
+
+			end;
+		end;
+
 		Container:MakeJoints();
 		Services.Selection:Set( { Container } );
 

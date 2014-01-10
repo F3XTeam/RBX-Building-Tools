@@ -521,6 +521,49 @@ function _serializeParts( parts )
 &#9;&#9;end;
 &#9;end;
 
+&#9;-- Get any decorations in the selection
+&#9;local decorations = {};
+&#9;for _, Part in pairs( parts ) do
+&#9;&#9;table.insert( decorations, _getChildOfClass( Part, &apos;Smoke&apos; ) )
+&#9;&#9;table.insert( decorations, _getChildOfClass( Part, &apos;Fire&apos; ) );
+&#9;&#9;table.insert( decorations, _getChildOfClass( Part, &apos;Sparkles&apos; ) );
+&#9;end;
+
+&#9;-- Serialize any decorations
+&#9;if #decorations &gt; 0 then
+&#9;&#9;data.decorations = {};
+&#9;&#9;for _, Decoration in pairs( decorations ) do
+&#9;&#9;&#9;local decoration_type;
+&#9;&#9;&#9;if Decoration:IsA( &apos;Smoke&apos; ) then
+&#9;&#9;&#9;&#9;decoration_type = 1;
+&#9;&#9;&#9;elseif Decoration:IsA( &apos;Fire&apos; ) then
+&#9;&#9;&#9;&#9;decoration_type = 2;
+&#9;&#9;&#9;elseif Decoration:IsA( &apos;Sparkles&apos; ) then
+&#9;&#9;&#9;&#9;decoration_type = 3;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;local decoration_id = _generateSerializationID();
+&#9;&#9;&#9;local DecorationData = {
+&#9;&#9;&#9;&#9;_findTableOccurrences( objects, Decoration.Parent )[1],
+&#9;&#9;&#9;&#9;decoration_type
+&#9;&#9;&#9;};
+&#9;&#9;&#9;if decoration_type == 1 then
+&#9;&#9;&#9;&#9;DecorationData[3] = _splitNumberListString( tostring( Decoration.Color ) );
+&#9;&#9;&#9;&#9;DecorationData[4] = Decoration.Opacity;
+&#9;&#9;&#9;&#9;DecorationData[5] = Decoration.RiseVelocity;
+&#9;&#9;&#9;&#9;DecorationData[6] = Decoration.Size;
+&#9;&#9;&#9;elseif decoration_type == 2 then
+&#9;&#9;&#9;&#9;DecorationData[3] = _splitNumberListString( tostring( Decoration.Color ) );
+&#9;&#9;&#9;&#9;DecorationData[4] = _splitNumberListString( tostring( Decoration.SecondaryColor ) );
+&#9;&#9;&#9;&#9;DecorationData[5] = Decoration.Heat;
+&#9;&#9;&#9;&#9;DecorationData[6] = Decoration.Size;
+&#9;&#9;&#9;elseif decoration_type == 3 then
+&#9;&#9;&#9;&#9;DecorationData[3] = _splitNumberListString( tostring( Decoration.SparkleColor ) );
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;data.decorations[decoration_id] = DecorationData;
+&#9;&#9;&#9;objects[decoration_id] = Decoration;
+&#9;&#9;end;
+&#9;end;
+
 &#9;return RbxUtility.EncodeJSON( data );
 
 end;
@@ -1880,7 +1923,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 &#9;&#9;-- Serialize and dump selection to logs if shift+p is pressed
 &#9;&#9;if key == &quot;p&quot; and ( ActiveKeys[47] or ActiveKeys[48] ) then
-&#9;&#9;&#9;IE:export();
+&#9;&#9;&#9;if #Selection.Items &gt; 0 then
+&#9;&#9;&#9;&#9;IE:export();
+&#9;&#9;&#9;end;
 &#9;&#9;&#9;return;
 &#9;&#9;end;
 
