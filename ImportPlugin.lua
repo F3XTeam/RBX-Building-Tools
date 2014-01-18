@@ -10,13 +10,14 @@ Services = {
 };
 
 bt_logo = 'http://www.roblox.com/asset/?id=129747824';
+plugin_icon = 'http://www.roblox.com/asset/?id=142287521';
 export_base_url = 'http://www.f3xteam.com/bt/export/%s';
 in_server = not not Game:FindFirstChild( 'NetworkServer' );
 
 -- Create the plugin
-Plugin = PluginManager():CreatePlugin();
+Plugin = plugin;
 Toolbar = Plugin:CreateToolbar( 'Building Tools by F3X: Import' );
-Launcher = Toolbar:CreateButton( '', 'Import from Building Tools by F3X', 'launcher-icon.png' );
+Launcher = Toolbar:CreateButton( '', 'Import from Building Tools by F3X', plugin_icon );
 local GUI;
 
 ------------------------------------------
@@ -411,56 +412,57 @@ function import( creation_id )
 				WeldScript.Name = 'BTWelder';
 				WeldScript.Source = [[-- This script creates the welds between parts imported by the Building Tools by F3X plugin.
 
-	local create = LoadLibrary( 'RbxUtility' ).Create;
-	function _getAllDescendants( Parent )
-		-- Recursively gets all the descendants of  `Parent` and returns them
+local create = LoadLibrary( 'RbxUtility' ).Create;
+function _getAllDescendants( Parent )
+	-- Recursively gets all the descendants of  `Parent` and returns them
 
-		local descendants = {};
+	local descendants = {};
 
-		for _, Child in pairs( Parent:GetChildren() ) do
+	for _, Child in pairs( Parent:GetChildren() ) do
 
-			-- Add the direct descendants of `Parent`
-			table.insert( descendants, Child );
+		-- Add the direct descendants of `Parent`
+		table.insert( descendants, Child );
 
-			-- Add the descendants of each child
-			for _, Subchild in pairs( _getAllDescendants( Child ) ) do
-				table.insert( descendants, Subchild );
-			end;
-
+		-- Add the descendants of each child
+		for _, Subchild in pairs( _getAllDescendants( Child ) ) do
+			table.insert( descendants, Subchild );
 		end;
 
-		return descendants;
-
 	end;
-	function findExportedPart( part_id )
-		for _, Object in pairs( _getAllDescendants( Game:GetService( 'Workspace' ) ) ) do
-			if Object:IsA( 'StringValue' ) then
-				if Object.Name == 'BTID' and Object.Value == part_id then
-					return Object.Parent;
-				end;
+
+	return descendants;
+
+end;
+function findExportedPart( part_id )
+	for _, Object in pairs( _getAllDescendants( Game:GetService( 'Workspace' ) ) ) do
+		if Object:IsA( 'StringValue' ) then
+			if Object.Name == 'BTID' and Object.Value == part_id then
+				return Object.Parent;
 			end;
 		end;
 	end;
+end;
 
-	]];
+]];
 
 				for weld_id, weld_data in pairs( creation_data.welds ) do
 					WeldScript.Source = WeldScript.Source .. [[
 
-	( function ()
-		local Part0 = findExportedPart( ']] .. weld_data[1] .. [[' );
-		local Part1 = findExportedPart( ']] .. weld_data[2] .. [[' );
-		if not Part0 or not Part1 then
-			return;
-		end;
-		create 'Weld' {
-			Name = 'BTWeld';
-			Parent = Game.JointsService;
-			Part0 = Part0;
-			Part1 = Part1;
-			C1 = CFrame.new( ]] .. table.concat( weld_data[3], ', ' ) .. [[ );
-		};
-	end )();
+( function ()
+	local Part0 = findExportedPart( ']] .. weld_data[1] .. [[' );
+	local Part1 = findExportedPart( ']] .. weld_data[2] .. [[' );
+	if not Part0 or not Part1 then
+		return;
+	end;
+	create 'Weld' {
+		Name = 'BTWeld';
+		Parent = Game.JointsService;
+		Archivable = false;
+		Part0 = Part0;
+		Part1 = Part1;
+		C1 = CFrame.new( ]] .. table.concat( weld_data[3], ', ' ) .. [[ );
+	};
+end )();
 	]];
 				end;
 				WeldScript.Parent = Container;
