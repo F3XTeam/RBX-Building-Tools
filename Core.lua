@@ -43,6 +43,16 @@ light_slanted_rectangle = "http://www.roblox.com/asset/?id=127772502";
 action_completion_sound = "http://www.roblox.com/asset/?id=99666917";
 expand_arrow = "http://www.roblox.com/asset/?id=134367382";
 tool_decal = "http://www.roblox.com/asset/?id=129748355";
+undo_active_decal = "http://www.roblox.com/asset/?id=141741408";
+undo_inactive_decal = "http://www.roblox.com/asset/?id=142074557";
+redo_active_decal = "http://www.roblox.com/asset/?id=141741327";
+redo_inactive_decal = "http://www.roblox.com/asset/?id=142074553";
+delete_active_decal = "http://www.roblox.com/asset/?id=141896298";
+delete_inactive_decal = "http://www.roblox.com/asset/?id=142074644";
+export_active_decal = "http://www.roblox.com/asset/?id=141741337";
+export_inactive_decal = "http://www.roblox.com/asset/?id=142074569";
+clone_active_decal = "http://www.roblox.com/asset/?id=142073926";
+clone_inactive_decal = "http://www.roblox.com/asset/?id=142074563";
 
 ------------------------------------------
 -- Load external dependencies
@@ -53,7 +63,19 @@ Services.ContentProvider:Preload( light_slanted_rectangle );
 Services.ContentProvider:Preload( action_completion_sound );
 Services.ContentProvider:Preload( expand_arrow );
 Services.ContentProvider:Preload( tool_decal );
+Services.ContentProvider:Preload( undo_active_decal );
+Services.ContentProvider:Preload( undo_inactive_decal );
+Services.ContentProvider:Preload( redo_inactive_decal );
+Services.ContentProvider:Preload( redo_active_decal );
+Services.ContentProvider:Preload( delete_active_decal );
+Services.ContentProvider:Preload( delete_inactive_decal );
+Services.ContentProvider:Preload( export_active_decal );
+Services.ContentProvider:Preload( export_inactive_decal );
+Services.ContentProvider:Preload( clone_active_decal );
+Services.ContentProvider:Preload( clone_inactive_decal );
 Tool:WaitForChild( "Interfaces" );
+repeat wait( 0 ) until _G.gloo;
+Gloo = _G.gloo;
 
 ------------------------------------------
 -- Define functions that are depended-upon
@@ -678,12 +700,199 @@ function equipTool( NewTool )
 		-- Recolor the handle
 		Tool.Handle.BrickColor = NewTool.Color;
 
+		-- Highlight the right button on the dock
+		for _, Button in pairs( Dock.ToolButtons:GetChildren() ) do
+			Button.BackgroundTransparency = 1;
+		end;
+		local Button = Dock.ToolButtons:FindFirstChild( getToolName( NewTool ) .. "Button" );
+		if Button then
+			Button.BackgroundTransparency = 0;
+		end;
+
 		-- Run (if existent) the new tool's `Equipped` listener
 		if NewTool.Listeners.Equipped then
 			NewTool.Listeners.Equipped();
 		end;
 
 	end;
+end;
+
+function cloneSelection()
+	-- Clones the items in the selection
+
+	-- Make sure that there are items in the selection
+	if #Selection.Items > 0 then
+
+		local item_copies = {};
+
+		-- Make a copy of every item in the selection and add it to table `item_copies`
+		for _, Item in pairs( Selection.Items ) do
+			local ItemCopy = Item:Clone();
+			ItemCopy.Parent = Services.Workspace;
+			table.insert( item_copies, ItemCopy );
+		end;
+
+		-- Replace the selection with the copied items
+		Selection:clear();
+		for _, Item in pairs( item_copies ) do
+			Selection:add( Item );
+		end;
+
+		local HistoryRecord = {
+			copies = item_copies;
+			unapply = function ( self )
+				for _, Copy in pairs( self.copies ) do
+					if Copy then
+						Copy.Parent = nil;
+					end;
+				end;
+			end;
+			apply = function ( self )
+				Selection:clear();
+				for _, Copy in pairs( self.copies ) do
+					if Copy then
+						Copy.Parent = Services.Workspace;
+						Copy:MakeJoints();
+						Selection:add( Copy );
+					end;
+				end;
+			end;
+		};
+		History:add( HistoryRecord );
+
+		-- Play a confirmation sound
+		local Sound = RbxUtility.Create "Sound" {
+			Name = "BTActionCompletionSound";
+			Pitch = 1.5;
+			SoundId = action_completion_sound;
+			Volume = 1;
+			Parent = Player;
+		};
+		Sound:Play();
+		Sound:Destroy();
+
+		-- Highlight the outlines of the new parts
+		coroutine.wrap( function ()
+			for transparency = 1, 0, -0.1 do
+				for Item, SelectionBox in pairs( SelectionBoxes ) do
+					SelectionBox.Transparency = transparency;
+				end;
+				wait( 0.1 );
+			end;
+		end )();
+
+	end;
+
+end;
+
+function deleteSelection()
+	-- Deletes the items in the selection
+
+	if #Selection.Items == 0 then
+		return;
+	end;
+
+	local selection_items = _cloneTable( Selection.Items );
+
+	-- Create a history record
+	local HistoryRecord = {
+		targets = selection_items;
+		parents = {};
+		apply = function ( self )
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.Parent = nil;
+				end;
+			end;
+		end;
+		unapply = function ( self )
+			Selection:clear();
+			for _, Target in pairs( self.targets ) do
+				if Target then
+					Target.Parent = self.parents[Target];
+					Target:MakeJoints();
+					Selection:add( Target );
+				end;
+			end;
+		end;
+	};
+
+	for _, Item in pairs( selection_items ) do
+		HistoryRecord.parents[Item] = Item.Parent;
+		Item.Parent = nil;
+	end;
+
+	History:add( HistoryRecord );
+
+end;
+
+function prismSelect()
+	-- Selects all the parts within the area of the selected parts
+
+	local parts = {};
+
+	-- Get all the parts in workspace
+	local workspace_parts = {};
+	local workspace_children = _getAllDescendants( Services.Workspace );
+	for _, Child in pairs( workspace_children ) do
+		if Child:IsA( 'BasePart' ) and not Selection:find( Child ) then
+			table.insert( workspace_parts, Child );
+		end;
+	end;
+
+	-- Go through each part and perform area tests on each one
+	local checks = {};
+	for _, Item in pairs( workspace_parts ) do
+		checks[Item] = 0;
+		for _, SelectionItem in pairs( Selection.Items ) do
+
+			-- Calculate the position of the item in question in relation to the area-defining parts
+			local offset = SelectionItem.CFrame:toObjectSpace( Item.CFrame );
+			local extents = SelectionItem.Size / 2;
+
+			-- Check the item off if it passed this test (if it's within the range of the extents)
+			if ( math.abs( offset.x ) <= extents.x ) and ( math.abs( offset.y ) <= extents.y ) and ( math.abs( offset.z ) <= extents.z ) then
+				checks[Item] = checks[Item] + 1;
+			end;
+
+		end;
+	end;
+
+	-- Delete the parts that were used to select the area
+	local selection_items = _cloneTable( Selection.Items );
+	for _, Item in pairs( selection_items ) do
+		Item.Parent = nil;
+	end;
+
+	-- Select the parts that passed any area checks
+	for _, Item in pairs( workspace_parts ) do
+		if checks[Item] > 0 then
+			Selection:add( Item );
+		end;
+	end;
+
+end;
+
+function toggleHelp()
+
+	-- Make sure the dock is ready
+	if not Dock then
+		return;
+	end;
+
+	-- Toggle the visibility of the help tooltip
+	Dock.HelpInfo.Visible = not Dock.HelpInfo.Visible;
+
+end;
+
+function getToolName( tool )
+	-- Returns the name of `tool` as registered in `Tools`
+
+	local name_search = _findTableOccurrences( Tools, tool );
+	if #name_search > 0 then
+		return name_search[1];
+	end;
+
 end;
 
 -- Keep some state data
@@ -1352,6 +1561,9 @@ History = {
 	-- Keep state data
 	["index"] = 0;
 
+	-- Provide events for the platform to listen for changes
+	["Changed"] = RbxUtility.CreateSignal();
+
 	-- Provide functions to control the system
 	["undo"] = function ( self )
 
@@ -1366,6 +1578,9 @@ History = {
 
 		-- Go back in the history
 		self.index = self.index - 1;
+
+		-- Fire the relevant events
+		self.Changed:fire();
 
 	end;
 
@@ -1383,6 +1598,9 @@ History = {
 		local NewRecord = self.Data[self.index];
 		NewRecord:apply();
 
+		-- Fire the relevant events
+		self.Changed:fire();
+
 	end;
 
 	["add"] = function ( self, Record )
@@ -1397,6 +1615,9 @@ History = {
 		for index = self.index + 1, #self.Data do
 			self.Data[index] = nil;
 		end;
+
+		-- Fire the relevant events
+		self.Changed:fire();
 
 	end;
 
@@ -1660,10 +1881,14 @@ IE = {
 
 	["export"] = function ()
 
+		if #Selection.Items == 0 then
+			return;
+		end;
+
 		local serialized_selection = _serializeParts( Selection.Items );
 
 		-- Dump to logs
-		Services.TestService:Warn( false, "[Building Tools by F3X] Exported Model: \n" .. serialized_selection );
+		-- Services.TestService:Warn( false, "[Building Tools by F3X] Exported Model: \n" .. serialized_selection );
 
 		-- Get ready to upload to the web for retrieval
 		local upload_data;
@@ -1744,7 +1969,214 @@ IE = {
 };
 
 ------------------------------------------
--- Attach listeners
+-- Prepare the dock UI
+------------------------------------------
+
+Tooltips = {};
+
+Dock = Tool.Interfaces:WaitForChild( "BTDockGUI" ):Clone();
+Dock.Parent = UI;
+Dock.Visible = false;
+
+-- Add functionality to each tool button
+for _, ToolButton in pairs( Dock.ToolButtons:GetChildren() ) do
+
+	-- Get the tool name and the tool
+	local tool_name = ToolButton.Name:match( "(.+)Button" );
+
+	if tool_name then
+
+		-- Create the click connection
+		ToolButton.MouseButton1Up:connect( function ()
+			local Tool = Tools[tool_name];
+			if Tool then
+				equipTool( Tool );
+			end;
+		end );
+
+		ToolButton.MouseEnter:connect( function ()
+			local Tooltip = Tooltips[tool_name];
+			if Tooltip then
+				Tooltip:focus( 'button' );
+			end;
+		end );
+
+		ToolButton.MouseLeave:connect( function ()
+			local Tooltip = Tooltips[tool_name];
+			if Tooltip then
+				Tooltip:unfocus( 'button' );
+			end;
+		end );
+
+	end;
+
+end;
+
+-- Prepare the tooltips
+for _, Tooltip in pairs( Dock.Tooltips:GetChildren() ) do
+
+	local tool_name = Tooltip.Name:match( "(.+)Info" );
+
+	Tooltips[tool_name] = {
+
+		GUI = Tooltip;
+
+		button_focus = false;
+		tooltip_focus = false;
+
+		focus = function ( self, source )
+			if Dock.HelpInfo.Visible then
+				return;
+			end;
+			if source == 'button' then
+				self.button_focus = true;
+			elseif source == 'tooltip' then
+				self.tooltip_focus = true;
+			end;
+			self.GUI.Visible = true;
+		end;
+
+		unfocus = function ( self, source )
+			if source == 'button' then
+				self.button_focus = false;
+			elseif source == 'tooltip' then
+				self.tooltip_focus = false;
+			end;
+			if not self.button_focus and not self.tooltip_focus then
+				self.GUI.Visible = false;
+			end;
+		end;
+
+	};
+
+	-- Make it disappear after it's out of mouse focus
+	Tooltip.MouseEnter:connect( function ()
+		Tooltips[tool_name]:focus( 'tooltip' );
+	end );
+	Tooltip.MouseLeave:connect( function ()
+		Tooltips[tool_name]:unfocus( 'tooltip' );
+	end );
+
+	-- Create the scrolling container
+	local ScrollingContainer = Gloo.ScrollingContainer( true, false, 15 );
+	ScrollingContainer.GUI.Parent = Tooltip;
+
+	-- Put the tooltip content in the container
+	for _, Child in pairs( Tooltip.Content:GetChildren() ) do
+		Child.Parent = ScrollingContainer.Container;
+	end;
+	ScrollingContainer.GUI.Size = Dock.Tooltips.Size;
+	ScrollingContainer.Container.Size = Tooltip.Content.Size;
+	ScrollingContainer.Boundary.Size = Dock.Tooltips.Size;
+	ScrollingContainer.Boundary.BackgroundTransparency = 1;
+	Tooltip.Content:Destroy();
+
+end;
+
+
+-- Create the scrolling container for the help tooltip
+local ScrollingContainer = Gloo.ScrollingContainer( true, false, 15 );
+ScrollingContainer.GUI.Parent = Dock.HelpInfo;
+
+-- Put the help tooltip content in the container
+for _, Child in pairs( Dock.HelpInfo.Content:GetChildren() ) do
+	Child.Parent = ScrollingContainer.Container;
+end;
+ScrollingContainer.GUI.Size = Dock.HelpInfo.Size;
+ScrollingContainer.Container.Size = Dock.HelpInfo.Content.Size;
+ScrollingContainer.Boundary.Size = Dock.HelpInfo.Size;
+ScrollingContainer.Boundary.BackgroundTransparency = 1;
+Dock.HelpInfo.Content:Destroy();
+
+-- Add functionality to the other GUI buttons
+Dock.SelectionButtons.UndoButton.MouseButton1Up:connect( function ()
+	History:undo();
+end );
+Dock.SelectionButtons.RedoButton.MouseButton1Up:connect( function ()
+	History:redo();
+end );
+Dock.SelectionButtons.DeleteButton.MouseButton1Up:connect( function ()
+	deleteSelection();
+end );
+Dock.SelectionButtons.CloneButton.MouseButton1Up:connect( function ()
+	cloneSelection();
+end );
+Dock.SelectionButtons.ExportButton.MouseButton1Up:connect( function ()
+	IE:export();
+end );
+Dock.InfoButtons.HelpButton.MouseButton1Up:connect( function ()
+	toggleHelp();
+end );
+
+-- Shade the buttons according to whether they'll function or not
+Selection.Changed:connect( function ()
+
+	-- If there are items, they should be active
+	if #Selection.Items > 0 then
+		Dock.SelectionButtons.DeleteButton.Image = delete_active_decal;
+		Dock.SelectionButtons.CloneButton.Image = clone_active_decal;
+		Dock.SelectionButtons.ExportButton.Image = export_active_decal;
+
+	-- If there aren't items, they shouldn't be active
+	else
+		Dock.SelectionButtons.DeleteButton.Image = delete_inactive_decal;
+		Dock.SelectionButtons.CloneButton.Image = clone_inactive_decal;
+		Dock.SelectionButtons.ExportButton.Image = export_inactive_decal;
+	end;
+
+end );
+
+-- Make the selection/info buttons display tooltips upon hovering over them
+for _, SelectionButton in pairs( Dock.SelectionButtons:GetChildren() ) do
+	SelectionButton.MouseEnter:connect( function ()
+		if SelectionButton:FindFirstChild( 'Tooltip' ) then
+			SelectionButton.Tooltip.Visible = true;
+		end;
+	end );
+	SelectionButton.MouseLeave:connect( function ()
+		if SelectionButton:FindFirstChild( 'Tooltip' ) then
+			SelectionButton.Tooltip.Visible = false;
+		end;
+	end );
+end;
+Dock.InfoButtons.HelpButton.MouseEnter:connect( function ()
+	Dock.InfoButtons.HelpButton.Tooltip.Visible = true;
+end );
+Dock.InfoButtons.HelpButton.MouseLeave:connect( function ()
+	Dock.InfoButtons.HelpButton.Tooltip.Visible = false;
+end );
+
+History.Changed:connect( function ()
+
+	-- If there are any records
+	if #History.Data > 0 then
+
+		-- If we're at the beginning
+		if History.index == 0 then
+			Dock.SelectionButtons.UndoButton.Image = undo_inactive_decal;
+			Dock.SelectionButtons.RedoButton.Image = redo_active_decal;
+
+		-- If we're at the end
+		elseif History.index == #History.Data then
+			Dock.SelectionButtons.UndoButton.Image = undo_active_decal;
+			Dock.SelectionButtons.RedoButton.Image = redo_inactive_decal;
+
+		-- If we're neither at the beginning or the end
+		else
+			Dock.SelectionButtons.UndoButton.Image = undo_active_decal;
+			Dock.SelectionButtons.RedoButton.Image = redo_active_decal;
+		end;
+
+	-- If there are no records
+	else
+		Dock.SelectionButtons.UndoButton.Image = undo_inactive_decal;
+		Dock.SelectionButtons.RedoButton.Image = redo_inactive_decal;
+	end;
+
+end );
+
+------------------------------------------
+-- Attach tool event listeners
 ------------------------------------------
 
 Tool.Equipped:connect( function ( CurrentMouse )
@@ -1767,6 +2199,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		CurrentTool.Listeners.Equipped();
 	end;
 
+	-- Show the dock
+	Dock.Visible = true;
+
 	table.insert( Connections, Mouse.KeyDown:connect( function ( key )
 
 		local key = key:lower();
@@ -1774,110 +2209,14 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		-- Provide the abiltiy to delete via the shift + X key combination
 		if ActiveKeys[47] or ActiveKeys[48] and key == "x" then
-
-			local selection_items = _cloneTable( Selection.Items );
-
-			-- Create a history record
-			local HistoryRecord = {
-				targets = selection_items;
-				parents = {};
-				apply = function ( self )
-					for _, Target in pairs( self.targets ) do
-						if Target then
-							Target.Parent = nil;
-						end;
-					end;
-				end;
-				unapply = function ( self )
-					Selection:clear();
-					for _, Target in pairs( self.targets ) do
-						if Target then
-							Target.Parent = self.parents[Target];
-							Target:MakeJoints();
-							Selection:add( Target );
-						end;
-					end;
-				end;
-			};
-
-			for _, Item in pairs( selection_items ) do
-				HistoryRecord.parents[Item] = Item.Parent;
-				Item.Parent = nil;
-			end;
-
-			History:add( HistoryRecord );
-
+			deleteSelection();
 			return;
 		end;
 
 		-- Provide the ability to clone via the shift + C key combination
 		if ActiveKeys[47] or ActiveKeys[48] and key == "c" then
-
-			-- Make sure that there are items in the selection
-			if #Selection.Items > 0 then
-
-				local item_copies = {};
-
-				-- Make a copy of every item in the selection and add it to table `item_copies`
-				for _, Item in pairs( Selection.Items ) do
-					local ItemCopy = Item:Clone();
-					ItemCopy.Parent = Services.Workspace;
-					table.insert( item_copies, ItemCopy );
-				end;
-
-				-- Replace the selection with the copied items
-				Selection:clear();
-				for _, Item in pairs( item_copies ) do
-					Selection:add( Item );
-				end;
-
-				local HistoryRecord = {
-					copies = item_copies;
-					unapply = function ( self )
-						for _, Copy in pairs( self.copies ) do
-							if Copy then
-								Copy.Parent = nil;
-							end;
-						end;
-					end;
-					apply = function ( self )
-						Selection:clear();
-						for _, Copy in pairs( self.copies ) do
-							if Copy then
-								Copy.Parent = Services.Workspace;
-								Copy:MakeJoints();
-								Selection:add( Copy );
-							end;
-						end;
-					end;
-				};
-				History:add( HistoryRecord );
-
-				-- Play a confirmation sound
-				local Sound = RbxUtility.Create "Sound" {
-					Name = "BTActionCompletionSound";
-					Pitch = 1.5;
-					SoundId = action_completion_sound;
-					Volume = 1;
-					Parent = Player;
-				};
-				Sound:Play();
-				Sound:Destroy();
-
-				-- Highlight the outlines of the new parts
-				coroutine.wrap( function ()
-					for transparency = 1, 0, -0.1 do
-						for Item, SelectionBox in pairs( SelectionBoxes ) do
-							SelectionBox.Transparency = transparency;
-						end;
-						wait( 0.1 );
-					end;
-				end )();
-
-			end;
-
+			cloneSelection();
 			return;
-
 		end;
 
 		-- Undo if shift+z is pressed
@@ -1893,9 +2232,13 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		-- Serialize and dump selection to logs if shift+p is pressed
 		if key == "p" and ( ActiveKeys[47] or ActiveKeys[48] ) then
-			if #Selection.Items > 0 then
-				IE:export();
-			end;
+			IE:export();
+			return;
+		end;
+
+		-- Perform a prism selection if shift + k is pressed
+		if key == "k" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+			prismSelect();
 			return;
 		end;
 
@@ -2107,6 +2450,9 @@ Tool.Unequipped:connect( function ()
 	for _, SelectionBox in pairs( SelectionBoxes ) do
 		SelectionBox.Parent = nil;
 	end;
+
+	-- Hide the dock
+	Dock.Visible = false;
 
 	-- Disconnect temporary platform-related connections
 	for connection_index, Connection in pairs( Connections ) do
