@@ -829,6 +829,11 @@ end;
 function prismSelect()
 	-- Selects all the parts within the area of the selected parts
 
+	-- Make sure parts to define the area are present
+	if #Selection.Items == 0 then
+		return;
+	end;
+
 	local parts = {};
 
 	-- Get all the parts in workspace
