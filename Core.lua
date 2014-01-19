@@ -860,7 +860,9 @@ function prismSelect()
 
 	-- Delete the parts that were used to select the area
 	local selection_items = _cloneTable( Selection.Items );
+	local selection_item_parents = {};
 	for _, Item in pairs( selection_items ) do
+		selection_item_parents[Item] = Item.Parent;
 		Item.Parent = nil;
 	end;
 
@@ -870,6 +872,29 @@ function prismSelect()
 			Selection:add( Item );
 		end;
 	end;
+
+	-- Add a history record
+	History:add( {
+		selection_parts = selection_items;
+		selection_part_parents = selection_item_parents;
+		new_selection = _cloneTable( Selection.Items );
+		apply = function ( self )
+			Selection:clear();
+			for _, Item in pairs( self.selection_parts ) do
+				Item.Parent = nil;
+			end;
+			for _, Item in pairs( self.new_selection ) do
+				Selection:add( Item );
+			end;
+		end;
+		unapply = function ( self )
+			Selection:clear();
+			for _, Item in pairs( self.selection_parts ) do
+				Item.Parent = self.selection_part_parents[Item];
+				Selection:add( Item );
+			end;
+		end;
+	} );
 
 end;
 
