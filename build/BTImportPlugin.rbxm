@@ -1,0 +1,591 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Script" referent="RBX0">
+		<Properties>
+			<bool name="Disabled">false</bool>
+			<Content name="LinkedSource"><null></null></Content>
+			<string name="Name">Import from Building Tools by F3X</string>
+			<ProtectedString name="Source">------------------------------------------
+-- Make references to important items
+------------------------------------------
+Services = {
+&#9;HttpService = Game:GetService( &apos;HttpService&apos; );
+&#9;Workspace = Game:GetService( &apos;Workspace&apos; );
+&#9;ContentProvider = Game:GetService( &apos;ContentProvider&apos; );
+&#9;CoreGui = Game:GetService( &apos;CoreGui&apos; );
+&#9;Selection = Game:GetService( &apos;Selection&apos; );
+};
+
+bt_logo = &apos;http://www.roblox.com/asset/?id=129747824&apos;;
+plugin_icon = &apos;http://www.roblox.com/asset/?id=142287521&apos;;
+export_base_url = &apos;http://www.f3xteam.com/bt/export/%s&apos;;
+in_server = not not Game:FindFirstChild( &apos;NetworkServer&apos; );
+
+-- Create the plugin
+Plugin = plugin;
+Toolbar = Plugin:CreateToolbar( &apos;Building Tools by F3X: Import&apos; );
+Launcher = Toolbar:CreateButton( &apos;&apos;, &apos;Import from Building Tools by F3X&apos;, plugin_icon );
+local GUI;
+
+------------------------------------------
+-- Load external dependencies
+------------------------------------------
+RbxUtility = LoadLibrary( &apos;RbxUtility&apos; );
+Services.ContentProvider:Preload( bt_logo );
+Services.HttpService.HttpEnabled = true;
+
+------------------------------------------
+-- Define functions that are depended-upon
+------------------------------------------
+function _findTableOccurrences( haystack, needle )
+&#9;-- Returns the positions of instances of `needle` in table `haystack`
+&#9;local positions = {};
+
+&#9;-- Add any indexes from `haystack` that have `needle`
+&#9;for index, value in pairs( haystack ) do
+&#9;&#9;if value == needle then
+&#9;&#9;&#9;table.insert( positions, index );
+&#9;&#9;end;
+&#9;end;
+
+&#9;return positions;
+end;
+
+------------------------------------------
+-- Provide actual functionality
+------------------------------------------
+function showGUI( message, ok_text )
+
+&#9;-- Make sure the UI isn&apos;t already open
+&#9;if GUI then
+&#9;&#9;hideGUI();
+&#9;end;
+
+&#9;local Create = RbxUtility.Create;
+
+&#9;GUI = Create &apos;ScreenGui&apos; {
+&#9;&#9;Name = &apos;BTImportUI&apos;;
+&#9;&#9;Parent = Services.CoreGui;
+&#9;};
+
+&#9;local Container = Create &apos;Frame&apos; {
+&#9;&#9;Name = &apos;Container&apos;;
+&#9;&#9;Parent = GUI;
+&#9;&#9;BackgroundTransparency = 1;
+&#9;&#9;Size = UDim2.new( 1, 0, 0, 0 );
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;ClipsDescendants = true;
+&#9;};
+
+&#9;local Highlight = Create &apos;Frame&apos; {
+&#9;&#9;Name = &apos;Highlight&apos;;
+&#9;&#9;Parent = Container;
+&#9;&#9;ZIndex = 2;
+&#9;&#9;BackgroundColor3 = Color3.new( 1, 1, 1 );
+&#9;&#9;BackgroundTransparency = 0.95;
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;Position = UDim2.new( 0, 0, 0, 270 );
+&#9;&#9;Size = UDim2.new( 1, 0, 0, 180 );
+&#9;&#9;ZIndex = 2;
+&#9;};
+
+&#9;if message then
+&#9;&#9;local OkButton = Create &apos;TextButton&apos; {
+&#9;&#9;&#9;Name = &apos;OkButton&apos;;
+&#9;&#9;&#9;Parent = Highlight;
+&#9;&#9;&#9;BackgroundColor3 = Color3.new( 1, 162 / 255, 47 / 255 );
+&#9;&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;&#9;Position = UDim2.new( 0.3, 0, 1, -60 );
+&#9;&#9;&#9;Size = UDim2.new( 0.4, 0, 0, 40 );
+&#9;&#9;&#9;ZIndex = 2;
+&#9;&#9;&#9;Font = Enum.Font.SourceSansBold;
+&#9;&#9;&#9;FontSize = Enum.FontSize.Size24;
+&#9;&#9;&#9;Text = ok_text;
+&#9;&#9;&#9;TextColor3 = Color3.new( 1, 1, 1 );
+&#9;&#9;&#9;TextStrokeColor3 = Color3.new( 0, 0, 0 );
+&#9;&#9;&#9;TextStrokeTransparency = 0.85;
+&#9;&#9;&#9;TextWrapped = true;
+&#9;&#9;&#9;[Create.E &apos;MouseButton1Up&apos;] = function ()
+&#9;&#9;&#9;&#9;hideGUI();
+&#9;&#9;&#9;end;
+&#9;&#9;};
+&#9;&#9;Create &apos;Frame&apos; {
+&#9;&#9;&#9;Name = &apos;Bevel&apos;;
+&#9;&#9;&#9;Parent = OkButton;
+&#9;&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;&#9;BackgroundColor3 = Color3.new( 184 / 255, 116 / 255, 33 / 255 );
+&#9;&#9;&#9;Position = UDim2.new( 0, 0, 1, -2 );
+&#9;&#9;&#9;Size = UDim2.new( 1, 0, 0, 2 );
+&#9;&#9;&#9;ZIndex = 2;
+&#9;&#9;};
+&#9;&#9;local Message = Create &apos;TextLabel&apos; {
+&#9;&#9;&#9;Name = &apos;Message&apos;;
+&#9;&#9;&#9;Parent = Highlight;
+&#9;&#9;&#9;BackgroundTransparency = 1;
+&#9;&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;&#9;Position = UDim2.new( 0.1, 0, 0, 0 );
+&#9;&#9;&#9;Size = UDim2.new( 0.8, 0, 1, -30 );
+&#9;&#9;&#9;Font = Enum.Font.Arial;
+&#9;&#9;&#9;FontSize = Enum.FontSize.Size24;
+&#9;&#9;&#9;Text = message;
+&#9;&#9;&#9;TextColor3 = Color3.new( 1, 1, 1 );
+&#9;&#9;&#9;TextWrapped = true;
+&#9;&#9;};
+&#9;end;
+
+&#9;local Interface = Create &apos;Frame&apos; {
+&#9;&#9;Name = &apos;Interface&apos;;
+&#9;&#9;Parent = Container;
+&#9;&#9;ZIndex = 2;
+&#9;&#9;Size = UDim2.new( 0.6, 0, 0, 110 );
+&#9;&#9;Position = UDim2.new( 0.2, 0, 0, 300 );
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;BackgroundTransparency = 1;
+&#9;&#9;Visible = not message;
+&#9;};
+
+&#9;local CreationID = Create &apos;Frame&apos; {
+&#9;&#9;Name = &apos;CreationID&apos;;
+&#9;&#9;Parent = Interface;
+&#9;&#9;BackgroundTransparency = 1;
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;Position = UDim2.new( 0, 0, 0, 10 );
+&#9;&#9;Size = UDim2.new( 1, 0, 0, 30 );
+&#9;&#9;ZIndex = 2;
+&#9;};
+
+&#9;Create &apos;Frame&apos; {
+&#9;&#9;Name = &apos;BottomBorder&apos;;
+&#9;&#9;Parent = CreationID;
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;BackgroundColor3 = Color3.new( 1, 162 / 255, 47 / 255 );
+&#9;&#9;Position = UDim2.new( 0, 0, 1, -1 );
+&#9;&#9;Size = UDim2.new( 1, 0, 0, 1 );
+&#9;&#9;ZIndex = 2;
+&#9;};
+
+&#9;Create &apos;Frame&apos; {
+&#9;&#9;Name = &apos;LeftBorder&apos;;
+&#9;&#9;Parent = CreationID;
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;BackgroundColor3 = Color3.new( 1, 162 / 255, 47 / 255 );
+&#9;&#9;Position = UDim2.new( 0, 0, 0.8, 0 );
+&#9;&#9;Size = UDim2.new( 0, 1, 0.2, 0 );
+&#9;&#9;ZIndex = 2;
+&#9;};
+
+&#9;Create &apos;Frame&apos; {
+&#9;&#9;Name = &apos;RightBorder&apos;;
+&#9;&#9;Parent = CreationID;
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;BackgroundColor3 = Color3.new( 1, 162 / 255, 47 / 255 );
+&#9;&#9;Position = UDim2.new( 1, -1, 0.8, 0 );
+&#9;&#9;Size = UDim2.new( 0, 1, 0.2, 0 );
+&#9;&#9;ZIndex = 2;
+&#9;};
+
+&#9;local TextBox;
+&#9;TextBox = Create &apos;TextBox&apos; {
+&#9;&#9;Parent = CreationID;
+&#9;&#9;BackgroundTransparency = 1;
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;ClearTextOnFocus = true;
+&#9;&#9;Position = UDim2.new( 0, 10, 0, -10 );
+&#9;&#9;Size = UDim2.new( 1, -10, 1, 10 );
+&#9;&#9;ZIndex = 2;
+&#9;&#9;Font = Enum.Font.SourceSans;
+&#9;&#9;FontSize = Enum.FontSize.Size24;
+&#9;&#9;Text = &quot;What&apos;s your creation&apos;s ID?&quot;;
+&#9;&#9;TextColor3 = Color3.new( 1, 1, 1 );
+&#9;&#9;TextTransparency = 0.3;
+&#9;&#9;TextXAlignment = Enum.TextXAlignment.Left;
+&#9;&#9;[Create.E &apos;FocusLost&apos;] = function ( enter_pressed )
+&#9;&#9;&#9;if not enter_pressed then
+&#9;&#9;&#9;&#9;return;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;import( TextBox.Text:lower() );
+&#9;&#9;end;
+&#9;};
+
+&#9;local CancelButton = Create &apos;TextButton&apos; {
+&#9;&#9;Parent = Interface;
+&#9;&#9;BackgroundColor3 = Color3.new( 1, 162 / 255, 47 / 255 );
+&#9;&#9;BackgroundTransparency = 0.3;
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;Name = &apos;CancelButton&apos;;
+&#9;&#9;Position = UDim2.new( 0.55, 0, 0, 65 );
+&#9;&#9;Size = UDim2.new( 0.45, 0, 0, 40 );
+&#9;&#9;ZIndex = 2;
+&#9;&#9;Font = Enum.Font.SourceSansBold;
+&#9;&#9;FontSize = Enum.FontSize.Size24;
+&#9;&#9;Text = &apos;Cancel&apos;;
+&#9;&#9;TextColor3 = Color3.new( 1, 1, 1 );
+&#9;&#9;TextStrokeColor3 = Color3.new( 0, 0, 0 );
+&#9;&#9;TextStrokeTransparency = 0.85;
+&#9;&#9;TextTransparency = 0.3;
+&#9;&#9;[Create.E &apos;MouseButton1Up&apos;] = function ()
+&#9;&#9;&#9;hideGUI();
+&#9;&#9;end;
+&#9;};
+
+&#9;Create &apos;Frame&apos; {
+&#9;&#9;Parent = CancelButton;
+&#9;&#9;BackgroundColor3 = Color3.new( 131 / 255, 83 / 255, 23 / 255 );
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;Name = &apos;Bevel&apos;;
+&#9;&#9;Position = UDim2.new( 0, 0, 1, -2 );
+&#9;&#9;Size = UDim2.new( 1, 0, 0, 2 );
+&#9;&#9;ZIndex = 2;
+&#9;};
+
+&#9;local ImportButton = Create &apos;TextButton&apos; {
+&#9;&#9;Parent = Interface;
+&#9;&#9;BackgroundColor3 = Color3.new( 1, 162 / 255, 47 / 255 );
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;Name = &apos;ImportButton&apos;;
+&#9;&#9;Position = UDim2.new( 0, 0, 0, 65 );
+&#9;&#9;Size = UDim2.new( 0.45, 0, 0, 40 );
+&#9;&#9;ZIndex = 2;
+&#9;&#9;Font = Enum.Font.SourceSansBold;
+&#9;&#9;FontSize = Enum.FontSize.Size24;
+&#9;&#9;Text = &apos;Import&apos;;
+&#9;&#9;TextColor3 = Color3.new( 1, 1, 1 );
+&#9;&#9;TextStrokeColor3 = Color3.new( 0, 0, 0 );
+&#9;&#9;TextStrokeTransparency = 0.85;
+&#9;&#9;[Create.E &apos;MouseButton1Up&apos;] = function ()
+&#9;&#9;&#9;import( TextBox.Text:lower() );
+&#9;&#9;end;
+&#9;};
+
+&#9;Create &apos;Frame&apos; {
+&#9;&#9;Parent = ImportButton;
+&#9;&#9;BackgroundColor3 = Color3.new( 204 / 255, 129 / 255, 37 / 255 );
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;Name = &apos;Bevel&apos;;
+&#9;&#9;Position = UDim2.new( 0, 0, 1, -2 );
+&#9;&#9;Size = UDim2.new( 1, 0, 0, 2 );
+&#9;&#9;ZIndex = 2;
+&#9;};
+
+&#9;Create &apos;Frame&apos; {
+&#9;&#9;Name = &apos;Overlay&apos;;
+&#9;&#9;Parent = Container;
+&#9;&#9;BackgroundColor3 = Color3.new( 0, 0, 0 );
+&#9;&#9;BackgroundTransparency = 0.25;
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;Size = UDim2.new( 1, 0, 1, 0 );
+&#9;};
+
+&#9;local Logo = Create &apos;ImageLabel&apos; {
+&#9;&#9;Name = &apos;Logo&apos;;
+&#9;&#9;Parent = Container;
+&#9;&#9;BackgroundTransparency = 1;
+&#9;&#9;BorderSizePixel = 0;
+&#9;&#9;Image = bt_logo;
+&#9;&#9;Position = UDim2.new( 0, GUI.AbsoluteSize.x / 2 - 128, 0, 0 );
+&#9;&#9;Size = UDim2.new( 0, 256, 0, 256 );
+&#9;&#9;ZIndex = 2;
+&#9;};
+&#9;GUI.Changed:connect( function ( property )
+&#9;&#9;if property == &apos;AbsoluteSize&apos; then
+&#9;&#9;&#9;Logo.Position = UDim2.new( 0, GUI.AbsoluteSize.x / 2 - 128, 0, 0 );
+&#9;&#9;end;
+&#9;end );
+
+&#9;Container:TweenSize( UDim2.new( 1, 0, 1, 0 ), Enum.EasingDirection.Out, Enum.EasingStyle.Bounce, 0.5, true );
+
+end;
+
+function hideGUI()
+
+&#9;-- Hide the current GUI
+&#9;if GUI then
+&#9;&#9;GUI:Destroy();
+&#9;end;
+
+end;
+
+Launcher.Click:connect( function ()
+&#9;if in_server then
+&#9;&#9;showGUI();
+&#9;else
+&#9;&#9;showGUI( &apos;Hit Tools &gt; Test &gt; Start Server to use this plugin.&apos;, &apos;Got it&apos; );
+&#9;end;
+end );
+
+function import( creation_id )
+
+&#9;hideGUI();
+
+&#9;-- Try to download the creation
+&#9;local creation_data;
+&#9;local download_attempt = ypcall( function ()
+&#9;&#9;creation_data = Services.HttpService:GetAsync( export_base_url:format( creation_id ) );
+&#9;end );
+
+&#9;-- Fail graciously
+&#9;if not download_attempt then
+&#9;&#9;showGUI( &quot;We couldn&apos;t get your creation&quot;, &apos;Oh&apos; );
+&#9;&#9;return false;
+&#9;end;
+&#9;if not ( creation_data and type( creation_data ) == &apos;string&apos; and creation_data:len() &gt; 0 ) then
+&#9;&#9;showGUI( &quot;We couldn&apos;t get your creation&quot;, &apos;:(&apos; );
+&#9;&#9;return false;
+&#9;end;
+&#9;if not pcall( function () creation_data = RbxUtility.DecodeJSON( creation_data ); end ) then
+&#9;&#9;showGUI( &quot;We couldn&apos;t get your creation&quot;, &quot;:&apos;(&quot; );
+&#9;&#9;return false;
+&#9;end;
+
+&#9;-- Create a container to hold the creation
+&#9;local Container = Instance.new( &apos;Model&apos;, Services.Workspace );
+&#9;Container.Name = &apos;BTExport&apos;;
+
+&#9;if creation_data.version == 1 then
+
+&#9;&#9;local objects = {};
+
+&#9;&#9;for part_id, part_data in pairs( creation_data.parts ) do
+&#9;&#9;&#9;local Part;
+
+&#9;&#9;&#9;local part_type = part_data[1];
+&#9;&#9;&#9;if part_type == 1 then
+&#9;&#9;&#9;&#9;Part = Instance.new( &quot;Part&quot; );
+&#9;&#9;&#9;elseif part_type == 2 then
+&#9;&#9;&#9;&#9;Part = Instance.new( &quot;TrussPart&quot; );
+&#9;&#9;&#9;elseif part_type == 3 then
+&#9;&#9;&#9;&#9;Part = Instance.new( &quot;WedgePart&quot; );
+&#9;&#9;&#9;elseif part_type == 4 then
+&#9;&#9;&#9;&#9;Part = Instance.new( &quot;CornerWedgePart&quot; );
+&#9;&#9;&#9;elseif part_type == 5 then
+&#9;&#9;&#9;&#9;Part = Instance.new( &quot;Part&quot; );
+&#9;&#9;&#9;&#9;Part.Shape = &quot;Cylinder&quot;;
+&#9;&#9;&#9;elseif part_type == 6 then
+&#9;&#9;&#9;&#9;Part = Instance.new( &quot;Part&quot; );
+&#9;&#9;&#9;&#9;Part.Shape = &quot;Ball&quot;;
+&#9;&#9;&#9;elseif part_type == 7 then
+&#9;&#9;&#9;&#9;Part = Instance.new( &quot;Seat&quot; );
+&#9;&#9;&#9;elseif part_type == 8 then
+&#9;&#9;&#9;&#9;Part = Instance.new( &quot;VehicleSeat&quot; );
+&#9;&#9;&#9;elseif part_type == 9 then
+&#9;&#9;&#9;&#9;Part = Instance.new( &quot;SpawnLocation&quot; );
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;objects[part_id] = Part;
+
+&#9;&#9;&#9;if ( pcall( function () local test = Part.FormFactor; end ) ) then
+&#9;&#9;&#9;&#9;Part.FormFactor = &quot;Custom&quot;;
+&#9;&#9;&#9;end;
+
+&#9;&#9;&#9;Part.Size = Vector3.new( unpack( part_data[2] ) );
+&#9;&#9;&#9;Part.CFrame = CFrame.new( unpack( part_data[3] ) );
+&#9;&#9;&#9;Part.BrickColor = BrickColor.new( part_data[4] );
+&#9;&#9;&#9;Part.Material = part_data[5];
+&#9;&#9;&#9;Part.Anchored = part_data[6];
+&#9;&#9;&#9;Part.CanCollide = part_data[7];
+&#9;&#9;&#9;Part.Reflectance = part_data[8];
+&#9;&#9;&#9;Part.Transparency = part_data[9];
+&#9;&#9;&#9;Part.TopSurface = part_data[10];
+&#9;&#9;&#9;Part.BottomSurface = part_data[11];
+&#9;&#9;&#9;Part.LeftSurface = part_data[12];
+&#9;&#9;&#9;Part.RightSurface = part_data[13];
+&#9;&#9;&#9;Part.FrontSurface = part_data[14];
+&#9;&#9;&#9;Part.BackSurface = part_data[15];
+
+&#9;&#9;&#9;Part.Parent = Container;
+
+&#9;&#9;&#9;-- Add the part ID if it&apos;s referenced somewhere else
+&#9;&#9;&#9;if creation_data.welds then
+&#9;&#9;&#9;&#9;for _, Weld in pairs( creation_data.welds ) do
+&#9;&#9;&#9;&#9;&#9;if Weld[1] == part_id or Weld[2] == part_id then
+&#9;&#9;&#9;&#9;&#9;&#9;RbxUtility.Create &apos;StringValue&apos; {
+&#9;&#9;&#9;&#9;&#9;&#9;&#9;Name = &apos;BTID&apos;;
+&#9;&#9;&#9;&#9;&#9;&#9;&#9;Parent = Part;
+&#9;&#9;&#9;&#9;&#9;&#9;&#9;Value = part_id;
+&#9;&#9;&#9;&#9;&#9;&#9;};
+&#9;&#9;&#9;&#9;&#9;&#9;break;
+&#9;&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;end;
+
+&#9;&#9;end;
+
+&#9;&#9;if creation_data.welds then
+&#9;&#9;&#9;local weld_count = 0;
+&#9;&#9;&#9;for _, __ in pairs( creation_data.welds ) do
+&#9;&#9;&#9;&#9;weld_count = weld_count + 1;
+&#9;&#9;&#9;end;
+&#9;&#9;&#9;if weld_count &gt; 0 then
+&#9;&#9;&#9;&#9;local WeldScript = Instance.new( &apos;Script&apos; );
+&#9;&#9;&#9;&#9;WeldScript.Name = &apos;BTWelder&apos;;
+&#9;&#9;&#9;&#9;WeldScript.Source = [[-- This script creates the welds between parts imported by the Building Tools by F3X plugin.
+
+local create = LoadLibrary( &apos;RbxUtility&apos; ).Create;
+function _getAllDescendants( Parent )
+&#9;-- Recursively gets all the descendants of  `Parent` and returns them
+
+&#9;local descendants = {};
+
+&#9;for _, Child in pairs( Parent:GetChildren() ) do
+
+&#9;&#9;-- Add the direct descendants of `Parent`
+&#9;&#9;table.insert( descendants, Child );
+
+&#9;&#9;-- Add the descendants of each child
+&#9;&#9;for _, Subchild in pairs( _getAllDescendants( Child ) ) do
+&#9;&#9;&#9;table.insert( descendants, Subchild );
+&#9;&#9;end;
+
+&#9;end;
+
+&#9;return descendants;
+
+end;
+function findExportedPart( part_id )
+&#9;for _, Object in pairs( _getAllDescendants( Game:GetService( &apos;Workspace&apos; ) ) ) do
+&#9;&#9;if Object:IsA( &apos;StringValue&apos; ) then
+&#9;&#9;&#9;if Object.Name == &apos;BTID&apos; and Object.Value == part_id then
+&#9;&#9;&#9;&#9;return Object.Parent;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;end;
+end;
+
+]];
+
+&#9;&#9;&#9;&#9;for weld_id, weld_data in pairs( creation_data.welds ) do
+&#9;&#9;&#9;&#9;&#9;WeldScript.Source = WeldScript.Source .. [[
+
+( function ()
+&#9;local Part0 = findExportedPart( &apos;]] .. weld_data[1] .. [[&apos; );
+&#9;local Part1 = findExportedPart( &apos;]] .. weld_data[2] .. [[&apos; );
+&#9;if not Part0 or not Part1 then
+&#9;&#9;return;
+&#9;end;
+&#9;create &apos;Weld&apos; {
+&#9;&#9;Name = &apos;BTWeld&apos;;
+&#9;&#9;Parent = Game.JointsService;
+&#9;&#9;Archivable = false;
+&#9;&#9;Part0 = Part0;
+&#9;&#9;Part1 = Part1;
+&#9;&#9;C1 = CFrame.new( ]] .. table.concat( weld_data[3], &apos;, &apos; ) .. [[ );
+&#9;};
+end )();
+&#9;]];
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;WeldScript.Parent = Container;
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+
+&#9;&#9;if creation_data.meshes then
+&#9;&#9;&#9;for mesh_id, mesh_data in pairs( creation_data.meshes ) do
+
+&#9;&#9;&#9;&#9;-- Create, place, and register the mesh
+&#9;&#9;&#9;&#9;local Mesh = Instance.new( &quot;SpecialMesh&quot;, objects[mesh_data[1]] );
+&#9;&#9;&#9;&#9;objects[mesh_id] = Mesh;
+
+&#9;&#9;&#9;&#9;-- Set the mesh&apos;s properties
+&#9;&#9;&#9;&#9;Mesh.MeshType = mesh_data[2];
+&#9;&#9;&#9;&#9;Mesh.Scale = Vector3.new( unpack( mesh_data[3] ) );
+&#9;&#9;&#9;&#9;Mesh.MeshId = mesh_data[4];
+&#9;&#9;&#9;&#9;Mesh.TextureId = mesh_data[5];
+&#9;&#9;&#9;&#9;Mesh.VertexColor = Vector3.new( unpack( mesh_data[6] ) );
+
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+
+&#9;&#9;if creation_data.textures then
+&#9;&#9;&#9;for texture_id, texture_data in pairs( creation_data.textures ) do
+
+&#9;&#9;&#9;&#9;-- Create, place, and register the texture
+&#9;&#9;&#9;&#9;local texture_class;
+&#9;&#9;&#9;&#9;if texture_data[2] == 1 then
+&#9;&#9;&#9;&#9;&#9;texture_class = &apos;Decal&apos;;
+&#9;&#9;&#9;&#9;elseif texture_data[2] == 2 then
+&#9;&#9;&#9;&#9;&#9;texture_class = &apos;Texture&apos;;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;local Texture = Instance.new( texture_class, objects[texture_data[1]] );
+&#9;&#9;&#9;&#9;objects[texture_id] = Texture;
+
+&#9;&#9;&#9;&#9;-- Set the texture&apos;s properties
+&#9;&#9;&#9;&#9;Texture.Face = texture_data[3];
+&#9;&#9;&#9;&#9;Texture.Texture = texture_data[4];
+&#9;&#9;&#9;&#9;Texture.Transparency = texture_data[5];
+&#9;&#9;&#9;&#9;if Texture:IsA( &quot;Texture&quot; ) then
+&#9;&#9;&#9;&#9;&#9;Texture.StudsPerTileU = texture_data[6];
+&#9;&#9;&#9;&#9;&#9;Texture.StudsPerTileV = texture_data[7];
+&#9;&#9;&#9;&#9;end;
+
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+
+&#9;&#9;if creation_data.lights then
+&#9;&#9;&#9;for light_id, light_data in pairs( creation_data.lights ) do
+
+&#9;&#9;&#9;&#9;-- Create, place, and register the light
+&#9;&#9;&#9;&#9;local light_class;
+&#9;&#9;&#9;&#9;if light_data[2] == 1 then
+&#9;&#9;&#9;&#9;&#9;light_class = &apos;PointLight&apos;;
+&#9;&#9;&#9;&#9;elseif light_data[2] == 2 then
+&#9;&#9;&#9;&#9;&#9;light_class = &apos;SpotLight&apos;;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;local Light = Instance.new( light_class, objects[light_data[1]] )
+&#9;&#9;&#9;&#9;objects[light_id] = Light;
+
+&#9;&#9;&#9;&#9;-- Set the light&apos;s properties
+&#9;&#9;&#9;&#9;Light.Color = Color3.new( unpack( light_data[3] ) );
+&#9;&#9;&#9;&#9;Light.Brightness = light_data[4];
+&#9;&#9;&#9;&#9;Light.Range = light_data[5];
+&#9;&#9;&#9;&#9;Light.Shadows = light_data[6];
+&#9;&#9;&#9;&#9;if Light:IsA( &apos;SpotLight&apos; ) then
+&#9;&#9;&#9;&#9;&#9;Light.Angle = light_data[7];
+&#9;&#9;&#9;&#9;&#9;Light.Face = light_data[8];
+&#9;&#9;&#9;&#9;end;
+
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+
+&#9;&#9;if creation_data.decorations then
+&#9;&#9;&#9;for decoration_id, decoration_data in pairs( creation_data.decorations ) do
+
+&#9;&#9;&#9;&#9;-- Create and register the decoration
+&#9;&#9;&#9;&#9;if decoration_data[2] == 1 then
+&#9;&#9;&#9;&#9;&#9;local Smoke = RbxUtility.Create &apos;Smoke&apos; {
+&#9;&#9;&#9;&#9;&#9;&#9;Parent = objects[decoration_data[1]];
+&#9;&#9;&#9;&#9;&#9;&#9;Color = Color3.new( unpack( decoration_data[3] ) );
+&#9;&#9;&#9;&#9;&#9;&#9;Opacity = decoration_data[4];
+&#9;&#9;&#9;&#9;&#9;&#9;RiseVelocity = decoration_data[5];
+&#9;&#9;&#9;&#9;&#9;&#9;Size = decoration_data[6];
+&#9;&#9;&#9;&#9;&#9;};
+&#9;&#9;&#9;&#9;&#9;objects[decoration_id] = Smoke;
+
+&#9;&#9;&#9;&#9;elseif decoration_data[2] == 2 then
+&#9;&#9;&#9;&#9;&#9;local Fire = RbxUtility.Create &apos;Fire&apos; {
+&#9;&#9;&#9;&#9;&#9;&#9;Parent = objects[decoration_data[1]];
+&#9;&#9;&#9;&#9;&#9;&#9;Color = Color3.new( unpack( decoration_data[3] ) );
+&#9;&#9;&#9;&#9;&#9;&#9;SecondaryColor = Color3.new( unpack( decoration_data[4] ) );
+&#9;&#9;&#9;&#9;&#9;&#9;Heat = decoration_data[5];
+&#9;&#9;&#9;&#9;&#9;&#9;Size = decoration_data[6];
+&#9;&#9;&#9;&#9;&#9;};
+&#9;&#9;&#9;&#9;&#9;objects[decoration_id] = Fire;
+
+&#9;&#9;&#9;&#9;elseif decoration_data[2] == 3 then
+&#9;&#9;&#9;&#9;&#9;local Sparkles = RbxUtility.Create &apos;Sparkles&apos; {
+&#9;&#9;&#9;&#9;&#9;&#9;Parent = objects[decoration_data[1]];
+&#9;&#9;&#9;&#9;&#9;&#9;SparkleColor = Color3.new( unpack( decoration_data[3] ) );
+&#9;&#9;&#9;&#9;&#9;};
+&#9;&#9;&#9;&#9;&#9;objects[decoration_id] = Sparkles;
+&#9;&#9;&#9;&#9;end;
+
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+
+&#9;&#9;Container:MakeJoints();
+&#9;&#9;Services.Selection:Set( { Container } );
+
+&#9;end;
+
+end;</ProtectedString>
+		</Properties>
+	</Item>
+</roblox>
