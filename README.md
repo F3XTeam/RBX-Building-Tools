@@ -1,10 +1,10 @@
 Building Tools by F3X
 =========================
-A set of powerful, easy building tools for ROBLOX.
+A set of powerful, easy building tools for ROBLOX. Get a built version [of the tools here](http://www.roblox.com/Building-Tools-by-F3X-item?id=142785488) or [of the import plugin here](http://www.roblox.com/Import-from-Building-Tools-by-F3X-item?id=142485815).
 
 ## What's included?
 BT includes the following tools:
-  - A __move__ tool, which lets you move parts normally, each part relative to itself, or relative to the last part selected. You can also change the increment 
+  -  A __move__ tool, which lets you move parts normally, each part relative to itself, or relative to the last part selected. You can also change the increment.
   -  A __resize__ tool, which lets you resize parts in either a single direction, or in both directions. You can also change the size increment.
   -  A __rotate__ tool, which lets you rotate parts around the center of the selection, each part around itself, or around the last part selected. You can also change the increment by which to rotate the part.
   -  A __paint__ tool, which lets you change the color of parts.
