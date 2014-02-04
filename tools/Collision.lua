@@ -267,8 +267,10 @@ Tools.Collision.Listeners.Unequipped = function ()
 	local self = Tools.Collision;
 
 	-- Stop the update loop
-	self.Updater();
-	self.Updater = nil;
+	if self.Updater then
+		self.Updater();
+		self.Updater = nil;
+	end;
 
 	-- Hide the GUI
 	self:hideGUI();
