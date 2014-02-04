@@ -108,8 +108,10 @@ Tools.Resize.Listeners.Unequipped = function ()
 	local self = Tools.Resize;
 
 	-- Stop the update loop
-	self.Updater();
-	self.Updater = nil;
+	if self.Updater then
+		self.Updater();
+		self.Updater = nil;
+	end;
 
 	-- Hide the GUI
 	self:hideGUI();
@@ -368,7 +370,7 @@ Tools.Resize.showHandles = function ( self, Part )
 			Name = "BTResizeHandles";
 			Style = Enum.HandlesStyle.Resize;
 			Color = self.Color;
-			Parent = Player.PlayerGui;
+			Parent = GUIContainer;
 		};
 
 		-- Add functionality to the handles

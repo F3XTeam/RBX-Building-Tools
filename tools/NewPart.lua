@@ -78,6 +78,8 @@ Tools.NewPart.Listeners.Button1Down = function ()
 	-- Create the new part of type `self.Options.type`
 	if self.Options.type == "normal" then
 		NewPart = Instance.new( "Part", Services.Workspace );
+		NewPart.FormFactor = "Custom";
+		NewPart.Size = Vector3.new( 4, 1, 2 );
 	elseif self.Options.type == "truss" then
 		NewPart = Instance.new( "TrussPart", Services.Workspace );
 	elseif self.Options.type == "wedge" then

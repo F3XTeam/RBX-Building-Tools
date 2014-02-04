@@ -10,13 +10,13 @@ Services = {
 };
 
 bt_logo = 'http://www.roblox.com/asset/?id=129747824';
-plugin_icon = 'http://www.roblox.com/asset/?id=142287521';
+plugin_icon = 'http://www.roblox.com/asset/?id=144549739';
 export_base_url = 'http://www.f3xteam.com/bt/export/%s';
 in_server = not not Game:FindFirstChild( 'NetworkServer' );
 
 -- Create the plugin
 Plugin = plugin;
-Toolbar = Plugin:CreateToolbar( 'Building Tools by F3X: Import' );
+Toolbar = Plugin:CreateToolbar( 'Building Tools by F3X' );
 Launcher = Toolbar:CreateButton( '', 'Import from Building Tools by F3X', plugin_icon );
 local GUI;
 

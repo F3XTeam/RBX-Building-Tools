@@ -95,6 +95,13 @@ Tools.Rotate.Listeners.Equipped = function ()
 	SelectEdge:start( function ( EdgeMarker )
 		self:changePivot( "last" );
 		self.Options.PivotPoint = EdgeMarker.CFrame;
+		self.Connections.EdgeSelectionRemover = Selection.Changed:connect( function ()
+			self.Options.PivotPoint = nil;
+			if self.Connections.EdgeSelectionRemover then
+				self.Connections.EdgeSelectionRemover:disconnect();
+				self.Connections.EdgeSelectionRemover = nil;
+			end;
+		end );
 		self:showHandles( EdgeMarker );
 	end );
 
@@ -105,8 +112,10 @@ Tools.Rotate.Listeners.Unequipped = function ()
 	local self = Tools.Rotate;
 
 	-- Stop the update loop
-	self.Updater();
-	self.Updater = nil;
+	if self.Updater then
+		self.Updater();
+		self.Updater = nil;
+	end;
 
 	-- Disable the ability to select edges
 	SelectEdge:stop();
@@ -525,7 +534,7 @@ Tools.Rotate.showHandles = function ( self, Part )
 		self.Handles = RbxUtility.Create "ArcHandles" {
 			Name = "BTRotationHandles";
 			Color = self.Color;
-			Parent = Player.PlayerGui;
+			Parent = GUIContainer;
 		};
 
 		-- Add functionality to the handles

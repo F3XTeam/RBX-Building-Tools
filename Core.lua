@@ -22,6 +22,8 @@ Services = {
 	["StarterGui"] = Game:GetService( "StarterGui" );
 	["TestService"] = Game:GetService( "TestService" );
 	["ReplicatedStorage"] = Game:GetService( "ReplicatedStorage" );
+	["Selection"] = Game:GetService( "Selection" );
+	["CoreGui"] = Game:GetService( "CoreGui" );
 };
 
 Tool = script.Parent;
@@ -29,13 +31,26 @@ Player = Services.Players.LocalPlayer;
 Mouse = nil;
 Camera = Services.Workspace.CurrentCamera;
 
-Tool:WaitForChild( "GetAsync" );
-Tool:WaitForChild( "PostAsync" );
-GetAsync = function ( ... )
-	return Tool.GetAsync:InvokeServer( ... );
+in_server = not not Game:FindFirstChild( 'NetworkServer' );
+if plugin then
+	ToolType = 'plugin';
+elseif Tool:IsA( 'Tool' ) then
+	ToolType = 'tool';
 end;
-PostAsync = function ( ... )
-	return Tool.PostAsync:InvokeServer( ... );
+
+-- Get tool type-specific resources
+if ToolType == 'tool' then
+	GUIContainer = Player:WaitForChild( 'PlayerGui' );
+	Tool:WaitForChild( "GetAsync" );
+	Tool:WaitForChild( "PostAsync" );
+	GetAsync = function ( ... )
+		return Tool.GetAsync:InvokeServer( ... );
+	end;
+	PostAsync = function ( ... )
+		return Tool.PostAsync:InvokeServer( ... );
+	end;
+elseif ToolType == 'plugin' then
+	GUIContainer = Services.CoreGui;
 end;
 
 dark_slanted_rectangle = "http://www.roblox.com/asset/?id=127774197";
@@ -53,6 +68,7 @@ export_active_decal = "http://www.roblox.com/asset/?id=141741337";
 export_inactive_decal = "http://www.roblox.com/asset/?id=142074569";
 clone_active_decal = "http://www.roblox.com/asset/?id=142073926";
 clone_inactive_decal = "http://www.roblox.com/asset/?id=142074563";
+plugin_icon = "http://www.roblox.com/asset/?id=142287521";
 
 ------------------------------------------
 -- Load external dependencies
@@ -73,6 +89,7 @@ Services.ContentProvider:Preload( export_active_decal );
 Services.ContentProvider:Preload( export_inactive_decal );
 Services.ContentProvider:Preload( clone_active_decal );
 Services.ContentProvider:Preload( clone_inactive_decal );
+Services.ContentProvider:Preload( plugin_icon );
 Tool:WaitForChild( "Interfaces" );
 repeat wait( 0 ) until _G.gloo;
 Gloo = _G.gloo;
@@ -698,7 +715,9 @@ function equipTool( NewTool )
 		CurrentTool = NewTool;
 
 		-- Recolor the handle
-		Tool.Handle.BrickColor = NewTool.Color;
+		if ToolType == 'tool' then
+			Tool.Handle.BrickColor = NewTool.Color;
+		end;
 
 		-- Highlight the right button on the dock
 		for _, Button in pairs( Dock.ToolButtons:GetChildren() ) do
@@ -766,14 +785,14 @@ function cloneSelection()
 			Pitch = 1.5;
 			SoundId = action_completion_sound;
 			Volume = 1;
-			Parent = Player;
+			Parent = Player or Services.SoundService;
 		};
 		Sound:Play();
 		Sound:Destroy();
 
 		-- Highlight the outlines of the new parts
 		coroutine.wrap( function ()
-			for transparency = 1, 0, -0.1 do
+			for transparency = 0.5, 0, -0.1 do
 				for Item, SelectionBox in pairs( SelectionBoxes ) do
 					SelectionBox.Transparency = transparency;
 				end;
@@ -925,6 +944,17 @@ function getToolName( tool )
 
 end;
 
+function isSelectable( Object )
+	-- Returns whether `Object` is selectable
+
+	if not Object or not Object.Parent or not Object:IsA( "BasePart" ) or Object.Locked or Selection:find( Object ) then
+		return false;
+	end;
+
+	-- If it passes all checks, return true
+	return true;
+end;
+
 -- Keep some state data
 clicking = false;
 selecting = false;
@@ -940,60 +970,20 @@ TargetBox = nil;
 -- from the platform
 Connections = {};
 
--- Create the handle
-if not Tool:FindFirstChild( "Handle" ) then
-	Handle = RbxUtility.Create "Part" {
-		Name = "Handle";
-		Parent = Tool;
-		Locked = true;
-		FormFactor = Enum.FormFactor.Custom;
-		Size = Vector3.new( 0.8, 0.8, 0.8 );
-		TopSurface = Enum.SurfaceType.Smooth;
-		BottomSurface = Enum.SurfaceType.Smooth;
-	};
-
-	RbxUtility.Create "Decal" {
-		Parent = Handle;
-		Face = Enum.NormalId.Front;
-		Texture = tool_decal;
-	};
-	RbxUtility.Create "Decal" {
-		Parent = Handle;
-		Face = Enum.NormalId.Back;
-		Texture = tool_decal;
-	};
-	RbxUtility.Create "Decal" {
-		Parent = Handle;
-		Face = Enum.NormalId.Left;
-		Texture = tool_decal;
-	};
-	RbxUtility.Create "Decal" {
-		Parent = Handle;
-		Face = Enum.NormalId.Right;
-		Texture = tool_decal;
-	};
-	RbxUtility.Create "Decal" {
-		Parent = Handle;
-		Face = Enum.NormalId.Top;
-		Texture = tool_decal;
-	};
-	RbxUtility.Create "Decal" {
-		Parent = Handle;
-		Face = Enum.NormalId.Bottom;
-		Texture = tool_decal;
-	};
+-- Set the grip for the handle
+if ToolType == 'tool' then
+	Tool.Grip = CFrame.new( 0, 0, 0.4 );
 end;
 
--- Set the grip for the handle
-Tool.Grip = CFrame.new( 0, 0, 0.4 );
-
 -- Make sure the UI container gets placed
-Player:WaitForChild( "PlayerGui" );
-wait();
 UI = RbxUtility.Create "ScreenGui" {
-	Name = "Building Tools by F3X (UI)",
-	Parent = Player.PlayerGui
+	Name = "Building Tools by F3X (UI)"
 };
+if ToolType == 'tool' then
+	UI.Parent = GUIContainer;
+elseif ToolType == 'plugin' then
+	UI.Parent = Services.CoreGui;
+end;
 
 Dragger = nil;
 
@@ -1031,7 +1021,7 @@ Selection = {
 	["add"] = function ( self, NewPart )
 
 		-- Make sure `NewPart` is selectable
-		if not NewPart or not NewPart:IsA( "BasePart" ) or NewPart.Locked or NewPart.Parent == nil then
+		if not isSelectable( NewPart ) then
 			return false;
 		end;
 
@@ -1048,6 +1038,7 @@ Selection = {
 		SelectionBoxes[NewPart].Name = "BTSelectionBox";
 		SelectionBoxes[NewPart].Color = SelectionBoxColor;
 		SelectionBoxes[NewPart].Adornee = NewPart;
+		SelectionBoxes[NewPart].Transparency = 0.5;
 
 		-- Remove any target selection box focus
 		if NewPart == TargetBox.Adornee then
@@ -1125,6 +1116,13 @@ Selection = {
 	end;
 
 };
+
+-- Keep the Studio selection up-to-date (if applicable)
+if ToolType == 'plugin' then
+	Selection.Changed:connect( function ()
+		Services.Selection:Set( Selection.Items );
+	end );
+end;
 
 Tools = {};
 
@@ -1327,7 +1325,7 @@ Select2D = {
 		for _, Object in pairs( _getAllDescendants( Services.Workspace ) ) do
 
 			-- Make sure we can select this part
-			if Object:IsA( "BasePart" ) and not Object.Locked then
+			if isSelectable( Object ) then
 
 				-- Check if the part is rendered within the range of the selection area
 				local PartPosition = _pointToScreenSpace( Object.Position );
@@ -1405,7 +1403,7 @@ SelectEdge = {
 			local key = key:lower();
 			local key_code = key:byte();
 
-			if key == "e" and #Selection.Items > 0 then
+			if key == "t" and #Selection.Items > 0 then
 				self:enable( edgeSelectionCallback );
 			end;
 
@@ -1516,8 +1514,6 @@ SelectEdge = {
 			return;
 		end;
 
-		-- Turn the marker into an actual part of the selection
-		self.Marker.Parent = Services.Workspace.CurrentCamera;
 		self.MarkerOutline.Adornee = self.Marker;
 
 		callback( self.Marker );
@@ -1944,6 +1940,15 @@ IE = {
 				upload_data = PostAsync( "http://www.f3xteam.com/bt/export", serialized_selection );
 			end );
 
+			-- Make sure we're in a server
+			if ToolType == 'plugin' and not in_server then
+				Dialog.Loading.TextLabel.Text = "Use Tools > Test > Start Server to export from Studio";
+				Dialog.Loading.TextLabel.TextWrapped = true;
+				Dialog.Loading.CloseButton.Position = UDim2.new( 0, 0, 0, 50 );
+				Dialog.Loading.CloseButton.Text = 'Got it';
+				return;
+			end;
+
 			-- Fail graciously
 			if not upload_attempt then
 				Dialog.Loading.TextLabel.Text = "Upload failed";
@@ -1988,7 +1993,7 @@ IE = {
 				Pitch = 1.5;
 				SoundId = action_completion_sound;
 				Volume = 1;
-				Parent = Player;
+				Parent = Player or Services.SoundService;
 			};
 			Sound:Play();
 			Sound:Destroy();
@@ -2062,6 +2067,9 @@ for _, Tooltip in pairs( Dock.Tooltips:GetChildren() ) do
 				self.button_focus = true;
 			elseif source == 'tooltip' then
 				self.tooltip_focus = true;
+			end;
+			for _, Tooltip in pairs( Dock.Tooltips:GetChildren() ) do
+				Tooltip.Visible = false;
 			end;
 			self.GUI.Visible = true;
 		end;
@@ -2209,19 +2217,32 @@ end );
 -- Attach tool event listeners
 ------------------------------------------
 
-Tool.Equipped:connect( function ( CurrentMouse )
+function equipBT( CurrentMouse )
 
 	Mouse = CurrentMouse;
+
+	-- Enable the move tool if there's no tool currently enabled
+	if not CurrentTool then
+		equipTool( Tools.Move );
+	end;
 
 	if not TargetBox then
 		TargetBox = Instance.new( "SelectionBox", UI );
 		TargetBox.Name = "BTTargetBox";
 		TargetBox.Color = BrickColor.new( "Institutional white" );
+		TargetBox.Transparency = 0.5;
 	end;
 
 	-- Enable any temporarily-disabled selection boxes
 	for _, SelectionBox in pairs( SelectionBoxes ) do
 		SelectionBox.Parent = UI;
+	end;
+
+	-- Update the internal selection if this is a plugin
+	if ToolType == 'plugin' then
+		for _, Item in pairs( Services.Selection:Get() ) do
+			Selection:add( Item );
+		end;
 	end;
 
 	-- Call the `Equipped` listener of the current tool
@@ -2272,6 +2293,12 @@ Tool.Equipped:connect( function ( CurrentMouse )
 			return;
 		end;
 
+		-- Clear the selection if shift + r is pressed
+		if key == "r" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+			Selection:clear();
+			return;
+		end;
+
 		if key == "z" then
 			equipTool( Tools.Move );
 
@@ -2313,9 +2340,6 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 		elseif key == "p" then
 			equipTool( Tools.Decorate );
-
-		elseif key == "q" then
-			Selection:clear();
 
 		end;
 
@@ -2379,14 +2403,12 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		end;
 
 		-- If the target has changed, update the selectionbox appropriately
-		if not override_selection and Mouse.Target then
-			if Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked and TargetBox.Adornee ~= Mouse.Target and not Selection:find( Mouse.Target ) then
-				TargetBox.Adornee = Mouse.Target;
-			end;
+		if not override_selection and isSelectable( Mouse.Target ) and TargetBox.Adornee ~= Mouse.Target then
+			TargetBox.Adornee = Mouse.Target;
 		end;
 
 		-- When aiming at something invalid, don't highlight any targets
-		if not override_selection and not Mouse.Target or ( Mouse.Target and Mouse.Target:IsA( "BasePart" ) and Mouse.Target.Locked ) or Selection:find( Mouse.Target ) then
+		if not override_selection and not isSelectable( Mouse.Target ) then
 			TargetBox.Adornee = nil;
 		end;
 
@@ -2411,7 +2433,7 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		end;
 
 		-- If the target when clicking was invalid then clear the selection (unless we're multi-selecting)
-		if not override_selection and not selecting and ( not Mouse.Target or ( Mouse.Target and Mouse.Target:IsA( "BasePart" ) and Mouse.Target.Locked ) ) then
+		if not override_selection and not selecting and not isSelectable( Mouse.Target ) then
 			Selection:clear();
 		end;
 
@@ -2420,20 +2442,20 @@ Tool.Equipped:connect( function ( CurrentMouse )
 
 			-- If the item isn't already selected, add it to the selection
 			if not Selection:find( Mouse.Target ) then
-				if Mouse.Target and Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked then
+				if isSelectable( Mouse.Target ) then
 					Selection:add( Mouse.Target );
 				end;
 
 			-- If the item _is_ already selected, remove it from the selection
 			else
-				if ( Mouse.X == click_x and Mouse.Y == click_y ) and Mouse.Target and Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked then
+				if ( Mouse.X == click_x and Mouse.Y == click_y ) and isSelectable( Mouse.Target ) then
 					Selection:remove( Mouse.Target );
 				end;
 			end;
 
 		-- If not multi-selecting, replace the selection
 		else
-			if not override_selection and Mouse.Target and Mouse.Target:IsA( "BasePart" ) and not Mouse.Target.Locked then
+			if not override_selection and isSelectable( Mouse.Target ) then
 				Selection:clear();
 				Selection:add( Mouse.Target );
 			end;
@@ -2464,9 +2486,9 @@ Tool.Equipped:connect( function ( CurrentMouse )
 		end;
 	end ) );
 
-end );
+end;
 
-Tool.Unequipped:connect( function ()
+function unequipBT()
 
 	Mouse = nil;
 
@@ -2495,7 +2517,7 @@ Tool.Unequipped:connect( function ()
 		CurrentTool.Listeners.Unequipped();
 	end;
 
-end );
+end;
 
 
 ------------------------------------------
@@ -2548,5 +2570,23 @@ for _, tool_name in pairs( tool_list ) do
 	repeat wait() until Tools[tool_name].Loaded;
 end;
 
--- Enable `Tools.Move` as the first tool
-equipTool( Tools.Move );
+-- Activate the plugin and tool connections
+if ToolType == 'plugin' then
+	local ToolbarButton = plugin:CreateToolbar( 'Building Tools by F3X' ):CreateButton( '', 'Building Tools by F3X', plugin_icon );
+	local plugin_active = false;
+	ToolbarButton.Click:connect( function ()
+		if plugin_active then
+			plugin_active = false;
+			unequipBT();
+		else
+			plugin_active = true;
+			plugin:Activate( true );
+			equipBT( plugin:GetMouse() );
+		end;
+	end );
+	plugin.Deactivation:connect( unequipBT );
+
+elseif ToolType == 'tool' then
+	Tool.Equipped:connect( equipBT );
+	Tool.Unequipped:connect( unequipBT );
+end;

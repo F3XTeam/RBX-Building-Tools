@@ -131,8 +131,10 @@ Tools.Move.Listeners.Unequipped = function ()
 	local self = Tools.Move;
 
 	-- Stop the update loop
-	self.Updater();
-	self.Updater = nil;
+	if self.Updater then
+		self.Updater();
+		self.Updater = nil;
+	end;
 
 	-- Hide the GUI
 	self:hideGUI();
@@ -220,7 +222,7 @@ Tools.Move.changePosition = function ( self, component, new_value )
 			component == 'x' and new_value or Item.Position.x,
 			component == 'y' and new_value or Item.Position.y,
 			component == 'z' and new_value or Item.Position.z
-		);
+		) * CFrame.Angles( Item.CFrame:toEulerAnglesXYZ() );
 	end;
 
 	self:finishHistoryRecord();
@@ -290,13 +292,15 @@ Tools.Move.Listeners.Button1Down = function ()
 	local Target = self.ManualTarget or Mouse.Target;
 	self.ManualTarget = nil;
 
-	if not Target or ( Target:IsA( "BasePart" ) and Target.Locked ) then
-		return;
-	end;
-
-	if not Selection:find( Target ) then
+	-- If an unselected part is being moved, switch to it
+	if not Selection:find( Target ) and isSelectable( Target ) then
 		Selection:clear();
 		Selection:add( Target );
+	end;
+
+	-- If the unselected target can't be selected at all, ignore the rest of the procedure
+	if not Selection:find( Target ) then
+		return;
 	end;
 
 	for _, Item in pairs( Selection.Items ) do
@@ -454,7 +458,7 @@ Tools.Move.showHandles = function ( self, Part )
 		self.Handles = RbxUtility.Create "Handles" {
 			Name = "BTMovementHandles";
 			Color = self.Color;
-			Parent = Player.PlayerGui;
+			Parent = GUIContainer;
 		};
 
 		-- Add functionality to the handles
