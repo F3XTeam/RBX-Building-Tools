@@ -2724,7 +2724,7 @@ Tools.Move.Listeners.Equipped = function ()
 
 &#9;-- Oh, and update the boundingbox and the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -3513,7 +3513,7 @@ Tools.Resize.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -4144,7 +4144,7 @@ Tools.Rotate.Listeners.Equipped = function ()
 
 &#9;-- Oh, and update the boundingbox and the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -5068,7 +5068,7 @@ Tools.Surface.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -5401,7 +5401,7 @@ Tools.Material.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -5796,7 +5796,7 @@ Tools.Anchor.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -6101,7 +6101,7 @@ Tools.Collision.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -6607,7 +6607,7 @@ Tools.Mesh.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.stopGUIUpdater = function ( self )
@@ -7382,7 +7382,7 @@ Tools.Texture.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.stopGUIUpdater = function ( self )
@@ -8509,7 +8509,7 @@ Tools.Lighting.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.stopGUIUpdater = function ( self )
@@ -9535,7 +9535,7 @@ Tools.Decorate.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.stopGUIUpdater = function ( self )

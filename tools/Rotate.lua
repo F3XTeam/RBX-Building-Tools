@@ -63,7 +63,7 @@ Tools.Rotate.Listeners.Equipped = function ()
 
 	-- Oh, and update the boundingbox and the GUI regularly
 	coroutine.wrap( function ()
-		local updater_on = true;
+		updater_on = true;
 
 		-- Provide a function to stop the loop
 		self.Updater = function ()
