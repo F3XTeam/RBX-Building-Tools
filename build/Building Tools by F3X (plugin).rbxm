@@ -819,7 +819,7 @@ function cloneSelection()
 
 &#9;&#9;-- Highlight the outlines of the new parts
 &#9;&#9;coroutine.wrap( function ()
-&#9;&#9;&#9;for transparency = 0.5, 0, -0.1 do
+&#9;&#9;&#9;for transparency = 1, 0.5, -0.1 do
 &#9;&#9;&#9;&#9;for Item, SelectionBox in pairs( SelectionBoxes ) do
 &#9;&#9;&#9;&#9;&#9;SelectionBox.Transparency = transparency;
 &#9;&#9;&#9;&#9;end;
