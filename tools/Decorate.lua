@@ -40,7 +40,7 @@ Tools.Decorate.Listeners.Equipped = function ()
 
 	-- Update the GUI regularly
 	coroutine.wrap( function ()
-		local updater_on = true;
+		updater_on = true;
 
 		-- Provide a function to stop the loop
 		self.stopGUIUpdater = function ( self )

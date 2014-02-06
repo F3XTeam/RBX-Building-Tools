@@ -792,7 +792,7 @@ function cloneSelection()
 
 		-- Highlight the outlines of the new parts
 		coroutine.wrap( function ()
-			for transparency = 0.5, 0, -0.1 do
+			for transparency = 1, 0.5, -0.1 do
 				for Item, SelectionBox in pairs( SelectionBoxes ) do
 					SelectionBox.Transparency = transparency;
 				end;
@@ -2448,7 +2448,7 @@ function equipBT( CurrentMouse )
 
 			-- If the item _is_ already selected, remove it from the selection
 			else
-				if ( Mouse.X == click_x and Mouse.Y == click_y ) and isSelectable( Mouse.Target ) then
+				if ( Mouse.X == click_x and Mouse.Y == click_y ) and Selection:find( Mouse.Target ) then
 					Selection:remove( Mouse.Target );
 				end;
 			end;
