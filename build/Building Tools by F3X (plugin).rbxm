@@ -819,7 +819,7 @@ function cloneSelection()
 
 &#9;&#9;-- Highlight the outlines of the new parts
 &#9;&#9;coroutine.wrap( function ()
-&#9;&#9;&#9;for transparency = 0.5, 0, -0.1 do
+&#9;&#9;&#9;for transparency = 1, 0.5, -0.1 do
 &#9;&#9;&#9;&#9;for Item, SelectionBox in pairs( SelectionBoxes ) do
 &#9;&#9;&#9;&#9;&#9;SelectionBox.Transparency = transparency;
 &#9;&#9;&#9;&#9;end;
@@ -2475,7 +2475,7 @@ function equipBT( CurrentMouse )
 
 &#9;&#9;&#9;-- If the item _is_ already selected, remove it from the selection
 &#9;&#9;&#9;else
-&#9;&#9;&#9;&#9;if ( Mouse.X == click_x and Mouse.Y == click_y ) and isSelectable( Mouse.Target ) then
+&#9;&#9;&#9;&#9;if ( Mouse.X == click_x and Mouse.Y == click_y ) and Selection:find( Mouse.Target ) then
 &#9;&#9;&#9;&#9;&#9;Selection:remove( Mouse.Target );
 &#9;&#9;&#9;&#9;end;
 &#9;&#9;&#9;end;
@@ -2938,7 +2938,7 @@ Tools.Texture.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.stopGUIUpdater = function ( self )
@@ -3810,7 +3810,7 @@ Tools.Surface.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -4165,7 +4165,7 @@ Tools.Rotate.Listeners.Equipped = function ()
 
 &#9;-- Oh, and update the boundingbox and the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -4891,7 +4891,7 @@ Tools.Resize.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -5990,7 +5990,7 @@ Tools.Move.Listeners.Equipped = function ()
 
 &#9;-- Oh, and update the boundingbox and the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -6741,7 +6741,7 @@ Tools.Anchor.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -7046,7 +7046,7 @@ Tools.Collision.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -7343,7 +7343,7 @@ Tools.Decorate.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.stopGUIUpdater = function ( self )
@@ -8742,7 +8742,7 @@ Tools.Lighting.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.stopGUIUpdater = function ( self )
@@ -9769,7 +9769,7 @@ Tools.Material.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.Updater = function ()
@@ -10164,7 +10164,7 @@ Tools.Mesh.Listeners.Equipped = function ()
 
 &#9;-- Update the GUI regularly
 &#9;coroutine.wrap( function ()
-&#9;&#9;local updater_on = true;
+&#9;&#9;updater_on = true;
 
 &#9;&#9;-- Provide a function to stop the loop
 &#9;&#9;self.stopGUIUpdater = function ( self )
