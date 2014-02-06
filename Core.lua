@@ -2448,7 +2448,7 @@ function equipBT( CurrentMouse )
 
 			-- If the item _is_ already selected, remove it from the selection
 			else
-				if ( Mouse.X == click_x and Mouse.Y == click_y ) and isSelectable( Mouse.Target ) then
+				if ( Mouse.X == click_x and Mouse.Y == click_y ) and Selection:find( Mouse.Target ) then
 					Selection:remove( Mouse.Target );
 				end;
 			end;
