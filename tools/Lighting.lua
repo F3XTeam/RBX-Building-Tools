@@ -95,7 +95,7 @@ Tools.Lighting.Listeners.Button2Down = function ()
 	-- in determining whether a surface was being
 	-- selected or the camera was being rotated
 	-- with the right mouse button)
-	local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+	local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 end;
@@ -104,7 +104,7 @@ Tools.Lighting.Listeners.Button2Up = function ()
 
 	local self = Tools.Lighting;
 
-	local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+	local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 	local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 	-- If a surface is selected, change the side option
