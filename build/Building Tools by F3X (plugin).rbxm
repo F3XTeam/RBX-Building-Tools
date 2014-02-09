@@ -56,7 +56,6 @@ Services = {
 Tool = script.Parent;
 Player = Services.Players.LocalPlayer;
 Mouse = nil;
-Camera = Services.Workspace.CurrentCamera;
 
 in_server = not not Game:FindFirstChild( &apos;NetworkServer&apos; );
 if plugin then
@@ -247,9 +246,9 @@ function _pointToScreenSpace( Point )
 &#9;-- Returns Vector3 `Point`&apos;s position on the screen when rendered
 &#9;-- (kudos to stravant for this)
 
-&#9;local point = Camera.CoordinateFrame:pointToObjectSpace( Point );
+&#9;local point = Services.Workspace.CurrentCamera.CoordinateFrame:pointToObjectSpace( Point );
 &#9;local aspectRatio = Mouse.ViewSizeX / Mouse.ViewSizeY;
-&#9;local hfactor = math.tan( math.rad( Camera.FieldOfView ) / 2 )
+&#9;local hfactor = math.tan( math.rad( Services.Workspace.CurrentCamera.FieldOfView ) / 2 )
 &#9;local wfactor = aspectRatio * hfactor;
 
 &#9;local x = ( point.x / point.z ) / -wfactor;
@@ -259,7 +258,7 @@ function _pointToScreenSpace( Point )
 &#9;if ( screen_pos.x &lt; 0 or screen_pos.x &gt; Mouse.ViewSizeX ) or ( screen_pos.y &lt; 0 or screen_pos.y &gt; Mouse.ViewSizeY ) then
 &#9;&#9;return nil;
 &#9;end;
-&#9;if Camera.CoordinateFrame:toObjectSpace( CFrame.new( Point ) ).z &gt; 0 then
+&#9;if Services.Workspace.CurrentCamera.CoordinateFrame:toObjectSpace( CFrame.new( Point ) ).z &gt; 0 then
 &#9;&#9;return nil;
 &#9;end;
 
@@ -2703,7 +2702,7 @@ Tools.Weld.Listeners.Button2Down = function ()
 &#9;-- in determining whether a surface was being
 &#9;-- selected or the camera was being rotated
 &#9;-- with the right mouse button)
-&#9;local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+&#9;local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 &#9;self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 end;
@@ -2712,7 +2711,7 @@ Tools.Weld.Listeners.Button2Up = function ()
 
 &#9;local self = Tools.Weld;
 
-&#9;local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+&#9;local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 &#9;local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 &#9;-- If a part is selected
@@ -2993,7 +2992,7 @@ Tools.Texture.Listeners.Button2Down = function ()
 &#9;-- in determining whether a surface was being
 &#9;-- selected or the camera was being rotated
 &#9;-- with the right mouse button)
-&#9;local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+&#9;local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 &#9;self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 end;
@@ -3002,7 +3001,7 @@ Tools.Texture.Listeners.Button2Up = function ()
 
 &#9;local self = Tools.Texture;
 
-&#9;local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+&#9;local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 &#9;local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 &#9;-- If a surface is selected, change the side option
@@ -3885,7 +3884,7 @@ Tools.Surface.Listeners.Button2Down = function ()
 &#9;-- in determining whether a surface was being
 &#9;-- selected or the camera was being rotated
 &#9;-- with the right mouse button)
-&#9;local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+&#9;local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 &#9;self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 end;
@@ -3894,7 +3893,7 @@ Tools.Surface.Listeners.Button2Up = function ()
 
 &#9;local self = Tools.Surface;
 
-&#9;local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+&#9;local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 &#9;local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 &#9;-- If a surface is selected
@@ -8797,7 +8796,7 @@ Tools.Lighting.Listeners.Button2Down = function ()
 &#9;-- in determining whether a surface was being
 &#9;-- selected or the camera was being rotated
 &#9;-- with the right mouse button)
-&#9;local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+&#9;local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 &#9;self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 end;
@@ -8806,7 +8805,7 @@ Tools.Lighting.Listeners.Button2Up = function ()
 
 &#9;local self = Tools.Lighting;
 
-&#9;local cr_x, cr_y, cr_z = Camera.CoordinateFrame:toEulerAnglesXYZ();
+&#9;local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 &#9;local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 &#9;-- If a surface is selected, change the side option
@@ -44656,7 +44655,7 @@ Press [Shift + R] to clear your selection.</string>
 									<XS>0</XS>
 									<XO>0</XO>
 									<YS>0</YS>
-									<YO>410</YO>
+									<YO>420</YO>
 								</UDim2>
 								<float name="Rotation">0</float>
 								<UDim2 name="Size">

@@ -29,7 +29,6 @@ Services = {
 Tool = script.Parent;
 Player = Services.Players.LocalPlayer;
 Mouse = nil;
-Camera = Services.Workspace.CurrentCamera;
 
 in_server = not not Game:FindFirstChild( 'NetworkServer' );
 if plugin then
@@ -220,9 +219,9 @@ function _pointToScreenSpace( Point )
 	-- Returns Vector3 `Point`'s position on the screen when rendered
 	-- (kudos to stravant for this)
 
-	local point = Camera.CoordinateFrame:pointToObjectSpace( Point );
+	local point = Services.Workspace.CurrentCamera.CoordinateFrame:pointToObjectSpace( Point );
 	local aspectRatio = Mouse.ViewSizeX / Mouse.ViewSizeY;
-	local hfactor = math.tan( math.rad( Camera.FieldOfView ) / 2 )
+	local hfactor = math.tan( math.rad( Services.Workspace.CurrentCamera.FieldOfView ) / 2 )
 	local wfactor = aspectRatio * hfactor;
 
 	local x = ( point.x / point.z ) / -wfactor;
@@ -232,7 +231,7 @@ function _pointToScreenSpace( Point )
 	if ( screen_pos.x < 0 or screen_pos.x > Mouse.ViewSizeX ) or ( screen_pos.y < 0 or screen_pos.y > Mouse.ViewSizeY ) then
 		return nil;
 	end;
-	if Camera.CoordinateFrame:toObjectSpace( CFrame.new( Point ) ).z > 0 then
+	if Services.Workspace.CurrentCamera.CoordinateFrame:toObjectSpace( CFrame.new( Point ) ).z > 0 then
 		return nil;
 	end;
 
