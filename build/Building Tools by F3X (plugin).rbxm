@@ -67,6 +67,10 @@ end;
 -- Get tool type-specific resources
 if ToolType == &apos;tool&apos; then
 &#9;GUIContainer = Player:WaitForChild( &apos;PlayerGui&apos; );
+elseif ToolType == &apos;plugin&apos; then
+&#9;GUIContainer = Services.CoreGui;
+end;
+if in_server then
 &#9;Tool:WaitForChild( &quot;GetAsync&quot; );
 &#9;Tool:WaitForChild( &quot;PostAsync&quot; );
 &#9;GetAsync = function ( ... )
@@ -75,8 +79,6 @@ if ToolType == &apos;tool&apos; then
 &#9;PostAsync = function ( ... )
 &#9;&#9;return Tool.PostAsync:InvokeServer( ... );
 &#9;end;
-elseif ToolType == &apos;plugin&apos; then
-&#9;GUIContainer = Services.CoreGui;
 end;
 
 dark_slanted_rectangle = &quot;http://www.roblox.com/asset/?id=127774197&quot;;
@@ -49153,6 +49155,44 @@ setmetatable(lib,{
 _G.gloo = lib
 print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJECT_NAME, PROJECT_NAME))</ProtectedString>
 			</Properties>
+		</Item>
+		<Item class="RemoteFunction" referent="RBX984">
+			<Properties>
+				<string name="Name">GetAsync</string>
+			</Properties>
+			<Item class="Script" referent="RBX985">
+				<Properties>
+					<bool name="Disabled">false</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">Script</string>
+					<ProtectedString name="Source">local HttpService = Game:GetService( &apos;HttpService&apos; );
+
+-- Provide an interface that allows the client
+-- to use HttpService&apos;s GetAsync
+script.Parent.OnServerInvoke = function ( Player, ... )
+&#9;return HttpService:GetAsync( ... );
+end;</ProtectedString>
+				</Properties>
+			</Item>
+		</Item>
+		<Item class="RemoteFunction" referent="RBX986">
+			<Properties>
+				<string name="Name">PostAsync</string>
+			</Properties>
+			<Item class="Script" referent="RBX987">
+				<Properties>
+					<bool name="Disabled">false</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">Script</string>
+					<ProtectedString name="Source">local HttpService = Game:GetService( &apos;HttpService&apos; );
+
+-- Provide an interface that allows the client
+-- to use HttpService&apos;s PostAsync
+script.Parent.OnServerInvoke = function ( Player, ... )
+&#9;return HttpService:PostAsync( ... );
+end;</ProtectedString>
+				</Properties>
+			</Item>
 		</Item>
 	</Item>
 </roblox>

@@ -40,6 +40,10 @@ end;
 -- Get tool type-specific resources
 if ToolType == 'tool' then
 	GUIContainer = Player:WaitForChild( 'PlayerGui' );
+elseif ToolType == 'plugin' then
+	GUIContainer = Services.CoreGui;
+end;
+if in_server then
 	Tool:WaitForChild( "GetAsync" );
 	Tool:WaitForChild( "PostAsync" );
 	GetAsync = function ( ... )
@@ -48,8 +52,6 @@ if ToolType == 'tool' then
 	PostAsync = function ( ... )
 		return Tool.PostAsync:InvokeServer( ... );
 	end;
-elseif ToolType == 'plugin' then
-	GUIContainer = Services.CoreGui;
 end;
 
 dark_slanted_rectangle = "http://www.roblox.com/asset/?id=127774197";
