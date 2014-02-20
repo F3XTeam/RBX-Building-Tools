@@ -30,7 +30,7 @@ Tool = script.Parent;
 Player = Services.Players.LocalPlayer;
 Mouse = nil;
 
-in_server = not not Game:FindFirstChild( 'NetworkServer' );
+-- Determine whether this is the plugin or tool
 if plugin then
 	ToolType = 'plugin';
 elseif Tool:IsA( 'Tool' ) then
@@ -40,8 +40,10 @@ end;
 -- Get tool type-specific resources
 if ToolType == 'tool' then
 	GUIContainer = Player:WaitForChild( 'PlayerGui' );
+	in_server = not not Game:FindFirstChild( 'NetworkClient' );
 elseif ToolType == 'plugin' then
 	GUIContainer = Services.CoreGui;
+	in_server = not not Game:FindFirstChild( 'NetworkServer' );
 end;
 if in_server then
 	Tool:WaitForChild( "GetAsync" );
