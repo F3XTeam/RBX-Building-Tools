@@ -2042,12 +2042,20 @@ IE = {
 
 Tooltips = {};
 
-Dock = Tool.Interfaces:WaitForChild( &quot;BTDockGUI&quot; ):Clone();
+-- Wait for all parts of the base UI to fully replicate
+if ToolType == &apos;tool&apos; then
+&#9;local UIComponentCount = (Tool:WaitForChild &apos;UIComponentCount&apos;).Value;
+&#9;repeat wait( 0.1 ) until #_getAllDescendants( Tool.Interfaces ) &gt;= UIComponentCount;
+end;
+
+-- Create the main GUI
+Dock = Tool.Interfaces.BTDockGUI:Clone();
 Dock.Parent = UI;
 Dock.Visible = false;
 
 -- Add functionality to each tool button
-for _, ToolButton in pairs( Dock.ToolButtons:GetChildren() ) do
+function RegisterToolButton( ToolButton )
+&#9;-- Provides functionality to `ToolButton`
 
 &#9;-- Get the tool name and the tool
 &#9;local tool_name = ToolButton.Name:match( &quot;(.+)Button&quot; );
@@ -2077,12 +2085,13 @@ for _, ToolButton in pairs( Dock.ToolButtons:GetChildren() ) do
 &#9;&#9;end );
 
 &#9;end;
-
+end;
+for _, ToolButton in pairs( Dock.ToolButtons:GetChildren() ) do
+&#9;RegisterToolButton( ToolButton );
 end;
 
 -- Prepare the tooltips
-for _, Tooltip in pairs( Dock.Tooltips:GetChildren() ) do
-
+function RegisterTooltip( Tooltip )
 &#9;local tool_name = Tooltip.Name:match( &quot;(.+)Info&quot; );
 
 &#9;Tooltips[tool_name] = {
@@ -2143,7 +2152,9 @@ for _, Tooltip in pairs( Dock.Tooltips:GetChildren() ) do
 &#9;Tooltip.Content:Destroy();
 
 end;
-
+for _, Tooltip in pairs( Dock.Tooltips:GetChildren() ) do
+&#9;RegisterTooltip( Tooltip );
+end;
 
 -- Create the scrolling container for the help tooltip
 local ScrollingContainer = Gloo.ScrollingContainer( true, false, 15 );
@@ -2988,7 +2999,7 @@ Tools.Move.showGUI = function ( self )
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
 
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTMoveToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTMoveToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;-- Change the axis type option when the button is clicked
@@ -3574,7 +3585,7 @@ Tools.Resize.showGUI = function ( self )
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
 
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTResizeToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTResizeToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;-- Change the axis type option when the button is clicked
@@ -4240,7 +4251,7 @@ Tools.Rotate.showGUI = function ( self )
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
 
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTRotateToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTRotateToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;-- Change the pivot type option when the button is clicked
@@ -4985,7 +4996,7 @@ Tools.Paint.showGUI = function ( self )
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
 
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTPaintToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTPaintToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;for _, ColorButton in pairs( Container.Palette:GetChildren() ) do
@@ -5273,7 +5284,7 @@ Tools.Surface.showGUI = function ( self )
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
 
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTSurfaceToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTSurfaceToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;local SideDropdown = createDropdown();
@@ -5631,7 +5642,7 @@ Tools.Material.showGUI = function ( self )
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
 
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTMaterialToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTMaterialToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;local MaterialDropdown = createDropdown();
@@ -5969,7 +5980,7 @@ Tools.Anchor.showGUI = function ( self )
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
 
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTAnchorToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTAnchorToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;-- Change the anchor status when the button is clicked
@@ -6267,7 +6278,7 @@ Tools.Collision.showGUI = function ( self )
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
 
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTCollisionToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTCollisionToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;Container.Status.On.Button.MouseButton1Down:connect( function ()
@@ -6506,7 +6517,7 @@ Tools.NewPart.showGUI = function ( self )
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
 
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTNewPartToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTNewPartToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;local TypeDropdown = createDropdown();
@@ -6895,7 +6906,7 @@ Tools.Mesh.showGUI = function ( self )
 
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTMeshToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTMeshToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;-- Add functionality to the add/remove buttons
@@ -8068,7 +8079,7 @@ Tools.Texture.showGUI = function ( self )
 
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTTextureToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTTextureToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;-- Add functionality to the add/remove buttons
@@ -8434,7 +8445,7 @@ Tools.Weld.showGUI = function ( self )
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
 
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTWeldToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTWeldToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;Container.Interface.WeldButton.MouseButton1Up:connect( function ()
@@ -8855,7 +8866,7 @@ Tools.Lighting.showGUI = function ( self )
 
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTLightingToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTLightingToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;Container.Spotlight.ArrowButton.MouseButton1Up:connect( function ()
@@ -9493,7 +9504,7 @@ Tools.Lighting.Loaded = true;</ProtectedString>
 			</Item>
 			<Item class="LocalScript" referent="RBX15">
 				<Properties>
-					<bool name="Disabled">false</bool>
+					<bool name="Disabled">true</bool>
 					<Content name="LinkedSource"><null></null></Content>
 					<string name="Name">BTDecorateTool</string>
 					<ProtectedString name="Source">-- Load the main tool&apos;s core environment when it&apos;s ready
@@ -9911,7 +9922,7 @@ Tools.Decorate.showGUI = function ( self )
 
 &#9;-- Initialize the GUI if it&apos;s not ready yet
 &#9;if not self.GUI then
-&#9;&#9;local Container = Tool.Interfaces:WaitForChild( &quot;BTDecorateToolGUI&quot; ):Clone();
+&#9;&#9;local Container = Tool.Interfaces.BTDecorateToolGUI:Clone();
 &#9;&#9;Container.Parent = UI;
 
 &#9;&#9;Container.Smoke.ArrowButton.MouseButton1Up:connect( function ()
@@ -15871,6 +15882,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -16048,6 +16060,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -16555,6 +16568,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -16732,6 +16746,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -18419,6 +18434,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -18695,6 +18711,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -19029,6 +19046,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -19206,6 +19224,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -19383,6 +19402,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -19791,6 +19811,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -20089,6 +20110,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<string name="Name">Background</string>
 									<UDim2 name="Position">
 										<XS>0</XS>
@@ -20239,6 +20261,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<string name="Name">Background</string>
 									<UDim2 name="Position">
 										<XS>0</XS>
@@ -20473,6 +20496,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<string name="Name">Background</string>
 									<UDim2 name="Position">
 										<XS>0</XS>
@@ -24043,6 +24067,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -24220,6 +24245,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -24628,6 +24654,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -25010,6 +25037,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<string name="Name">Background</string>
 									<UDim2 name="Position">
 										<XS>0</XS>
@@ -25160,6 +25188,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<string name="Name">Background</string>
 									<UDim2 name="Position">
 										<XS>0</XS>
@@ -25310,6 +25339,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<string name="Name">Background</string>
 									<UDim2 name="Position">
 										<XS>0</XS>
@@ -25604,6 +25634,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -25781,6 +25812,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -25958,6 +25990,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -26366,6 +26399,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -26748,6 +26782,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<string name="Name">Background</string>
 									<UDim2 name="Position">
 										<XS>0</XS>
@@ -26898,6 +26933,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<string name="Name">Background</string>
 									<UDim2 name="Position">
 										<XS>0</XS>
@@ -27048,6 +27084,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<string name="Name">Background</string>
 									<UDim2 name="Position">
 										<XS>0</XS>
@@ -27993,6 +28030,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -28172,6 +28210,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -28448,6 +28487,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -28724,6 +28764,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -28872,6 +28913,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -30214,6 +30256,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">ArrowButton</string>
 							<UDim2 name="Position">
@@ -30564,6 +30607,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -30743,6 +30787,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -30922,6 +30967,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -31031,6 +31077,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<bool name="Modal">false</bool>
 									<string name="Name">HSVPicker</string>
 									<UDim2 name="Position">
@@ -31326,6 +31373,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -31573,6 +31621,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -31820,6 +31869,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -32164,6 +32214,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -32341,6 +32392,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -32528,6 +32580,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">ArrowButton</string>
 							<UDim2 name="Position">
@@ -32878,6 +32931,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -33057,6 +33111,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -33236,6 +33291,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -33345,6 +33401,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<bool name="Modal">false</bool>
 									<string name="Name">HSVPicker</string>
 									<UDim2 name="Position">
@@ -33640,6 +33697,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -33887,6 +33945,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -34163,6 +34222,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -34340,6 +34400,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -34450,6 +34511,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 							<X>0</X>
 							<Y>0</Y>
 						</Vector2>
+						<float name="ImageTransparency">0</float>
 						<bool name="Modal">false</bool>
 						<string name="Name">HueSaturation</string>
 						<UDim2 name="Position">
@@ -34489,6 +34551,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<string name="Name">Cursor</string>
 							<UDim2 name="Position">
 								<XS>0</XS>
@@ -34528,6 +34591,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 							<X>0</X>
 							<Y>0</Y>
 						</Vector2>
+						<float name="ImageTransparency">0</float>
 						<bool name="Modal">false</bool>
 						<string name="Name">Value</string>
 						<UDim2 name="Position">
@@ -34596,6 +34660,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<string name="Name">Cursor</string>
 							<UDim2 name="Position">
 								<XS>0</XS>
@@ -34772,6 +34837,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -35048,6 +35114,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -35324,6 +35391,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -36035,6 +36103,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -36214,6 +36283,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -36393,6 +36463,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -37465,6 +37536,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -37644,6 +37716,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -37823,6 +37896,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 									<X>0</X>
 									<Y>0</Y>
 								</Vector2>
+								<float name="ImageTransparency">0</float>
 								<string name="Name">Background</string>
 								<UDim2 name="Position">
 									<XS>0</XS>
@@ -38019,6 +38093,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">HSVPicker</string>
 							<UDim2 name="Position">
@@ -38390,6 +38465,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">ArrowButton</string>
 							<UDim2 name="Position">
@@ -38740,6 +38816,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -38919,6 +38996,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -39098,6 +39176,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -39207,6 +39286,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<bool name="Modal">false</bool>
 									<string name="Name">HSVPicker</string>
 									<UDim2 name="Position">
@@ -39502,6 +39582,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -39749,6 +39830,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -39996,6 +40078,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -40214,6 +40297,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">ArrowButton</string>
 							<UDim2 name="Position">
@@ -40564,6 +40648,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -40743,6 +40828,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -40922,6 +41008,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -41031,6 +41118,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<bool name="Modal">false</bool>
 									<string name="Name">HSVPicker</string>
 									<UDim2 name="Position">
@@ -41326,6 +41414,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -41573,6 +41662,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -41820,6 +41910,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -41999,6 +42090,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -42178,6 +42270,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -42287,6 +42380,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<bool name="Modal">false</bool>
 									<string name="Name">HSVPicker</string>
 									<UDim2 name="Position">
@@ -42514,6 +42608,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">ArrowButton</string>
 							<UDim2 name="Position">
@@ -42864,6 +42959,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -43043,6 +43139,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -43222,6 +43319,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 											<X>0</X>
 											<Y>0</Y>
 										</Vector2>
+										<float name="ImageTransparency">0</float>
 										<string name="Name">Background</string>
 										<UDim2 name="Position">
 											<XS>0</XS>
@@ -43331,6 +43429,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 										<X>0</X>
 										<Y>0</Y>
 									</Vector2>
+									<float name="ImageTransparency">0</float>
 									<bool name="Modal">false</bool>
 									<string name="Name">HSVPicker</string>
 									<UDim2 name="Position">
@@ -46808,6 +46907,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">HelpButton</string>
 							<UDim2 name="Position">
@@ -46975,6 +47075,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">DeleteButton</string>
 							<UDim2 name="Position">
@@ -47085,6 +47186,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">ExportButton</string>
 							<UDim2 name="Position">
@@ -47195,6 +47297,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">RedoButton</string>
 							<UDim2 name="Position">
@@ -47305,6 +47408,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">UndoButton</string>
 							<UDim2 name="Position">
@@ -47415,6 +47519,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">CloneButton</string>
 							<UDim2 name="Position">
@@ -47554,6 +47659,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">DecorateButton</string>
 							<UDim2 name="Position">
@@ -47634,6 +47740,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">WeldButton</string>
 							<UDim2 name="Position">
@@ -47714,6 +47821,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">LightingButton</string>
 							<UDim2 name="Position">
@@ -47794,6 +47902,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">MeshButton</string>
 							<UDim2 name="Position">
@@ -47874,6 +47983,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">CollisionButton</string>
 							<UDim2 name="Position">
@@ -47954,6 +48064,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">MaterialButton</string>
 							<UDim2 name="Position">
@@ -48034,6 +48145,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">PaintButton</string>
 							<UDim2 name="Position">
@@ -48114,6 +48226,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">NewPartButton</string>
 							<UDim2 name="Position">
@@ -48194,6 +48307,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">MoveButton</string>
 							<UDim2 name="Position">
@@ -48274,6 +48388,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">ResizeButton</string>
 							<UDim2 name="Position">
@@ -48354,6 +48469,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">RotateButton</string>
 							<UDim2 name="Position">
@@ -48434,6 +48550,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">SurfaceButton</string>
 							<UDim2 name="Position">
@@ -48514,6 +48631,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">TextureButton</string>
 							<UDim2 name="Position">
@@ -48594,6 +48712,7 @@ NOTE: The welds between parts may break if you only move one of the parts (move 
 								<X>0</X>
 								<Y>0</Y>
 							</Vector2>
+							<float name="ImageTransparency">0</float>
 							<bool name="Modal">false</bool>
 							<string name="Name">AnchorButton</string>
 							<UDim2 name="Position">
@@ -49362,6 +49481,46 @@ Install this plugin (roblox.com/item.aspx?id=142485815) in ROBLOX Studio to impo
 						</Item>
 					</Item>
 				</Item>
+			</Item>
+		</Item>
+		<Item class="IntValue" referent="RBX996">
+			<Properties>
+				<string name="Name">UIComponentCount</string>
+				<int name="Value">0</int>
+			</Properties>
+			<Item class="Script" referent="RBX997">
+				<Properties>
+					<bool name="Disabled">false</bool>
+					<Content name="LinkedSource"><null></null></Content>
+					<string name="Name">Script</string>
+					<ProtectedString name="Source">local Tool&#9;&#9;&#9;&#9;&#9;&#9;= script.Parent.Parent;
+local Interfaces&#9;&#9;&#9;&#9;= Tool.Interfaces;
+local UIComponentCountValue&#9;&#9;= Tool.UIComponentCount;
+
+function _getAllDescendants( Parent )
+&#9;-- Recursively gets all the descendants of  `Parent` and returns them
+
+&#9;local descendants = {};
+&#9;for _, Child in pairs( Parent:GetChildren() ) do
+
+&#9;&#9;-- Add the direct descendants of `Parent`
+&#9;&#9;table.insert( descendants, Child );
+
+&#9;&#9;-- Add the descendants of each child
+&#9;&#9;for _, Subchild in pairs( _getAllDescendants( Child ) ) do
+&#9;&#9;&#9;table.insert( descendants, Subchild );
+&#9;&#9;end;
+
+&#9;end;
+&#9;return descendants;
+end;
+
+-- Provide a count of the number of UI components in the tool
+-- (this allows the client-side code to begin when all expected
+-- components have loaded/replicated)
+
+UIComponentCountValue.Value = #_getAllDescendants( Interfaces );</ProtectedString>
+				</Properties>
 			</Item>
 		</Item>
 	</Item>

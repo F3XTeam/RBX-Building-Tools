@@ -227,7 +227,7 @@ Tools.Weld.showGUI = function ( self )
 	-- Initialize the GUI if it's not ready yet
 	if not self.GUI then
 
-		local Container = Tool.Interfaces:WaitForChild( "BTWeldToolGUI" ):Clone();
+		local Container = Tool.Interfaces.BTWeldToolGUI:Clone();
 		Container.Parent = UI;
 
 		Container.Interface.WeldButton.MouseButton1Up:connect( function ()

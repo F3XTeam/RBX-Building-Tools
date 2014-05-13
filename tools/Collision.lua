@@ -203,7 +203,7 @@ Tools.Collision.showGUI = function ( self )
 	-- Initialize the GUI if it's not ready yet
 	if not self.GUI then
 
-		local Container = Tool.Interfaces:WaitForChild( "BTCollisionToolGUI" ):Clone();
+		local Container = Tool.Interfaces.BTCollisionToolGUI:Clone();
 		Container.Parent = UI;
 
 		Container.Status.On.Button.MouseButton1Down:connect( function ()

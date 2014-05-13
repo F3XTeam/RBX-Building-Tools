@@ -190,7 +190,7 @@ Tools.Paint.showGUI = function ( self )
 	-- Initialize the GUI if it's not ready yet
 	if not self.GUI then
 
-		local Container = Tool.Interfaces:WaitForChild( "BTPaintToolGUI" ):Clone();
+		local Container = Tool.Interfaces.BTPaintToolGUI:Clone();
 		Container.Parent = UI;
 
 		for _, ColorButton in pairs( Container.Palette:GetChildren() ) do
