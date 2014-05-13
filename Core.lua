@@ -1561,6 +1561,9 @@ SelectEdge = {
 			return;
 		end;
 
+		-- Cancel any ongoing selection
+		self:disable();
+
 		-- Disconnect & remove all temporary connections
 		for connection_index, Connection in pairs( self.Connections ) do
 			Connection:disconnect();
