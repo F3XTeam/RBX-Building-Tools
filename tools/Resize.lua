@@ -136,7 +136,7 @@ Tools.Resize.showGUI = function ( self )
 	-- Initialize the GUI if it's not ready yet
 	if not self.GUI then
 
-		local Container = Tool.Interfaces:WaitForChild( "BTResizeToolGUI" ):Clone();
+		local Container = Tool.Interfaces.BTResizeToolGUI:Clone();
 		Container.Parent = UI;
 
 		-- Change the axis type option when the button is clicked

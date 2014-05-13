@@ -413,7 +413,7 @@ Tools.Decorate.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet
 	if not self.GUI then
-		local Container = Tool.Interfaces:WaitForChild( "BTDecorateToolGUI" ):Clone();
+		local Container = Tool.Interfaces.BTDecorateToolGUI:Clone();
 		Container.Parent = UI;
 
 		Container.Smoke.ArrowButton.MouseButton1Up:connect( function ()
