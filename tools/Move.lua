@@ -357,7 +357,7 @@ Tools.Move.showGUI = function ( self )
 	-- Initialize the GUI if it's not ready yet
 	if not self.GUI then
 
-		local Container = Tool.Interfaces:WaitForChild( "BTMoveToolGUI" ):Clone();
+		local Container = Tool.Interfaces.BTMoveToolGUI:Clone();
 		Container.Parent = UI;
 
 		-- Change the axis type option when the button is clicked

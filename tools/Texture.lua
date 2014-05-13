@@ -731,7 +731,7 @@ Tools.Texture.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet
 	if not self.GUI then
-		local Container = Tool.Interfaces:WaitForChild( "BTTextureToolGUI" ):Clone();
+		local Container = Tool.Interfaces.BTTextureToolGUI:Clone();
 		Container.Parent = UI;
 
 		-- Add functionality to the add/remove buttons

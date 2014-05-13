@@ -2012,12 +2012,20 @@ IE = {
 
 Tooltips = {};
 
-Dock = Tool.Interfaces:WaitForChild( "BTDockGUI" ):Clone();
+-- Wait for all parts of the base UI to fully replicate
+if ToolType == 'tool' then
+	local UIComponentCount = (Tool:WaitForChild 'UIComponentCount').Value;
+	repeat wait( 0.1 ) until #_getAllDescendants( Tool.Interfaces ) >= UIComponentCount;
+end;
+
+-- Create the main GUI
+Dock = Tool.Interfaces.BTDockGUI:Clone();
 Dock.Parent = UI;
 Dock.Visible = false;
 
 -- Add functionality to each tool button
-for _, ToolButton in pairs( Dock.ToolButtons:GetChildren() ) do
+function RegisterToolButton( ToolButton )
+	-- Provides functionality to `ToolButton`
 
 	-- Get the tool name and the tool
 	local tool_name = ToolButton.Name:match( "(.+)Button" );
@@ -2047,12 +2055,13 @@ for _, ToolButton in pairs( Dock.ToolButtons:GetChildren() ) do
 		end );
 
 	end;
-
+end;
+for _, ToolButton in pairs( Dock.ToolButtons:GetChildren() ) do
+	RegisterToolButton( ToolButton );
 end;
 
 -- Prepare the tooltips
-for _, Tooltip in pairs( Dock.Tooltips:GetChildren() ) do
-
+function RegisterTooltip( Tooltip )
 	local tool_name = Tooltip.Name:match( "(.+)Info" );
 
 	Tooltips[tool_name] = {
@@ -2113,7 +2122,9 @@ for _, Tooltip in pairs( Dock.Tooltips:GetChildren() ) do
 	Tooltip.Content:Destroy();
 
 end;
-
+for _, Tooltip in pairs( Dock.Tooltips:GetChildren() ) do
+	RegisterTooltip( Tooltip );
+end;
 
 -- Create the scrolling container for the help tooltip
 local ScrollingContainer = Gloo.ScrollingContainer( true, false, 15 );

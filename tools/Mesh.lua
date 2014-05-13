@@ -325,7 +325,7 @@ Tools.Mesh.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet
 	if not self.GUI then
-		local Container = Tool.Interfaces:WaitForChild( "BTMeshToolGUI" ):Clone();
+		local Container = Tool.Interfaces.BTMeshToolGUI:Clone();
 		Container.Parent = UI;
 
 		-- Add functionality to the add/remove buttons

@@ -252,7 +252,7 @@ Tools.Surface.showGUI = function ( self )
 	-- Initialize the GUI if it's not ready yet
 	if not self.GUI then
 
-		local Container = Tool.Interfaces:WaitForChild( "BTSurfaceToolGUI" ):Clone();
+		local Container = Tool.Interfaces.BTSurfaceToolGUI:Clone();
 		Container.Parent = UI;
 
 		local SideDropdown = createDropdown();

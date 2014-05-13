@@ -33,7 +33,6 @@ local GUI;
 ------------------------------------------
 RbxUtility = LoadLibrary( &apos;RbxUtility&apos; );
 Services.ContentProvider:Preload( bt_logo );
-Services.HttpService.HttpEnabled = true;
 
 ------------------------------------------
 -- Define functions that are depended-upon
@@ -320,12 +319,18 @@ function import( creation_id )
 
 &#9;-- Try to download the creation
 &#9;local creation_data;
-&#9;local download_attempt = ypcall( function ()
+&#9;local download_attempt, download_error = ypcall( function ()
 &#9;&#9;creation_data = Services.HttpService:GetAsync( export_base_url:format( creation_id ) );
 &#9;end );
 
 &#9;-- Fail graciously
+&#9;if not download_attempt and download_error == &apos;Http requests are not enabled&apos; then
+&#9;&#9;print &apos;Import from Building Tools by F3X: Please enable HTTP requests (see http://wiki.roblox.com/index.php?title=Sending_HTTP_requests#Http_requests_are_not_enabled)&apos;;
+&#9;&#9;showGUI( &apos;Please enable HTTP requests (see Output)&apos;, &apos;Got it&apos; );
+&#9;&#9;return false;
+&#9;end;
 &#9;if not download_attempt then
+&#9;&#9;print( &apos;Import from Building Tools by F3X (download request error): &apos; .. tostring( download_error ) );
 &#9;&#9;showGUI( &quot;We couldn&apos;t get your creation&quot;, &apos;Oh&apos; );
 &#9;&#9;return false;
 &#9;end;
