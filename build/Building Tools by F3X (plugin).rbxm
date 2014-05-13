@@ -1588,6 +1588,9 @@ SelectEdge = {
 &#9;&#9;&#9;return;
 &#9;&#9;end;
 
+&#9;&#9;-- Cancel any ongoing selection
+&#9;&#9;self:disable();
+
 &#9;&#9;-- Disconnect &amp; remove all temporary connections
 &#9;&#9;for connection_index, Connection in pairs( self.Connections ) do
 &#9;&#9;&#9;Connection:disconnect();
