@@ -8,7 +8,7 @@
 			<CoordinateFrame name="Grip">
 				<X>0</X>
 				<Y>0</Y>
-				<Z>0</Z>
+				<Z>0.400000006</Z>
 				<R00>1</R00>
 				<R01>0</R01>
 				<R02>0</R02>
@@ -85,6 +85,8 @@ if in_server then
 &#9;&#9;return Tool.PostAsync:InvokeServer( ... );
 &#9;end;
 end;
+
+ToolAssetID = 142785488;
 
 dark_slanted_rectangle = &quot;http://www.roblox.com/asset/?id=127774197&quot;;
 light_slanted_rectangle = &quot;http://www.roblox.com/asset/?id=127772502&quot;;
@@ -988,6 +990,31 @@ function isSelectable( Object )
 &#9;return true;
 end;
 
+UpdateNotificationShown = false;
+function ShowUpdateNotification()
+&#9;-- Displays a notification if there&apos;s a new update to the tool
+
+&#9;-- Make sure that the notification hasn&apos;t already been shown
+&#9;if UpdateNotificationShown then
+&#9;&#9;return;
+&#9;end;
+
+&#9;-- Check the most recent version number
+&#9;local AssetInfo&#9;&#9;&#9;= Services.MarketplaceService:GetProductInfo( ToolAssetID, Enum.InfoType.Asset );
+&#9;local VersionID &#9;&#9;= AssetInfo.Description:match( &apos;%[Version: (.+)%]&apos; );
+&#9;local CurrentVersionID&#9;= ( Tool:WaitForChild &apos;Version&apos; ).Value;
+
+&#9;-- If the most recent version ID differs from the current tool&apos;s version ID,
+&#9;-- notify the user that this version is outdated
+&#9;if VersionID ~= CurrentVersionID then
+&#9;&#9;-- Display the notification and hide it after a while
+&#9;&#9;local Notification &#9;&#9;&#9;= Tool.Interfaces.BTUpdateNotification:Clone();
+&#9;&#9;Notification.Parent &#9;&#9;= Dock;
+&#9;&#9;UpdateNotificationShown&#9;&#9;= true;
+&#9;&#9;Services.Debris:AddItem( Notification, 4 );
+&#9;end;
+end;
+
 -- Keep some state data
 clicking = false;
 selecting = false;
@@ -1002,11 +1029,6 @@ TargetBox = nil;
 -- Keep a container for temporary connections
 -- from the platform
 Connections = {};
-
--- Set the grip for the handle
-if ToolType == &apos;tool&apos; then
-&#9;Tool.Grip = CFrame.new( 0, 0, 0.4 );
-end;
 
 -- Make sure the UI container gets placed
 UI = RbxUtility.Create &quot;ScreenGui&quot; {
@@ -2299,6 +2321,11 @@ function equipBT( CurrentMouse )
 
 &#9;-- Show the dock
 &#9;Dock.Visible = true;
+
+&#9;-- Display update notification if any (for the tool version)
+&#9;if ToolType == &apos;tool&apos; then
+&#9;&#9;coroutine.wrap( ShowUpdateNotification )();
+&#9;end;
 
 &#9;table.insert( Connections, Mouse.KeyDown:connect( function ( key )
 
@@ -49485,13 +49512,110 @@ Install this plugin (roblox.com/item.aspx?id=142485815) in ROBLOX Studio to impo
 					</Item>
 				</Item>
 			</Item>
+			<Item class="Frame" referent="RBX996">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Color3 name="BackgroundColor3">4278190080</Color3>
+					<float name="BackgroundTransparency">0.5</float>
+					<Color3 name="BorderColor3">4279970357</Color3>
+					<int name="BorderSizePixel">0</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<string name="Name">BTUpdateNotification</string>
+					<UDim2 name="Position">
+						<XS>1</XS>
+						<XO>-180</XO>
+						<YS>1</YS>
+						<YO>10</YO>
+					</UDim2>
+					<float name="Rotation">0</float>
+					<UDim2 name="Size">
+						<XS>0</XS>
+						<XO>180</XO>
+						<YS>0</YS>
+						<YO>38</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<token name="Style">0</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+				<Item class="TextLabel" referent="RBX997">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4294967295</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">3</token>
+						<token name="FontSize">5</token>
+						<string name="Name">TextLabel</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>2</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>-2</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<string name="Text">This version of Building Tools is outdated.</string>
+						<Color3 name="TextColor3">4294967295</Color3>
+						<bool name="TextScaled">false</bool>
+						<Color3 name="TextStrokeColor3">4278190080</Color3>
+						<float name="TextStrokeTransparency">1</float>
+						<float name="TextTransparency">0</float>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">2</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="Frame" referent="RBX998">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Color3 name="BackgroundColor3">4294945280</Color3>
+						<float name="BackgroundTransparency">0</float>
+						<Color3 name="BorderColor3">4279970357</Color3>
+						<int name="BorderSizePixel">0</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<string name="Name">ColorBar</string>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>0</YO>
+						</UDim2>
+						<float name="Rotation">0</float>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>2</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<token name="Style">0</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+			</Item>
 		</Item>
-		<Item class="IntValue" referent="RBX996">
+		<Item class="IntValue" referent="RBX999">
 			<Properties>
 				<string name="Name">UIComponentCount</string>
 				<int name="Value">0</int>
 			</Properties>
-			<Item class="Script" referent="RBX997">
+			<Item class="Script" referent="RBX1000">
 				<Properties>
 					<bool name="Disabled">false</bool>
 					<Content name="LinkedSource"><null></null></Content>
@@ -49525,6 +49649,12 @@ end;
 UIComponentCountValue.Value = #_getAllDescendants( Interfaces );</ProtectedString>
 				</Properties>
 			</Item>
+		</Item>
+		<Item class="StringValue" referent="RBX1001">
+			<Properties>
+				<string name="Name">Version</string>
+				<string name="Value">1.2.2</string>
+			</Properties>
 		</Item>
 	</Item>
 </roblox>
