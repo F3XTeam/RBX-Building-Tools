@@ -56,6 +56,8 @@ if in_server then
 	end;
 end;
 
+ToolAssetID = 142785488;
+
 dark_slanted_rectangle = "http://www.roblox.com/asset/?id=127774197";
 light_slanted_rectangle = "http://www.roblox.com/asset/?id=127772502";
 action_completion_sound = "http://www.roblox.com/asset/?id=99666917";
@@ -958,6 +960,31 @@ function isSelectable( Object )
 	return true;
 end;
 
+UpdateNotificationShown = false;
+function ShowUpdateNotification()
+	-- Displays a notification if there's a new update to the tool
+
+	-- Make sure that the notification hasn't already been shown
+	if UpdateNotificationShown then
+		return;
+	end;
+
+	-- Check the most recent version number
+	local AssetInfo			= Services.MarketplaceService:GetProductInfo( ToolAssetID, Enum.InfoType.Asset );
+	local VersionID 		= AssetInfo.Description:match( '%[Version: (.+)%]' );
+	local CurrentVersionID	= ( Tool:WaitForChild 'Version' ).Value;
+
+	-- If the most recent version ID differs from the current tool's version ID,
+	-- notify the user that this version is outdated
+	if VersionID ~= CurrentVersionID then
+		-- Display the notification and hide it after a while
+		local Notification 			= Tool.Interfaces.BTUpdateNotification:Clone();
+		Notification.Parent 		= Dock;
+		UpdateNotificationShown		= true;
+		Services.Debris:AddItem( Notification, 4 );
+	end;
+end;
+
 -- Keep some state data
 clicking = false;
 selecting = false;
@@ -972,11 +999,6 @@ TargetBox = nil;
 -- Keep a container for temporary connections
 -- from the platform
 Connections = {};
-
--- Set the grip for the handle
-if ToolType == 'tool' then
-	Tool.Grip = CFrame.new( 0, 0, 0.4 );
-end;
 
 -- Make sure the UI container gets placed
 UI = RbxUtility.Create "ScreenGui" {
@@ -2269,6 +2291,11 @@ function equipBT( CurrentMouse )
 
 	-- Show the dock
 	Dock.Visible = true;
+
+	-- Display update notification if any (for the tool version)
+	if ToolType == 'tool' then
+		coroutine.wrap( ShowUpdateNotification )();
+	end;
 
 	table.insert( Connections, Mouse.KeyDown:connect( function ( key )
 
