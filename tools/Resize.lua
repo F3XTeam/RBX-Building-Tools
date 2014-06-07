@@ -135,7 +135,7 @@ Tools.Resize.Listeners.KeyUp = function ( Key )
 	local self = Tools.Resize;
 
 	-- Provide a keyboard shortcut to the increment input
-	if Key == "'" and self.GUI then
+	if Key == '-' and self.GUI then
 		self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
 	end;
 end;

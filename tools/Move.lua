@@ -356,7 +356,7 @@ Tools.Move.Listeners.KeyUp = function ( Key )
 	local self = Tools.Move;
 
 	-- Provide a keyboard shortcut to the increment input
-	if Key == "'" and self.GUI then
+	if Key == '-' and self.GUI then
 		self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
 	end;
 end;

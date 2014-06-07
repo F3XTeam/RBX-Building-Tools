@@ -3028,7 +3028,7 @@ Tools.Move.Listeners.KeyUp = function ( Key )
 &#9;local self = Tools.Move;
 
 &#9;-- Provide a keyboard shortcut to the increment input
-&#9;if Key == &quot;&apos;&quot; and self.GUI then
+&#9;if Key == &apos;-&apos; and self.GUI then
 &#9;&#9;self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
 &#9;end;
 end;
@@ -3623,7 +3623,7 @@ Tools.Resize.Listeners.KeyUp = function ( Key )
 &#9;local self = Tools.Resize;
 
 &#9;-- Provide a keyboard shortcut to the increment input
-&#9;if Key == &quot;&apos;&quot; and self.GUI then
+&#9;if Key == &apos;-&apos; and self.GUI then
 &#9;&#9;self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
 &#9;end;
 end;
@@ -4298,7 +4298,7 @@ Tools.Rotate.Listeners.KeyUp = function ( Key )
 &#9;local self = Tools.Rotate;
 
 &#9;-- Provide a keyboard shortcut to the increment input
-&#9;if Key == &quot;&apos;&quot; and self.GUI then
+&#9;if Key == &apos;-&apos; and self.GUI then
 &#9;&#9;self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
 &#9;end;
 end;
@@ -44298,7 +44298,7 @@ LAST - Relative to the last part selected</string>
 											<YO>50</YO>
 										</UDim2>
 										<token name="SizeConstraint">0</token>
-										<string name="Text">TIP: Use the &apos; key to focus on the increment input.</string>
+										<string name="Text">TIP: Use the - key to focus on the increment input.</string>
 										<Color3 name="TextColor3">4294967295</Color3>
 										<bool name="TextScaled">false</bool>
 										<Color3 name="TextStrokeColor3">4278190080</Color3>
@@ -44827,7 +44827,7 @@ LAST - Rotate each part around the center of the last part selected</string>
 											<YO>50</YO>
 										</UDim2>
 										<token name="SizeConstraint">0</token>
-										<string name="Text">TIP: Use the &apos; key to focus on the increment input.</string>
+										<string name="Text">TIP: Use the - key to focus on the increment input.</string>
 										<Color3 name="TextColor3">4294967295</Color3>
 										<bool name="TextScaled">false</bool>
 										<Color3 name="TextStrokeColor3">4278190080</Color3>
@@ -45247,7 +45247,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 											<YO>50</YO>
 										</UDim2>
 										<token name="SizeConstraint">0</token>
-										<string name="Text">TIP: Use the &apos; key to focus on the increment input.</string>
+										<string name="Text">TIP: Use the - key to focus on the increment input.</string>
 										<Color3 name="TextColor3">4294967295</Color3>
 										<bool name="TextScaled">false</bool>
 										<Color3 name="TextStrokeColor3">4278190080</Color3>
