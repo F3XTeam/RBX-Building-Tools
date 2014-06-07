@@ -3024,6 +3024,15 @@ Tools.Move.Listeners.Move = function ()
 
 end;
 
+Tools.Move.Listeners.KeyUp = function ( Key )
+&#9;local self = Tools.Move;
+
+&#9;-- Provide a keyboard shortcut to the increment input
+&#9;if Key == &quot;&apos;&quot; and self.GUI then
+&#9;&#9;self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
+&#9;end;
+end;
+
 Tools.Move.showGUI = function ( self )
 
 &#9;-- Initialize the GUI if it&apos;s not ready yet
@@ -3608,6 +3617,15 @@ Tools.Resize.Listeners.Unequipped = function ()
 &#9;SelectionBoxColor = self.State.PreviousSelectionBoxColor;
 &#9;updateSelectionBoxColor();
 
+end;
+
+Tools.Resize.Listeners.KeyUp = function ( Key )
+&#9;local self = Tools.Resize;
+
+&#9;-- Provide a keyboard shortcut to the increment input
+&#9;if Key == &quot;&apos;&quot; and self.GUI then
+&#9;&#9;self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
+&#9;end;
 end;
 
 Tools.Resize.showGUI = function ( self )
@@ -4274,6 +4292,15 @@ Tools.Rotate.Listeners.Button1Down = function ()
 &#9;&#9;self.Options.PivotPoint = nil;
 &#9;end;
 
+end;
+
+Tools.Rotate.Listeners.KeyUp = function ( Key )
+&#9;local self = Tools.Rotate;
+
+&#9;-- Provide a keyboard shortcut to the increment input
+&#9;if Key == &quot;&apos;&quot; and self.GUI then
+&#9;&#9;self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
+&#9;end;
 end;
 
 Tools.Rotate.showGUI = function ( self )
@@ -49653,7 +49680,7 @@ UIComponentCountValue.Value = #_getAllDescendants( Interfaces );</ProtectedStrin
 		<Item class="StringValue" referent="RBX1001">
 			<Properties>
 				<string name="Name">Version</string>
-				<string name="Value">1.2.2</string>
+				<string name="Value">1.2.3</string>
 			</Properties>
 		</Item>
 	</Item>
