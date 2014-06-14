@@ -51,7 +51,7 @@ Tools.Texture.Listeners.Equipped = function ()
 		updater_on = true;
 
 		-- Provide a function to stop the loop
-		self.stopGUIUpdater = function ( self )
+		self.Updater = function ()
 			updater_on = false;
 		end;
 
@@ -78,7 +78,10 @@ Tools.Texture.Listeners.Unequipped = function ()
 	local self = Tools.Texture;
 
 	-- Stop the GUI updater
-	self:stopGUIUpdater();
+	if self.Updater then
+		self.Updater();
+		self.Updater = nil;
+	end;
 
 	-- Hide the GUI
 	self:hideGUI();

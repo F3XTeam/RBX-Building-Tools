@@ -131,6 +131,15 @@ Tools.Resize.Listeners.Unequipped = function ()
 
 end;
 
+Tools.Resize.Listeners.KeyUp = function ( Key )
+	local self = Tools.Resize;
+
+	-- Provide a keyboard shortcut to the increment input
+	if Key == '-' and self.GUI then
+		self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
+	end;
+end;
+
 Tools.Resize.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet

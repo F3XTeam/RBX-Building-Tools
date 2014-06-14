@@ -151,6 +151,15 @@ Tools.Rotate.Listeners.Button1Down = function ()
 
 end;
 
+Tools.Rotate.Listeners.KeyUp = function ( Key )
+	local self = Tools.Rotate;
+
+	-- Provide a keyboard shortcut to the increment input
+	if Key == '-' and self.GUI then
+		self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
+	end;
+end;
+
 Tools.Rotate.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet
