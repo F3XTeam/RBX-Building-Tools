@@ -9910,8 +9910,10 @@ Tools.Material.Listeners.Unequipped = function ()
 &#9;local self = Tools.Material;
 
 &#9;-- Stop the GUI updating loop
-&#9;self.Updater();
-&#9;self.Updater = nil;
+&#9;if self.Updater then
+&#9;&#9;self.Updater();
+&#9;&#9;self.Updater = nil;
+&#9;end;
 
 &#9;-- Hide the GUI
 &#9;self:hideGUI();
