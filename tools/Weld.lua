@@ -155,7 +155,7 @@ Tools.Weld.weld = function ( self )
 	local Sound = RbxUtility.Create "Sound" {
 		Name = "BTActionCompletionSound";
 		Pitch = 1.5;
-		SoundId = action_completion_sound;
+		SoundId = Assets.ActionCompletionSound;
 		Volume = 1;
 		Parent = Player;
 	};
@@ -213,7 +213,7 @@ Tools.Weld.breakWelds = function ( self )
 	local Sound = RbxUtility.Create "Sound" {
 		Name = "BTActionCompletionSound";
 		Pitch = 1.5;
-		SoundId = action_completion_sound;
+		SoundId = Assets.ActionCompletionSound;
 		Volume = 1;
 		Parent = Player;
 	};

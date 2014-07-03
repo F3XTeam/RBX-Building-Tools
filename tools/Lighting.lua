@@ -226,19 +226,19 @@ Tools.Lighting.updateGUI = function ( self )
 			self.GUI.Spotlight.Options.RangeOption.Input.TextBox.Text = sl_range and _round( sl_range, 2 ) or '*';
 		end;
 		if sl_shadows == nil then
-			self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = light_slanted_rectangle;
+			self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
 			self.GUI.Spotlight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 1;
-			self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = light_slanted_rectangle;
+			self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = Assets.LightSlantedRectangle;
 			self.GUI.Spotlight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 1;
 		elseif sl_shadows == true then
-			self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = dark_slanted_rectangle;
+			self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = Assets.DarkSlantedRectangle;
 			self.GUI.Spotlight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 0;
-			self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = light_slanted_rectangle;
+			self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = Assets.LightSlantedRectangle;
 			self.GUI.Spotlight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 1;
 		elseif sl_shadows == false then
-			self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = light_slanted_rectangle;
+			self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
 			self.GUI.Spotlight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 1;
-			self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = dark_slanted_rectangle;
+			self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = Assets.DarkSlantedRectangle;
 			self.GUI.Spotlight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 0;
 		end;
 		if not self.State.sl_angle_focused then
@@ -263,19 +263,19 @@ Tools.Lighting.updateGUI = function ( self )
 			self.GUI.PointLight.Options.RangeOption.Input.TextBox.Text = pl_range and _round( pl_range, 2 ) or '*';
 		end;
 		if pl_shadows == nil then
-			self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = light_slanted_rectangle;
+			self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
 			self.GUI.PointLight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 1;
-			self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = light_slanted_rectangle;
+			self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = Assets.LightSlantedRectangle;
 			self.GUI.PointLight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 1;
 		elseif pl_shadows == true then
-			self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = dark_slanted_rectangle;
+			self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = Assets.DarkSlantedRectangle;
 			self.GUI.PointLight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 0;
-			self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = light_slanted_rectangle;
+			self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = Assets.LightSlantedRectangle;
 			self.GUI.PointLight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 1;
 		elseif pl_shadows == false then
-			self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = light_slanted_rectangle;
+			self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
 			self.GUI.PointLight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 1;
-			self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = dark_slanted_rectangle;
+			self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = Assets.DarkSlantedRectangle;
 			self.GUI.PointLight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 0;
 		end;
 

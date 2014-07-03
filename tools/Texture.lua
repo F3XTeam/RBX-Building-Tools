@@ -221,15 +221,15 @@ Tools.Texture.changeMode = function ( self, new_mode )
 	if new_mode == "decal" then
 		self.GUI.ModeOption.Decal.SelectedIndicator.Transparency = 0;
 		self.GUI.ModeOption.Texture.SelectedIndicator.Transparency = 1;
-		self.GUI.ModeOption.Decal.Background.Image = dark_slanted_rectangle;
-		self.GUI.ModeOption.Texture.Background.Image = light_slanted_rectangle;
+		self.GUI.ModeOption.Decal.Background.Image = Assets.DarkSlantedRectangle;
+		self.GUI.ModeOption.Texture.Background.Image = Assets.LightSlantedRectangle;
 		self.GUI.AddButton.Button.Text = "ADD DECAL";
 		self.GUI.RemoveButton.Button.Text = "REMOVE DECAL";
 	elseif new_mode == "texture" then
 		self.GUI.ModeOption.Decal.SelectedIndicator.Transparency = 1;
 		self.GUI.ModeOption.Texture.SelectedIndicator.Transparency = 0;
-		self.GUI.ModeOption.Decal.Background.Image = light_slanted_rectangle;
-		self.GUI.ModeOption.Texture.Background.Image = dark_slanted_rectangle;
+		self.GUI.ModeOption.Decal.Background.Image = Assets.LightSlantedRectangle;
+		self.GUI.ModeOption.Texture.Background.Image = Assets.DarkSlantedRectangle;
 		self.GUI.AddButton.Button.Text = "ADD TEXTURE";
 		self.GUI.RemoveButton.Button.Text = "REMOVE TEXTURE";
 	end;

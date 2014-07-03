@@ -32,29 +32,43 @@
 -- Create references to important objects
 ------------------------------------------
 Services = {
-&#9;[&quot;Workspace&quot;] = Game:GetService( &quot;Workspace&quot; );
-&#9;[&quot;Players&quot;] = Game:GetService( &quot;Players&quot; );
-&#9;[&quot;Lighting&quot;] = Game:GetService( &quot;Lighting&quot; );
-&#9;[&quot;Teams&quot;] = Game:GetService( &quot;Teams&quot; );
-&#9;[&quot;Debris&quot;] = Game:GetService( &quot;Debris&quot; );
-&#9;[&quot;MarketplaceService&quot;] = Game:GetService( &quot;MarketplaceService&quot; );
-&#9;[&quot;JointsService&quot;] = Game.JointsService;
-&#9;[&quot;BadgeService&quot;] = Game:GetService( &quot;BadgeService&quot; );
-&#9;[&quot;RunService&quot;] = Game:GetService( &quot;RunService&quot; );
-&#9;[&quot;ContentProvider&quot;] = Game:GetService( &quot;ContentProvider&quot; );
-&#9;[&quot;TeleportService&quot;] = Game:GetService( &quot;TeleportService&quot; );
-&#9;[&quot;SoundService&quot;] = Game:GetService( &quot;SoundService&quot; );
-&#9;[&quot;InsertService&quot;] = Game:GetService( &quot;InsertService&quot; );
-&#9;[&quot;CollectionService&quot;] = Game:GetService( &quot;CollectionService&quot; );
-&#9;[&quot;UserInputService&quot;] = Game:GetService( &quot;UserInputService&quot; );
-&#9;[&quot;GamePassService&quot;] = Game:GetService( &quot;GamePassService&quot; );
-&#9;[&quot;StarterPack&quot;] = Game:GetService( &quot;StarterPack&quot; );
-&#9;[&quot;StarterGui&quot;] = Game:GetService( &quot;StarterGui&quot; );
-&#9;[&quot;TestService&quot;] = Game:GetService( &quot;TestService&quot; );
-&#9;[&quot;ReplicatedStorage&quot;] = Game:GetService( &quot;ReplicatedStorage&quot; );
-&#9;[&quot;Selection&quot;] = Game:GetService( &quot;Selection&quot; );
-&#9;[&quot;CoreGui&quot;] = Game:GetService( &quot;CoreGui&quot; );
+&#9;Workspace&#9;&#9;&#9;= Game:GetService &apos;Workspace&apos;;
+&#9;Players&#9;&#9;&#9;&#9;= Game:GetService &apos;Players&apos;;
+&#9;Debris&#9;&#9;&#9;&#9;= Game:GetService &apos;Debris&apos;;
+&#9;MarketplaceService&#9;= Game:GetService &apos;MarketplaceService&apos;;
+&#9;ContentProvider&#9;&#9;= Game:GetService &apos;ContentProvider&apos;;
+&#9;SoundService&#9;&#9;= Game:GetService &apos;SoundService&apos;;
+&#9;UserInputService&#9;= Game:GetService &apos;UserInputService&apos;;
+&#9;TestService&#9;&#9;&#9;= Game:GetService &apos;TestService&apos;;
+&#9;Selection&#9;&#9;&#9;= Game:GetService &apos;Selection&apos;;
+&#9;CoreGui&#9;&#9;&#9;&#9;= Game:GetService &apos;CoreGui&apos;;
+&#9;JointsService&#9;&#9;= Game.JointsService;
 };
+
+Assets = {
+&#9;DarkSlantedRectangle&#9;= &apos;http://www.roblox.com/asset/?id=127774197&apos;;
+&#9;LightSlantedRectangle&#9;= &apos;http://www.roblox.com/asset/?id=127772502&apos;;
+&#9;ActionCompletionSound&#9;= &apos;http://www.roblox.com/asset/?id=99666917&apos;;
+&#9;ExpandArrow&#9;&#9;&#9;&#9;= &apos;http://www.roblox.com/asset/?id=134367382&apos;;
+&#9;UndoActiveDecal&#9;&#9;&#9;= &apos;http://www.roblox.com/asset/?id=141741408&apos;;
+&#9;UndoInactiveDecal&#9;&#9;= &apos;http://www.roblox.com/asset/?id=142074557&apos;;
+&#9;RedoActiveDecal&#9;&#9;&#9;= &apos;http://www.roblox.com/asset/?id=141741327&apos;;
+&#9;RedoInactiveDecal&#9;&#9;= &apos;http://www.roblox.com/asset/?id=142074553&apos;;
+&#9;DeleteActiveDecal&#9;&#9;= &apos;http://www.roblox.com/asset/?id=141896298&apos;;
+&#9;DeleteInactiveDecal&#9;&#9;= &apos;http://www.roblox.com/asset/?id=142074644&apos;;
+&#9;ExportActiveDecal&#9;&#9;= &apos;http://www.roblox.com/asset/?id=141741337&apos;;
+&#9;ExportInactiveDecal&#9;&#9;= &apos;http://www.roblox.com/asset/?id=142074569&apos;;
+&#9;CloneActiveDecal&#9;&#9;= &apos;http://www.roblox.com/asset/?id=142073926&apos;;
+&#9;CloneInactiveDecal&#9;&#9;= &apos;http://www.roblox.com/asset/?id=142074563&apos;;
+&#9;PluginIcon&#9;&#9;&#9;&#9;= &apos;http://www.roblox.com/asset/?id=142287521&apos;;
+&#9;GroupLockIcon&#9;&#9;&#9;= &apos;http://www.roblox.com/asset/?id=164421186&apos;;
+&#9;GroupUnlockIcon&#9;&#9;&#9;= &apos;http://www.roblox.com/asset/?id=160408836&apos;;
+&#9;GroupUpdateOKIcon&#9;&#9;= &apos;http://www.roblox.com/asset/?id=164421681&apos;;
+&#9;GroupUpdateIcon&#9;&#9;&#9;= &apos;http://www.roblox.com/asset/?id=160402908&apos;;
+};
+
+-- The ID of the tool model on ROBLOX
+ToolAssetID = 142785488;
 
 Tool = script.Parent;
 Player = Services.Players.LocalPlayer;
@@ -63,7 +77,7 @@ Mouse = nil;
 -- Determine whether this is the plugin or tool
 if plugin then
 &#9;ToolType = &apos;plugin&apos;;
-elseif Tool:IsA( &apos;Tool&apos; ) then
+elseif Tool:IsA &apos;Tool&apos; then
 &#9;ToolType = &apos;tool&apos;;
 end;
 
@@ -86,51 +100,15 @@ if in_server then
 &#9;end;
 end;
 
-ToolAssetID = 142785488;
-
-dark_slanted_rectangle = &quot;http://www.roblox.com/asset/?id=127774197&quot;;
-light_slanted_rectangle = &quot;http://www.roblox.com/asset/?id=127772502&quot;;
-action_completion_sound = &quot;http://www.roblox.com/asset/?id=99666917&quot;;
-expand_arrow = &quot;http://www.roblox.com/asset/?id=134367382&quot;;
-tool_decal = &quot;http://www.roblox.com/asset/?id=129748355&quot;;
-undo_active_decal = &quot;http://www.roblox.com/asset/?id=141741408&quot;;
-undo_inactive_decal = &quot;http://www.roblox.com/asset/?id=142074557&quot;;
-redo_active_decal = &quot;http://www.roblox.com/asset/?id=141741327&quot;;
-redo_inactive_decal = &quot;http://www.roblox.com/asset/?id=142074553&quot;;
-delete_active_decal = &quot;http://www.roblox.com/asset/?id=141896298&quot;;
-delete_inactive_decal = &quot;http://www.roblox.com/asset/?id=142074644&quot;;
-export_active_decal = &quot;http://www.roblox.com/asset/?id=141741337&quot;;
-export_inactive_decal = &quot;http://www.roblox.com/asset/?id=142074569&quot;;
-clone_active_decal = &quot;http://www.roblox.com/asset/?id=142073926&quot;;
-clone_inactive_decal = &quot;http://www.roblox.com/asset/?id=142074563&quot;;
-plugin_icon = &quot;http://www.roblox.com/asset/?id=142287521&quot;;
-GroupLockIcon = &apos;http://www.roblox.com/asset/?id=164421186&apos;;
-GroupUnlockIcon = &apos;http://www.roblox.com/asset/?id=160408836&apos;;
-GroupUpdateOKIcon = &apos;http://www.roblox.com/asset/?id=164421681&apos;;
-GroupUpdateIcon = &apos;http://www.roblox.com/asset/?id=160402908&apos;;
-
 ------------------------------------------
 -- Load external dependencies
 ------------------------------------------
+-- Preload external assets
+for ResourceName, ResourceUrl in pairs( Assets ) do
+&#9;Services.ContentProvider:Preload( ResourceUrl );
+end;
+
 RbxUtility = LoadLibrary( &quot;RbxUtility&quot; );
-Services.ContentProvider:Preload( dark_slanted_rectangle );
-Services.ContentProvider:Preload( light_slanted_rectangle );
-Services.ContentProvider:Preload( action_completion_sound );
-Services.ContentProvider:Preload( expand_arrow );
-Services.ContentProvider:Preload( tool_decal );
-Services.ContentProvider:Preload( undo_active_decal );
-Services.ContentProvider:Preload( undo_inactive_decal );
-Services.ContentProvider:Preload( redo_inactive_decal );
-Services.ContentProvider:Preload( redo_active_decal );
-Services.ContentProvider:Preload( delete_active_decal );
-Services.ContentProvider:Preload( delete_inactive_decal );
-Services.ContentProvider:Preload( export_active_decal );
-Services.ContentProvider:Preload( export_inactive_decal );
-Services.ContentProvider:Preload( clone_active_decal );
-Services.ContentProvider:Preload( clone_inactive_decal );
-Services.ContentProvider:Preload( plugin_icon );
-Services.ContentProvider:Preload( GroupLockIcon );
-Services.ContentProvider:Preload( GroupUnlockIcon );
 Tool:WaitForChild( &quot;Interfaces&quot; );
 repeat wait( 0 ) until _G.gloo;
 Gloo = _G.gloo;
@@ -873,7 +851,7 @@ function cloneSelection()
 &#9;&#9;local Sound = RbxUtility.Create &quot;Sound&quot; {
 &#9;&#9;&#9;Name = &quot;BTActionCompletionSound&quot;;
 &#9;&#9;&#9;Pitch = 1.5;
-&#9;&#9;&#9;SoundId = action_completion_sound;
+&#9;&#9;&#9;SoundId = Assets.ActionCompletionSound;
 &#9;&#9;&#9;Volume = 1;
 &#9;&#9;&#9;Parent = Player or Services.SoundService;
 &#9;&#9;};
@@ -1255,7 +1233,7 @@ function createDropdown()
 &#9;&#9;Name = &quot;Arrow&quot;;
 &#9;&#9;BackgroundTransparency = 1;
 &#9;&#9;BorderSizePixel = 0;
-&#9;&#9;Image = expand_arrow;
+&#9;&#9;Image = Assets.ExpandArrow;
 &#9;&#9;Position = UDim2.new( 1, -21, 0, 3 );
 &#9;&#9;Size = UDim2.new( 0, 20, 0, 20 );
 &#9;&#9;ZIndex = 3;
@@ -2104,7 +2082,7 @@ IE = {
 &#9;&#9;&#9;local Sound = RbxUtility.Create &quot;Sound&quot; {
 &#9;&#9;&#9;&#9;Name = &quot;BTActionCompletionSound&quot;;
 &#9;&#9;&#9;&#9;Pitch = 1.5;
-&#9;&#9;&#9;&#9;SoundId = action_completion_sound;
+&#9;&#9;&#9;&#9;SoundId = Assets.ActionCompletionSound;
 &#9;&#9;&#9;&#9;Volume = 1;
 &#9;&#9;&#9;&#9;Parent = Player or Services.SoundService;
 &#9;&#9;&#9;};
@@ -2272,15 +2250,15 @@ Selection.Changed:connect( function ()
 
 &#9;-- If there are items, they should be active
 &#9;if #Selection.Items &gt; 0 then
-&#9;&#9;Dock.SelectionButtons.DeleteButton.Image = delete_active_decal;
-&#9;&#9;Dock.SelectionButtons.CloneButton.Image = clone_active_decal;
-&#9;&#9;Dock.SelectionButtons.ExportButton.Image = export_active_decal;
+&#9;&#9;Dock.SelectionButtons.DeleteButton.Image = Assets.DeleteActiveDecal;
+&#9;&#9;Dock.SelectionButtons.CloneButton.Image = Assets.CloneActiveDecal;
+&#9;&#9;Dock.SelectionButtons.ExportButton.Image = Assets.ExportActiveDecal;
 
 &#9;-- If there aren&apos;t items, they shouldn&apos;t be active
 &#9;else
-&#9;&#9;Dock.SelectionButtons.DeleteButton.Image = delete_inactive_decal;
-&#9;&#9;Dock.SelectionButtons.CloneButton.Image = clone_inactive_decal;
-&#9;&#9;Dock.SelectionButtons.ExportButton.Image = export_inactive_decal;
+&#9;&#9;Dock.SelectionButtons.DeleteButton.Image = Assets.DeleteInactiveDecal;
+&#9;&#9;Dock.SelectionButtons.CloneButton.Image = Assets.CloneInactiveDecal;
+&#9;&#9;Dock.SelectionButtons.ExportButton.Image = Assets.ExportInactiveDecal;
 &#9;end;
 
 end );
@@ -2312,24 +2290,24 @@ History.Changed:connect( function ()
 
 &#9;&#9;-- If we&apos;re at the beginning
 &#9;&#9;if History.index == 0 then
-&#9;&#9;&#9;Dock.SelectionButtons.UndoButton.Image = undo_inactive_decal;
-&#9;&#9;&#9;Dock.SelectionButtons.RedoButton.Image = redo_active_decal;
+&#9;&#9;&#9;Dock.SelectionButtons.UndoButton.Image = Assets.UndoInactiveDecal;
+&#9;&#9;&#9;Dock.SelectionButtons.RedoButton.Image = Assets.RedoActiveDecal;
 
 &#9;&#9;-- If we&apos;re at the end
 &#9;&#9;elseif History.index == #History.Data then
-&#9;&#9;&#9;Dock.SelectionButtons.UndoButton.Image = undo_active_decal;
-&#9;&#9;&#9;Dock.SelectionButtons.RedoButton.Image = redo_inactive_decal;
+&#9;&#9;&#9;Dock.SelectionButtons.UndoButton.Image = Assets.UndoActiveDecal;
+&#9;&#9;&#9;Dock.SelectionButtons.RedoButton.Image = Assets.RedoInactiveDecal;
 
 &#9;&#9;-- If we&apos;re neither at the beginning or the end
 &#9;&#9;else
-&#9;&#9;&#9;Dock.SelectionButtons.UndoButton.Image = undo_active_decal;
-&#9;&#9;&#9;Dock.SelectionButtons.RedoButton.Image = redo_active_decal;
+&#9;&#9;&#9;Dock.SelectionButtons.UndoButton.Image = Assets.UndoActiveDecal;
+&#9;&#9;&#9;Dock.SelectionButtons.RedoButton.Image = Assets.RedoActiveDecal;
 &#9;&#9;end;
 
 &#9;-- If there are no records
 &#9;else
-&#9;&#9;Dock.SelectionButtons.UndoButton.Image = undo_inactive_decal;
-&#9;&#9;Dock.SelectionButtons.RedoButton.Image = redo_inactive_decal;
+&#9;&#9;Dock.SelectionButtons.UndoButton.Image = Assets.UndoInactiveDecal;
+&#9;&#9;Dock.SelectionButtons.RedoButton.Image = Assets.RedoInactiveDecal;
 &#9;end;
 
 end );
@@ -2338,7 +2316,7 @@ end );
 -- An interface for the group system
 ------------------------------------------
 Groups = {
-&#9;
+
 &#9;-- A container for the groups
 &#9;Data = {};
 
@@ -2430,14 +2408,14 @@ Groups.GroupAdded:Connect( function ( Group )
 &#9;Group.Changed:Connect( function ()
 &#9;&#9;GroupButton.GroupName.Text&#9;&#9;= Group.Name;
 &#9;&#9;GroupButton.GroupNamer.Text&#9;&#9;= Group.Name;
-&#9;&#9;GroupButton.IgnoreButton.Image&#9;= Group.Ignoring and GroupLockIcon or GroupUnlockIcon;
+&#9;&#9;GroupButton.IgnoreButton.Image&#9;= Group.Ignoring and Assets.GroupLockIcon or Assets.GroupUnlockIcon;
 &#9;end );
 
 &#9;Group.Updated:connect( function ()
-&#9;&#9;GroupButton.UpdateButton.Image = GroupUpdateOKIcon;
+&#9;&#9;GroupButton.UpdateButton.Image = Assets.GroupUpdateOKIcon;
 &#9;&#9;coroutine.wrap( function()
 &#9;&#9;&#9;wait( 1 );
-&#9;&#9;&#9;GroupButton.UpdateButton.Image = GroupUpdateIcon;
+&#9;&#9;&#9;GroupButton.UpdateButton.Image = Assets.GroupUpdateIcon;
 &#9;&#9;end )();
 &#9;end );
 
@@ -2836,7 +2814,7 @@ end;
 
 -- Activate the plugin and tool connections
 if ToolType == &apos;plugin&apos; then
-&#9;local ToolbarButton = plugin:CreateToolbar( &apos;Building Tools by F3X&apos; ):CreateButton( &apos;&apos;, &apos;Building Tools by F3X&apos;, plugin_icon );
+&#9;local ToolbarButton = plugin:CreateToolbar( &apos;Building Tools by F3X&apos; ):CreateButton( &apos;&apos;, &apos;Building Tools by F3X&apos;, Assets.PluginIcon );
 &#9;local plugin_active = false;
 &#9;ToolbarButton.Click:connect( function ()
 &#9;&#9;if plugin_active then
@@ -3235,31 +3213,31 @@ Tools.Move.showGUI = function ( self )
 &#9;&#9;Container.AxesOption.Global.Button.MouseButton1Down:connect( function ()
 &#9;&#9;&#9;self:changeAxes( &quot;global&quot; );
 &#9;&#9;&#9;Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;Container.AxesOption.Global.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;Container.AxesOption.Global.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;&#9;Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;Container.AxesOption.Local.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;Container.AxesOption.Local.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;Container.AxesOption.Last.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;Container.AxesOption.Last.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;end );
 
 &#9;&#9;Container.AxesOption.Local.Button.MouseButton1Down:connect( function ()
 &#9;&#9;&#9;self:changeAxes( &quot;local&quot; );
 &#9;&#9;&#9;Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;Container.AxesOption.Global.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;Container.AxesOption.Global.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;Container.AxesOption.Local.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;Container.AxesOption.Local.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;&#9;Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;Container.AxesOption.Last.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;Container.AxesOption.Last.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;end );
 
 &#9;&#9;Container.AxesOption.Last.Button.MouseButton1Down:connect( function ()
 &#9;&#9;&#9;self:changeAxes( &quot;last&quot; );
 &#9;&#9;&#9;Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;Container.AxesOption.Global.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;Container.AxesOption.Global.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;Container.AxesOption.Local.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;Container.AxesOption.Local.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;Container.AxesOption.Last.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;Container.AxesOption.Last.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;end );
 
 &#9;&#9;-- Change the increment option when the value of the textbox is updated
@@ -3559,11 +3537,11 @@ Tools.Move.changeAxes = function ( self, new_axes )
 &#9;&#9;-- Update the GUI&apos;s option panel
 &#9;&#9;if self.GUI then
 &#9;&#9;&#9;AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;AxesOptionGUI.Global.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;AxesOptionGUI.Global.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;&#9;AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;AxesOptionGUI.Local.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;AxesOptionGUI.Local.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;AxesOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;AxesOptionGUI.Last.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;AxesOptionGUI.Last.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;end;
 
 &#9;end;
@@ -3608,11 +3586,11 @@ Tools.Move.changeAxes = function ( self, new_axes )
 &#9;&#9;-- Update the GUI&apos;s option panel
 &#9;&#9;if self.GUI then
 &#9;&#9;&#9;AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;AxesOptionGUI.Global.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;AxesOptionGUI.Global.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;AxesOptionGUI.Local.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;AxesOptionGUI.Local.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;&#9;AxesOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;AxesOptionGUI.Last.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;AxesOptionGUI.Last.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;end;
 
 &#9;end;
@@ -3657,11 +3635,11 @@ Tools.Move.changeAxes = function ( self, new_axes )
 &#9;&#9;-- Update the GUI&apos;s option panel
 &#9;&#9;if self.GUI then
 &#9;&#9;&#9;AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;AxesOptionGUI.Global.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;AxesOptionGUI.Global.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;AxesOptionGUI.Local.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;AxesOptionGUI.Local.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;AxesOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;AxesOptionGUI.Last.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;AxesOptionGUI.Last.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;end;
 
 &#9;end;
@@ -3830,17 +3808,17 @@ Tools.Resize.showGUI = function ( self )
 &#9;&#9;Container.DirectionsOption.Normal.Button.MouseButton1Down:connect( function ()
 &#9;&#9;&#9;self.Options.directions = &quot;normal&quot;;
 &#9;&#9;&#9;Container.DirectionsOption.Normal.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;Container.DirectionsOption.Normal.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;Container.DirectionsOption.Normal.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;&#9;Container.DirectionsOption.Both.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;Container.DirectionsOption.Both.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;Container.DirectionsOption.Both.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;end );
 
 &#9;&#9;Container.DirectionsOption.Both.Button.MouseButton1Down:connect( function ()
 &#9;&#9;&#9;self.Options.directions = &quot;both&quot;;
 &#9;&#9;&#9;Container.DirectionsOption.Normal.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;Container.DirectionsOption.Normal.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;Container.DirectionsOption.Normal.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;Container.DirectionsOption.Both.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;Container.DirectionsOption.Both.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;Container.DirectionsOption.Both.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;end );
 
 &#9;&#9;-- Change the increment option when the value of the textbox is updated
@@ -4755,11 +4733,11 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 &#9;&#9;-- Update the GUI&apos;s option panel
 &#9;&#9;if self.GUI then
 &#9;&#9;&#9;PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;PivotOptionGUI.Center.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;PivotOptionGUI.Center.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;&#9;PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;PivotOptionGUI.Local.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;PivotOptionGUI.Local.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;PivotOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;PivotOptionGUI.Last.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;PivotOptionGUI.Last.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;end;
 
 &#9;end;
@@ -4804,11 +4782,11 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 &#9;&#9;-- Update the GUI&apos;s option panel
 &#9;&#9;if self.GUI then
 &#9;&#9;&#9;PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;PivotOptionGUI.Center.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;PivotOptionGUI.Center.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;PivotOptionGUI.Local.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;PivotOptionGUI.Local.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;&#9;PivotOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;PivotOptionGUI.Last.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;PivotOptionGUI.Last.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;end;
 
 &#9;end;
@@ -4855,11 +4833,11 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 &#9;&#9;-- Update the GUI&apos;s option panel
 &#9;&#9;if self.GUI then
 &#9;&#9;&#9;PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;PivotOptionGUI.Center.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;PivotOptionGUI.Center.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;PivotOptionGUI.Local.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;PivotOptionGUI.Local.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;PivotOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;PivotOptionGUI.Last.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;PivotOptionGUI.Last.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;end;
 
 &#9;end;
@@ -6271,21 +6249,21 @@ Tools.Anchor.updateGUI = function ( self )
 &#9;local GUI = self.GUI;
 
 &#9;if self.State.anchored == nil then
-&#9;&#9;GUI.Status.Anchored.Background.Image = light_slanted_rectangle;
+&#9;&#9;GUI.Status.Anchored.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;GUI.Status.Anchored.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;GUI.Status.Unanchored.Background.Image = light_slanted_rectangle;
+&#9;&#9;GUI.Status.Unanchored.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;GUI.Status.Unanchored.SelectedIndicator.BackgroundTransparency = 1;
 
 &#9;elseif self.State.anchored == true then
-&#9;&#9;GUI.Status.Anchored.Background.Image = dark_slanted_rectangle;
+&#9;&#9;GUI.Status.Anchored.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;GUI.Status.Anchored.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;GUI.Status.Unanchored.Background.Image = light_slanted_rectangle;
+&#9;&#9;GUI.Status.Unanchored.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;GUI.Status.Unanchored.SelectedIndicator.BackgroundTransparency = 1;
 
 &#9;elseif self.State.anchored == false then
-&#9;&#9;GUI.Status.Anchored.Background.Image = light_slanted_rectangle;
+&#9;&#9;GUI.Status.Anchored.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;GUI.Status.Anchored.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;GUI.Status.Unanchored.Background.Image = dark_slanted_rectangle;
+&#9;&#9;GUI.Status.Unanchored.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;GUI.Status.Unanchored.SelectedIndicator.BackgroundTransparency = 0;
 
 &#9;end;
@@ -6568,21 +6546,21 @@ Tools.Collision.updateGUI = function ( self )
 &#9;local GUI = self.GUI;
 
 &#9;if self.State.colliding == nil then
-&#9;&#9;GUI.Status.On.Background.Image = light_slanted_rectangle;
+&#9;&#9;GUI.Status.On.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;GUI.Status.On.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;GUI.Status.Off.Background.Image = light_slanted_rectangle;
+&#9;&#9;GUI.Status.Off.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;GUI.Status.Off.SelectedIndicator.BackgroundTransparency = 1;
 
 &#9;elseif self.State.colliding == true then
-&#9;&#9;GUI.Status.On.Background.Image = dark_slanted_rectangle;
+&#9;&#9;GUI.Status.On.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;GUI.Status.On.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;GUI.Status.Off.Background.Image = light_slanted_rectangle;
+&#9;&#9;GUI.Status.Off.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;GUI.Status.Off.SelectedIndicator.BackgroundTransparency = 1;
 
 &#9;elseif self.State.colliding == false then
-&#9;&#9;GUI.Status.On.Background.Image = light_slanted_rectangle;
+&#9;&#9;GUI.Status.On.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;GUI.Status.On.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;GUI.Status.Off.Background.Image = dark_slanted_rectangle;
+&#9;&#9;GUI.Status.Off.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;GUI.Status.Off.SelectedIndicator.BackgroundTransparency = 0;
 
 &#9;end;
@@ -7833,15 +7811,15 @@ Tools.Texture.changeMode = function ( self, new_mode )
 &#9;if new_mode == &quot;decal&quot; then
 &#9;&#9;self.GUI.ModeOption.Decal.SelectedIndicator.Transparency = 0;
 &#9;&#9;self.GUI.ModeOption.Texture.SelectedIndicator.Transparency = 1;
-&#9;&#9;self.GUI.ModeOption.Decal.Background.Image = dark_slanted_rectangle;
-&#9;&#9;self.GUI.ModeOption.Texture.Background.Image = light_slanted_rectangle;
+&#9;&#9;self.GUI.ModeOption.Decal.Background.Image = Assets.DarkSlantedRectangle;
+&#9;&#9;self.GUI.ModeOption.Texture.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;self.GUI.AddButton.Button.Text = &quot;ADD DECAL&quot;;
 &#9;&#9;self.GUI.RemoveButton.Button.Text = &quot;REMOVE DECAL&quot;;
 &#9;elseif new_mode == &quot;texture&quot; then
 &#9;&#9;self.GUI.ModeOption.Decal.SelectedIndicator.Transparency = 1;
 &#9;&#9;self.GUI.ModeOption.Texture.SelectedIndicator.Transparency = 0;
-&#9;&#9;self.GUI.ModeOption.Decal.Background.Image = light_slanted_rectangle;
-&#9;&#9;self.GUI.ModeOption.Texture.Background.Image = dark_slanted_rectangle;
+&#9;&#9;self.GUI.ModeOption.Decal.Background.Image = Assets.LightSlantedRectangle;
+&#9;&#9;self.GUI.ModeOption.Texture.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;self.GUI.AddButton.Button.Text = &quot;ADD TEXTURE&quot;;
 &#9;&#9;self.GUI.RemoveButton.Button.Text = &quot;REMOVE TEXTURE&quot;;
 &#9;end;
@@ -8640,7 +8618,7 @@ Tools.Weld.weld = function ( self )
 &#9;local Sound = RbxUtility.Create &quot;Sound&quot; {
 &#9;&#9;Name = &quot;BTActionCompletionSound&quot;;
 &#9;&#9;Pitch = 1.5;
-&#9;&#9;SoundId = action_completion_sound;
+&#9;&#9;SoundId = Assets.ActionCompletionSound;
 &#9;&#9;Volume = 1;
 &#9;&#9;Parent = Player;
 &#9;};
@@ -8698,7 +8676,7 @@ Tools.Weld.breakWelds = function ( self )
 &#9;local Sound = RbxUtility.Create &quot;Sound&quot; {
 &#9;&#9;Name = &quot;BTActionCompletionSound&quot;;
 &#9;&#9;Pitch = 1.5;
-&#9;&#9;SoundId = action_completion_sound;
+&#9;&#9;SoundId = Assets.ActionCompletionSound;
 &#9;&#9;Volume = 1;
 &#9;&#9;Parent = Player;
 &#9;};
@@ -8976,19 +8954,19 @@ Tools.Lighting.updateGUI = function ( self )
 &#9;&#9;&#9;self.GUI.Spotlight.Options.RangeOption.Input.TextBox.Text = sl_range and _round( sl_range, 2 ) or &apos;*&apos;;
 &#9;&#9;end;
 &#9;&#9;if sl_shadows == nil then
-&#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 1;
 &#9;&#9;elseif sl_shadows == true then
-&#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 1;
 &#9;&#9;elseif sl_shadows == false then
-&#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;&#9;self.GUI.Spotlight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 0;
 &#9;&#9;end;
 &#9;&#9;if not self.State.sl_angle_focused then
@@ -9013,19 +8991,19 @@ Tools.Lighting.updateGUI = function ( self )
 &#9;&#9;&#9;self.GUI.PointLight.Options.RangeOption.Input.TextBox.Text = pl_range and _round( pl_range, 2 ) or &apos;*&apos;;
 &#9;&#9;end;
 &#9;&#9;if pl_shadows == nil then
-&#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 1;
 &#9;&#9;elseif pl_shadows == true then
-&#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 0;
-&#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 1;
 &#9;&#9;elseif pl_shadows == false then
-&#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = light_slanted_rectangle;
+&#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
 &#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 1;
-&#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = dark_slanted_rectangle;
+&#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = Assets.DarkSlantedRectangle;
 &#9;&#9;&#9;self.GUI.PointLight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 0;
 &#9;&#9;end;
 

@@ -152,17 +152,17 @@ Tools.Resize.showGUI = function ( self )
 		Container.DirectionsOption.Normal.Button.MouseButton1Down:connect( function ()
 			self.Options.directions = "normal";
 			Container.DirectionsOption.Normal.SelectedIndicator.BackgroundTransparency = 0;
-			Container.DirectionsOption.Normal.Background.Image = dark_slanted_rectangle;
+			Container.DirectionsOption.Normal.Background.Image = Assets.DarkSlantedRectangle;
 			Container.DirectionsOption.Both.SelectedIndicator.BackgroundTransparency = 1;
-			Container.DirectionsOption.Both.Background.Image = light_slanted_rectangle;
+			Container.DirectionsOption.Both.Background.Image = Assets.LightSlantedRectangle;
 		end );
 
 		Container.DirectionsOption.Both.Button.MouseButton1Down:connect( function ()
 			self.Options.directions = "both";
 			Container.DirectionsOption.Normal.SelectedIndicator.BackgroundTransparency = 1;
-			Container.DirectionsOption.Normal.Background.Image = light_slanted_rectangle;
+			Container.DirectionsOption.Normal.Background.Image = Assets.LightSlantedRectangle;
 			Container.DirectionsOption.Both.SelectedIndicator.BackgroundTransparency = 0;
-			Container.DirectionsOption.Both.Background.Image = dark_slanted_rectangle;
+			Container.DirectionsOption.Both.Background.Image = Assets.DarkSlantedRectangle;
 		end );
 
 		-- Change the increment option when the value of the textbox is updated

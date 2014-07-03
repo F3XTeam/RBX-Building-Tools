@@ -2,29 +2,43 @@
 -- Create references to important objects
 ------------------------------------------
 Services = {
-	["Workspace"] = Game:GetService( "Workspace" );
-	["Players"] = Game:GetService( "Players" );
-	["Lighting"] = Game:GetService( "Lighting" );
-	["Teams"] = Game:GetService( "Teams" );
-	["Debris"] = Game:GetService( "Debris" );
-	["MarketplaceService"] = Game:GetService( "MarketplaceService" );
-	["JointsService"] = Game.JointsService;
-	["BadgeService"] = Game:GetService( "BadgeService" );
-	["RunService"] = Game:GetService( "RunService" );
-	["ContentProvider"] = Game:GetService( "ContentProvider" );
-	["TeleportService"] = Game:GetService( "TeleportService" );
-	["SoundService"] = Game:GetService( "SoundService" );
-	["InsertService"] = Game:GetService( "InsertService" );
-	["CollectionService"] = Game:GetService( "CollectionService" );
-	["UserInputService"] = Game:GetService( "UserInputService" );
-	["GamePassService"] = Game:GetService( "GamePassService" );
-	["StarterPack"] = Game:GetService( "StarterPack" );
-	["StarterGui"] = Game:GetService( "StarterGui" );
-	["TestService"] = Game:GetService( "TestService" );
-	["ReplicatedStorage"] = Game:GetService( "ReplicatedStorage" );
-	["Selection"] = Game:GetService( "Selection" );
-	["CoreGui"] = Game:GetService( "CoreGui" );
+	Workspace			= Game:GetService 'Workspace';
+	Players				= Game:GetService 'Players';
+	Debris				= Game:GetService 'Debris';
+	MarketplaceService	= Game:GetService 'MarketplaceService';
+	ContentProvider		= Game:GetService 'ContentProvider';
+	SoundService		= Game:GetService 'SoundService';
+	UserInputService	= Game:GetService 'UserInputService';
+	TestService			= Game:GetService 'TestService';
+	Selection			= Game:GetService 'Selection';
+	CoreGui				= Game:GetService 'CoreGui';
+	JointsService		= Game.JointsService;
 };
+
+Assets = {
+	DarkSlantedRectangle	= 'http://www.roblox.com/asset/?id=127774197';
+	LightSlantedRectangle	= 'http://www.roblox.com/asset/?id=127772502';
+	ActionCompletionSound	= 'http://www.roblox.com/asset/?id=99666917';
+	ExpandArrow				= 'http://www.roblox.com/asset/?id=134367382';
+	UndoActiveDecal			= 'http://www.roblox.com/asset/?id=141741408';
+	UndoInactiveDecal		= 'http://www.roblox.com/asset/?id=142074557';
+	RedoActiveDecal			= 'http://www.roblox.com/asset/?id=141741327';
+	RedoInactiveDecal		= 'http://www.roblox.com/asset/?id=142074553';
+	DeleteActiveDecal		= 'http://www.roblox.com/asset/?id=141896298';
+	DeleteInactiveDecal		= 'http://www.roblox.com/asset/?id=142074644';
+	ExportActiveDecal		= 'http://www.roblox.com/asset/?id=141741337';
+	ExportInactiveDecal		= 'http://www.roblox.com/asset/?id=142074569';
+	CloneActiveDecal		= 'http://www.roblox.com/asset/?id=142073926';
+	CloneInactiveDecal		= 'http://www.roblox.com/asset/?id=142074563';
+	PluginIcon				= 'http://www.roblox.com/asset/?id=142287521';
+	GroupLockIcon			= 'http://www.roblox.com/asset/?id=164421186';
+	GroupUnlockIcon			= 'http://www.roblox.com/asset/?id=160408836';
+	GroupUpdateOKIcon		= 'http://www.roblox.com/asset/?id=164421681';
+	GroupUpdateIcon			= 'http://www.roblox.com/asset/?id=160402908';
+};
+
+-- The ID of the tool model on ROBLOX
+ToolAssetID = 142785488;
 
 Tool = script.Parent;
 Player = Services.Players.LocalPlayer;
@@ -33,7 +47,7 @@ Mouse = nil;
 -- Determine whether this is the plugin or tool
 if plugin then
 	ToolType = 'plugin';
-elseif Tool:IsA( 'Tool' ) then
+elseif Tool:IsA 'Tool' then
 	ToolType = 'tool';
 end;
 
@@ -56,51 +70,15 @@ if in_server then
 	end;
 end;
 
-ToolAssetID = 142785488;
-
-dark_slanted_rectangle = "http://www.roblox.com/asset/?id=127774197";
-light_slanted_rectangle = "http://www.roblox.com/asset/?id=127772502";
-action_completion_sound = "http://www.roblox.com/asset/?id=99666917";
-expand_arrow = "http://www.roblox.com/asset/?id=134367382";
-tool_decal = "http://www.roblox.com/asset/?id=129748355";
-undo_active_decal = "http://www.roblox.com/asset/?id=141741408";
-undo_inactive_decal = "http://www.roblox.com/asset/?id=142074557";
-redo_active_decal = "http://www.roblox.com/asset/?id=141741327";
-redo_inactive_decal = "http://www.roblox.com/asset/?id=142074553";
-delete_active_decal = "http://www.roblox.com/asset/?id=141896298";
-delete_inactive_decal = "http://www.roblox.com/asset/?id=142074644";
-export_active_decal = "http://www.roblox.com/asset/?id=141741337";
-export_inactive_decal = "http://www.roblox.com/asset/?id=142074569";
-clone_active_decal = "http://www.roblox.com/asset/?id=142073926";
-clone_inactive_decal = "http://www.roblox.com/asset/?id=142074563";
-plugin_icon = "http://www.roblox.com/asset/?id=142287521";
-GroupLockIcon = 'http://www.roblox.com/asset/?id=164421186';
-GroupUnlockIcon = 'http://www.roblox.com/asset/?id=160408836';
-GroupUpdateOKIcon = 'http://www.roblox.com/asset/?id=164421681';
-GroupUpdateIcon = 'http://www.roblox.com/asset/?id=160402908';
-
 ------------------------------------------
 -- Load external dependencies
 ------------------------------------------
+-- Preload external assets
+for ResourceName, ResourceUrl in pairs( Assets ) do
+	Services.ContentProvider:Preload( ResourceUrl );
+end;
+
 RbxUtility = LoadLibrary( "RbxUtility" );
-Services.ContentProvider:Preload( dark_slanted_rectangle );
-Services.ContentProvider:Preload( light_slanted_rectangle );
-Services.ContentProvider:Preload( action_completion_sound );
-Services.ContentProvider:Preload( expand_arrow );
-Services.ContentProvider:Preload( tool_decal );
-Services.ContentProvider:Preload( undo_active_decal );
-Services.ContentProvider:Preload( undo_inactive_decal );
-Services.ContentProvider:Preload( redo_inactive_decal );
-Services.ContentProvider:Preload( redo_active_decal );
-Services.ContentProvider:Preload( delete_active_decal );
-Services.ContentProvider:Preload( delete_inactive_decal );
-Services.ContentProvider:Preload( export_active_decal );
-Services.ContentProvider:Preload( export_inactive_decal );
-Services.ContentProvider:Preload( clone_active_decal );
-Services.ContentProvider:Preload( clone_inactive_decal );
-Services.ContentProvider:Preload( plugin_icon );
-Services.ContentProvider:Preload( GroupLockIcon );
-Services.ContentProvider:Preload( GroupUnlockIcon );
 Tool:WaitForChild( "Interfaces" );
 repeat wait( 0 ) until _G.gloo;
 Gloo = _G.gloo;
@@ -843,7 +821,7 @@ function cloneSelection()
 		local Sound = RbxUtility.Create "Sound" {
 			Name = "BTActionCompletionSound";
 			Pitch = 1.5;
-			SoundId = action_completion_sound;
+			SoundId = Assets.ActionCompletionSound;
 			Volume = 1;
 			Parent = Player or Services.SoundService;
 		};
@@ -1225,7 +1203,7 @@ function createDropdown()
 		Name = "Arrow";
 		BackgroundTransparency = 1;
 		BorderSizePixel = 0;
-		Image = expand_arrow;
+		Image = Assets.ExpandArrow;
 		Position = UDim2.new( 1, -21, 0, 3 );
 		Size = UDim2.new( 0, 20, 0, 20 );
 		ZIndex = 3;
@@ -2074,7 +2052,7 @@ IE = {
 			local Sound = RbxUtility.Create "Sound" {
 				Name = "BTActionCompletionSound";
 				Pitch = 1.5;
-				SoundId = action_completion_sound;
+				SoundId = Assets.ActionCompletionSound;
 				Volume = 1;
 				Parent = Player or Services.SoundService;
 			};
@@ -2242,15 +2220,15 @@ Selection.Changed:connect( function ()
 
 	-- If there are items, they should be active
 	if #Selection.Items > 0 then
-		Dock.SelectionButtons.DeleteButton.Image = delete_active_decal;
-		Dock.SelectionButtons.CloneButton.Image = clone_active_decal;
-		Dock.SelectionButtons.ExportButton.Image = export_active_decal;
+		Dock.SelectionButtons.DeleteButton.Image = Assets.DeleteActiveDecal;
+		Dock.SelectionButtons.CloneButton.Image = Assets.CloneActiveDecal;
+		Dock.SelectionButtons.ExportButton.Image = Assets.ExportActiveDecal;
 
 	-- If there aren't items, they shouldn't be active
 	else
-		Dock.SelectionButtons.DeleteButton.Image = delete_inactive_decal;
-		Dock.SelectionButtons.CloneButton.Image = clone_inactive_decal;
-		Dock.SelectionButtons.ExportButton.Image = export_inactive_decal;
+		Dock.SelectionButtons.DeleteButton.Image = Assets.DeleteInactiveDecal;
+		Dock.SelectionButtons.CloneButton.Image = Assets.CloneInactiveDecal;
+		Dock.SelectionButtons.ExportButton.Image = Assets.ExportInactiveDecal;
 	end;
 
 end );
@@ -2282,24 +2260,24 @@ History.Changed:connect( function ()
 
 		-- If we're at the beginning
 		if History.index == 0 then
-			Dock.SelectionButtons.UndoButton.Image = undo_inactive_decal;
-			Dock.SelectionButtons.RedoButton.Image = redo_active_decal;
+			Dock.SelectionButtons.UndoButton.Image = Assets.UndoInactiveDecal;
+			Dock.SelectionButtons.RedoButton.Image = Assets.RedoActiveDecal;
 
 		-- If we're at the end
 		elseif History.index == #History.Data then
-			Dock.SelectionButtons.UndoButton.Image = undo_active_decal;
-			Dock.SelectionButtons.RedoButton.Image = redo_inactive_decal;
+			Dock.SelectionButtons.UndoButton.Image = Assets.UndoActiveDecal;
+			Dock.SelectionButtons.RedoButton.Image = Assets.RedoInactiveDecal;
 
 		-- If we're neither at the beginning or the end
 		else
-			Dock.SelectionButtons.UndoButton.Image = undo_active_decal;
-			Dock.SelectionButtons.RedoButton.Image = redo_active_decal;
+			Dock.SelectionButtons.UndoButton.Image = Assets.UndoActiveDecal;
+			Dock.SelectionButtons.RedoButton.Image = Assets.RedoActiveDecal;
 		end;
 
 	-- If there are no records
 	else
-		Dock.SelectionButtons.UndoButton.Image = undo_inactive_decal;
-		Dock.SelectionButtons.RedoButton.Image = redo_inactive_decal;
+		Dock.SelectionButtons.UndoButton.Image = Assets.UndoInactiveDecal;
+		Dock.SelectionButtons.RedoButton.Image = Assets.RedoInactiveDecal;
 	end;
 
 end );
@@ -2400,14 +2378,14 @@ Groups.GroupAdded:Connect( function ( Group )
 	Group.Changed:Connect( function ()
 		GroupButton.GroupName.Text		= Group.Name;
 		GroupButton.GroupNamer.Text		= Group.Name;
-		GroupButton.IgnoreButton.Image	= Group.Ignoring and GroupLockIcon or GroupUnlockIcon;
+		GroupButton.IgnoreButton.Image	= Group.Ignoring and Assets.GroupLockIcon or Assets.GroupUnlockIcon;
 	end );
 
 	Group.Updated:connect( function ()
-		GroupButton.UpdateButton.Image = GroupUpdateOKIcon;
+		GroupButton.UpdateButton.Image = Assets.GroupUpdateOKIcon;
 		coroutine.wrap( function()
 			wait( 1 );
-			GroupButton.UpdateButton.Image = GroupUpdateIcon;
+			GroupButton.UpdateButton.Image = Assets.GroupUpdateIcon;
 		end )();
 	end );
 
@@ -2806,7 +2784,7 @@ end;
 
 -- Activate the plugin and tool connections
 if ToolType == 'plugin' then
-	local ToolbarButton = plugin:CreateToolbar( 'Building Tools by F3X' ):CreateButton( '', 'Building Tools by F3X', plugin_icon );
+	local ToolbarButton = plugin:CreateToolbar( 'Building Tools by F3X' ):CreateButton( '', 'Building Tools by F3X', Assets.PluginIcon );
 	local plugin_active = false;
 	ToolbarButton.Click:connect( function ()
 		if plugin_active then
