@@ -74,6 +74,10 @@ export_inactive_decal = "http://www.roblox.com/asset/?id=142074569";
 clone_active_decal = "http://www.roblox.com/asset/?id=142073926";
 clone_inactive_decal = "http://www.roblox.com/asset/?id=142074563";
 plugin_icon = "http://www.roblox.com/asset/?id=142287521";
+GroupLockIcon = 'http://www.roblox.com/asset/?id=164421186';
+GroupUnlockIcon = 'http://www.roblox.com/asset/?id=160408836';
+GroupUpdateOKIcon = 'http://www.roblox.com/asset/?id=164421681';
+GroupUpdateIcon = 'http://www.roblox.com/asset/?id=160402908';
 
 ------------------------------------------
 -- Load external dependencies
@@ -95,6 +99,8 @@ Services.ContentProvider:Preload( export_inactive_decal );
 Services.ContentProvider:Preload( clone_active_decal );
 Services.ContentProvider:Preload( clone_inactive_decal );
 Services.ContentProvider:Preload( plugin_icon );
+Services.ContentProvider:Preload( GroupLockIcon );
+Services.ContentProvider:Preload( GroupUnlockIcon );
 Tool:WaitForChild( "Interfaces" );
 repeat wait( 0 ) until _G.gloo;
 Gloo = _G.gloo;
@@ -700,6 +706,55 @@ function _RGBToHSV( red, green, blue )
 	return hue, saturation, value;
 end;
 
+function CreateSignal()
+	-- Returns a ROBLOX-like signal for connections (RbxUtility's is buggy)
+
+	local Signal = {
+		Connections	= {};
+
+		Connect = function ( Signal, Handler )
+			table.insert( Signal.Connections, Handler );
+
+			local ConnectionController = {
+				Handler = Handler;
+				Disconnect = function ( Connection )
+					local ConnectionSearch = _findTableOccurrences( Signal.Connections, Connection.Handler );
+					if #ConnectionSearch > 0 then
+						local ConnectionIndex = ConnectionSearch[1];
+						table.remove( Signal.Connections, ConnectionIndex );
+					end;
+				end;
+			};
+
+			-- Add compatibility aliases
+			ConnectionController.disconnect = ConnectionController.Disconnect;
+
+			return ConnectionController;
+		end;
+
+		Fire = function ( Signal, ... )
+			for _, Connection in pairs( Signal.Connections ) do
+				Connection( ... );
+			end;
+		end;
+	};
+
+	-- Add compatibility aliases
+	Signal.connect	= Signal.Connect;
+	Signal.fire		= Signal.Fire;
+
+	return Signal;
+end;
+
+------------------------------------------
+-- Prepare the UI
+------------------------------------------
+-- Wait for all parts of the base UI to fully replicate
+if ToolType == 'tool' then
+	local UIComponentCount = (Tool:WaitForChild 'UIComponentCount').Value;
+	repeat wait( 0.1 ) until #_getAllDescendants( Tool.Interfaces ) >= UIComponentCount;
+end;
+
 ------------------------------------------
 -- Create data containers
 ------------------------------------------
@@ -952,7 +1007,7 @@ end;
 function isSelectable( Object )
 	-- Returns whether `Object` is selectable
 
-	if not Object or not Object.Parent or not Object:IsA( "BasePart" ) or Object.Locked or Selection:find( Object ) then
+	if not Object or not Object.Parent or not Object:IsA( "BasePart" ) or Object.Locked or Selection:find( Object ) or Groups:IsPartIgnored( Object ) then
 		return false;
 	end;
 
@@ -2037,12 +2092,6 @@ IE = {
 
 Tooltips = {};
 
--- Wait for all parts of the base UI to fully replicate
-if ToolType == 'tool' then
-	local UIComponentCount = (Tool:WaitForChild 'UIComponentCount').Value;
-	repeat wait( 0.1 ) until #_getAllDescendants( Tool.Interfaces ) >= UIComponentCount;
-end;
-
 -- Create the main GUI
 Dock = Tool.Interfaces.BTDockGUI:Clone();
 Dock.Parent = UI;
@@ -2181,6 +2230,9 @@ end );
 Dock.SelectionButtons.ExportButton.MouseButton1Up:connect( function ()
 	IE:export();
 end );
+Dock.SelectionButtons.GroupsButton.MouseButton1Up:connect( function ()
+	Groups:ToggleUI();
+end );
 Dock.InfoButtons.HelpButton.MouseButton1Up:connect( function ()
 	toggleHelp();
 end );
@@ -2249,6 +2301,139 @@ History.Changed:connect( function ()
 		Dock.SelectionButtons.UndoButton.Image = undo_inactive_decal;
 		Dock.SelectionButtons.RedoButton.Image = redo_inactive_decal;
 	end;
+
+end );
+
+------------------------------------------
+-- An interface for the group system
+------------------------------------------
+Groups = {
+
+	-- A container for the groups
+	Data = {};
+
+	-- Create the group manager UI
+	UI = Tool.Interfaces.BTGroupsGUI:Clone();
+
+	-- Provide an event to track new groups
+	GroupAdded = CreateSignal();
+
+	NewGroup = function ( Groups )
+		local Group = {
+			Name		= 'Group ' .. ( #Groups.Data + 1 );
+			Items		= {};
+			Ignoring	= false;
+			Changed		= CreateSignal();
+			Updated		= CreateSignal();
+
+			Rename = function ( Group, NewName )
+				Group.Name = NewName;
+				Group.Changed:Fire();
+			end;
+
+			SetIgnore = function ( Group, NewIgnoringStatus )
+				Group.Ignoring = NewIgnoringStatus;
+				Group.Changed:Fire();
+			end;
+
+			Update = function ( Group, NewItems )
+				-- Set the new items
+				Group.Items = _cloneTable( NewItems );
+				Group.Updated:Fire();
+			end;
+
+			Select = function ( Group, Multiselecting )
+				if not Multiselecting then
+					Selection:clear();
+				end;
+				for _, Item in pairs( Group.Items ) do
+					Selection:add( Item );
+				end;
+			end;
+		};
+		table.insert( Groups.Data, Group );
+		Groups.GroupAdded:Fire( Group );
+		return Group;
+	end;
+
+	ToggleUI = function ( Groups )
+		Groups.UI.Visible = not Groups.UI.Visible;
+	end;
+
+	IsPartIgnored = function ( Groups, Part )
+		-- Returns whether `Part` should be ignored in selection
+
+		-- Check for any groups that ignore their parts and if `Part` is in any of them
+		for _, Group in pairs( Groups.Data ) do
+			if Group.Ignoring and #_findTableOccurrences( Group.Items, Part ) > 0 then
+				return true;
+			end;
+		end;
+
+		-- If no groups come up, it's not an ignored part
+		return false;
+	end;
+};
+
+-- Add the group manager UI to the main UI
+Groups.UI.Visible = false;
+Groups.UI.Parent = Dock;
+
+-- Prepare the functionality of the group manager UI
+Groups.UI.Title.CreateButton.MouseButton1Click:connect( function ()
+	Groups:NewGroup();
+end );
+
+Groups.GroupAdded:Connect( function ( Group )
+	local GroupButton			= Groups.UI.Templates.GroupButton:Clone();
+	GroupButton.Position		= UDim2.new( 0, 0, 0, 26 * #Groups.UI.GroupList:GetChildren() );
+	GroupButton.Parent			= Groups.UI.GroupList;
+	GroupButton.GroupName.Text	= Group.Name;
+	GroupButton.GroupNamer.Text	= Group.Name;
+
+	Groups.UI.GroupList.CanvasSize = UDim2.new( 1, -10, 0, 26 * #Groups.UI.GroupList:GetChildren() );
+
+	GroupButton.GroupName.MouseButton1Click:connect( function ()
+		Group:Select( ActiveKeys[47] or ActiveKeys[48] );
+	end );
+
+	Group.Changed:Connect( function ()
+		GroupButton.GroupName.Text		= Group.Name;
+		GroupButton.GroupNamer.Text		= Group.Name;
+		GroupButton.IgnoreButton.Image	= Group.Ignoring and GroupLockIcon or GroupUnlockIcon;
+	end );
+
+	Group.Updated:connect( function ()
+		GroupButton.UpdateButton.Image = GroupUpdateOKIcon;
+		coroutine.wrap( function()
+			wait( 1 );
+			GroupButton.UpdateButton.Image = GroupUpdateIcon;
+		end )();
+	end );
+
+	GroupButton.EditButton.MouseButton1Click:connect( function ()
+		GroupButton.GroupName.Visible	= false;
+		GroupButton.GroupNamer.Visible	= true;
+		GroupButton.GroupNamer:CaptureFocus();
+	end );
+
+	GroupButton.GroupNamer.FocusLost:connect( function ( EnterPressed )
+		if EnterPressed then
+			Group:Rename( GroupButton.GroupNamer.Text );
+		end;
+		GroupButton.GroupNamer.Visible	= false;
+		GroupButton.GroupNamer.Text		= Group.Name;
+		GroupButton.GroupName.Visible	= true;
+	end );
+
+	-- Toggle ignoring when the ignore button is clicked
+	GroupButton.IgnoreButton.MouseButton1Click:connect( function ()
+		Group:SetIgnore( not Group.Ignoring );
+	end );
+
+	GroupButton.UpdateButton.MouseButton1Click:connect( function ()
+		Group:Update( Selection.Items );
+	end );
 
 end );
 
@@ -2340,6 +2525,11 @@ function equipBT( CurrentMouse )
 		-- Clear the selection if shift + r is pressed
 		if key == "r" and ( ActiveKeys[47] or ActiveKeys[48] ) then
 			Selection:clear();
+			return;
+		end;
+
+		if key == "g" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+			Groups:ToggleUI();
 			return;
 		end;
 
