@@ -23,7 +23,8 @@ Tools.Material.Listeners = {};
 Tools.Material.SpecialMaterialNames = {
 	CorrodedMetal = "CORRODED METAL",
 	DiamondPlate = "DIAMOND PLATE",
-	SmoothPlastic = "SMOOTH PLASTIC"
+	SmoothPlastic = "SMOOTH PLASTIC",
+	WoodPlanks = "WOOD PLANKS"
 };
 
 -- Start adding functionality to the tool
@@ -326,6 +327,15 @@ Tools.Material.showGUI = function ( self )
 		end );
 		MaterialDropdown:addOption( "WOOD" ).MouseButton1Up:connect( function ()
 			self:changeMaterial( Enum.Material.Wood );
+		end );
+		MaterialDropdown:addOption( "WOOD PLANKS" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.WoodPlanks );
+		end );
+		MaterialDropdown:addOption( "COBBLESTONE" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Cobblestone );
+		end );
+		MaterialDropdown:addOption( "METAL" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Metal );
 		end );
 
 		-- Capture focus of the input when clicked

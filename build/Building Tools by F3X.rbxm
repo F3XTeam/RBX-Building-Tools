@@ -5646,7 +5646,8 @@ Tools.Material.Listeners = {};
 Tools.Material.SpecialMaterialNames = {
 &#9;CorrodedMetal = &quot;CORRODED METAL&quot;,
 &#9;DiamondPlate = &quot;DIAMOND PLATE&quot;,
-&#9;SmoothPlastic = &quot;SMOOTH PLASTIC&quot;
+&#9;SmoothPlastic = &quot;SMOOTH PLASTIC&quot;,
+&#9;WoodPlanks = &quot;WOOD PLANKS&quot;
 };
 
 -- Start adding functionality to the tool
@@ -5723,8 +5724,10 @@ Tools.Material.Listeners.Unequipped = function ()
 &#9;local self = Tools.Material;
 
 &#9;-- Stop the GUI updating loop
-&#9;self.Updater();
-&#9;self.Updater = nil;
+&#9;if self.Updater then
+&#9;&#9;self.Updater();
+&#9;&#9;self.Updater = nil;
+&#9;end;
 
 &#9;-- Hide the GUI
 &#9;self:hideGUI();
@@ -5947,6 +5950,15 @@ Tools.Material.showGUI = function ( self )
 &#9;&#9;end );
 &#9;&#9;MaterialDropdown:addOption( &quot;WOOD&quot; ).MouseButton1Up:connect( function ()
 &#9;&#9;&#9;self:changeMaterial( Enum.Material.Wood );
+&#9;&#9;end );
+&#9;&#9;MaterialDropdown:addOption( &quot;WOOD PLANKS&quot; ).MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:changeMaterial( Enum.Material.WoodPlanks );
+&#9;&#9;end );
+&#9;&#9;MaterialDropdown:addOption( &quot;COBBLESTONE&quot; ).MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:changeMaterial( Enum.Material.Cobblestone );
+&#9;&#9;end );
+&#9;&#9;MaterialDropdown:addOption( &quot;METAL&quot; ).MouseButton1Up:connect( function ()
+&#9;&#9;&#9;self:changeMaterial( Enum.Material.Metal );
 &#9;&#9;end );
 
 &#9;&#9;-- Capture focus of the input when clicked
