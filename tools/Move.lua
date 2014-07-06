@@ -373,31 +373,31 @@ Tools.Move.showGUI = function ( self )
 		Container.AxesOption.Global.Button.MouseButton1Down:connect( function ()
 			self:changeAxes( "global" );
 			Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 0;
-			Container.AxesOption.Global.Background.Image = dark_slanted_rectangle;
+			Container.AxesOption.Global.Background.Image = Assets.DarkSlantedRectangle;
 			Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
-			Container.AxesOption.Local.Background.Image = light_slanted_rectangle;
+			Container.AxesOption.Local.Background.Image = Assets.LightSlantedRectangle;
 			Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
-			Container.AxesOption.Last.Background.Image = light_slanted_rectangle;
+			Container.AxesOption.Last.Background.Image = Assets.LightSlantedRectangle;
 		end );
 
 		Container.AxesOption.Local.Button.MouseButton1Down:connect( function ()
 			self:changeAxes( "local" );
 			Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
-			Container.AxesOption.Global.Background.Image = light_slanted_rectangle;
+			Container.AxesOption.Global.Background.Image = Assets.LightSlantedRectangle;
 			Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 0;
-			Container.AxesOption.Local.Background.Image = dark_slanted_rectangle;
+			Container.AxesOption.Local.Background.Image = Assets.DarkSlantedRectangle;
 			Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
-			Container.AxesOption.Last.Background.Image = light_slanted_rectangle;
+			Container.AxesOption.Last.Background.Image = Assets.LightSlantedRectangle;
 		end );
 
 		Container.AxesOption.Last.Button.MouseButton1Down:connect( function ()
 			self:changeAxes( "last" );
 			Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
-			Container.AxesOption.Global.Background.Image = light_slanted_rectangle;
+			Container.AxesOption.Global.Background.Image = Assets.LightSlantedRectangle;
 			Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
-			Container.AxesOption.Local.Background.Image = light_slanted_rectangle;
+			Container.AxesOption.Local.Background.Image = Assets.LightSlantedRectangle;
 			Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 0;
-			Container.AxesOption.Last.Background.Image = dark_slanted_rectangle;
+			Container.AxesOption.Last.Background.Image = Assets.DarkSlantedRectangle;
 		end );
 
 		-- Change the increment option when the value of the textbox is updated
@@ -697,11 +697,11 @@ Tools.Move.changeAxes = function ( self, new_axes )
 		-- Update the GUI's option panel
 		if self.GUI then
 			AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 0;
-			AxesOptionGUI.Global.Background.Image = dark_slanted_rectangle;
+			AxesOptionGUI.Global.Background.Image = Assets.DarkSlantedRectangle;
 			AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
-			AxesOptionGUI.Local.Background.Image = light_slanted_rectangle;
+			AxesOptionGUI.Local.Background.Image = Assets.LightSlantedRectangle;
 			AxesOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
-			AxesOptionGUI.Last.Background.Image = light_slanted_rectangle;
+			AxesOptionGUI.Last.Background.Image = Assets.LightSlantedRectangle;
 		end;
 
 	end;
@@ -746,11 +746,11 @@ Tools.Move.changeAxes = function ( self, new_axes )
 		-- Update the GUI's option panel
 		if self.GUI then
 			AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 1;
-			AxesOptionGUI.Global.Background.Image = light_slanted_rectangle;
+			AxesOptionGUI.Global.Background.Image = Assets.LightSlantedRectangle;
 			AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 0;
-			AxesOptionGUI.Local.Background.Image = dark_slanted_rectangle;
+			AxesOptionGUI.Local.Background.Image = Assets.DarkSlantedRectangle;
 			AxesOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
-			AxesOptionGUI.Last.Background.Image = light_slanted_rectangle;
+			AxesOptionGUI.Last.Background.Image = Assets.LightSlantedRectangle;
 		end;
 
 	end;
@@ -795,11 +795,11 @@ Tools.Move.changeAxes = function ( self, new_axes )
 		-- Update the GUI's option panel
 		if self.GUI then
 			AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 1;
-			AxesOptionGUI.Global.Background.Image = light_slanted_rectangle;
+			AxesOptionGUI.Global.Background.Image = Assets.LightSlantedRectangle;
 			AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
-			AxesOptionGUI.Local.Background.Image = light_slanted_rectangle;
+			AxesOptionGUI.Local.Background.Image = Assets.LightSlantedRectangle;
 			AxesOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 0;
-			AxesOptionGUI.Last.Background.Image = dark_slanted_rectangle;
+			AxesOptionGUI.Last.Background.Image = Assets.DarkSlantedRectangle;
 		end;
 
 	end;

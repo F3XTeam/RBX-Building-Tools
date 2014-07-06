@@ -422,11 +422,11 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 		-- Update the GUI's option panel
 		if self.GUI then
 			PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 0;
-			PivotOptionGUI.Center.Background.Image = dark_slanted_rectangle;
+			PivotOptionGUI.Center.Background.Image = Assets.DarkSlantedRectangle;
 			PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
-			PivotOptionGUI.Local.Background.Image = light_slanted_rectangle;
+			PivotOptionGUI.Local.Background.Image = Assets.LightSlantedRectangle;
 			PivotOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
-			PivotOptionGUI.Last.Background.Image = light_slanted_rectangle;
+			PivotOptionGUI.Last.Background.Image = Assets.LightSlantedRectangle;
 		end;
 
 	end;
@@ -471,11 +471,11 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 		-- Update the GUI's option panel
 		if self.GUI then
 			PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 1;
-			PivotOptionGUI.Center.Background.Image = light_slanted_rectangle;
+			PivotOptionGUI.Center.Background.Image = Assets.LightSlantedRectangle;
 			PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 0;
-			PivotOptionGUI.Local.Background.Image = dark_slanted_rectangle;
+			PivotOptionGUI.Local.Background.Image = Assets.DarkSlantedRectangle;
 			PivotOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
-			PivotOptionGUI.Last.Background.Image = light_slanted_rectangle;
+			PivotOptionGUI.Last.Background.Image = Assets.LightSlantedRectangle;
 		end;
 
 	end;
@@ -522,11 +522,11 @@ Tools.Rotate.changePivot = function ( self, new_pivot )
 		-- Update the GUI's option panel
 		if self.GUI then
 			PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 1;
-			PivotOptionGUI.Center.Background.Image = light_slanted_rectangle;
+			PivotOptionGUI.Center.Background.Image = Assets.LightSlantedRectangle;
 			PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
-			PivotOptionGUI.Local.Background.Image = light_slanted_rectangle;
+			PivotOptionGUI.Local.Background.Image = Assets.LightSlantedRectangle;
 			PivotOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 0;
-			PivotOptionGUI.Last.Background.Image = dark_slanted_rectangle;
+			PivotOptionGUI.Last.Background.Image = Assets.DarkSlantedRectangle;
 		end;
 
 	end;

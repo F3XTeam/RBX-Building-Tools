@@ -221,15 +221,15 @@ Tools.Texture.changeMode = function ( self, new_mode )
 	if new_mode == "decal" then
 		self.GUI.ModeOption.Decal.SelectedIndicator.Transparency = 0;
 		self.GUI.ModeOption.Texture.SelectedIndicator.Transparency = 1;
-		self.GUI.ModeOption.Decal.Background.Image = dark_slanted_rectangle;
-		self.GUI.ModeOption.Texture.Background.Image = light_slanted_rectangle;
+		self.GUI.ModeOption.Decal.Background.Image = Assets.DarkSlantedRectangle;
+		self.GUI.ModeOption.Texture.Background.Image = Assets.LightSlantedRectangle;
 		self.GUI.AddButton.Button.Text = "ADD DECAL";
 		self.GUI.RemoveButton.Button.Text = "REMOVE DECAL";
 	elseif new_mode == "texture" then
 		self.GUI.ModeOption.Decal.SelectedIndicator.Transparency = 1;
 		self.GUI.ModeOption.Texture.SelectedIndicator.Transparency = 0;
-		self.GUI.ModeOption.Decal.Background.Image = light_slanted_rectangle;
-		self.GUI.ModeOption.Texture.Background.Image = dark_slanted_rectangle;
+		self.GUI.ModeOption.Decal.Background.Image = Assets.LightSlantedRectangle;
+		self.GUI.ModeOption.Texture.Background.Image = Assets.DarkSlantedRectangle;
 		self.GUI.AddButton.Button.Text = "ADD TEXTURE";
 		self.GUI.RemoveButton.Button.Text = "REMOVE TEXTURE";
 	end;
@@ -266,6 +266,15 @@ Tools.Texture.changeTexture = function ( self, new_texture )
 		end;
 	end;
 
+	-- Check if the given ID is actually a decal and get the right image ID from it
+	if HttpAvailable then
+		local BaseImageExtractionUrl = 'http://www.f3xteam.com/bt/getDecalImageID/%s';
+		local ExtractedImageID = Tool.HttpInterface.GetAsync:InvokeServer( BaseImageExtractionUrl:format( new_texture ) );
+		if ExtractedImageID and ExtractedImageID:len() > 0 then
+			new_texture = ExtractedImageID;
+		end;
+	end;
+
 	self:startHistoryRecord( textures );
 	for _, Texture in pairs( textures ) do
 		Texture.Texture = "http://www.roblox.com/asset/?id=" .. new_texture;
@@ -286,6 +295,15 @@ Tools.Texture.changeDecal = function ( self, new_decal )
 			if Decal.Face == self.Options.side then
 				table.insert( decals, Decal );
 			end;
+		end;
+	end;
+
+	-- Check if the given ID is actually a decal and get the right image ID from it
+	if HttpAvailable then
+		local BaseImageExtractionUrl = 'http://www.f3xteam.com/bt/getDecalImageID/%s';
+		local ExtractedImageID = Tool.HttpInterface.GetAsync:InvokeServer( BaseImageExtractionUrl:format( new_decal ) );
+		if ExtractedImageID and ExtractedImageID:len() > 0 then
+			new_decal = ExtractedImageID;
 		end;
 	end;
 

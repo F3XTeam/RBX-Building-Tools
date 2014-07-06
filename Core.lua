@@ -2,102 +2,81 @@
 -- Create references to important objects
 ------------------------------------------
 Services = {
-	["Workspace"] = Game:GetService( "Workspace" );
-	["Players"] = Game:GetService( "Players" );
-	["Lighting"] = Game:GetService( "Lighting" );
-	["Teams"] = Game:GetService( "Teams" );
-	["Debris"] = Game:GetService( "Debris" );
-	["MarketplaceService"] = Game:GetService( "MarketplaceService" );
-	["JointsService"] = Game.JointsService;
-	["BadgeService"] = Game:GetService( "BadgeService" );
-	["RunService"] = Game:GetService( "RunService" );
-	["ContentProvider"] = Game:GetService( "ContentProvider" );
-	["TeleportService"] = Game:GetService( "TeleportService" );
-	["SoundService"] = Game:GetService( "SoundService" );
-	["InsertService"] = Game:GetService( "InsertService" );
-	["CollectionService"] = Game:GetService( "CollectionService" );
-	["UserInputService"] = Game:GetService( "UserInputService" );
-	["GamePassService"] = Game:GetService( "GamePassService" );
-	["StarterPack"] = Game:GetService( "StarterPack" );
-	["StarterGui"] = Game:GetService( "StarterGui" );
-	["TestService"] = Game:GetService( "TestService" );
-	["ReplicatedStorage"] = Game:GetService( "ReplicatedStorage" );
-	["Selection"] = Game:GetService( "Selection" );
-	["CoreGui"] = Game:GetService( "CoreGui" );
+	Workspace			= Game:GetService 'Workspace';
+	Players				= Game:GetService 'Players';
+	Debris				= Game:GetService 'Debris';
+	MarketplaceService	= Game:GetService 'MarketplaceService';
+	ContentProvider		= Game:GetService 'ContentProvider';
+	SoundService		= Game:GetService 'SoundService';
+	UserInputService	= Game:GetService 'UserInputService';
+	TestService			= Game:GetService 'TestService';
+	Selection			= Game:GetService 'Selection';
+	CoreGui				= Game:GetService 'CoreGui';
+	HttpService			= Game:GetService 'HttpService';
+	JointsService		= Game.JointsService;
 };
+
+Assets = {
+	DarkSlantedRectangle	= 'http://www.roblox.com/asset/?id=127774197';
+	LightSlantedRectangle	= 'http://www.roblox.com/asset/?id=127772502';
+	ActionCompletionSound	= 'http://www.roblox.com/asset/?id=99666917';
+	ExpandArrow				= 'http://www.roblox.com/asset/?id=134367382';
+	UndoActiveDecal			= 'http://www.roblox.com/asset/?id=141741408';
+	UndoInactiveDecal		= 'http://www.roblox.com/asset/?id=142074557';
+	RedoActiveDecal			= 'http://www.roblox.com/asset/?id=141741327';
+	RedoInactiveDecal		= 'http://www.roblox.com/asset/?id=142074553';
+	DeleteActiveDecal		= 'http://www.roblox.com/asset/?id=141896298';
+	DeleteInactiveDecal		= 'http://www.roblox.com/asset/?id=142074644';
+	ExportActiveDecal		= 'http://www.roblox.com/asset/?id=141741337';
+	ExportInactiveDecal		= 'http://www.roblox.com/asset/?id=142074569';
+	CloneActiveDecal		= 'http://www.roblox.com/asset/?id=142073926';
+	CloneInactiveDecal		= 'http://www.roblox.com/asset/?id=142074563';
+	PluginIcon				= 'http://www.roblox.com/asset/?id=142287521';
+	GroupLockIcon			= 'http://www.roblox.com/asset/?id=164421186';
+	GroupUnlockIcon			= 'http://www.roblox.com/asset/?id=160408836';
+	GroupUpdateOKIcon		= 'http://www.roblox.com/asset/?id=164421681';
+	GroupUpdateIcon			= 'http://www.roblox.com/asset/?id=160402908';
+};
+
+-- The ID of the tool model on ROBLOX
+ToolAssetID = 142785488;
 
 Tool = script.Parent;
 Player = Services.Players.LocalPlayer;
 Mouse = nil;
 
--- Determine whether this is the plugin or tool
+-- Set tool or plugin-specific references
 if plugin then
-	ToolType = 'plugin';
-elseif Tool:IsA( 'Tool' ) then
-	ToolType = 'tool';
-end;
-
--- Get tool type-specific resources
-if ToolType == 'tool' then
-	GUIContainer = Player:WaitForChild( 'PlayerGui' );
-	in_server = not not Game:FindFirstChild( 'NetworkClient' );
-elseif ToolType == 'plugin' then
-	GUIContainer = Services.CoreGui;
-	in_server = not not Game:FindFirstChild( 'NetworkServer' );
-end;
-if in_server then
-	Tool:WaitForChild( "GetAsync" );
-	Tool:WaitForChild( "PostAsync" );
-	GetAsync = function ( ... )
-		return Tool.GetAsync:InvokeServer( ... );
+	ToolType		= 'plugin';
+	GUIContainer	= Services.CoreGui;
+	
+	-- Initiate a server only if not in solo testing mode
+	-- (checked in a potentially unreliable way)
+	wait( 2 );
+	if not Game:FindFirstChild 'Visit' then
+		Game:GetService 'NetworkServer';
 	end;
-	PostAsync = function ( ... )
-		return Tool.PostAsync:InvokeServer( ... );
-	end;
+elseif Tool:IsA 'Tool' then
+	ToolType		= 'tool';
+	GUIContainer	= Player:WaitForChild 'PlayerGui';
 end;
-
-ToolAssetID = 142785488;
-
-dark_slanted_rectangle = "http://www.roblox.com/asset/?id=127774197";
-light_slanted_rectangle = "http://www.roblox.com/asset/?id=127772502";
-action_completion_sound = "http://www.roblox.com/asset/?id=99666917";
-expand_arrow = "http://www.roblox.com/asset/?id=134367382";
-tool_decal = "http://www.roblox.com/asset/?id=129748355";
-undo_active_decal = "http://www.roblox.com/asset/?id=141741408";
-undo_inactive_decal = "http://www.roblox.com/asset/?id=142074557";
-redo_active_decal = "http://www.roblox.com/asset/?id=141741327";
-redo_inactive_decal = "http://www.roblox.com/asset/?id=142074553";
-delete_active_decal = "http://www.roblox.com/asset/?id=141896298";
-delete_inactive_decal = "http://www.roblox.com/asset/?id=142074644";
-export_active_decal = "http://www.roblox.com/asset/?id=141741337";
-export_inactive_decal = "http://www.roblox.com/asset/?id=142074569";
-clone_active_decal = "http://www.roblox.com/asset/?id=142073926";
-clone_inactive_decal = "http://www.roblox.com/asset/?id=142074563";
-plugin_icon = "http://www.roblox.com/asset/?id=142287521";
 
 ------------------------------------------
 -- Load external dependencies
 ------------------------------------------
-RbxUtility = LoadLibrary( "RbxUtility" );
-Services.ContentProvider:Preload( dark_slanted_rectangle );
-Services.ContentProvider:Preload( light_slanted_rectangle );
-Services.ContentProvider:Preload( action_completion_sound );
-Services.ContentProvider:Preload( expand_arrow );
-Services.ContentProvider:Preload( tool_decal );
-Services.ContentProvider:Preload( undo_active_decal );
-Services.ContentProvider:Preload( undo_inactive_decal );
-Services.ContentProvider:Preload( redo_inactive_decal );
-Services.ContentProvider:Preload( redo_active_decal );
-Services.ContentProvider:Preload( delete_active_decal );
-Services.ContentProvider:Preload( delete_inactive_decal );
-Services.ContentProvider:Preload( export_active_decal );
-Services.ContentProvider:Preload( export_inactive_decal );
-Services.ContentProvider:Preload( clone_active_decal );
-Services.ContentProvider:Preload( clone_inactive_decal );
-Services.ContentProvider:Preload( plugin_icon );
-Tool:WaitForChild( "Interfaces" );
+
+RbxUtility = LoadLibrary 'RbxUtility';
+
+-- Preload external assets
+for ResourceName, ResourceUrl in pairs( Assets ) do
+	Services.ContentProvider:Preload( ResourceUrl );
+end;
+
 repeat wait( 0 ) until _G.gloo;
 Gloo = _G.gloo;
+
+Tool:WaitForChild 'HttpInterface';
+Tool:WaitForChild 'Interfaces';
 
 ------------------------------------------
 -- Define functions that are depended-upon
@@ -700,6 +679,55 @@ function _RGBToHSV( red, green, blue )
 	return hue, saturation, value;
 end;
 
+function CreateSignal()
+	-- Returns a ROBLOX-like signal for connections (RbxUtility's is buggy)
+
+	local Signal = {
+		Connections	= {};
+
+		Connect = function ( Signal, Handler )
+			table.insert( Signal.Connections, Handler );
+
+			local ConnectionController = {
+				Handler = Handler;
+				Disconnect = function ( Connection )
+					local ConnectionSearch = _findTableOccurrences( Signal.Connections, Connection.Handler );
+					if #ConnectionSearch > 0 then
+						local ConnectionIndex = ConnectionSearch[1];
+						table.remove( Signal.Connections, ConnectionIndex );
+					end;
+				end;
+			};
+
+			-- Add compatibility aliases
+			ConnectionController.disconnect = ConnectionController.Disconnect;
+
+			return ConnectionController;
+		end;
+
+		Fire = function ( Signal, ... )
+			for _, Connection in pairs( Signal.Connections ) do
+				Connection( ... );
+			end;
+		end;
+	};
+
+	-- Add compatibility aliases
+	Signal.connect	= Signal.Connect;
+	Signal.fire		= Signal.Fire;
+
+	return Signal;
+end;
+
+------------------------------------------
+-- Prepare the UI
+------------------------------------------
+-- Wait for all parts of the base UI to fully replicate
+if ToolType == 'tool' then
+	local UIComponentCount = (Tool:WaitForChild 'UIComponentCount').Value;
+	repeat wait( 0.1 ) until #_getAllDescendants( Tool.Interfaces ) >= UIComponentCount;
+end;
+
 ------------------------------------------
 -- Create data containers
 ------------------------------------------
@@ -788,7 +816,7 @@ function cloneSelection()
 		local Sound = RbxUtility.Create "Sound" {
 			Name = "BTActionCompletionSound";
 			Pitch = 1.5;
-			SoundId = action_completion_sound;
+			SoundId = Assets.ActionCompletionSound;
 			Volume = 1;
 			Parent = Player or Services.SoundService;
 		};
@@ -952,7 +980,7 @@ end;
 function isSelectable( Object )
 	-- Returns whether `Object` is selectable
 
-	if not Object or not Object.Parent or not Object:IsA( "BasePart" ) or Object.Locked or Selection:find( Object ) then
+	if not Object or not Object.Parent or not Object:IsA( "BasePart" ) or Object.Locked or Selection:find( Object ) or Groups:IsPartIgnored( Object ) then
 		return false;
 	end;
 
@@ -960,14 +988,8 @@ function isSelectable( Object )
 	return true;
 end;
 
-UpdateNotificationShown = false;
-function ShowUpdateNotification()
-	-- Displays a notification if there's a new update to the tool
-
-	-- Make sure that the notification hasn't already been shown
-	if UpdateNotificationShown then
-		return;
-	end;
+function IsVersionOutdated()
+	-- Returns whether this version of Building Tools is out of date
 
 	-- Check the most recent version number
 	local AssetInfo			= Services.MarketplaceService:GetProductInfo( ToolAssetID, Enum.InfoType.Asset );
@@ -975,13 +997,156 @@ function ShowUpdateNotification()
 	local CurrentVersionID	= ( Tool:WaitForChild 'Version' ).Value;
 
 	-- If the most recent version ID differs from the current tool's version ID,
-	-- notify the user that this version is outdated
+	-- this version of the tool is outdated
 	if VersionID ~= CurrentVersionID then
-		-- Display the notification and hide it after a while
-		local Notification 			= Tool.Interfaces.BTUpdateNotification:Clone();
-		Notification.Parent 		= Dock;
-		UpdateNotificationShown		= true;
-		Services.Debris:AddItem( Notification, 4 );
+		return true;
+	end;
+
+	-- If it's up-to-date, return false
+	return false;
+end;
+
+-- Provide initial HttpService availability info
+HttpAvailable, HttpAvailabilityError = Tool.HttpInterface.Test:InvokeServer();
+
+-- Keep track of the latest HttpService availability status
+-- (which is only likely to change while in Studio, using the plugin)
+if ToolType == 'plugin' then
+	Services.HttpService.Changed:connect( function ()
+		HttpAvailable, HttpAvailabilityError = Tool.HttpInterface.Test:InvokeServer();
+	end );
+end;
+
+local StartupNotificationsShown = false;
+function ShowStartupNotifications()
+
+	-- Make sure the startup notifications are only shown once
+	if StartupNotificationsShown then
+		return;
+	end;
+	StartupNotificationsShown = true;
+
+	-- Create the main container for notifications
+	local NotificationContainer = Tool.Interfaces.BTStartupNotificationContainer:Clone();
+
+	-- Add the right notifications
+	if not HttpAvailable and HttpAvailabilityError == 'Http requests are not enabled' then
+		NotificationContainer.HttpDisabledWarning.Visible = true;
+	end;
+	if not HttpAvailable and HttpAvailabilityError == 'Http requests can only be executed by game server' then
+		NotificationContainer.SoloWarning.Visible = true;
+	end;
+	if IsVersionOutdated() then
+		if ToolType == 'tool' then
+			NotificationContainer.ToolUpdateNotification.Visible = true;
+		elseif ToolType == 'plugin' then
+			NotificationContainer.PluginUpdateNotification.Visible = true;
+		end;
+	end;
+
+	local function SetContainerSize()
+		-- A function to position the notifications in the container and
+		-- resize the container to fit all the notifications
+
+		-- Keep track of the lowest extent of each item in the container
+		local LowestPoint = 0;
+
+		local Notifications = NotificationContainer:GetChildren();
+		for NotificationIndex, Notification in pairs( Notifications ) do
+
+			-- Position each notification under the last one
+			Notification.Position = UDim2.new(
+				Notification.Position.X.Scale,
+				Notification.Position.X.Offset,
+				Notification.Position.Y.Scale,
+				( LowestPoint == 0 ) and 0 or ( LowestPoint + 10 )
+			);
+
+			-- Calculate the lowest point of this notification
+			local VerticalEnd = Notification.Position.Y.Offset + Notification.Size.Y.Offset;
+			if Notification.Visible and VerticalEnd > LowestPoint then
+				LowestPoint = VerticalEnd;
+			end;
+
+		end;
+
+		NotificationContainer.Size = UDim2.new(
+			NotificationContainer.Size.X.Scale,
+			NotificationContainer.Size.X.Offset,
+			0,
+			LowestPoint
+		);
+	end;
+
+	SetContainerSize();
+
+	-- Have the container start from the center/bottom of the screen
+	local HCenterPos = ( UI.AbsoluteSize.x - NotificationContainer.Size.X.Offset ) / 2;
+	local VBottomPos = UI.AbsoluteSize.y + NotificationContainer.Size.Y.Offset;
+	NotificationContainer.Position = UDim2.new( 0, HCenterPos, 0, VBottomPos );
+
+	NotificationContainer.Parent = UI;
+
+	local function CenterNotificationContainer()
+		-- A function to center the notification container
+
+		-- Animate the container to slide up to the absolute center of the screen
+		local VCenterPos = ( UI.AbsoluteSize.y - NotificationContainer.Size.Y.Offset ) / 2;
+		NotificationContainer:TweenPosition(
+			UDim2.new( 0, HCenterPos, 0, VCenterPos ),
+			Enum.EasingDirection.Out,
+			Enum.EasingStyle.Quad,
+			0.2
+		);
+	end;
+
+	CenterNotificationContainer();
+
+	-- Add functionality to the notification UIs
+	for _, Notification in pairs( NotificationContainer:GetChildren() ) do
+		if Notification.Visible then
+			Notification.OKButton.MouseButton1Click:connect( function ()
+				Notification:Destroy();
+				SetContainerSize();
+				CenterNotificationContainer();
+			end );
+			Notification.HelpButton.MouseButton1Click:connect( function ()
+				Notification.HelpButton:Destroy();
+				Notification.ButtonSeparator:Destroy();
+				Notification.OKButton:TweenSize(
+					UDim2.new( 1, 0, 0, 22 ),
+					Enum.EasingDirection.Out,
+					Enum.EasingStyle.Quad,
+					0.2
+				);
+				Notification.Notice:Destroy();
+				Notification.Help.Visible = true;
+				Notification:TweenSize(
+					UDim2.new(
+						Notification.Size.X.Scale, Notification.Size.X.Offset,
+						Notification.Size.Y.Scale, Notification.Help.NotificationSize.Value
+					),
+					Enum.EasingDirection.Out,
+					Enum.EasingStyle.Quad,
+					0.2,
+					true,
+					function ()
+						SetContainerSize();
+						CenterNotificationContainer();
+					end
+				);
+			end );
+		end;
+	end;
+
+	-- Get rid of the notifications if the user unequips the tool
+	if ToolType == 'tool' then
+		Tool.Unequipped:connect( function ()
+			if NotificationContainer.Visible then
+				NotificationContainer.Visible = false;
+				NotificationContainer:Destroy();
+			end;
+		end );
 	end;
 end;
 
@@ -1170,7 +1335,7 @@ function createDropdown()
 		Name = "Arrow";
 		BackgroundTransparency = 1;
 		BorderSizePixel = 0;
-		Image = expand_arrow;
+		Image = Assets.ExpandArrow;
 		Position = UDim2.new( 1, -21, 0, 3 );
 		Size = UDim2.new( 0, 20, 0, 20 );
 		ZIndex = 3;
@@ -1965,17 +2130,8 @@ IE = {
 				coroutine.yield();
 			end;
 			local upload_attempt = ypcall( function ()
-				upload_data = PostAsync( "http://www.f3xteam.com/bt/export", serialized_selection );
+				upload_data = Tool.HttpInterface.PostAsync:InvokeServer( "http://www.f3xteam.com/bt/export", serialized_selection );
 			end );
-
-			-- Make sure we're in a server
-			if ToolType == 'plugin' and not in_server then
-				Dialog.Loading.TextLabel.Text = "Use Tools > Test > Start Server to export from Studio";
-				Dialog.Loading.TextLabel.TextWrapped = true;
-				Dialog.Loading.CloseButton.Position = UDim2.new( 0, 0, 0, 50 );
-				Dialog.Loading.CloseButton.Text = 'Got it';
-				return;
-			end;
 
 			-- Fail graciously
 			if not upload_attempt then
@@ -2019,7 +2175,7 @@ IE = {
 			local Sound = RbxUtility.Create "Sound" {
 				Name = "BTActionCompletionSound";
 				Pitch = 1.5;
-				SoundId = action_completion_sound;
+				SoundId = Assets.ActionCompletionSound;
 				Volume = 1;
 				Parent = Player or Services.SoundService;
 			};
@@ -2036,12 +2192,6 @@ IE = {
 ------------------------------------------
 
 Tooltips = {};
-
--- Wait for all parts of the base UI to fully replicate
-if ToolType == 'tool' then
-	local UIComponentCount = (Tool:WaitForChild 'UIComponentCount').Value;
-	repeat wait( 0.1 ) until #_getAllDescendants( Tool.Interfaces ) >= UIComponentCount;
-end;
 
 -- Create the main GUI
 Dock = Tool.Interfaces.BTDockGUI:Clone();
@@ -2181,6 +2331,9 @@ end );
 Dock.SelectionButtons.ExportButton.MouseButton1Up:connect( function ()
 	IE:export();
 end );
+Dock.SelectionButtons.GroupsButton.MouseButton1Up:connect( function ()
+	Groups:ToggleUI();
+end );
 Dock.InfoButtons.HelpButton.MouseButton1Up:connect( function ()
 	toggleHelp();
 end );
@@ -2190,15 +2343,15 @@ Selection.Changed:connect( function ()
 
 	-- If there are items, they should be active
 	if #Selection.Items > 0 then
-		Dock.SelectionButtons.DeleteButton.Image = delete_active_decal;
-		Dock.SelectionButtons.CloneButton.Image = clone_active_decal;
-		Dock.SelectionButtons.ExportButton.Image = export_active_decal;
+		Dock.SelectionButtons.DeleteButton.Image = Assets.DeleteActiveDecal;
+		Dock.SelectionButtons.CloneButton.Image = Assets.CloneActiveDecal;
+		Dock.SelectionButtons.ExportButton.Image = Assets.ExportActiveDecal;
 
 	-- If there aren't items, they shouldn't be active
 	else
-		Dock.SelectionButtons.DeleteButton.Image = delete_inactive_decal;
-		Dock.SelectionButtons.CloneButton.Image = clone_inactive_decal;
-		Dock.SelectionButtons.ExportButton.Image = export_inactive_decal;
+		Dock.SelectionButtons.DeleteButton.Image = Assets.DeleteInactiveDecal;
+		Dock.SelectionButtons.CloneButton.Image = Assets.CloneInactiveDecal;
+		Dock.SelectionButtons.ExportButton.Image = Assets.ExportInactiveDecal;
 	end;
 
 end );
@@ -2230,25 +2383,158 @@ History.Changed:connect( function ()
 
 		-- If we're at the beginning
 		if History.index == 0 then
-			Dock.SelectionButtons.UndoButton.Image = undo_inactive_decal;
-			Dock.SelectionButtons.RedoButton.Image = redo_active_decal;
+			Dock.SelectionButtons.UndoButton.Image = Assets.UndoInactiveDecal;
+			Dock.SelectionButtons.RedoButton.Image = Assets.RedoActiveDecal;
 
 		-- If we're at the end
 		elseif History.index == #History.Data then
-			Dock.SelectionButtons.UndoButton.Image = undo_active_decal;
-			Dock.SelectionButtons.RedoButton.Image = redo_inactive_decal;
+			Dock.SelectionButtons.UndoButton.Image = Assets.UndoActiveDecal;
+			Dock.SelectionButtons.RedoButton.Image = Assets.RedoInactiveDecal;
 
 		-- If we're neither at the beginning or the end
 		else
-			Dock.SelectionButtons.UndoButton.Image = undo_active_decal;
-			Dock.SelectionButtons.RedoButton.Image = redo_active_decal;
+			Dock.SelectionButtons.UndoButton.Image = Assets.UndoActiveDecal;
+			Dock.SelectionButtons.RedoButton.Image = Assets.RedoActiveDecal;
 		end;
 
 	-- If there are no records
 	else
-		Dock.SelectionButtons.UndoButton.Image = undo_inactive_decal;
-		Dock.SelectionButtons.RedoButton.Image = redo_inactive_decal;
+		Dock.SelectionButtons.UndoButton.Image = Assets.UndoInactiveDecal;
+		Dock.SelectionButtons.RedoButton.Image = Assets.RedoInactiveDecal;
 	end;
+
+end );
+
+------------------------------------------
+-- An interface for the group system
+------------------------------------------
+Groups = {
+
+	-- A container for the groups
+	Data = {};
+
+	-- Create the group manager UI
+	UI = Tool.Interfaces.BTGroupsGUI:Clone();
+
+	-- Provide an event to track new groups
+	GroupAdded = CreateSignal();
+
+	NewGroup = function ( Groups )
+		local Group = {
+			Name		= 'Group ' .. ( #Groups.Data + 1 );
+			Items		= {};
+			Ignoring	= false;
+			Changed		= CreateSignal();
+			Updated		= CreateSignal();
+
+			Rename = function ( Group, NewName )
+				Group.Name = NewName;
+				Group.Changed:Fire();
+			end;
+
+			SetIgnore = function ( Group, NewIgnoringStatus )
+				Group.Ignoring = NewIgnoringStatus;
+				Group.Changed:Fire();
+			end;
+
+			Update = function ( Group, NewItems )
+				-- Set the new items
+				Group.Items = _cloneTable( NewItems );
+				Group.Updated:Fire();
+			end;
+
+			Select = function ( Group, Multiselecting )
+				if not Multiselecting then
+					Selection:clear();
+				end;
+				for _, Item in pairs( Group.Items ) do
+					Selection:add( Item );
+				end;
+			end;
+		};
+		table.insert( Groups.Data, Group );
+		Groups.GroupAdded:Fire( Group );
+		return Group;
+	end;
+
+	ToggleUI = function ( Groups )
+		Groups.UI.Visible = not Groups.UI.Visible;
+	end;
+
+	IsPartIgnored = function ( Groups, Part )
+		-- Returns whether `Part` should be ignored in selection
+
+		-- Check for any groups that ignore their parts and if `Part` is in any of them
+		for _, Group in pairs( Groups.Data ) do
+			if Group.Ignoring and #_findTableOccurrences( Group.Items, Part ) > 0 then
+				return true;
+			end;
+		end;
+
+		-- If no groups come up, it's not an ignored part
+		return false;
+	end;
+};
+
+-- Add the group manager UI to the main UI
+Groups.UI.Visible = false;
+Groups.UI.Parent = Dock;
+
+-- Prepare the functionality of the group manager UI
+Groups.UI.Title.CreateButton.MouseButton1Click:connect( function ()
+	Groups:NewGroup();
+end );
+
+Groups.GroupAdded:Connect( function ( Group )
+	local GroupButton			= Groups.UI.Templates.GroupButton:Clone();
+	GroupButton.Position		= UDim2.new( 0, 0, 0, 26 * #Groups.UI.GroupList:GetChildren() );
+	GroupButton.Parent			= Groups.UI.GroupList;
+	GroupButton.GroupName.Text	= Group.Name;
+	GroupButton.GroupNamer.Text	= Group.Name;
+
+	Groups.UI.GroupList.CanvasSize = UDim2.new( 1, -10, 0, 26 * #Groups.UI.GroupList:GetChildren() );
+
+	GroupButton.GroupName.MouseButton1Click:connect( function ()
+		Group:Select( ActiveKeys[47] or ActiveKeys[48] );
+	end );
+
+	Group.Changed:Connect( function ()
+		GroupButton.GroupName.Text		= Group.Name;
+		GroupButton.GroupNamer.Text		= Group.Name;
+		GroupButton.IgnoreButton.Image	= Group.Ignoring and Assets.GroupLockIcon or Assets.GroupUnlockIcon;
+	end );
+
+	Group.Updated:connect( function ()
+		GroupButton.UpdateButton.Image = Assets.GroupUpdateOKIcon;
+		coroutine.wrap( function()
+			wait( 1 );
+			GroupButton.UpdateButton.Image = Assets.GroupUpdateIcon;
+		end )();
+	end );
+
+	GroupButton.EditButton.MouseButton1Click:connect( function ()
+		GroupButton.GroupName.Visible	= false;
+		GroupButton.GroupNamer.Visible	= true;
+		GroupButton.GroupNamer:CaptureFocus();
+	end );
+
+	GroupButton.GroupNamer.FocusLost:connect( function ( EnterPressed )
+		if EnterPressed then
+			Group:Rename( GroupButton.GroupNamer.Text );
+		end;
+		GroupButton.GroupNamer.Visible	= false;
+		GroupButton.GroupNamer.Text		= Group.Name;
+		GroupButton.GroupName.Visible	= true;
+	end );
+
+	-- Toggle ignoring when the ignore button is clicked
+	GroupButton.IgnoreButton.MouseButton1Click:connect( function ()
+		Group:SetIgnore( not Group.Ignoring );
+	end );
+
+	GroupButton.UpdateButton.MouseButton1Click:connect( function ()
+		Group:Update( Selection.Items );
+	end );
 
 end );
 
@@ -2292,10 +2578,8 @@ function equipBT( CurrentMouse )
 	-- Show the dock
 	Dock.Visible = true;
 
-	-- Display update notification if any (for the tool version)
-	if ToolType == 'tool' then
-		coroutine.wrap( ShowUpdateNotification )();
-	end;
+	-- Display any startup notifications
+	coroutine.wrap( ShowStartupNotifications )();
 
 	table.insert( Connections, Mouse.KeyDown:connect( function ( key )
 
@@ -2340,6 +2624,11 @@ function equipBT( CurrentMouse )
 		-- Clear the selection if shift + r is pressed
 		if key == "r" and ( ActiveKeys[47] or ActiveKeys[48] ) then
 			Selection:clear();
+			return;
+		end;
+
+		if key == "g" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+			Groups:ToggleUI();
 			return;
 		end;
 
@@ -2563,7 +2852,6 @@ function unequipBT()
 
 end;
 
-
 ------------------------------------------
 -- Provide the platform's environment for
 -- other tool scripts to extend upon
@@ -2616,7 +2904,7 @@ end;
 
 -- Activate the plugin and tool connections
 if ToolType == 'plugin' then
-	local ToolbarButton = plugin:CreateToolbar( 'Building Tools by F3X' ):CreateButton( '', 'Building Tools by F3X', plugin_icon );
+	local ToolbarButton = plugin:CreateToolbar( 'Building Tools by F3X' ):CreateButton( '', 'Building Tools by F3X', Assets.PluginIcon );
 	local plugin_active = false;
 	ToolbarButton.Click:connect( function ()
 		if plugin_active then

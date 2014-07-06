@@ -232,21 +232,21 @@ Tools.Collision.updateGUI = function ( self )
 	local GUI = self.GUI;
 
 	if self.State.colliding == nil then
-		GUI.Status.On.Background.Image = light_slanted_rectangle;
+		GUI.Status.On.Background.Image = Assets.LightSlantedRectangle;
 		GUI.Status.On.SelectedIndicator.BackgroundTransparency = 1;
-		GUI.Status.Off.Background.Image = light_slanted_rectangle;
+		GUI.Status.Off.Background.Image = Assets.LightSlantedRectangle;
 		GUI.Status.Off.SelectedIndicator.BackgroundTransparency = 1;
 
 	elseif self.State.colliding == true then
-		GUI.Status.On.Background.Image = dark_slanted_rectangle;
+		GUI.Status.On.Background.Image = Assets.DarkSlantedRectangle;
 		GUI.Status.On.SelectedIndicator.BackgroundTransparency = 0;
-		GUI.Status.Off.Background.Image = light_slanted_rectangle;
+		GUI.Status.Off.Background.Image = Assets.LightSlantedRectangle;
 		GUI.Status.Off.SelectedIndicator.BackgroundTransparency = 1;
 
 	elseif self.State.colliding == false then
-		GUI.Status.On.Background.Image = light_slanted_rectangle;
+		GUI.Status.On.Background.Image = Assets.LightSlantedRectangle;
 		GUI.Status.On.SelectedIndicator.BackgroundTransparency = 1;
-		GUI.Status.Off.Background.Image = dark_slanted_rectangle;
+		GUI.Status.Off.Background.Image = Assets.DarkSlantedRectangle;
 		GUI.Status.Off.SelectedIndicator.BackgroundTransparency = 0;
 
 	end;

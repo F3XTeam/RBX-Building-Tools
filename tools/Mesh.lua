@@ -669,7 +669,7 @@ Tools.Mesh.finishHistoryRecord = function ( self )
 
 end;
 
-Tools.Mesh.changeMesh = function ( self, mesh_id )
+Tools.Mesh.changeMesh = function ( self, MeshID )
 
 	local meshes = {};
 
@@ -679,9 +679,44 @@ Tools.Mesh.changeMesh = function ( self, mesh_id )
 			table.insert( meshes, Mesh );
 		end;
 	end;
+
+	-- Check if the given ID is not a mesh but an item containing a mesh, and extract
+	-- the mesh data
+	local TextureID, Tint, Scale;
+	if HttpAvailable then
+		local BaseMeshExtractionUrl = 'http://www.f3xteam.com/bt/getFirstMeshData/%s';
+		local ExtractedMeshData = Tool.HttpInterface.GetAsync:InvokeServer( BaseMeshExtractionUrl:format( MeshID ) );
+		if ExtractedMeshData and ExtractedMeshData:len() > 0 then
+			-- Parse the response
+			local ExtractedMeshData = RbxUtility.DecodeJSON( ExtractedMeshData );
+			if ExtractedMeshData and ExtractedMeshData.success then
+				-- Apply whatever data is available from that mesh
+				if ExtractedMeshData.meshID then
+					MeshID = ExtractedMeshData.meshID;
+				end;
+				if ExtractedMeshData.textureID then
+					TextureID = ExtractedMeshData.textureID;
+				end;
+				Tint = Vector3.new( ExtractedMeshData.tint.x, ExtractedMeshData.tint.y, ExtractedMeshData.tint.z );
+				Scale = Vector3.new( ExtractedMeshData.scale.x, ExtractedMeshData.scale.y, ExtractedMeshData.scale.z );
+			end;
+		end;
+	end;
+
 	self:startHistoryRecord( meshes );
 	for _, Mesh in pairs( meshes ) do
-		Mesh.MeshId = "http://www.roblox.com/asset/?id=" .. mesh_id;
+		if MeshID then
+			Mesh.MeshId = "http://www.roblox.com/asset/?id=" .. MeshID;
+		end;
+		if TextureID then
+			Mesh.TextureId = "http://www.roblox.com/asset/?id=" .. TextureID;
+		end;
+		if Tint then
+			Mesh.VertexColor = Tint;
+		end;
+		if Scale then
+			Mesh.Scale = Scale;
+		end;
 	end;
 	self:finishHistoryRecord();
 
@@ -697,6 +732,16 @@ Tools.Mesh.changeTexture = function ( self, texture_id )
 			table.insert( meshes, Mesh );
 		end;
 	end;
+
+	-- Check if the given ID is actually a decal and get the right image ID from it
+	if HttpAvailable then
+		local BaseImageExtractionUrl = 'http://www.f3xteam.com/bt/getDecalImageID/%s';
+		local ExtractedImageID = Tool.HttpInterface.GetAsync:InvokeServer( BaseImageExtractionUrl:format( texture_id ) );
+		if ExtractedImageID and ExtractedImageID:len() > 0 then
+			texture_id = ExtractedImageID;
+		end;
+	end;
+
 	self:startHistoryRecord( meshes );
 	for _, Mesh in pairs( meshes ) do
 		Mesh.TextureId = "http://www.roblox.com/asset/?id=" .. texture_id;

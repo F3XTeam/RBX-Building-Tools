@@ -240,21 +240,21 @@ Tools.Anchor.updateGUI = function ( self )
 	local GUI = self.GUI;
 
 	if self.State.anchored == nil then
-		GUI.Status.Anchored.Background.Image = light_slanted_rectangle;
+		GUI.Status.Anchored.Background.Image = Assets.LightSlantedRectangle;
 		GUI.Status.Anchored.SelectedIndicator.BackgroundTransparency = 1;
-		GUI.Status.Unanchored.Background.Image = light_slanted_rectangle;
+		GUI.Status.Unanchored.Background.Image = Assets.LightSlantedRectangle;
 		GUI.Status.Unanchored.SelectedIndicator.BackgroundTransparency = 1;
 
 	elseif self.State.anchored == true then
-		GUI.Status.Anchored.Background.Image = dark_slanted_rectangle;
+		GUI.Status.Anchored.Background.Image = Assets.DarkSlantedRectangle;
 		GUI.Status.Anchored.SelectedIndicator.BackgroundTransparency = 0;
-		GUI.Status.Unanchored.Background.Image = light_slanted_rectangle;
+		GUI.Status.Unanchored.Background.Image = Assets.LightSlantedRectangle;
 		GUI.Status.Unanchored.SelectedIndicator.BackgroundTransparency = 1;
 
 	elseif self.State.anchored == false then
-		GUI.Status.Anchored.Background.Image = light_slanted_rectangle;
+		GUI.Status.Anchored.Background.Image = Assets.LightSlantedRectangle;
 		GUI.Status.Anchored.SelectedIndicator.BackgroundTransparency = 1;
-		GUI.Status.Unanchored.Background.Image = dark_slanted_rectangle;
+		GUI.Status.Unanchored.Background.Image = Assets.DarkSlantedRectangle;
 		GUI.Status.Unanchored.SelectedIndicator.BackgroundTransparency = 0;
 
 	end;
