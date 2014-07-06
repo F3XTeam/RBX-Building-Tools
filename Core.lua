@@ -12,6 +12,7 @@ Services = {
 	TestService			= Game:GetService 'TestService';
 	Selection			= Game:GetService 'Selection';
 	CoreGui				= Game:GetService 'CoreGui';
+	HttpService			= Game:GetService 'HttpService';
 	JointsService		= Game.JointsService;
 };
 
@@ -44,44 +45,38 @@ Tool = script.Parent;
 Player = Services.Players.LocalPlayer;
 Mouse = nil;
 
--- Determine whether this is the plugin or tool
+-- Set tool or plugin-specific references
 if plugin then
-	ToolType = 'plugin';
+	ToolType		= 'plugin';
+	GUIContainer	= Services.CoreGui;
+	
+	-- Initiate a server only if not in solo testing mode
+	-- (checked in a potentially unreliable way)
+	wait( 2 );
+	if not Game:FindFirstChild 'Visit' then
+		Game:GetService 'NetworkServer';
+	end;
 elseif Tool:IsA 'Tool' then
-	ToolType = 'tool';
-end;
-
--- Get tool type-specific resources
-if ToolType == 'tool' then
-	GUIContainer = Player:WaitForChild( 'PlayerGui' );
-	in_server = not not Game:FindFirstChild( 'NetworkClient' );
-elseif ToolType == 'plugin' then
-	GUIContainer = Services.CoreGui;
-	in_server = not not Game:FindFirstChild( 'NetworkServer' );
-end;
-if in_server then
-	Tool:WaitForChild( "GetAsync" );
-	Tool:WaitForChild( "PostAsync" );
-	GetAsync = function ( ... )
-		return Tool.GetAsync:InvokeServer( ... );
-	end;
-	PostAsync = function ( ... )
-		return Tool.PostAsync:InvokeServer( ... );
-	end;
+	ToolType		= 'tool';
+	GUIContainer	= Player:WaitForChild 'PlayerGui';
 end;
 
 ------------------------------------------
 -- Load external dependencies
 ------------------------------------------
+
+RbxUtility = LoadLibrary 'RbxUtility';
+
 -- Preload external assets
 for ResourceName, ResourceUrl in pairs( Assets ) do
 	Services.ContentProvider:Preload( ResourceUrl );
 end;
 
-RbxUtility = LoadLibrary( "RbxUtility" );
-Tool:WaitForChild( "Interfaces" );
 repeat wait( 0 ) until _G.gloo;
 Gloo = _G.gloo;
+
+Tool:WaitForChild 'HttpInterface';
+Tool:WaitForChild 'Interfaces';
 
 ------------------------------------------
 -- Define functions that are depended-upon
@@ -993,14 +988,8 @@ function isSelectable( Object )
 	return true;
 end;
 
-UpdateNotificationShown = false;
-function ShowUpdateNotification()
-	-- Displays a notification if there's a new update to the tool
-
-	-- Make sure that the notification hasn't already been shown
-	if UpdateNotificationShown then
-		return;
-	end;
+function IsVersionOutdated()
+	-- Returns whether this version of Building Tools is out of date
 
 	-- Check the most recent version number
 	local AssetInfo			= Services.MarketplaceService:GetProductInfo( ToolAssetID, Enum.InfoType.Asset );
@@ -1008,13 +997,156 @@ function ShowUpdateNotification()
 	local CurrentVersionID	= ( Tool:WaitForChild 'Version' ).Value;
 
 	-- If the most recent version ID differs from the current tool's version ID,
-	-- notify the user that this version is outdated
+	-- this version of the tool is outdated
 	if VersionID ~= CurrentVersionID then
-		-- Display the notification and hide it after a while
-		local Notification 			= Tool.Interfaces.BTUpdateNotification:Clone();
-		Notification.Parent 		= Dock;
-		UpdateNotificationShown		= true;
-		Services.Debris:AddItem( Notification, 4 );
+		return true;
+	end;
+
+	-- If it's up-to-date, return false
+	return false;
+end;
+
+-- Provide initial HttpService availability info
+HttpAvailable, HttpAvailabilityError = Tool.HttpInterface.Test:InvokeServer();
+
+-- Keep track of the latest HttpService availability status
+-- (which is only likely to change while in Studio, using the plugin)
+if ToolType == 'plugin' then
+	Services.HttpService.Changed:connect( function ()
+		HttpAvailable, HttpAvailabilityError = Tool.HttpInterface.Test:InvokeServer();
+	end );
+end;
+
+local StartupNotificationsShown = false;
+function ShowStartupNotifications()
+
+	-- Make sure the startup notifications are only shown once
+	if StartupNotificationsShown then
+		return;
+	end;
+	StartupNotificationsShown = true;
+
+	-- Create the main container for notifications
+	local NotificationContainer = Tool.Interfaces.BTStartupNotificationContainer:Clone();
+
+	-- Add the right notifications
+	if not HttpAvailable and HttpAvailabilityError == 'Http requests are not enabled' then
+		NotificationContainer.HttpDisabledWarning.Visible = true;
+	end;
+	if not HttpAvailable and HttpAvailabilityError == 'Http requests can only be executed by game server' then
+		NotificationContainer.SoloWarning.Visible = true;
+	end;
+	if IsVersionOutdated() then
+		if ToolType == 'tool' then
+			NotificationContainer.ToolUpdateNotification.Visible = true;
+		elseif ToolType == 'plugin' then
+			NotificationContainer.PluginUpdateNotification.Visible = true;
+		end;
+	end;
+
+	local function SetContainerSize()
+		-- A function to position the notifications in the container and
+		-- resize the container to fit all the notifications
+
+		-- Keep track of the lowest extent of each item in the container
+		local LowestPoint = 0;
+
+		local Notifications = NotificationContainer:GetChildren();
+		for NotificationIndex, Notification in pairs( Notifications ) do
+
+			-- Position each notification under the last one
+			Notification.Position = UDim2.new(
+				Notification.Position.X.Scale,
+				Notification.Position.X.Offset,
+				Notification.Position.Y.Scale,
+				( LowestPoint == 0 ) and 0 or ( LowestPoint + 10 )
+			);
+
+			-- Calculate the lowest point of this notification
+			local VerticalEnd = Notification.Position.Y.Offset + Notification.Size.Y.Offset;
+			if Notification.Visible and VerticalEnd > LowestPoint then
+				LowestPoint = VerticalEnd;
+			end;
+
+		end;
+
+		NotificationContainer.Size = UDim2.new(
+			NotificationContainer.Size.X.Scale,
+			NotificationContainer.Size.X.Offset,
+			0,
+			LowestPoint
+		);
+	end;
+
+	SetContainerSize();
+
+	-- Have the container start from the center/bottom of the screen
+	local HCenterPos = ( UI.AbsoluteSize.x - NotificationContainer.Size.X.Offset ) / 2;
+	local VBottomPos = UI.AbsoluteSize.y + NotificationContainer.Size.Y.Offset;
+	NotificationContainer.Position = UDim2.new( 0, HCenterPos, 0, VBottomPos );
+
+	NotificationContainer.Parent = UI;
+
+	local function CenterNotificationContainer()
+		-- A function to center the notification container
+
+		-- Animate the container to slide up to the absolute center of the screen
+		local VCenterPos = ( UI.AbsoluteSize.y - NotificationContainer.Size.Y.Offset ) / 2;
+		NotificationContainer:TweenPosition(
+			UDim2.new( 0, HCenterPos, 0, VCenterPos ),
+			Enum.EasingDirection.Out,
+			Enum.EasingStyle.Quad,
+			0.2
+		);
+	end;
+
+	CenterNotificationContainer();
+
+	-- Add functionality to the notification UIs
+	for _, Notification in pairs( NotificationContainer:GetChildren() ) do
+		if Notification.Visible then
+			Notification.OKButton.MouseButton1Click:connect( function ()
+				Notification:Destroy();
+				SetContainerSize();
+				CenterNotificationContainer();
+			end );
+			Notification.HelpButton.MouseButton1Click:connect( function ()
+				Notification.HelpButton:Destroy();
+				Notification.ButtonSeparator:Destroy();
+				Notification.OKButton:TweenSize(
+					UDim2.new( 1, 0, 0, 22 ),
+					Enum.EasingDirection.Out,
+					Enum.EasingStyle.Quad,
+					0.2
+				);
+				Notification.Notice:Destroy();
+				Notification.Help.Visible = true;
+				Notification:TweenSize(
+					UDim2.new(
+						Notification.Size.X.Scale, Notification.Size.X.Offset,
+						Notification.Size.Y.Scale, Notification.Help.NotificationSize.Value
+					),
+					Enum.EasingDirection.Out,
+					Enum.EasingStyle.Quad,
+					0.2,
+					true,
+					function ()
+						SetContainerSize();
+						CenterNotificationContainer();
+					end
+				);
+			end );
+		end;
+	end;
+
+	-- Get rid of the notifications if the user unequips the tool
+	if ToolType == 'tool' then
+		Tool.Unequipped:connect( function ()
+			if NotificationContainer.Visible then
+				NotificationContainer.Visible = false;
+				NotificationContainer:Destroy();
+			end;
+		end );
 	end;
 end;
 
@@ -1998,17 +2130,8 @@ IE = {
 				coroutine.yield();
 			end;
 			local upload_attempt = ypcall( function ()
-				upload_data = PostAsync( "http://www.f3xteam.com/bt/export", serialized_selection );
+				upload_data = Tool.HttpInterface.PostAsync:InvokeServer( "http://www.f3xteam.com/bt/export", serialized_selection );
 			end );
-
-			-- Make sure we're in a server
-			if ToolType == 'plugin' and not in_server then
-				Dialog.Loading.TextLabel.Text = "Use Tools > Test > Start Server to export from Studio";
-				Dialog.Loading.TextLabel.TextWrapped = true;
-				Dialog.Loading.CloseButton.Position = UDim2.new( 0, 0, 0, 50 );
-				Dialog.Loading.CloseButton.Text = 'Got it';
-				return;
-			end;
 
 			-- Fail graciously
 			if not upload_attempt then
@@ -2455,10 +2578,8 @@ function equipBT( CurrentMouse )
 	-- Show the dock
 	Dock.Visible = true;
 
-	-- Display update notification if any (for the tool version)
-	if ToolType == 'tool' then
-		coroutine.wrap( ShowUpdateNotification )();
-	end;
+	-- Display any startup notifications
+	coroutine.wrap( ShowStartupNotifications )();
 
 	table.insert( Connections, Mouse.KeyDown:connect( function ( key )
 
@@ -2730,7 +2851,6 @@ function unequipBT()
 	end;
 
 end;
-
 
 ------------------------------------------
 -- Provide the platform's environment for
