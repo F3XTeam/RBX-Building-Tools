@@ -23,12 +23,13 @@ You can also:
   -  Export your creations and import them into Studio (using [this plugin](http://www.roblox.com/Import-from-Building-Tools-by-F3X-item?id=142485815))
   -  Select multiple parts in various convenient ways such as:
        - Adding parts to the selection individually (shift + click)
-       - Selecting parts using a 2D rectangle (shift + click/drag)
+       - Selecting parts using a 2D rectangle (shift + click & drag)
        - Selecting parts found within the parts in the current selection (shift + k)
-  -  Clone parts
-  -  Delete parts
-  -  Undo and redo any changes you make
-  -  Switch between tools using hotkeys
+       - Grouping parts together so they can be either selected simultaneously or ignored by other modes of selection (Shift+G)
+  -  Clone parts (Shift+C)
+  -  Delete parts (Shift+X)
+  -  Undo and redo any changes you make (Shift+Z & Shift+Y, respectively)
+  -  Switch between tools using hotkeys (Hotkeys shown in the gui for the tools)
 
 ---
 Designed and built by [the F3X team](http://www.roblox.com/Groups/Group.aspx?gid=831895).
