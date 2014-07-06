@@ -78,12 +78,12 @@ Tools.NewPart.Listeners.Button1Down = function ()
 	-- Create the new part of type `self.Options.type`
 	if self.Options.type == "normal" then
 		NewPart = Instance.new( "Part", Services.Workspace );
-		NewPart.FormFactor = "Custom";
 		NewPart.Size = Vector3.new( 4, 1, 2 );
 	elseif self.Options.type == "truss" then
 		NewPart = Instance.new( "TrussPart", Services.Workspace );
 	elseif self.Options.type == "wedge" then
 		NewPart = Instance.new( "WedgePart", Services.Workspace );
+		NewPart.Size=Vector3.new(4, 1, 2)
 	elseif self.Options.type == "corner" then
 		NewPart = Instance.new( "CornerWedgePart", Services.Workspace );
 	elseif self.Options.type == "cylinder" then
@@ -98,8 +98,10 @@ Tools.NewPart.Listeners.Button1Down = function ()
 		NewPart = Instance.new( "VehicleSeat", Services.Workspace );
 	elseif self.Options.type == "spawn" then
 		NewPart = Instance.new( "SpawnLocation", Services.Workspace );
+		NewPart.Size=Vector3.new(4, 1, 2)
 	end;
 	NewPart.Anchored = true;
+	NewPart.FormFactor = "Custom";
 
 	-- Select the new part
 	Selection:clear();
