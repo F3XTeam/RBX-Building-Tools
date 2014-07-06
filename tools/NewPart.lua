@@ -126,7 +126,7 @@ Tools.NewPart.Listeners.Button1Down = function ()
 	-- that the user could easily position their new part
 	equipTool( Tools.Move );
 	Tools.Move.ManualTarget = NewPart;
-	NewPart.CFrame = CFrame.new( Mouse.Hit.p );
+	NewPart.CFrame = CFrame.new( Mouse.Hit.p + Vector3.new(0, NewPart.Size.y, 0) );
 	Tools.Move.Listeners.Button1Down();
 	Tools.Move.Listeners.Move();
 
