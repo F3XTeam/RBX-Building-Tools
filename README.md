@@ -20,14 +20,15 @@ BT includes the following tools:
   -  A __decorate__ tool, which lets you add smoke, fire, and sparkles to parts.
 
 You can also:
-  -  Export your creations and import them into Studio (using [this plugin](http://www.roblox.com/Import-from-Building-Tools-by-F3X-item?id=142485815))
+  -  Export your creations (Shift + P) and import them into Studio (using [this plugin](http://www.roblox.com/Import-from-Building-Tools-by-F3X-item?id=142485815))
   -  Select multiple parts in various convenient ways such as:
-       - Adding parts to the selection individually (shift + click)
-       - Selecting parts using a 2D rectangle (shift + click/drag)
-       - Selecting parts found within the parts in the current selection (shift + k)
-  -  Clone parts
-  -  Delete parts
-  -  Undo and redo any changes you make
+       - Adding parts to the selection individually (Shift + Click)
+       - Selecting parts using a 2D rectangle (Shift + Click & Drag)
+       - Selecting parts found within the parts in the current selection (Shift + K)
+  -  Create named groups of parts to select simultaneously or ignore (Shift + G)
+  -  Clone parts (Shift + C)
+  -  Delete parts (Shift + X)
+  -  Undo and redo any changes you make (Shift + Z, Shift + Y)
   -  Switch between tools using hotkeys
 
 ---
