@@ -7609,7 +7609,7 @@ Tools.Mesh.finishHistoryRecord = function ( self )
 
 end;
 
-Tools.Mesh.changeMesh = function ( self, mesh_id )
+Tools.Mesh.changeMesh = function ( self, MeshID )
 
 &#9;local meshes = {};
 
@@ -7619,9 +7619,44 @@ Tools.Mesh.changeMesh = function ( self, mesh_id )
 &#9;&#9;&#9;table.insert( meshes, Mesh );
 &#9;&#9;end;
 &#9;end;
+
+&#9;-- Check if the given ID is not a mesh but an item containing a mesh, and extract
+&#9;-- the mesh data
+&#9;local TextureID, Tint, Scale;
+&#9;if HttpAvailable then
+&#9;&#9;local BaseMeshExtractionUrl = &apos;http://www.f3xteam.com/bt/getFirstMeshData/%s&apos;;
+&#9;&#9;local ExtractedMeshData = Tool.HttpInterface.GetAsync:InvokeServer( BaseMeshExtractionUrl:format( MeshID ) );
+&#9;&#9;if ExtractedMeshData and ExtractedMeshData:len() &gt; 0 then
+&#9;&#9;&#9;-- Parse the response
+&#9;&#9;&#9;local ExtractedMeshData = RbxUtility.DecodeJSON( ExtractedMeshData );
+&#9;&#9;&#9;if ExtractedMeshData and ExtractedMeshData.success then
+&#9;&#9;&#9;&#9;-- Apply whatever data is available from that mesh
+&#9;&#9;&#9;&#9;if ExtractedMeshData.meshID then
+&#9;&#9;&#9;&#9;&#9;MeshID = ExtractedMeshData.meshID;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;if ExtractedMeshData.textureID then
+&#9;&#9;&#9;&#9;&#9;TextureID = ExtractedMeshData.textureID;
+&#9;&#9;&#9;&#9;end;
+&#9;&#9;&#9;&#9;Tint = Vector3.new( ExtractedMeshData.tint.x, ExtractedMeshData.tint.y, ExtractedMeshData.tint.z );
+&#9;&#9;&#9;&#9;Scale = Vector3.new( ExtractedMeshData.scale.x, ExtractedMeshData.scale.y, ExtractedMeshData.scale.z );
+&#9;&#9;&#9;end;
+&#9;&#9;end;
+&#9;end;
+
 &#9;self:startHistoryRecord( meshes );
 &#9;for _, Mesh in pairs( meshes ) do
-&#9;&#9;Mesh.MeshId = &quot;http://www.roblox.com/asset/?id=&quot; .. mesh_id;
+&#9;&#9;if MeshID then
+&#9;&#9;&#9;Mesh.MeshId = &quot;http://www.roblox.com/asset/?id=&quot; .. MeshID;
+&#9;&#9;end;
+&#9;&#9;if TextureID then
+&#9;&#9;&#9;Mesh.TextureId = &quot;http://www.roblox.com/asset/?id=&quot; .. TextureID;
+&#9;&#9;end;
+&#9;&#9;if Tint then
+&#9;&#9;&#9;Mesh.VertexColor = Tint;
+&#9;&#9;end;
+&#9;&#9;if Scale then
+&#9;&#9;&#9;Mesh.Scale = Scale;
+&#9;&#9;end;
 &#9;end;
 &#9;self:finishHistoryRecord();
 
@@ -7637,6 +7672,16 @@ Tools.Mesh.changeTexture = function ( self, texture_id )
 &#9;&#9;&#9;table.insert( meshes, Mesh );
 &#9;&#9;end;
 &#9;end;
+
+&#9;-- Check if the given ID is actually a decal and get the right image ID from it
+&#9;if HttpAvailable then
+&#9;&#9;local BaseImageExtractionUrl = &apos;http://www.f3xteam.com/bt/getDecalImageID/%s&apos;;
+&#9;&#9;local ExtractedImageID = Tool.HttpInterface.GetAsync:InvokeServer( BaseImageExtractionUrl:format( texture_id ) );
+&#9;&#9;if ExtractedImageID and ExtractedImageID:len() &gt; 0 then
+&#9;&#9;&#9;texture_id = ExtractedImageID;
+&#9;&#9;end;
+&#9;end;
+
 &#9;self:startHistoryRecord( meshes );
 &#9;for _, Mesh in pairs( meshes ) do
 &#9;&#9;Mesh.TextureId = &quot;http://www.roblox.com/asset/?id=&quot; .. texture_id;
@@ -46995,12 +47040,14 @@ Select the part type, then click and drag to place the part.</string>
 										<XS>0</XS>
 										<XO>84</XO>
 										<YS>0</YS>
-										<YO>120</YO>
+										<YO>260</YO>
 									</UDim2>
 									<token name="SizeConstraint">0</token>
 									<string name="Text">Lets you add meshes to parts.
 
-TIP: When using a FileMesh, you can paste either the ID or the URL of the mesh or texture (image) asset.</string>
+If you&apos;re using a file mesh, you can paste the URL of anything with a mesh (e.g. a hat, gear, etc.) and it will find the right mesh/texture ID for you.
+
+NOTE: If HttpService is not enabled, you must type the ID of the mesh/image asset directly.</string>
 									<Color3 name="TextColor3">4294967295</Color3>
 									<bool name="TextScaled">false</bool>
 									<Color3 name="TextStrokeColor3">4278190080</Color3>
