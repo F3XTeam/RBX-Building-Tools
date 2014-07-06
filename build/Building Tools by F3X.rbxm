@@ -6809,26 +6809,39 @@ Tools.NewPart.Listeners.Button1Down = function ()
 &#9;-- Create the new part of type `self.Options.type`
 &#9;if self.Options.type == &quot;normal&quot; then
 &#9;&#9;NewPart = Instance.new( &quot;Part&quot;, Services.Workspace );
-&#9;&#9;NewPart.FormFactor = &quot;Custom&quot;;
+&#9;&#9;NewPart.FormFactor = Enum.FormFactor.Custom;
 &#9;&#9;NewPart.Size = Vector3.new( 4, 1, 2 );
 &#9;elseif self.Options.type == &quot;truss&quot; then
 &#9;&#9;NewPart = Instance.new( &quot;TrussPart&quot;, Services.Workspace );
 &#9;elseif self.Options.type == &quot;wedge&quot; then
 &#9;&#9;NewPart = Instance.new( &quot;WedgePart&quot;, Services.Workspace );
+&#9;&#9;NewPart.FormFactor = Enum.FormFactor.Custom;
+&#9;&#9;NewPart.Size = Vector3.new( 4, 1, 2 );
 &#9;elseif self.Options.type == &quot;corner&quot; then
 &#9;&#9;NewPart = Instance.new( &quot;CornerWedgePart&quot;, Services.Workspace );
 &#9;elseif self.Options.type == &quot;cylinder&quot; then
 &#9;&#9;NewPart = Instance.new( &quot;Part&quot;, Services.Workspace );
 &#9;&#9;NewPart.Shape = &quot;Cylinder&quot;;
+&#9;&#9;NewPart.FormFactor = Enum.FormFactor.Custom;
+&#9;&#9;NewPart.TopSurface = Enum.SurfaceType.Smooth;
+&#9;&#9;NewPart.BottomSurface = Enum.SurfaceType.Smooth;
 &#9;elseif self.Options.type == &quot;ball&quot; then
 &#9;&#9;NewPart = Instance.new( &quot;Part&quot;, Services.Workspace );
 &#9;&#9;NewPart.Shape = &quot;Ball&quot;;
+&#9;&#9;NewPart.FormFactor = Enum.FormFactor.Custom;
+&#9;&#9;NewPart.TopSurface = Enum.SurfaceType.Smooth;
+&#9;&#9;NewPart.BottomSurface = Enum.SurfaceType.Smooth;
 &#9;elseif self.Options.type == &quot;seat&quot; then
 &#9;&#9;NewPart = Instance.new( &quot;Seat&quot;, Services.Workspace );
+&#9;&#9;NewPart.FormFactor = Enum.FormFactor.Custom;
+&#9;&#9;NewPart.Size = Vector3.new( 4, 1, 2 );
 &#9;elseif self.Options.type == &quot;vehicle seat&quot; then
 &#9;&#9;NewPart = Instance.new( &quot;VehicleSeat&quot;, Services.Workspace );
+&#9;&#9;NewPart.Size = Vector3.new( 4, 1, 2 );
 &#9;elseif self.Options.type == &quot;spawn&quot; then
 &#9;&#9;NewPart = Instance.new( &quot;SpawnLocation&quot;, Services.Workspace );
+&#9;&#9;NewPart.FormFactor = Enum.FormFactor.Custom;
+&#9;&#9;NewPart.Size = Vector3.new( 4, 1, 2 );
 &#9;end;
 &#9;NewPart.Anchored = true;
 
