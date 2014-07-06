@@ -12,13 +12,21 @@ Services = {
 bt_logo = 'http://www.roblox.com/asset/?id=129747824';
 plugin_icon = 'http://www.roblox.com/asset/?id=144549739';
 export_base_url = 'http://www.f3xteam.com/bt/export/%s';
-in_server = not not Game:FindFirstChild( 'NetworkServer' );
 
 -- Create the plugin
 Plugin = plugin;
 Toolbar = Plugin:CreateToolbar( 'Building Tools by F3X' );
 Launcher = Toolbar:CreateButton( '', 'Import from Building Tools by F3X', plugin_icon );
 local GUI;
+
+-- Initiate a server only if not in solo testing mode
+-- (checked in a potentially unreliable way)
+wait( 2 );
+if Game:FindFirstChild 'Visit' then
+	SoloMode = true;
+else
+	Game:GetService 'NetworkServer';
+end;
 
 ------------------------------------------
 -- Load external dependencies
@@ -298,10 +306,10 @@ function hideGUI()
 end;
 
 Launcher.Click:connect( function ()
-	if in_server then
-		showGUI();
+	if SoloMode then
+		showGUI( 'Use regular Studio to import.', 'Sure' );
 	else
-		showGUI( 'Hit Tools > Test > Start Server to use this plugin.', 'Got it' );
+		showGUI();
 	end;
 end );
 
