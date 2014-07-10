@@ -279,64 +279,25 @@ Tools.Material.showGUI = function ( self )
 		MaterialDropdown.Frame.Parent = Container.MaterialOption;
 		MaterialDropdown.Frame.Position = UDim2.new( 0, 50, 0, 0 );
 		MaterialDropdown.Frame.Size = UDim2.new( 0, 130, 0, 25 );
-
-		MaterialDropdown:addOption( "SMOOTH PLASTIC" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.SmoothPlastic );
-		end );
-		MaterialDropdown:addOption( "PLASTIC" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Plastic );
-		end );
-		MaterialDropdown:addOption( "CONCRETE" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Concrete );
-		end );
-		MaterialDropdown:addOption( "DIAMOND PLATE" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.DiamondPlate );
-		end );
-		MaterialDropdown:addOption( "CORRODED METAL" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.CorrodedMetal );
-		end );
-		MaterialDropdown:addOption( "BRICK" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Brick );
-		end );
-		MaterialDropdown:addOption( "FABRIC" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Fabric );
-		end );
-		MaterialDropdown:addOption( "FOIL" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Foil );
-		end );
-		MaterialDropdown:addOption( "GRANITE" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Granite );
-		end );
-		MaterialDropdown:addOption( "GRASS" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Grass );
-		end );
-		MaterialDropdown:addOption( "ICE" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Ice );
-		end );
-		MaterialDropdown:addOption( "MARBLE" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Marble );
-		end );
-		MaterialDropdown:addOption( "PEBBLE" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Pebble );
-		end );
-		MaterialDropdown:addOption( "SAND" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Sand );
-		end );
-		MaterialDropdown:addOption( "SLATE" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Slate );
-		end );
-		MaterialDropdown:addOption( "WOOD" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Wood );
-		end );
-		MaterialDropdown:addOption( "WOOD PLANKS" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.WoodPlanks );
-		end );
-		MaterialDropdown:addOption( "COBBLESTONE" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Cobblestone );
-		end );
-		MaterialDropdown:addOption( "METAL" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Metal );
-		end );
+		
+		for i, v in pairs(Enum.Material:GetEnumItems()) do --Add all of the materials systematically so new materials are there right away
+			
+			function addspaces(word)
+				if type(word)~="string" then return end
+				
+				for i=2, #word do
+					local letter=string.sub(word, i, i)
+					if letter==string.upper(letter) then
+						word=string.sub(word, 1, i-1).." "..string.lower(letter)..string.sub(word, i+1, -1)
+					end
+				end
+				word=string.upper(word)
+			end
+			
+			MaterialDropdown:addOption( addspaces(v.Name) ).MouseButton1Up:connect( function ()
+				self:changeMaterial( v );
+			end )
+		end
 
 		-- Capture focus of the input when clicked
 		-- (so we can detect when it is focused-on)
