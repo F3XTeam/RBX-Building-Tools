@@ -2,7 +2,6 @@
 -- Create references to important objects
 ------------------------------------------
 Services = {
-	Workspace			= Game:GetService 'Workspace';
 	Players				= Game:GetService 'Players';
 	Debris				= Game:GetService 'Debris';
 	MarketplaceService	= Game:GetService 'MarketplaceService';
