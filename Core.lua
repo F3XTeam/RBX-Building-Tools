@@ -1498,10 +1498,12 @@ Select2D = {
 			Rectangle.Size = UDim2.new( 0, math.max( click_x, Mouse.X ) - math.min( click_x, Mouse.X ), 0, math.max( click_y, Mouse.Y ) - math.min( click_y, Mouse.Y ) );
 		end );
 
-		-- Listen for when the selection ends
-		self.Connections.SelectionEnd = Mouse.Button1Up:connect( function ()
-			self:select();
-			self:finish();
+		-- Listen for when the selection ends (when the left mouse button is released)
+		self.Connections.SelectionEnd = Services.UserInputService.InputEnded:connect( function ( InputData )
+			if InputData.UserInputType == Enum.UserInputType.MouseButton1 then
+				self:select();
+				self:finish();
+			end;
 		end );
 
 	end;

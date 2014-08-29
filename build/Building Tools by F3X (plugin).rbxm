@@ -1525,10 +1525,12 @@ Select2D = {
 &#9;&#9;&#9;Rectangle.Size = UDim2.new( 0, math.max( click_x, Mouse.X ) - math.min( click_x, Mouse.X ), 0, math.max( click_y, Mouse.Y ) - math.min( click_y, Mouse.Y ) );
 &#9;&#9;end );
 
-&#9;&#9;-- Listen for when the selection ends
-&#9;&#9;self.Connections.SelectionEnd = Mouse.Button1Up:connect( function ()
-&#9;&#9;&#9;self:select();
-&#9;&#9;&#9;self:finish();
+&#9;&#9;-- Listen for when the selection ends (when the left mouse button is released)
+&#9;&#9;self.Connections.SelectionEnd = Services.UserInputService.InputEnded:connect( function ( InputData )
+&#9;&#9;&#9;if InputData.UserInputType == Enum.UserInputType.MouseButton1 then
+&#9;&#9;&#9;&#9;self:select();
+&#9;&#9;&#9;&#9;self:finish();
+&#9;&#9;&#9;end;
 &#9;&#9;end );
 
 &#9;end;
@@ -15749,7 +15751,7 @@ print((&quot;Loaded %s library. Type _G.%s.Help() for help.&quot;):format(PROJEC
 		<Item class="StringValue" referent="RBX17">
 			<Properties>
 				<string name="Name">Version</string>
-				<string name="Value">1.3.0</string>
+				<string name="Value">1.3.1</string>
 			</Properties>
 		</Item>
 		<Item class="Model" referent="RBX18">
@@ -16193,6 +16195,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -16371,6 +16374,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -16879,6 +16883,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -17057,6 +17062,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -18745,6 +18751,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -19022,6 +19029,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -22633,6 +22641,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127774197</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -22811,6 +22820,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -23220,6 +23230,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -23603,6 +23614,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -23754,6 +23766,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -23905,6 +23918,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -24200,6 +24214,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127774197</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -24378,6 +24393,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -24556,6 +24572,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -24965,6 +24982,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -25348,6 +25366,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -25499,6 +25518,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -25650,6 +25670,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -26596,6 +26617,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -26776,6 +26798,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -27053,6 +27076,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -27330,6 +27354,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -27479,6 +27504,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -28822,6 +28848,7 @@ end</ProtectedString>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=134367382</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -29173,6 +29200,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -29353,6 +29381,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -29533,6 +29562,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -29643,6 +29673,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=141313631</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -29939,6 +29970,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -30187,6 +30219,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -30435,6 +30468,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -30780,6 +30814,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -30958,6 +30993,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -31146,6 +31182,7 @@ end</ProtectedString>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=134367382</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -31497,6 +31534,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -31677,6 +31715,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -31857,6 +31896,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -31967,6 +32007,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=141313631</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -32263,6 +32304,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -32511,6 +32553,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -32788,6 +32831,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -32966,6 +33010,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -33077,6 +33122,7 @@ end</ProtectedString>
 						<bool name="ClipsDescendants">false</bool>
 						<bool name="Draggable">false</bool>
 						<Content name="Image"><url>http://www.roblox.com/asset?id=141066192</url></Content>
+						<Color3 name="ImageColor3">4294967295</Color3>
 						<Vector2 name="ImageRectOffset">
 							<X>0</X>
 							<Y>0</Y>
@@ -33117,6 +33163,7 @@ end</ProtectedString>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141186650</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -33157,6 +33204,7 @@ end</ProtectedString>
 						<bool name="ClipsDescendants">false</bool>
 						<bool name="Draggable">false</bool>
 						<Content name="Image"><url>http://www.roblox.com/asset/?id=141066196</url></Content>
+						<Color3 name="ImageColor3">4294967295</Color3>
 						<Vector2 name="ImageRectOffset">
 							<X>0</X>
 							<Y>0</Y>
@@ -33226,6 +33274,7 @@ end</ProtectedString>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141186650</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -33403,6 +33452,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -33680,6 +33730,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -33957,6 +34008,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -34669,6 +34721,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -34849,6 +34902,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -35029,6 +35083,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -36102,6 +36157,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -36282,6 +36338,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -36462,6 +36519,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -36659,6 +36717,7 @@ end</ProtectedString>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141313631</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -37031,6 +37090,7 @@ end</ProtectedString>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=134367382</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -37382,6 +37442,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -37562,6 +37623,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -37742,6 +37804,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -37852,6 +37915,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=141313631</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -38148,6 +38212,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -38396,6 +38461,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -38644,6 +38710,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -38863,6 +38930,7 @@ end</ProtectedString>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=134367382</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -39214,6 +39282,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -39394,6 +39463,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -39574,6 +39644,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -39684,6 +39755,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=141313631</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -39980,6 +40052,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -40228,6 +40301,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -40476,6 +40550,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -40656,6 +40731,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -40836,6 +40912,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -40946,6 +41023,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=141313631</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -41174,6 +41252,7 @@ end</ProtectedString>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=134367382</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -41525,6 +41604,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -41705,6 +41785,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -41885,6 +41966,7 @@ end</ProtectedString>
 										<bool name="ClipsDescendants">false</bool>
 										<bool name="Draggable">false</bool>
 										<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+										<Color3 name="ImageColor3">4294967295</Color3>
 										<Vector2 name="ImageRectOffset">
 											<X>0</X>
 											<Y>0</Y>
@@ -41995,6 +42077,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=141313631</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -42365,6 +42448,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -42600,6 +42684,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -42751,6 +42836,7 @@ end</ProtectedString>
 									<bool name="ClipsDescendants">false</bool>
 									<bool name="Draggable">false</bool>
 									<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+									<Color3 name="ImageColor3">4294967295</Color3>
 									<Vector2 name="ImageRectOffset">
 										<X>0</X>
 										<Y>0</Y>
@@ -43023,6 +43109,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -43432,6 +43519,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -43610,6 +43698,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127772502</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -43788,6 +43877,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=127774197</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -44208,6 +44298,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=160402908</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -44250,6 +44341,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=160408836</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -44292,6 +44384,7 @@ end</ProtectedString>
 								<bool name="ClipsDescendants">false</bool>
 								<bool name="Draggable">false</bool>
 								<Content name="Image"><url>http://www.roblox.com/asset/?id=160400465</url></Content>
+								<Color3 name="ImageColor3">4294967295</Color3>
 								<Vector2 name="ImageRectOffset">
 									<X>0</X>
 									<Y>0</Y>
@@ -49247,6 +49340,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141911973</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -49415,6 +49509,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=142074644</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -49526,6 +49621,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=142074569</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -49637,6 +49733,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=142074553</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -49748,6 +49845,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=142074557</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -49859,6 +49957,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=142074563</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -49970,6 +50069,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=160378203</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -50110,6 +50210,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141741412</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -50191,6 +50292,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141741418</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -50272,6 +50374,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141741341</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -50353,6 +50456,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141806786</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -50434,6 +50538,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141809596</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -50515,6 +50620,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141809090</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -50596,6 +50702,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141741444</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -50677,6 +50784,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141741393</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -50758,6 +50866,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141741366</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -50839,6 +50948,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141794324</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -50920,6 +51030,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141807775</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -51001,6 +51112,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141803491</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -51082,6 +51194,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141805275</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
@@ -51163,6 +51276,7 @@ TIP: You can switch which part has the handles by right-clicking.</string>
 							<bool name="ClipsDescendants">false</bool>
 							<bool name="Draggable">false</bool>
 							<Content name="Image"><url>http://www.roblox.com/asset/?id=141741323</url></Content>
+							<Color3 name="ImageColor3">4294967295</Color3>
 							<Vector2 name="ImageRectOffset">
 								<X>0</X>
 								<Y>0</Y>
