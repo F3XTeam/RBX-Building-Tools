@@ -79,8 +79,8 @@ if plugin then
 &#9;
 &#9;-- Initiate a server only if not in solo testing mode
 &#9;-- (checked in a potentially unreliable way)
-&#9;wait( 2 );
-&#9;if not Game:FindFirstChild &apos;Visit&apos; then
+&#9;wait( 3 );
+&#9;if Services.Players.NumPlayers == 0 then
 &#9;&#9;Game:GetService &apos;NetworkServer&apos;;
 &#9;end;
 elseif Tool:IsA &apos;Tool&apos; then
