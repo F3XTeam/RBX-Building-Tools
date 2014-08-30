@@ -136,6 +136,9 @@ Tools.Move.Listeners.Unequipped = function ()
 		self.Updater = nil;
 	end;
 
+	-- Stop any dragging
+	self:FinishDragging();
+
 	-- Hide the GUI
 	self:hideGUI();
 
@@ -285,6 +288,53 @@ Tools.Move.finishHistoryRecord = function ( self )
 
 end;
 
+Tools.Move.StartDragging = function ( self, Target )
+	-- Begins dragging the current selection
+
+	for _, Item in pairs( Selection.Items ) do
+		Item.RotVelocity = Vector3.new( 0, 0, 0 );
+		Item.Velocity = Vector3.new( 0, 0, 0 );
+	end;
+
+	self:startHistoryRecord();
+
+	self.State.dragging = true;
+	override_selection = true;
+
+	self.Dragger = Instance.new( "Dragger" );
+	self.Dragger:MouseDown( Target, Target.CFrame:toObjectSpace( CFrame.new( Mouse.Hit.p ) ).p, Selection.Items );
+
+	-- Release the dragger once the left mouse button is released
+	self.Connections.DraggerConnection = Services.UserInputService.InputEnded:connect( function ( InputData )
+		if InputData.UserInputType == Enum.UserInputType.MouseButton1 then
+			self:FinishDragging();
+		end;
+	end );
+
+end;
+
+Tools.Move.FinishDragging = function ( self )
+	-- Finishes and cleans up the selection dragger
+
+	override_selection = true;
+
+	-- Disable the dragger
+	if self.Connections.DraggerConnection then
+		self.Connections.DraggerConnection:disconnect();
+		self.Connections.DraggerConnection = nil;
+	end;
+	if not self.Dragger then
+		return;
+	end;
+	self.Dragger:MouseUp();
+	self.State.dragging = false;
+	self.Dragger:Destroy();
+	self.Dragger = nil;
+
+	self:finishHistoryRecord();
+
+end;
+
 Tools.Move.Listeners.Button1Down = function ()
 
 	local self = Tools.Move;
@@ -303,38 +353,7 @@ Tools.Move.Listeners.Button1Down = function ()
 		return;
 	end;
 
-	for _, Item in pairs( Selection.Items ) do
-		Item.RotVelocity = Vector3.new( 0, 0, 0 );
-		Item.Velocity = Vector3.new( 0, 0, 0 );
-	end;
-
-	self:startHistoryRecord();
-
-	self.State.dragging = true;
-	override_selection = true;
-
-	self.Dragger = Instance.new( "Dragger" );
-	self.Dragger:MouseDown( Target, Target.CFrame:toObjectSpace( CFrame.new( Mouse.Hit.p ) ).p, Selection.Items );
-	self.Connections.DraggerConnection = Mouse.Button1Up:connect( function ()
-
-		override_selection = true;
-
-		-- Disable the dragger
-		if self.Connections.DraggerConnection then
-			self.Connections.DraggerConnection:disconnect();
-			self.Connections.DraggerConnection = nil;
-		end;
-		if not self.Dragger then
-			return;
-		end;
-		self.Dragger:MouseUp();
-		self.State.dragging = false;
-		self.Dragger:Destroy();
-		self.Dragger = nil;
-
-		self:finishHistoryRecord();
-
-	end );
+	self:StartDragging( Target );
 
 end;
 
@@ -495,7 +514,12 @@ Tools.Move.showHandles = function ( self, Part )
 			end;
 
 			-- Return stuff to normal once the mouse button is released
-			self.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
+			self.Connections.HandleReleaseListener = Services.UserInputService.InputEnded:connect( function ( InputData )
+
+				-- Make sure the left mouse button was released
+				if InputData.UserInputType ~= Enum.UserInputType.MouseButton1 then
+					return;
+				end;
 
 				-- Prevent the platform from thinking we're selecting
 				override_selection = true;
