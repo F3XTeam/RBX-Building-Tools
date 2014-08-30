@@ -32,7 +32,7 @@ Assets = {
 	CloneActiveDecal		= 'http://www.roblox.com/asset/?id=142073926';
 	CloneInactiveDecal		= 'http://www.roblox.com/asset/?id=142074563';
 	PluginIcon				= 'http://www.roblox.com/asset/?id=142287521';
-	GroupLockIcon			= 'http://www.roblox.com/asset/?id=164421186';
+	GroupLockIcon			= 'http://www.roblox.com/asset/?id=175396862';
 	GroupUnlockIcon			= 'http://www.roblox.com/asset/?id=160408836';
 	GroupUpdateOKIcon		= 'http://www.roblox.com/asset/?id=164421681';
 	GroupUpdateIcon			= 'http://www.roblox.com/asset/?id=160402908';

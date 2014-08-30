@@ -59,7 +59,7 @@ Assets = {
 &#9;CloneActiveDecal&#9;&#9;= &apos;http://www.roblox.com/asset/?id=142073926&apos;;
 &#9;CloneInactiveDecal&#9;&#9;= &apos;http://www.roblox.com/asset/?id=142074563&apos;;
 &#9;PluginIcon&#9;&#9;&#9;&#9;= &apos;http://www.roblox.com/asset/?id=142287521&apos;;
-&#9;GroupLockIcon&#9;&#9;&#9;= &apos;http://www.roblox.com/asset/?id=164421186&apos;;
+&#9;GroupLockIcon&#9;&#9;&#9;= &apos;http://www.roblox.com/asset/?id=175396862&apos;;
 &#9;GroupUnlockIcon&#9;&#9;&#9;= &apos;http://www.roblox.com/asset/?id=160408836&apos;;
 &#9;GroupUpdateOKIcon&#9;&#9;= &apos;http://www.roblox.com/asset/?id=164421681&apos;;
 &#9;GroupUpdateIcon&#9;&#9;&#9;= &apos;http://www.roblox.com/asset/?id=160402908&apos;;
@@ -44301,7 +44301,7 @@ end</ProtectedString>
 						<Properties>
 							<bool name="Active">false</bool>
 							<Color3 name="BackgroundColor3">4282664004</Color3>
-							<float name="BackgroundTransparency">0.899999976</float>
+							<float name="BackgroundTransparency">0.649999976</float>
 							<Color3 name="BorderColor3">4279970357</Color3>
 							<int name="BorderSizePixel">0</int>
 							<bool name="ClipsDescendants">false</bool>
