@@ -1469,7 +1469,7 @@ Select2D = {
 	-- Provide an interface to the functions
 	["start"] = function ( self )
 
-		if enabled then
+		if self.enabled then
 			return;
 		end;
 
@@ -2709,6 +2709,20 @@ function equipBT( CurrentMouse )
 		-- Fire tool listeners
 		if CurrentTool and CurrentTool.Listeners.KeyUp then
 			CurrentTool.Listeners.KeyUp( key );
+		end;
+
+	end ) );
+
+	table.insert( Connections, Services.UserInputService.InputEnded:connect( function ( InputData )
+
+		if InputData.UserInputType == Enum.UserInputType.MouseButton1 then
+			clicking = false;
+
+			-- Finish any ongoing 2D selection wherever the left mouse button is released
+			if Select2D.enabled then
+				Select2D:select();
+				Select2D:finish();
+			end;
 		end;
 
 	end ) );
