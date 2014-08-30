@@ -2484,7 +2484,8 @@ Groups.UI.Parent = Dock;
 
 -- Prepare the functionality of the group manager UI
 Groups.UI.Title.CreateButton.MouseButton1Click:connect( function ()
-	Groups:NewGroup();
+	local Group = Groups:NewGroup();
+	Group:Update( Selection.Items );
 end );
 
 Groups.GroupAdded:Connect( function ( Group )
