@@ -32,7 +32,7 @@ Assets = {
 	CloneActiveDecal		= 'http://www.roblox.com/asset/?id=142073926';
 	CloneInactiveDecal		= 'http://www.roblox.com/asset/?id=142074563';
 	PluginIcon				= 'http://www.roblox.com/asset/?id=142287521';
-	GroupLockIcon			= 'http://www.roblox.com/asset/?id=164421186';
+	GroupLockIcon			= 'http://www.roblox.com/asset/?id=175396862';
 	GroupUnlockIcon			= 'http://www.roblox.com/asset/?id=160408836';
 	GroupUpdateOKIcon		= 'http://www.roblox.com/asset/?id=164421681';
 	GroupUpdateIcon			= 'http://www.roblox.com/asset/?id=160402908';
@@ -52,8 +52,8 @@ if plugin then
 	
 	-- Initiate a server only if not in solo testing mode
 	-- (checked in a potentially unreliable way)
-	wait( 2 );
-	if not Game:FindFirstChild 'Visit' then
+	wait( 3 );
+	if Services.Players.NumPlayers == 0 then
 		Game:GetService 'NetworkServer';
 	end;
 elseif Tool:IsA 'Tool' then
@@ -1469,7 +1469,7 @@ Select2D = {
 	-- Provide an interface to the functions
 	["start"] = function ( self )
 
-		if enabled then
+		if self.enabled then
 			return;
 		end;
 
@@ -1498,10 +1498,12 @@ Select2D = {
 			Rectangle.Size = UDim2.new( 0, math.max( click_x, Mouse.X ) - math.min( click_x, Mouse.X ), 0, math.max( click_y, Mouse.Y ) - math.min( click_y, Mouse.Y ) );
 		end );
 
-		-- Listen for when the selection ends
-		self.Connections.SelectionEnd = Mouse.Button1Up:connect( function ()
-			self:select();
-			self:finish();
+		-- Listen for when the selection ends (when the left mouse button is released)
+		self.Connections.SelectionEnd = Services.UserInputService.InputEnded:connect( function ( InputData )
+			if InputData.UserInputType == Enum.UserInputType.MouseButton1 then
+				self:select();
+				self:finish();
+			end;
 		end );
 
 	end;
@@ -2482,7 +2484,8 @@ Groups.UI.Parent = Dock;
 
 -- Prepare the functionality of the group manager UI
 Groups.UI.Title.CreateButton.MouseButton1Click:connect( function ()
-	Groups:NewGroup();
+	local Group = Groups:NewGroup();
+	Group:Update( Selection.Items );
 end );
 
 Groups.GroupAdded:Connect( function ( Group )
@@ -2494,6 +2497,9 @@ Groups.GroupAdded:Connect( function ( Group )
 
 	Groups.UI.GroupList.CanvasSize = UDim2.new( 1, -10, 0, 26 * #Groups.UI.GroupList:GetChildren() );
 
+	-- Adjust the tooltip caption on the ignore button
+	GroupButton.IgnoreButton.RightTooltip.Text.Text = Group.Ignoring and 'UNIGNORE' or 'IGNORE';
+
 	GroupButton.GroupName.MouseButton1Click:connect( function ()
 		Group:Select( ActiveKeys[47] or ActiveKeys[48] );
 	end );
@@ -2502,6 +2508,9 @@ Groups.GroupAdded:Connect( function ( Group )
 		GroupButton.GroupName.Text		= Group.Name;
 		GroupButton.GroupNamer.Text		= Group.Name;
 		GroupButton.IgnoreButton.Image	= Group.Ignoring and Assets.GroupLockIcon or Assets.GroupUnlockIcon;
+
+		-- Change the tooltip caption on the ignore button
+		GroupButton.IgnoreButton.RightTooltip.Text.Text = Group.Ignoring and 'UNIGNORE' or 'IGNORE';
 	end );
 
 	Group.Updated:connect( function ()
@@ -2536,6 +2545,23 @@ Groups.GroupAdded:Connect( function ( Group )
 		Group:Update( Selection.Items );
 	end );
 
+	-- Pop up tooltips when the buttons are hovered over
+	local ButtonsWithTooltips = { GroupButton.UpdateButton, GroupButton.EditButton, GroupButton.IgnoreButton, GroupButton.GroupNameArea };
+	for _, Button in pairs( ButtonsWithTooltips ) do
+		local Tooltip = Button:FindFirstChild 'LeftTooltip' or Button:FindFirstChild 'RightTooltip';
+		if Tooltip then
+			Button.InputBegan:connect( function ( InputData )
+				if InputData.UserInputType == Enum.UserInputType.MouseMovement then
+					Tooltip.Visible = true;
+				end;
+			end );
+			Button.InputEnded:connect( function ( InputData )
+				if InputData.UserInputType == Enum.UserInputType.MouseMovement then
+					Tooltip.Visible = false;
+				end;
+			end );
+		end;
+	end;
 end );
 
 ------------------------------------------
@@ -2707,6 +2733,20 @@ function equipBT( CurrentMouse )
 		-- Fire tool listeners
 		if CurrentTool and CurrentTool.Listeners.KeyUp then
 			CurrentTool.Listeners.KeyUp( key );
+		end;
+
+	end ) );
+
+	table.insert( Connections, Services.UserInputService.InputEnded:connect( function ( InputData )
+
+		if InputData.UserInputType == Enum.UserInputType.MouseButton1 then
+			clicking = false;
+
+			-- Finish any ongoing 2D selection wherever the left mouse button is released
+			if Select2D.enabled then
+				Select2D:select();
+				Select2D:finish();
+			end;
 		end;
 
 	end ) );

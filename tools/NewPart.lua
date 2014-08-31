@@ -78,26 +78,39 @@ Tools.NewPart.Listeners.Button1Down = function ()
 	-- Create the new part of type `self.Options.type`
 	if self.Options.type == "normal" then
 		NewPart = Instance.new( "Part", Services.Workspace );
-		NewPart.FormFactor = "Custom";
+		NewPart.FormFactor = Enum.FormFactor.Custom;
 		NewPart.Size = Vector3.new( 4, 1, 2 );
 	elseif self.Options.type == "truss" then
 		NewPart = Instance.new( "TrussPart", Services.Workspace );
 	elseif self.Options.type == "wedge" then
 		NewPart = Instance.new( "WedgePart", Services.Workspace );
+		NewPart.FormFactor = Enum.FormFactor.Custom;
+		NewPart.Size = Vector3.new( 4, 1, 2 );
 	elseif self.Options.type == "corner" then
 		NewPart = Instance.new( "CornerWedgePart", Services.Workspace );
 	elseif self.Options.type == "cylinder" then
 		NewPart = Instance.new( "Part", Services.Workspace );
 		NewPart.Shape = "Cylinder";
+		NewPart.FormFactor = Enum.FormFactor.Custom;
+		NewPart.TopSurface = Enum.SurfaceType.Smooth;
+		NewPart.BottomSurface = Enum.SurfaceType.Smooth;
 	elseif self.Options.type == "ball" then
 		NewPart = Instance.new( "Part", Services.Workspace );
 		NewPart.Shape = "Ball";
+		NewPart.FormFactor = Enum.FormFactor.Custom;
+		NewPart.TopSurface = Enum.SurfaceType.Smooth;
+		NewPart.BottomSurface = Enum.SurfaceType.Smooth;
 	elseif self.Options.type == "seat" then
 		NewPart = Instance.new( "Seat", Services.Workspace );
+		NewPart.FormFactor = Enum.FormFactor.Custom;
+		NewPart.Size = Vector3.new( 4, 1, 2 );
 	elseif self.Options.type == "vehicle seat" then
 		NewPart = Instance.new( "VehicleSeat", Services.Workspace );
+		NewPart.Size = Vector3.new( 4, 1, 2 );
 	elseif self.Options.type == "spawn" then
 		NewPart = Instance.new( "SpawnLocation", Services.Workspace );
+		NewPart.FormFactor = Enum.FormFactor.Custom;
+		NewPart.Size = Vector3.new( 4, 1, 2 );
 	end;
 	NewPart.Anchored = true;
 

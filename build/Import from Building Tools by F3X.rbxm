@@ -15,6 +15,7 @@ Services = {
 &#9;ContentProvider = Game:GetService( &apos;ContentProvider&apos; );
 &#9;CoreGui = Game:GetService( &apos;CoreGui&apos; );
 &#9;Selection = Game:GetService( &apos;Selection&apos; );
+&#9;Players = Game:GetService &apos;Players&apos;;
 };
 
 bt_logo = &apos;http://www.roblox.com/asset/?id=129747824&apos;;
@@ -29,8 +30,8 @@ local GUI;
 
 -- Initiate a server only if not in solo testing mode
 -- (checked in a potentially unreliable way)
-wait( 2 );
-if Game:FindFirstChild &apos;Visit&apos; then
+wait( 3 );
+if Services.Players.NumPlayers &gt; 0 then
 &#9;SoloMode = true;
 else
 &#9;Game:GetService &apos;NetworkServer&apos;;
