@@ -2497,6 +2497,9 @@ Groups.GroupAdded:Connect( function ( Group )
 
 	Groups.UI.GroupList.CanvasSize = UDim2.new( 1, -10, 0, 26 * #Groups.UI.GroupList:GetChildren() );
 
+	-- Adjust the tooltip caption on the ignore button
+	GroupButton.IgnoreButton.RightTooltip.Text.Text = Group.Ignoring and 'UNIGNORE' or 'IGNORE';
+
 	GroupButton.GroupName.MouseButton1Click:connect( function ()
 		Group:Select( ActiveKeys[47] or ActiveKeys[48] );
 	end );
@@ -2505,6 +2508,9 @@ Groups.GroupAdded:Connect( function ( Group )
 		GroupButton.GroupName.Text		= Group.Name;
 		GroupButton.GroupNamer.Text		= Group.Name;
 		GroupButton.IgnoreButton.Image	= Group.Ignoring and Assets.GroupLockIcon or Assets.GroupUnlockIcon;
+
+		-- Change the tooltip caption on the ignore button
+		GroupButton.IgnoreButton.RightTooltip.Text.Text = Group.Ignoring and 'UNIGNORE' or 'IGNORE';
 	end );
 
 	Group.Updated:connect( function ()
@@ -2539,6 +2545,23 @@ Groups.GroupAdded:Connect( function ( Group )
 		Group:Update( Selection.Items );
 	end );
 
+	-- Pop up tooltips when the buttons are hovered over
+	local ButtonsWithTooltips = { GroupButton.UpdateButton, GroupButton.EditButton, GroupButton.IgnoreButton, GroupButton.GroupNameArea };
+	for _, Button in pairs( ButtonsWithTooltips ) do
+		local Tooltip = Button:FindFirstChild 'LeftTooltip' or Button:FindFirstChild 'RightTooltip';
+		if Tooltip then
+			Button.InputBegan:connect( function ( InputData )
+				if InputData.UserInputType == Enum.UserInputType.MouseMovement then
+					Tooltip.Visible = true;
+				end;
+			end );
+			Button.InputEnded:connect( function ( InputData )
+				if InputData.UserInputType == Enum.UserInputType.MouseMovement then
+					Tooltip.Visible = false;
+				end;
+			end );
+		end;
+	end;
 end );
 
 ------------------------------------------
