@@ -49,7 +49,10 @@ Mouse = nil;
 if plugin then
 	ToolType		= 'plugin';
 	GUIContainer	= Services.CoreGui;
-	
+
+	-- Create the toolbar button
+	ToolbarButton = plugin:CreateToolbar( 'Building Tools by F3X' ):CreateButton( '', 'Building Tools by F3X', Assets.PluginIcon );
+
 	-- Initiate a server only if not in solo testing mode
 	-- (checked in a potentially unreliable way)
 	wait( 3 );
@@ -2944,7 +2947,6 @@ end;
 
 -- Activate the plugin and tool connections
 if ToolType == 'plugin' then
-	local ToolbarButton = plugin:CreateToolbar( 'Building Tools by F3X' ):CreateButton( '', 'Building Tools by F3X', Assets.PluginIcon );
 	local plugin_active = false;
 	ToolbarButton.Click:connect( function ()
 		if plugin_active then
