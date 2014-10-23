@@ -168,9 +168,11 @@ end;
 Tools.NewPart.AddType = function ( self, template )
 	local TemplateName = "template"..tostring(#self.Templates+1)
 	self.Templates[TemplateName] = template:Clone()
-	self.TypeDropdown:addOption( TemplateName:upper() ) ).MouseButton1Up:connect( function ()
+	local Option = self.TypeDropdown:addOption( TemplateName:upper() ) )
+	Option.MouseButton1Up:connect( function ()
 		self:changeType( TemplateName )
 	end )
+	Option.TextColor3 = Color3.new(0, 1, 0)
 end;
 
 Tools.NewPart.showGUI = function ( self )
