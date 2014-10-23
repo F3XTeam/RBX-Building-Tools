@@ -19,6 +19,8 @@ Tools.NewPart.Color = BrickColor.new( "Really black" );
 -- Keep a container for temporary connections
 Tools.NewPart.Connections = {};
 
+Tools.NewPart.Templates = {};
+
 -- Keep a container for state data
 Tools.NewPart.State = {
 	["Part"] = nil;
@@ -111,6 +113,8 @@ Tools.NewPart.Listeners.Button1Down = function ()
 		NewPart = Instance.new( "SpawnLocation", Services.Workspace );
 		NewPart.FormFactor = Enum.FormFactor.Custom;
 		NewPart.Size = Vector3.new( 4, 1, 2 );
+	elseif self.Templates[self.Options.type] then
+		NewPart = self.Templates[self.Options.type]:Clone()
 	end;
 	NewPart.Anchored = true;
 
@@ -139,11 +143,19 @@ Tools.NewPart.Listeners.Button1Down = function ()
 	-- that the user could easily position their new part
 	equipTool( Tools.Move );
 	Tools.Move.ManualTarget = NewPart;
-	NewPart.CFrame = CFrame.new( Mouse.Hit.p );
+	NewPart.CFrame = Mouse.Hit;
 	Tools.Move.Listeners.Button1Down();
 	Tools.Move.Listeners.Move();
 
 end;
+
+Tools.NewPart.Listeners.Button2Down = function() 
+	local self = Tools.NewPart
+	NewTemplate = Mouse.Target
+	if NewTemplate and NewTemplate:IsA("BasePart") then
+		self:AddType( NewTemplate )
+	end
+end)
 
 Tools.NewPart.changeType = function ( self, new_type )
 	self.Options.type = new_type;
@@ -151,6 +163,14 @@ Tools.NewPart.changeType = function ( self, new_type )
 	if self.TypeDropdown.open then
 		self.TypeDropdown:toggle();
 	end;
+end;
+
+Tools.NewPart.AddType = function ( self, template )
+	local TemplateName = "template"..tostring(#self.Templates+1)
+	self.Templates[TemplateName] = template:Clone()
+	self.TypeDropdown:addOption( TemplateName:upper() ) ).MouseButton1Up:connect( function ()
+		self:changeType( TemplateName )
+	end )
 end;
 
 Tools.NewPart.showGUI = function ( self )
