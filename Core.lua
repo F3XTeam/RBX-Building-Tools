@@ -682,6 +682,32 @@ function _RGBToHSV( red, green, blue )
 	return hue, saturation, value;
 end;
 
+function _IdentifyCommonItem(Items)
+	-- Returns the common item in table `Items`, or `nil` if
+	-- they vary
+
+	local CommonItem = nil;
+
+	for ItemIndex, Item in pairs(Items) do
+
+		-- Set the initial item to compare against
+		if ItemIndex == 1 then
+			CommonItem = Item;
+
+		-- Check if this item is the same as the rest
+		else
+			-- If it isn't the same, there is no common item, so just stop right here
+			if Item ~= CommonItem then
+				return nil;
+			end;
+		end;
+
+	end;
+
+	-- Return the common item
+	return CommonItem;
+end;
+
 function CreateSignal()
 	-- Returns a ROBLOX-like signal for connections (RbxUtility's is buggy)
 
