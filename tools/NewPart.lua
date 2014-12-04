@@ -149,10 +149,25 @@ Tools.NewPart.Listeners.Button1Down = function ()
 
 end;
 
-Tools.NewPart.Listeners.Button2Down = function() 
+Tools.NewPart.Listeners.Button1Up = function()
+	Tools.Surface.Listeners.Button2Down = function ()
+
+	local self = Tools.NewPart;
+
+	-- Capture the camera rotation (for later use
+	-- in determining whether a surface was being
+	-- selected or the camera was being rotated
+	-- with the right mouse button)
+	local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
+	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
+end
+
+Tools.NewPart.Listeners.Button2Up = function() 
 	local self = Tools.NewPart
+	
+	local CameraRotation = Vector3.new( Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ() );
 	NewTemplate = Mouse.Target
-	if NewTemplate and NewTemplate:IsA("BasePart") then
+	if NewTemplate and NewTemplate:IsA("BasePart") and self.State.PreB2DownCameraRotation == CameraRotation then
 		self:AddType( NewTemplate )
 	end
 end)
