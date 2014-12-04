@@ -16,6 +16,21 @@ Tools.Surface = {};
 -- Define the tool's color
 Tools.Surface.Color = BrickColor.new( "Bright violet" );
 
+--Define the Images for the Surface Types
+Tools.Surface.Images = {
+	Smooth = "http://www.roblox.com/Asset/?ID=16171076";
+	Studs = "http://www.roblox.com/Asset/?ID=16171077";
+	Inlet = "http://www.roblox.com/Asset/?ID=16171066";
+	Universal = "http://www.roblox.com/Asset/?ID=16171136";
+	Glue = "http://www.roblox.com/Asset/?ID=16171062";
+	Weld = "http://www.roblox.com/Asset/?ID=16171080";
+	Hinge = "http://www.roblox.com/Asset/?ID=16171065";
+	Motor = "http://www.roblox.com/Asset/?ID=16171070";
+}
+
+-- Keep a contianer for Surface Type dropdown options
+Tools.Surface.SurfaceButtons = {}
+
 -- Keep a container for temporary connections
 Tools.Surface.Connections = {};
 
@@ -298,7 +313,9 @@ Tools.Surface.showGUI = function ( self )
 		SideDropdown.Frame.Parent = Container.SideOption;
 		SideDropdown.Frame.Position = UDim2.new( 0, 30, 0, 0 );
 		SideDropdown.Frame.Size = UDim2.new( 0, 72, 0, 25 );
-
+		
+		self.SurfaceButtons = {}
+		
 		SideDropdown:addOption('ALL').MouseButton1Up:connect(function ()
 			self:changeSurface('*');
 		end);
@@ -328,33 +345,42 @@ Tools.Surface.showGUI = function ( self )
 		TypeDropdown.Frame.Position = UDim2.new( 0, 30, 0, 0 );
 		TypeDropdown.Frame.Size = UDim2.new( 0, 87, 0, 25 );
 
-		TypeDropdown:addOption( "STUDS" ).MouseButton1Up:connect( function ()
+		self.SurfaceButtons.Studs = TypeDropdown:addOption( "STUDS" ).MouseButton1Up:connect( function ()
 			self:changeType( Enum.SurfaceType.Studs );
 		end );
-		TypeDropdown:addOption( "INLETS" ).MouseButton1Up:connect( function ()
+		self.SurfaceButtons.Inlet = TypeDropdown:addOption( "INLETS" ).MouseButton1Up:connect( function ()
 			self:changeType( Enum.SurfaceType.Inlet );
 		end );
-		TypeDropdown:addOption( "SMOOTH" ).MouseButton1Up:connect( function ()
+		self.SurfaceButtons.Smooth = TypeDropdown:addOption( "SMOOTH" ).MouseButton1Up:connect( function ()
 			self:changeType( Enum.SurfaceType.Smooth );
 		end );
-		TypeDropdown:addOption( "WELD" ).MouseButton1Up:connect( function ()
+		self.SurfaceButtons.Weld = TypeDropdown:addOption( "WELD" ).MouseButton1Up:connect( function ()
 			self:changeType( Enum.SurfaceType.Weld );
 		end );
-		TypeDropdown:addOption( "GLUE" ).MouseButton1Up:connect( function ()
+		self.SurfaceButtons.Glue = TypeDropdown:addOption( "GLUE" ).MouseButton1Up:connect( function ()
 			self:changeType( Enum.SurfaceType.Glue );
 		end );
-		TypeDropdown:addOption( "UNIVERSAL" ).MouseButton1Up:connect( function ()
+		self.SurfaceButtons.Universal = TypeDropdown:addOption( "UNIVERSAL" ).MouseButton1Up:connect( function ()
 			self:changeType( Enum.SurfaceType.Universal );
 		end );
-		TypeDropdown:addOption( "HINGE" ).MouseButton1Up:connect( function ()
+		self.SurfaceButtons.Hinge = TypeDropdown:addOption( "HINGE" ).MouseButton1Up:connect( function ()
 			self:changeType( Enum.SurfaceType.Hinge );
 		end );
-		TypeDropdown:addOption( "MOTOR" ).MouseButton1Up:connect( function ()
+		self.SurfaceButtons.Motor = TypeDropdown:addOption( "MOTOR" ).MouseButton1Up:connect( function ()
 			self:changeType( Enum.SurfaceType.Motor );
 		end );
-		TypeDropdown:addOption( "NO OUTLINE" ).MouseButton1Up:connect( function ()
+		self.SurfaceButtons.SmoothNoOutlines = TypeDropdown:addOption( "NO OUTLINE" ).MouseButton1Up:connect( function ()
 			self:changeType( Enum.SurfaceType.SmoothNoOutlines );
 		end );
+		
+		for i, v in pairs( self.SurfaceButtons ) do
+			if self.Images[i] then
+				local ImageLabel = Instance.new("ImageLabel", v)
+				ImageLabel.Size = UDim2.new(0, v.Size.y.Offset, 0, v.Size.y.Offset)
+				ImageLabel.Position = UDim2.new(0, v.Size.x.Offset - v.Size.y.Offset, 0, 0)
+				Imagelabel.Image = self.Images[i]
+			end
+		end
 
 		self.GUI = Container;
 
