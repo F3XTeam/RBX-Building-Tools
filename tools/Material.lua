@@ -286,17 +286,20 @@ Tools.Material.showGUI = function ( self )
 		MaterialDropdown:addOption( "PLASTIC" ).MouseButton1Up:connect( function ()
 			self:changeMaterial( Enum.Material.Plastic );
 		end );
+		MaterialDropdown:addOption( "BRICK" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Brick );
+		end );
+		MaterialDropdown:addOption( "COBBLESTONE" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Cobblestone );
+		end );
 		MaterialDropdown:addOption( "CONCRETE" ).MouseButton1Up:connect( function ()
 			self:changeMaterial( Enum.Material.Concrete );
-		end );
-		MaterialDropdown:addOption( "DIAMOND PLATE" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.DiamondPlate );
 		end );
 		MaterialDropdown:addOption( "CORRODED METAL" ).MouseButton1Up:connect( function ()
 			self:changeMaterial( Enum.Material.CorrodedMetal );
 		end );
-		MaterialDropdown:addOption( "BRICK" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Brick );
+		MaterialDropdown:addOption( "DIAMOND PLATE" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.DiamondPlate );
 		end );
 		MaterialDropdown:addOption( "FABRIC" ).MouseButton1Up:connect( function ()
 			self:changeMaterial( Enum.Material.Fabric );
@@ -316,6 +319,9 @@ Tools.Material.showGUI = function ( self )
 		MaterialDropdown:addOption( "MARBLE" ).MouseButton1Up:connect( function ()
 			self:changeMaterial( Enum.Material.Marble );
 		end );
+		MaterialDropdown:addOption( "METAL" ).MouseButton1Up:connect( function ()
+			self:changeMaterial( Enum.Material.Metal );
+		end );
 		MaterialDropdown:addOption( "PEBBLE" ).MouseButton1Up:connect( function ()
 			self:changeMaterial( Enum.Material.Pebble );
 		end );
@@ -330,12 +336,6 @@ Tools.Material.showGUI = function ( self )
 		end );
 		MaterialDropdown:addOption( "WOOD PLANKS" ).MouseButton1Up:connect( function ()
 			self:changeMaterial( Enum.Material.WoodPlanks );
-		end );
-		MaterialDropdown:addOption( "COBBLESTONE" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Cobblestone );
-		end );
-		MaterialDropdown:addOption( "METAL" ).MouseButton1Up:connect( function ()
-			self:changeMaterial( Enum.Material.Metal );
 		end );
 
 		-- Capture focus of the input when clicked
