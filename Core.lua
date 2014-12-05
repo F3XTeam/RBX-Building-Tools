@@ -5,22 +5,22 @@ Services = {
 	Workspace			= Game:GetService 'Workspace';
 	Players				= Game:GetService 'Players';
 	Debris				= Game:GetService 'Debris';
-	MarketplaceService	= Game:GetService 'MarketplaceService';
-	ContentProvider		= Game:GetService 'ContentProvider';
-	SoundService		= Game:GetService 'SoundService';
-	UserInputService	= Game:GetService 'UserInputService';
+	MarketplaceService		= Game:GetService 'MarketplaceService';
+	ContentProvider			= Game:GetService 'ContentProvider';
+	SoundService			= Game:GetService 'SoundService';
+	UserInputService		= Game:GetService 'UserInputService';
 	TestService			= Game:GetService 'TestService';
 	Selection			= Game:GetService 'Selection';
 	CoreGui				= Game:GetService 'CoreGui';
 	HttpService			= Game:GetService 'HttpService';
-	JointsService		= Game.JointsService;
+	JointsService			= Game.JointsService;
 };
 
 Assets = {
-	DarkSlantedRectangle	= 'http://www.roblox.com/asset/?id=127774197';
-	LightSlantedRectangle	= 'http://www.roblox.com/asset/?id=127772502';
-	ActionCompletionSound	= 'http://www.roblox.com/asset/?id=99666917';
-	ExpandArrow				= 'http://www.roblox.com/asset/?id=134367382';
+	DarkSlantedRectangle		= 'http://www.roblox.com/asset/?id=127774197';
+	LightSlantedRectangle		= 'http://www.roblox.com/asset/?id=127772502';
+	ActionCompletionSound		= 'http://www.roblox.com/asset/?id=99666917';
+	ExpandArrow			= 'http://www.roblox.com/asset/?id=134367382';
 	UndoActiveDecal			= 'http://www.roblox.com/asset/?id=141741408';
 	UndoInactiveDecal		= 'http://www.roblox.com/asset/?id=142074557';
 	RedoActiveDecal			= 'http://www.roblox.com/asset/?id=141741327';
@@ -48,7 +48,7 @@ Mouse = nil;
 -- Set tool or plugin-specific references
 if plugin then
 	ToolType		= 'plugin';
-	GUIContainer	= Services.CoreGui;
+	GUIContainer		= Services.CoreGui;
 
 	-- Create the toolbar button
 	ToolbarButton = plugin:CreateToolbar( 'Building Tools by F3X' ):CreateButton( '', 'Building Tools by F3X', Assets.PluginIcon );
@@ -61,7 +61,7 @@ if plugin then
 	end;
 elseif Tool:IsA 'Tool' then
 	ToolType		= 'tool';
-	GUIContainer	= Player:WaitForChild 'PlayerGui';
+	GUIContainer		= Player:WaitForChild 'PlayerGui';
 end;
 
 ------------------------------------------
@@ -2510,7 +2510,7 @@ Groups.GroupAdded:Connect( function ( Group )
 	Group.Changed:Connect( function ()
 		GroupButton.GroupName.Text		= Group.Name;
 		GroupButton.GroupNamer.Text		= Group.Name;
-		GroupButton.IgnoreButton.Image	= Group.Ignoring and Assets.GroupLockIcon or Assets.GroupUnlockIcon;
+		GroupButton.IgnoreButton.Image		= Group.Ignoring and Assets.GroupLockIcon or Assets.GroupUnlockIcon;
 
 		-- Change the tooltip caption on the ignore button
 		GroupButton.IgnoreButton.RightTooltip.Text.Text = Group.Ignoring and 'UNIGNORE' or 'IGNORE';
@@ -2656,8 +2656,19 @@ function equipBT( CurrentMouse )
 			return;
 		end;
 
+		-- Show the Groups UI if shift + g is pressed
 		if key == "g" and ( ActiveKeys[47] or ActiveKeys[48] ) then
 			Groups:ToggleUI();
+			return;
+		end;
+		
+		-- Toggle Dock visibility if shift + h is pressed
+		if key == "h" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+			if Dock.Visible then
+				Dock.Visible = false
+			else
+				Dock.Visible = true
+			end
 			return;
 		end;
 
