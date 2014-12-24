@@ -2990,3 +2990,19 @@ elseif ToolType == 'tool' then
 	Tool.Equipped:connect( equipBT );
 	Tool.Unequipped:connect( unequipBT );
 end;
+
+
+-- Provide a remote function allowing server-side code to
+-- make the tool select the parts in a given model
+(Tool:WaitForChild 'SelectModel').OnClientInvoke = function (Model)
+
+	-- Clear the existing selection
+	Selection:clear();
+
+	-- Select all the parts within `Model` (filtered by Selection:add)
+	local Descendants = _getAllDescendants(Model);
+	for _, Descendant in pairs(Descendants) do
+		Selection:add(Descendant);
+	end;
+
+end;
