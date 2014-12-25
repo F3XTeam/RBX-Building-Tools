@@ -753,13 +753,13 @@ function IsVersionOutdated()
 end;
 
 -- Provide initial HttpService availability info
-HttpAvailable, HttpAvailabilityError = Tool.HttpInterface.Test:InvokeServer();
+HttpAvailable, HttpAvailabilityError = Tool.HttpInterface:WaitForChild('Test'):InvokeServer();
 
 -- Keep track of the latest HttpService availability status
 -- (which is only likely to change while in Studio, using the plugin)
 if ToolType == 'plugin' then
 	Services.HttpService.Changed:connect( function ()
-		HttpAvailable, HttpAvailabilityError = Tool.HttpInterface.Test:InvokeServer();
+		HttpAvailable, HttpAvailabilityError = Tool.HttpInterface:WaitForChild('Test'):InvokeServer();
 	end );
 end;
 
