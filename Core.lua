@@ -1848,18 +1848,10 @@ IE = {
 
 	["export"] = function ()
 
+		-- Make sure there's actually items to export
 		if #Selection.Items == 0 then
 			return;
 		end;
-
-		local serialized_selection = _serializeParts( Selection.Items );
-
-		-- Dump to logs
-		-- Services.TestService:Warn( false, "[Building Tools by F3X] Exported Model: \n" .. serialized_selection );
-
-		-- Get ready to upload to the web for retrieval
-		local upload_data;
-		local cancelUpload;
 
 		-- Create the export dialog
 		local Dialog = Tool.Interfaces.BTExportDialog:Clone();
@@ -1867,46 +1859,56 @@ IE = {
 		Dialog.Parent = UI;
 		Dialog.Loading:TweenSize( UDim2.new( 1, 0, 0, 80 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
 		Dialog.Loading.CloseButton.MouseButton1Up:connect( function ()
-			cancelUpload();
 			Dialog:Destroy();
 		end );
 
-		-- Run the upload/post-upload/failure code in a coroutine
-		-- so it can be cancelled
-		coroutine.resume( coroutine.create( function ()
-			cancelUpload = function ()
-				coroutine.yield();
-			end;
-			local upload_attempt = ypcall( function ()
-				upload_data = Tool.HttpInterface.PostAsync:InvokeServer( "http://www.f3xteam.com/bt/export", serialized_selection );
-			end );
+		-- Send the export request
+		local RequestSuccess, RequestError, ParseSuccess, ParsedData = Tool.ExportInterface.Export:InvokeServer(Selection.Items);
 
-			-- Fail graciously
-			if not upload_attempt then
-				Dialog.Loading.TextLabel.Text = "Upload failed";
-				Dialog.Loading.CloseButton.Text = 'Ok :(';
-				return;
-			end;
-			if not ( upload_data and type( upload_data ) == 'string' and upload_data:len() > 0 ) then
-				Dialog.Loading.TextLabel.Text = "Upload failed";
-				Dialog.Loading.CloseButton.Text = 'Ok ;(';
-				return;
-			end;
-			if not pcall( function () upload_data = RbxUtility.DecodeJSON( upload_data ); end ) or not upload_data then
-				Dialog.Loading.TextLabel.Text = "Upload failed";
-				Dialog.Loading.CloseButton.Text = "Ok :'(";
-				return;
-			end;
-			if not upload_data.success then
-				Dialog.Loading.TextLabel.Text = "Upload failed";
-				Dialog.Loading.CloseButton.Text = "Ok :''(";
-			end;
+		-- Handle known errors for which we have a suggestion
+		if not RequestSuccess and (RequestError == 'Http requests are not enabled' or RequestError == 'Http requests can only be executed by game server') then
 
-			print( "[Building Tools by F3X] Uploaded Export: " .. upload_data.id );
+			-- Communicate failure
+			Dialog.Loading.TextLabel.Text = 'Upload failed, see message(s)';
+			Dialog.Loading.CloseButton.Text = 'Okay!';
 
+			-- Show any warnings that might help the user understand
+			StartupNotificationsShown = false;
+			ShowStartupNotifications();
+
+		-- Handle unknown errors
+		elseif not RequestSuccess then
+
+			-- Just tell them there was an unknown error
+			Dialog.Loading.TextLabel.Text = 'Upload failed (unknown request error)';
+			Dialog.Loading.CloseButton.Text = 'Okay :(';
+
+			-- Show any warnings that might help the user figure it out
+			-- (e.g. outdated version notification)
+			StartupNotificationsShown = false;
+			ShowStartupNotifications();
+
+		-- Handle successful requests without proper responses
+		elseif RequestSuccess and (not ParseSuccess or not ParsedData.success) then
+
+			-- Just tell them there was an unknown error
+			Dialog.Loading.TextLabel.Text = 'Upload failed (unknown processing error)';
+			Dialog.Loading.CloseButton.Text = 'Okay :(';
+
+			-- Show any warnings that might help the user figure it out
+			-- (e.g. outdated version notification)
+			StartupNotificationsShown = false;
+			ShowStartupNotifications();
+
+		-- Handle completely successful requests
+		elseif RequestSuccess and ParseSuccess then
+
+			print( "[Building Tools by F3X] Uploaded Export: " .. ParsedData.id );
+
+			-- Display the successful export GUI with the creation ID
 			Dialog.Loading.Visible = false;
 			Dialog.Info.Size = UDim2.new( 1, 0, 0, 0 );
-			Dialog.Info.CreationID.Text = upload_data.id;
+			Dialog.Info.CreationID.Text = ParsedData.id;
 			Dialog.Info.Visible = true;
 			Dialog.Info:TweenSize( UDim2.new( 1, 0, 0, 75 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25 );
 			Dialog.Tip.Size = UDim2.new( 1, 0, 0, 0 );
@@ -1929,7 +1931,8 @@ IE = {
 			};
 			Sound:Play();
 			Sound:Destroy();
-		end ) );
+
+		end;
 
 	end;
 
