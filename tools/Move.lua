@@ -94,6 +94,93 @@ Tools.Move.Listeners.Equipped = function ()
 
 	end );
 
+	self.State.StaticItems = {};
+	self.State.StaticExtents = nil;
+	self.State.RecalculateStaticExtents = true;	
+	
+	local StaticItemMonitors = {};
+
+	function AddStaticItem(Item)
+		
+		-- Make sure the item isn't already in the list
+		if #_findTableOccurrences(self.State.StaticItems, Item) > 0 then
+			return;
+		end;
+
+		-- Add the item to the list
+		table.insert(self.State.StaticItems, Item);
+
+		-- Attach state monitors
+		StaticItemMonitors[Item] = Item.Changed:connect(function (Property)
+
+			-- To tell when the extents may have changed
+			if Property == 'CFrame' or Property == 'Size' then
+				self.State.RecalculateStaticExtents = true;
+			
+			-- To tell when it's no longer static
+			elseif Property == 'Anchored' and not Item.Anchored then
+				RemoveStaticItem(Item);
+			end;
+
+		end);
+
+		-- Recalculate the static extents
+		self.State.RecalculateStaticExtents = true;
+
+	end;
+
+	function RemoveStaticItem(Item)
+
+		-- Remove `Item` from the list
+		local StaticItemIndex = _findTableOccurrences(self.State.StaticItems, Item)[1];
+		if StaticItemIndex then
+			self.State.StaticItems[StaticItemIndex] = nil;
+		end;
+
+		-- Remove `Item`'s state monitors
+		if StaticItemMonitors[Item] then
+			StaticItemMonitors[Item]:disconnect();
+			StaticItemMonitors[Item] = nil;
+		end;
+
+		-- Recalculate static extents
+		self.State.RecalculateStaticExtents = true;
+
+	end;
+
+	for _, Item in pairs(Selection.Items) do
+		if Item.Anchored then
+			AddStaticItem(Item);
+		end;
+	end;
+
+	table.insert(self.Connections, Selection.ItemAdded:connect(function (Item)
+		if Item.Anchored then
+			AddStaticItem(Item);
+		end;
+	end));
+
+	table.insert(self.Connections, Selection.ItemRemoved:connect(function (Item, Clearing)
+
+		-- Make sure this isn't part of a mass removal (i.e. a clearance),
+		-- and that the item is actually in the list of static parts
+		if Clearing or not StaticItemMonitors[Item] then
+			return;
+		end;
+
+		RemoveStaticItem(Item);
+
+	end));
+
+	table.insert(self.Connections, Selection.Cleared:connect(function ()
+		for MonitorIndex, Monitor in pairs(StaticItemMonitors) do
+			Monitor:disconnect();
+			StaticItemMonitors[MonitorIndex] = nil;
+		end;
+		self.State.StaticExtents = nil;
+		self.State.StaticItems = {};
+	end));
+
 	-- Oh, and update the boundingbox and the GUI regularly
 	coroutine.wrap( function ()
 		updater_on = true;
@@ -677,17 +764,19 @@ Tools.Move.hideHandles = function ( self )
 end;
 
 Tools.Move.updateBoundingBox = function ( self )
-
 	if #Selection.Items > 0 and not self.State.dragging then
-		local SelectionSize, SelectionPosition = _getCollectionInfo( Selection.Items );
+		if self.State.RecalculateStaticExtents then
+			self.State.StaticExtents = calculateExtents(self.State.StaticItems, nil, true);
+			self.State.RecalculateStaticExtents = false;
+		end;
+		local SelectionSize, SelectionPosition = calculateExtents(Selection.Items, self.State.StaticExtents);
 		self.BoundingBox.Size = SelectionSize;
 		self.BoundingBox.CFrame = SelectionPosition;
-		self:showHandles( self.BoundingBox );
+		self:showHandles(self.BoundingBox);
 
 	else
 		self:hideHandles();
 	end;
-
 end;
 
 Tools.Move.changeAxes = function ( self, new_axes )

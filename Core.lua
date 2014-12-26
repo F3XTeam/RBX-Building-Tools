@@ -392,115 +392,6 @@ end;
 
 
 ------------------------------------------
--- WARNING: MICROOPTIMIZED CODE
-------------------------------------------
-
--- Create shortcuts to certain things that are expensive to call constantly
-local table_insert = table.insert;
-local cframe_new = CFrame.new;
-local math_min = math.min;
-local math_max = math.max;
-local partCFrameOffset = CFrame.new().toWorldSpace;
-
-function _getCollectionInfo( part_collection )
-	-- Returns the size and position of collection of parts `part_collection`
-
-	local ComparisonBase = part_collection[1]['Position'];
-	local x_min, y_min, z_min = ComparisonBase['x'], ComparisonBase['y'], ComparisonBase['z'];
-	local x_max, y_max, z_max = x_min, y_min, z_min;
-
-	for _, Part in pairs(part_collection) do
-
-		local PartCFrame = Part['CFrame'];
-		local PartSize = Part['Size'] / 2;
-		local size_x, size_y, size_z = PartSize['x'], PartSize['y'], PartSize['z'];
-
-		local Corner;
-
-		Corner = partCFrameOffset( PartCFrame, cframe_new( size_x, size_y, size_z ) );
-		x_min = math_min( x_min, Corner['x'] );
-		x_max = math_max( x_max, Corner['x'] );
-		y_min = math_min( y_min, Corner['y'] );
-		y_max = math_max( y_max, Corner['y'] );
-		z_min = math_min( z_min, Corner['z'] );
-		z_max = math_max( z_max, Corner['z'] );
-		
-		Corner = partCFrameOffset( PartCFrame, cframe_new( -size_x, size_y, size_z ) );
-		x_min = math_min( x_min, Corner['x'] );
-		x_max = math_max( x_max, Corner['x'] );
-		y_min = math_min( y_min, Corner['y'] );
-		y_max = math_max( y_max, Corner['y'] );
-		z_min = math_min( z_min, Corner['z'] );
-		z_max = math_max( z_max, Corner['z'] );
-		
-		Corner = partCFrameOffset( PartCFrame, cframe_new( size_x, -size_y, size_z ) );
-		x_min = math_min( x_min, Corner['x'] );
-		x_max = math_max( x_max, Corner['x'] );
-		y_min = math_min( y_min, Corner['y'] );
-		y_max = math_max( y_max, Corner['y'] );
-		z_min = math_min( z_min, Corner['z'] );
-		z_max = math_max( z_max, Corner['z'] );
-		
-		Corner = partCFrameOffset( PartCFrame, cframe_new( size_x, size_y, -size_z ) );
-		x_min = math_min( x_min, Corner['x'] );
-		x_max = math_max( x_max, Corner['x'] );
-		y_min = math_min( y_min, Corner['y'] );
-		y_max = math_max( y_max, Corner['y'] );
-		z_min = math_min( z_min, Corner['z'] );
-		z_max = math_max( z_max, Corner['z'] );
-		
-		Corner = partCFrameOffset( PartCFrame, cframe_new( -size_x, size_y, -size_z ) );
-		x_min = math_min( x_min, Corner['x'] );
-		x_max = math_max( x_max, Corner['x'] );
-		y_min = math_min( y_min, Corner['y'] );
-		y_max = math_max( y_max, Corner['y'] );
-		z_min = math_min( z_min, Corner['z'] );
-		z_max = math_max( z_max, Corner['z'] );
-		
-		Corner = partCFrameOffset( PartCFrame, cframe_new( -size_x, -size_y, size_z ) );
-		x_min = math_min( x_min, Corner['x'] );
-		x_max = math_max( x_max, Corner['x'] );
-		y_min = math_min( y_min, Corner['y'] );
-		y_max = math_max( y_max, Corner['y'] );
-		z_min = math_min( z_min, Corner['z'] );
-		z_max = math_max( z_max, Corner['z'] );
-		
-		Corner = partCFrameOffset( PartCFrame, cframe_new( size_x, -size_y, -size_z ) );
-		x_min = math_min( x_min, Corner['x'] );
-		x_max = math_max( x_max, Corner['x'] );
-		y_min = math_min( y_min, Corner['y'] );
-		y_max = math_max( y_max, Corner['y'] );
-		z_min = math_min( z_min, Corner['z'] );
-		z_max = math_max( z_max, Corner['z'] );
-		
-		Corner = partCFrameOffset( PartCFrame, cframe_new( -size_x, -size_y, -size_z ) );
-		x_min = math_min( x_min, Corner['x'] );
-		x_max = math_max( x_max, Corner['x'] );
-		y_min = math_min( y_min, Corner['y'] );
-		y_max = math_max( y_max, Corner['y'] );
-		z_min = math_min( z_min, Corner['z'] );
-		z_max = math_max( z_max, Corner['z'] );
-
-	end;
-
-	-- Get the size between the extents
-	local x_size, y_size, z_size = 	x_max - x_min,
-									y_max - y_min,
-									z_max - z_min;
-
-	local Size = Vector3.new( x_size, y_size, z_size );
-
-	-- Get the centroid of the collection of points
-	local Position = CFrame.new( 	x_min + ( x_max - x_min ) / 2,
-									y_min + ( y_max - y_min ) / 2,
-									z_min + ( z_max - z_min ) / 2 );
-
-	-- Return the size of the collection of parts
-	return Size, Position;
-end;
-
-
-------------------------------------------
 -- Prepare the UI
 ------------------------------------------
 -- Wait for all parts of the base UI to fully replicate
@@ -973,6 +864,7 @@ Selection = {
 	["Changed"] = RbxUtility.CreateSignal();
 	["ItemAdded"] = RbxUtility.CreateSignal();
 	["ItemRemoved"] = RbxUtility.CreateSignal();
+	["Cleared"] = RbxUtility.CreateSignal();
 
 	-- Provide a method to get an item's index in the selection
 	["find"] = function ( self, Needle )
@@ -1033,7 +925,7 @@ Selection = {
 	end;
 
 	-- Provide a method to remove items from the selection
-	["remove"] = function ( self, Item )
+	["remove"] = function ( self, Item, Clearing )
 
 		-- Make sure selection item `Item` exists
 		if not self:find( Item ) then
@@ -1060,7 +952,7 @@ Selection = {
 		SelectionExistenceListeners[Item] = nil;
 
 		-- Fire events
-		self.ItemRemoved:fire( Item );
+		self.ItemRemoved:fire( Item, Clearing );
 		self.Changed:fire();
 
 	end;
@@ -1070,8 +962,11 @@ Selection = {
 
 		-- Go through all the items in the selection and call `self.remove` on them
 		for _, Item in pairs( _cloneTable( self.Items ) ) do
-			self:remove( Item );
+			self:remove( Item, true );
 		end;
+
+		-- Fire events
+		self.Cleared:fire();
 
 	end;
 
@@ -1084,9 +979,131 @@ Selection = {
 		-- Fire events
 		self.Changed:fire();
 
-	end;
+	end;	
 
 };
+
+------------------------------------------
+-- WARNING: MICROOPTIMIZED CODE
+------------------------------------------
+
+-- Create shortcuts to certain things that are expensive to call constantly
+local cframe_new = CFrame.new;
+local table_insert = table.insert;
+local cframe_toWorldSpace = CFrame.new().toWorldSpace;
+local math_min = math.min;
+local math_max = math.max;
+
+function calculateExtents(Items, StaticExtents, JustExtents)
+	-- Returns the size and position of a boundary box that covers the extents
+	-- of the parts in table `Items`
+
+	-- Make sure there's actually any parts given
+	local RandomItem;
+	local ItemCount = 0;
+	for _, Item in pairs(Items) do
+		ItemCount = ItemCount + 1;
+		RandomItem = Item;
+	end;
+	if ItemCount == 0 then
+		return;
+	end;
+
+	local ComparisonBaseMin = StaticExtents and StaticExtents['Minimum'] or RandomItem['Position'];
+	local ComparisonBaseMax = StaticExtents and StaticExtents['Maximum'] or RandomItem['Position'];
+	local MinX, MinY, MinZ = ComparisonBaseMin['x'], ComparisonBaseMin['y'], ComparisonBaseMin['z'];
+	local MaxX, MaxY, MaxZ = ComparisonBaseMax['x'], ComparisonBaseMax['y'], ComparisonBaseMax['z'];
+
+	for _, Part in pairs(Items) do
+
+		if not (Part.Anchored and StaticExtents) then
+			local PartCFrame = Part['CFrame'];
+			local PartSize = Part['Size'] / 2;
+			local SizeX, SizeY, SizeZ = PartSize['x'], PartSize['y'], PartSize['z'];
+
+			local Corner;
+			local XPoints, YPoints, ZPoints = {}, {}, {};
+
+			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( SizeX, SizeY, SizeZ ) );
+			table_insert(XPoints, Corner['x']);
+			table_insert(YPoints, Corner['y']);
+			table_insert(ZPoints, Corner['z']);
+			
+			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( -SizeX, SizeY, SizeZ ) );
+			table_insert(XPoints, Corner['x']);
+			table_insert(YPoints, Corner['y']);
+			table_insert(ZPoints, Corner['z']);
+
+			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( SizeX, -SizeY, SizeZ ) );
+			table_insert(XPoints, Corner['x']);
+			table_insert(YPoints, Corner['y']);
+			table_insert(ZPoints, Corner['z']);
+			
+			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( SizeX, SizeY, -SizeZ ) );
+			table_insert(XPoints, Corner['x']);
+			table_insert(YPoints, Corner['y']);
+			table_insert(ZPoints, Corner['z']);
+			
+			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( -SizeX, SizeY, -SizeZ ) );
+			table_insert(XPoints, Corner['x']);
+			table_insert(YPoints, Corner['y']);
+			table_insert(ZPoints, Corner['z']);
+			
+			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( -SizeX, -SizeY, SizeZ ) );
+			table_insert(XPoints, Corner['x']);
+			table_insert(YPoints, Corner['y']);
+			table_insert(ZPoints, Corner['z']);
+			
+			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( SizeX, -SizeY, -SizeZ ) );
+			table_insert(XPoints, Corner['x']);
+			table_insert(YPoints, Corner['y']);
+			table_insert(ZPoints, Corner['z']);
+			
+			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( -SizeX, -SizeY, -SizeZ ) );
+			table_insert(XPoints, Corner['x']);
+			table_insert(YPoints, Corner['y']);
+			table_insert(ZPoints, Corner['z']);
+
+			MinX = math_min(MinX, unpack(XPoints));
+			MinY = math_min(MinY, unpack(YPoints));
+			MinZ = math_min(MinZ, unpack(ZPoints));
+			MaxX = math_max(MaxX, unpack(XPoints));
+			MaxY = math_max(MaxY, unpack(YPoints));
+			MaxZ = math_max(MaxZ, unpack(ZPoints));
+
+		end;
+
+	end;
+
+	if JustExtents then
+
+		-- Return the extents information
+		return {
+			Minimum = { x = MinX, y = MinY, z = MinZ };
+			Maximum = { x = MaxX, y = MaxY, z = MaxZ };
+		};
+	
+	else
+
+		-- Get the size between the extents
+		local XSize, YSize, ZSize = 	MaxX - MinX,
+										MaxY - MinY,
+										MaxZ - MinZ;
+
+		local Size = Vector3.new( XSize, YSize, ZSize );
+
+		-- Get the centroid of the collection of points
+		local Position = CFrame.new( 	MinX + ( MaxX - MinX ) / 2,
+										MinY + ( MaxY - MinY ) / 2,
+										MinZ + ( MaxZ - MinZ ) / 2 );
+
+		-- Return the size of the collection of parts
+		return Size, Position;
+
+	end;
+
+end;
+
 
 -- Keep the Studio selection up-to-date (if applicable)
 if ToolType == 'plugin' then
@@ -1407,36 +1424,36 @@ SelectEdge = {
 			local table_insert = table.insert;
 			local newCFrame = CFrame.new;
 			local PartCFrame = Mouse.Target.CFrame;
-			local partCFrameOffset = PartCFrame.toWorldSpace;
+			local cframe_toWorldSpace = PartCFrame.toWorldSpace;
 			local PartSize = Mouse.Target.Size / 2;
-			local size_x, size_y, size_z = PartSize.x, PartSize.y, PartSize.z;
+			local SizeX, SizeY, SizeZ = PartSize.x, PartSize.y, PartSize.z;
 
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, size_y, size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, size_y, size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, -size_y, size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, size_y, -size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, size_y, -size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, -size_y, size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, -size_y, -size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, -size_y, -size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, size_y, 0 ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, 0, size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, size_y, size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, 0, 0 ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, size_y, 0 ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, 0, size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, size_y, 0 ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, 0, size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, -size_y, size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, 0, 0 ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, -size_y, 0 ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, 0, -size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, -size_y, 0 ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( size_x, 0, -size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, size_y, -size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, -size_y, 0 ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( -size_x, 0, -size_z ) ) );
-			table_insert( edges, partCFrameOffset( PartCFrame, newCFrame( 0, -size_y, -size_z ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( SizeX, SizeY, SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( -SizeX, SizeY, SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( SizeX, -SizeY, SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( SizeX, SizeY, -SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( -SizeX, SizeY, -SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( -SizeX, -SizeY, SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( SizeX, -SizeY, -SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( -SizeX, -SizeY, -SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( SizeX, SizeY, 0 ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( SizeX, 0, SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( 0, SizeY, SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( SizeX, 0, 0 ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( 0, SizeY, 0 ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( 0, 0, SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( -SizeX, SizeY, 0 ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( -SizeX, 0, SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( 0, -SizeY, SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( -SizeX, 0, 0 ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( 0, -SizeY, 0 ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( 0, 0, -SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( SizeX, -SizeY, 0 ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( SizeX, 0, -SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( 0, SizeY, -SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( -SizeX, -SizeY, 0 ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( -SizeX, 0, -SizeZ ) ) );
+			table_insert( edges, cframe_toWorldSpace( PartCFrame, newCFrame( 0, -SizeY, -SizeZ ) ) );
 
 			-- Calculate the proximity of every edge to the mouse
 			for edge_index, Edge in pairs( edges ) do
