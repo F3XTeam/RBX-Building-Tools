@@ -98,81 +98,6 @@ function _findTableOccurrences( haystack, needle )
 	return positions;
 end;
 
-function _getCollectionInfo( part_collection )
-	-- Returns the size and position of collection of parts `part_collection`
-
-	-- Get the corners
-	local corners = {};
-
-	-- Create shortcuts to certain things that are expensive to call constantly
-	-- (note: otherwise it actually becomes an issue if the selection grows
-	-- considerably large)
-	local table_insert = table.insert;
-	local newCFrame = CFrame.new;
-
-	for _, Part in pairs( part_collection ) do
-
-		local PartCFrame = Part.CFrame;
-		local partCFrameOffset = PartCFrame.toWorldSpace;
-		local PartSize = Part.Size / 2;
-		local size_x, size_y, size_z = PartSize.x, PartSize.y, PartSize.z;
-
-		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( size_x, size_y, size_z ) ) );
-		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( -size_x, size_y, size_z ) ) );
-		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( size_x, -size_y, size_z ) ) );
-		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( size_x, size_y, -size_z ) ) );
-		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( -size_x, size_y, -size_z ) ) );
-		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( -size_x, -size_y, size_z ) ) );
-		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( size_x, -size_y, -size_z ) ) );
-		table_insert( corners, partCFrameOffset( PartCFrame, newCFrame( -size_x, -size_y, -size_z ) ) );
-
-	end;
-
-	-- Get the extents
-	local x_points, y_points, z_points = {}, {}, {};
-
-	for _, Corner in pairs( corners ) do
-		table_insert( x_points, Corner.x );
-		table_insert( y_points, Corner.y );
-		table_insert( z_points, Corner.z );
-	end;
-
-	-- Establish a default/base maximum/minimum for further comparison
-	local x_min, y_min, z_min = x_points[1], y_points[1], z_points[1];
-	local x_max, y_max, z_max = x_points[1], y_points[1], z_points[1];
-
-	-- Starting from the second of each axis point, get the minimum/maximum
-	-- (there should be the same number of points on every axis)
-	for index = 2, #x_points do
-
-		-- Get minimum
-		x_min = math.min( x_points[index], x_min );
-		y_min = math.min( y_points[index], y_min );
-		z_min = math.min( z_points[index], z_min );
-
-		-- Get maximum
-		x_max = math.max( x_points[index], x_max );
-		y_max = math.max( y_points[index], y_max );
-		z_max = math.max( z_points[index], z_max );
-
-	end;
-
-	-- Get the size between the extents
-	local x_size, y_size, z_size = 	x_max - x_min,
-									y_max - y_min,
-									z_max - z_min;
-
-	local Size = Vector3.new( x_size, y_size, z_size );
-
-	-- Get the centroid of the collection of points
-	local Position = CFrame.new( 	x_min + ( x_max - x_min ) / 2,
-									y_min + ( y_max - y_min ) / 2,
-									z_min + ( z_max - z_min ) / 2 );
-
-	-- Return the size of the collection of parts
-	return Size, Position;
-end;
-
 function _round( number, places )
 	-- Returns `number` rounded to the number of decimal `places`
 	-- (from lua-users)
@@ -464,6 +389,116 @@ function CreateSignal()
 
 	return Signal;
 end;
+
+
+------------------------------------------
+-- WARNING: MICROOPTIMIZED CODE
+------------------------------------------
+
+-- Create shortcuts to certain things that are expensive to call constantly
+local table_insert = table.insert;
+local cframe_new = CFrame.new;
+local math_min = math.min;
+local math_max = math.max;
+local partCFrameOffset = CFrame.new().toWorldSpace;
+
+function _getCollectionInfo( part_collection )
+	-- Returns the size and position of collection of parts `part_collection`
+
+	local ComparisonBase = part_collection[1]['Position'];
+	local x_min, y_min, z_min = ComparisonBase['x'], ComparisonBase['y'], ComparisonBase['z'];
+	local x_max, y_max, z_max = x_min, y_min, z_min;
+
+	for _, Part in pairs(part_collection) do
+
+		local PartCFrame = Part['CFrame'];
+		local PartSize = Part['Size'] / 2;
+		local size_x, size_y, size_z = PartSize['x'], PartSize['y'], PartSize['z'];
+
+		local Corner;
+
+		Corner = partCFrameOffset( PartCFrame, cframe_new( size_x, size_y, size_z ) );
+		x_min = math_min( x_min, Corner['x'] );
+		x_max = math_max( x_max, Corner['x'] );
+		y_min = math_min( y_min, Corner['y'] );
+		y_max = math_max( y_max, Corner['y'] );
+		z_min = math_min( z_min, Corner['z'] );
+		z_max = math_max( z_max, Corner['z'] );
+		
+		Corner = partCFrameOffset( PartCFrame, cframe_new( -size_x, size_y, size_z ) );
+		x_min = math_min( x_min, Corner['x'] );
+		x_max = math_max( x_max, Corner['x'] );
+		y_min = math_min( y_min, Corner['y'] );
+		y_max = math_max( y_max, Corner['y'] );
+		z_min = math_min( z_min, Corner['z'] );
+		z_max = math_max( z_max, Corner['z'] );
+		
+		Corner = partCFrameOffset( PartCFrame, cframe_new( size_x, -size_y, size_z ) );
+		x_min = math_min( x_min, Corner['x'] );
+		x_max = math_max( x_max, Corner['x'] );
+		y_min = math_min( y_min, Corner['y'] );
+		y_max = math_max( y_max, Corner['y'] );
+		z_min = math_min( z_min, Corner['z'] );
+		z_max = math_max( z_max, Corner['z'] );
+		
+		Corner = partCFrameOffset( PartCFrame, cframe_new( size_x, size_y, -size_z ) );
+		x_min = math_min( x_min, Corner['x'] );
+		x_max = math_max( x_max, Corner['x'] );
+		y_min = math_min( y_min, Corner['y'] );
+		y_max = math_max( y_max, Corner['y'] );
+		z_min = math_min( z_min, Corner['z'] );
+		z_max = math_max( z_max, Corner['z'] );
+		
+		Corner = partCFrameOffset( PartCFrame, cframe_new( -size_x, size_y, -size_z ) );
+		x_min = math_min( x_min, Corner['x'] );
+		x_max = math_max( x_max, Corner['x'] );
+		y_min = math_min( y_min, Corner['y'] );
+		y_max = math_max( y_max, Corner['y'] );
+		z_min = math_min( z_min, Corner['z'] );
+		z_max = math_max( z_max, Corner['z'] );
+		
+		Corner = partCFrameOffset( PartCFrame, cframe_new( -size_x, -size_y, size_z ) );
+		x_min = math_min( x_min, Corner['x'] );
+		x_max = math_max( x_max, Corner['x'] );
+		y_min = math_min( y_min, Corner['y'] );
+		y_max = math_max( y_max, Corner['y'] );
+		z_min = math_min( z_min, Corner['z'] );
+		z_max = math_max( z_max, Corner['z'] );
+		
+		Corner = partCFrameOffset( PartCFrame, cframe_new( size_x, -size_y, -size_z ) );
+		x_min = math_min( x_min, Corner['x'] );
+		x_max = math_max( x_max, Corner['x'] );
+		y_min = math_min( y_min, Corner['y'] );
+		y_max = math_max( y_max, Corner['y'] );
+		z_min = math_min( z_min, Corner['z'] );
+		z_max = math_max( z_max, Corner['z'] );
+		
+		Corner = partCFrameOffset( PartCFrame, cframe_new( -size_x, -size_y, -size_z ) );
+		x_min = math_min( x_min, Corner['x'] );
+		x_max = math_max( x_max, Corner['x'] );
+		y_min = math_min( y_min, Corner['y'] );
+		y_max = math_max( y_max, Corner['y'] );
+		z_min = math_min( z_min, Corner['z'] );
+		z_max = math_max( z_max, Corner['z'] );
+
+	end;
+
+	-- Get the size between the extents
+	local x_size, y_size, z_size = 	x_max - x_min,
+									y_max - y_min,
+									z_max - z_min;
+
+	local Size = Vector3.new( x_size, y_size, z_size );
+
+	-- Get the centroid of the collection of points
+	local Position = CFrame.new( 	x_min + ( x_max - x_min ) / 2,
+									y_min + ( y_max - y_min ) / 2,
+									z_min + ( z_max - z_min ) / 2 );
+
+	-- Return the size of the collection of parts
+	return Size, Position;
+end;
+
 
 ------------------------------------------
 -- Prepare the UI
