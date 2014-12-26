@@ -2,18 +2,19 @@
 -- Create references to important objects
 ------------------------------------------
 Services = {
-	Workspace			= Game:GetService 'Workspace';
-	Players				= Game:GetService 'Players';
-	Debris				= Game:GetService 'Debris';
-	MarketplaceService	= Game:GetService 'MarketplaceService';
-	ContentProvider		= Game:GetService 'ContentProvider';
-	SoundService		= Game:GetService 'SoundService';
-	UserInputService	= Game:GetService 'UserInputService';
-	TestService			= Game:GetService 'TestService';
-	Selection			= Game:GetService 'Selection';
-	CoreGui				= Game:GetService 'CoreGui';
-	HttpService			= Game:GetService 'HttpService';
-	JointsService		= Game.JointsService;
+	Workspace				= Game:GetService 'Workspace';
+	Players					= Game:GetService 'Players';
+	Debris					= Game:GetService 'Debris';
+	MarketplaceService		= Game:GetService 'MarketplaceService';
+	ContentProvider			= Game:GetService 'ContentProvider';
+	SoundService			= Game:GetService 'SoundService';
+	UserInputService		= Game:GetService 'UserInputService';
+	TestService				= Game:GetService 'TestService';
+	Selection				= Game:GetService 'Selection';
+	CoreGui					= Game:GetService 'CoreGui';
+	HttpService				= Game:GetService 'HttpService';
+	ChangeHistoryService	= Game:GetService 'ChangeHistoryService';
+	JointsService			= Game.JointsService;
 };
 
 Assets = {
@@ -1641,6 +1642,13 @@ History = {
 	end;
 
 };
+
+-- Link up to Studio's history system if this is the plugin
+if ToolType == 'plugin' then
+	History.Changed:connect(function ()
+		Services.ChangeHistoryService:SetWaypoint 'Building Tools by F3X';
+	end);
+end;
 
 
 ------------------------------------------
