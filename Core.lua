@@ -897,12 +897,14 @@ Selection = {
 		-- Insert it into the selection
 		table.insert( self.Items, NewPart );
 
-		-- Add its SelectionBox
-		SelectionBoxes[NewPart] = Instance.new( "SelectionBox", UI );
-		SelectionBoxes[NewPart].Name = "BTSelectionBox";
-		SelectionBoxes[NewPart].Color = SelectionBoxColor;
-		SelectionBoxes[NewPart].Adornee = NewPart;
-		SelectionBoxes[NewPart].Transparency = 0.5;
+		-- Add its SelectionBox if we're in tool mode
+		if ToolType == 'tool' then
+			SelectionBoxes[NewPart] = Instance.new( "SelectionBox", UI );
+			SelectionBoxes[NewPart].Name = "BTSelectionBox";
+			SelectionBoxes[NewPart].Color = SelectionBoxColor;
+			SelectionBoxes[NewPart].Adornee = NewPart;
+			SelectionBoxes[NewPart].Transparency = 0.5;
+		end;
 
 		-- Remove any target selection box focus
 		if NewPart == TargetBox.Adornee then
