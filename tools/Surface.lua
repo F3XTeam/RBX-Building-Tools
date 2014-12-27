@@ -62,24 +62,26 @@ Tools.Surface.Listeners.Equipped = function ()
 			-- Make sure the tool's equipped
 			if CurrentTool == self then
 
-				-- Update the surface type of every item in the selection
-				local surface_type = nil;
-				for item_index, Item in pairs( Selection.Items ) do
-
-					-- Set the first values for the first item
-					if item_index == 1 then
-						surface_type = Item[self.Options.side.Name .. "Surface"];
-
-					-- Otherwise, compare them and set them to `nil` if they're not identical
-					else
-						if surface_type ~= Item[self.Options.side.Name .. "Surface"] then
-							surface_type = nil;
-						end;
+				-- Get the common surface type
+				local SelectionSurfaceTypes = {};
+				if self.Options.side == '*' then
+					for _, Part in pairs(Selection.Items) do
+						table.insert(SelectionSurfaceTypes, Part.TopSurface);
+						table.insert(SelectionSurfaceTypes, Part.BottomSurface);
+						table.insert(SelectionSurfaceTypes, Part.LeftSurface);
+						table.insert(SelectionSurfaceTypes, Part.RightSurface);
+						table.insert(SelectionSurfaceTypes, Part.FrontSurface);
+						table.insert(SelectionSurfaceTypes, Part.BackSurface);
 					end;
-
+				else
+					local SurfacePropertyName = self.Options.side.Name .. 'Surface';
+					for _, Part in pairs(Selection.Items) do
+						table.insert(SelectionSurfaceTypes, Part[SurfacePropertyName]);
+					end;
 				end;
+				local CommonSurfaceType = _IdentifyCommonItem(SelectionSurfaceTypes);
 
-				self.State.type = surface_type;
+				self.State.type = CommonSurfaceType;
 
 				-- Update the GUI if it's visible
 				if self.GUI and self.GUI.Visible then
@@ -162,7 +164,9 @@ Tools.Surface.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target[self.target_surface.Name .. "Surface"] = self.initial_surfaces[Target];
+					for Surface, SurfaceType in pairs(self.initial_surfaces[Target]) do
+						Target[Surface] = SurfaceType;
+					end;
 					Target:MakeJoints();
 					Selection:add( Target );
 				end;
@@ -172,7 +176,9 @@ Tools.Surface.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target[self.target_surface.Name .. "Surface"] = self.terminal_surfaces[Target];
+					for Surface, SurfaceType in pairs(self.terminal_surfaces[Target]) do
+						Target[Surface] = SurfaceType;
+					end;
 					Target:MakeJoints();
 					Selection:add( Target );
 				end;
@@ -181,7 +187,17 @@ Tools.Surface.startHistoryRecord = function ( self )
 	};
 	for _, Item in pairs( self.State.HistoryRecord.targets ) do
 		if Item then
-			self.State.HistoryRecord.initial_surfaces[Item] = Item[self.Options.side.Name .. "Surface"];
+			self.State.HistoryRecord.initial_surfaces[Item] = {};
+			if self.State.HistoryRecord.target_surface == '*' then
+				self.State.HistoryRecord.initial_surfaces[Item].RightSurface = Item.RightSurface;
+				self.State.HistoryRecord.initial_surfaces[Item].LeftSurface = Item.LeftSurface;
+				self.State.HistoryRecord.initial_surfaces[Item].FrontSurface = Item.FrontSurface;
+				self.State.HistoryRecord.initial_surfaces[Item].BackSurface = Item.BackSurface;
+				self.State.HistoryRecord.initial_surfaces[Item].TopSurface = Item.TopSurface;
+				self.State.HistoryRecord.initial_surfaces[Item].BottomSurface = Item.BottomSurface;
+			else
+				self.State.HistoryRecord.initial_surfaces[Item][self.State.HistoryRecord.target_surface.Name .. 'Surface'] = Item[self.State.HistoryRecord.target_surface.Name .. 'Surface'];
+			end;
 		end;
 	end;
 
@@ -195,9 +211,20 @@ Tools.Surface.finishHistoryRecord = function ( self )
 
 	for _, Item in pairs( self.State.HistoryRecord.targets ) do
 		if Item then
-			self.State.HistoryRecord.terminal_surfaces[Item] = Item[self.Options.side.Name .. "Surface"];
+			self.State.HistoryRecord.terminal_surfaces[Item] = {};
+			if self.State.HistoryRecord.target_surface == '*' then
+				self.State.HistoryRecord.terminal_surfaces[Item].RightSurface = Item.RightSurface;
+				self.State.HistoryRecord.terminal_surfaces[Item].LeftSurface = Item.LeftSurface;
+				self.State.HistoryRecord.terminal_surfaces[Item].FrontSurface = Item.FrontSurface;
+				self.State.HistoryRecord.terminal_surfaces[Item].BackSurface = Item.BackSurface;
+				self.State.HistoryRecord.terminal_surfaces[Item].TopSurface = Item.TopSurface;
+				self.State.HistoryRecord.terminal_surfaces[Item].BottomSurface = Item.BottomSurface;
+			else
+				self.State.HistoryRecord.terminal_surfaces[Item][self.State.HistoryRecord.target_surface.Name .. 'Surface'] = Item[self.State.HistoryRecord.target_surface.Name .. 'Surface'];
+			end;
 		end;
 	end;
+
 	History:add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
@@ -214,7 +241,16 @@ Tools.Surface.changeType = function ( self, surface_type )
 
 	-- Apply `surface_type` to all items in the selection
 	for _, Item in pairs( Selection.Items ) do
-		Item[self.Options.side.Name .. "Surface"] = surface_type;
+		if self.Options.side == '*' then
+			Item.FrontSurface = surface_type;
+			Item.BackSurface = surface_type;
+			Item.RightSurface = surface_type;
+			Item.LeftSurface = surface_type;
+			Item.TopSurface = surface_type;
+			Item.BottomSurface = surface_type;
+		else
+			Item[self.Options.side.Name .. "Surface"] = surface_type;
+		end;
 		Item:MakeJoints();
 	end;
 
@@ -228,7 +264,7 @@ end;
 
 Tools.Surface.changeSurface = function ( self, surface )
 	self.Options.side = surface;
-	self.SideDropdown:selectOption( surface.Name:upper() );
+	self.SideDropdown:selectOption( surface == '*' and 'ALL' or surface.Name:upper() );
 	if self.SideDropdown.open then
 		self.SideDropdown:toggle();
 	end;
@@ -262,6 +298,10 @@ Tools.Surface.showGUI = function ( self )
 		SideDropdown.Frame.Parent = Container.SideOption;
 		SideDropdown.Frame.Position = UDim2.new( 0, 30, 0, 0 );
 		SideDropdown.Frame.Size = UDim2.new( 0, 72, 0, 25 );
+
+		SideDropdown:addOption('ALL').MouseButton1Up:connect(function ()
+			self:changeSurface('*');
+		end);
 
 		SideDropdown:addOption( "TOP" ).MouseButton1Up:connect( function ()
 			self:changeSurface( Enum.NormalId.Top );

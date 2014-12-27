@@ -39,12 +39,12 @@ Tools.Weld.Listeners.Equipped = function ()
 	self:showGUI();
 
 	-- Highlight the last part in the selection
-	if Selection.Last then
+	if Selection.Last and SelectionBoxes[Selection.Last] then
 		SelectionBoxes[Selection.Last].Color = BrickColor.new( "Pastel Blue" );
 	end;
 	self.Connections.LastPartHighlighter = Selection.Changed:connect( function ()
 		updateSelectionBoxColor();
-		if Selection.Last then
+		if Selection.Last and SelectionBoxes[Selection.Last] then
 			SelectionBoxes[Selection.Last].Color = BrickColor.new( "Pastel Blue" );
 		end;
 	end );
