@@ -19,6 +19,8 @@ Tools.NewPart.Color = BrickColor.new( "Really black" );
 -- Keep a container for temporary connections
 Tools.NewPart.Connections = {};
 
+Tools.NewPart.Templates = {};
+
 -- Keep a container for state data
 Tools.NewPart.State = {
 	["Part"] = nil;
@@ -111,6 +113,8 @@ Tools.NewPart.Listeners.Button1Down = function ()
 		NewPart = Instance.new( "SpawnLocation", Services.Workspace );
 		NewPart.FormFactor = Enum.FormFactor.Custom;
 		NewPart.Size = Vector3.new( 4, 1, 2 );
+	elseif self.Templates[self.Options.type] then
+		NewPart = self.Templates[self.Options.type]:Clone()
 	end;
 	NewPart.Anchored = true;
 
@@ -139,11 +143,34 @@ Tools.NewPart.Listeners.Button1Down = function ()
 	-- that the user could easily position their new part
 	equipTool( Tools.Move );
 	Tools.Move.ManualTarget = NewPart;
-	NewPart.CFrame = CFrame.new( Mouse.Hit.p );
+	NewPart.CFrame = Mouse.Hit;
 	Tools.Move.Listeners.Button1Down();
 	Tools.Move.Listeners.Move();
 
 end;
+
+Tools.NewPart.Listeners.Button1Up = function()
+	Tools.Surface.Listeners.Button2Down = function ()
+
+	local self = Tools.NewPart;
+
+	-- Capture the camera rotation (for later use
+	-- in determining whether a surface was being
+	-- selected or the camera was being rotated
+	-- with the right mouse button)
+	local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
+	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
+end
+
+Tools.NewPart.Listeners.Button2Up = function() 
+	local self = Tools.NewPart
+	
+	local CameraRotation = Vector3.new( Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ() );
+	NewTemplate = Mouse.Target
+	if NewTemplate and NewTemplate:IsA("BasePart") and self.State.PreB2DownCameraRotation == CameraRotation then
+		self:AddType( NewTemplate )
+	end
+end)
 
 Tools.NewPart.changeType = function ( self, new_type )
 	self.Options.type = new_type;
@@ -151,6 +178,16 @@ Tools.NewPart.changeType = function ( self, new_type )
 	if self.TypeDropdown.open then
 		self.TypeDropdown:toggle();
 	end;
+end;
+
+Tools.NewPart.AddType = function ( self, template )
+	local TemplateName = "template"..tostring(#self.Templates+1)
+	self.Templates[TemplateName] = template:Clone()
+	local Option = self.TypeDropdown:addOption( TemplateName:upper() ) )
+	Option.MouseButton1Up:connect( function ()
+		self:changeType( TemplateName )
+	end )
+	Option.TextColor3 = Color3.new(0, 1, 0)
 end;
 
 Tools.NewPart.showGUI = function ( self )
