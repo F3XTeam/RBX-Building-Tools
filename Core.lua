@@ -39,6 +39,7 @@ Assets = {
 	GroupUpdateIcon			= 'http://www.roblox.com/asset/?id=160402908';
 };
 
+
 -- The ID of the tool model on ROBLOX
 ToolAssetID = 142785488;
 
@@ -75,6 +76,15 @@ RbxUtility = LoadLibrary 'RbxUtility';
 for ResourceName, ResourceUrl in pairs( Assets ) do
 	Services.ContentProvider:Preload( ResourceUrl );
 end;
+
+coroutine.wrap(function() -- Preload Materials
+	local part = Instance.new('Part', Services.Workspace)
+	part.Anchored = true
+	for i, v in pairs(Enum.Material:GetEnumItems()) do
+		part.Material = v
+		wait( 0 )
+	end
+end)()
 
 repeat wait( 0 ) until _G.gloo;
 Gloo = _G.gloo;
