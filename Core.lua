@@ -2422,6 +2422,63 @@ function equipBT( CurrentMouse )
 
 		local key = key:lower();
 		local key_code = key:byte();
+		
+		
+		-- Provide the abiltiy to union via the shift + U key combination (plugin only)
+		if ActiveKeys[47] or ActiveKeys[48] and key == "x" and plugin then
+			
+			local HistoryRecord = {
+				Parts = {unpack(Selection.Items)};
+				unapply = function ( self )
+					self.Parts = plugin:Separate( self.Unions )
+					if self.Parts then
+						Selection:clear()
+						for i, v in pairs( self.Parts ) do
+							Selection:Add( v )
+						end
+					end
+				end;
+				apply = function ( self )
+					local Union = plugin:Union( self.Parts )
+					if Union then
+						Selection:clear();
+						Selection:Add( Union );
+					end
+					self.Union = Union
+				end;
+			};
+			
+			HistoryRecord.apply()
+			
+			History:add( HistoryRecord );
+			
+			
+			return;
+		end;
+		
+		-- Provide the abiltiy to negate via the shift + N key combination (plugin only)
+		if ActiveKeys[47] or ActiveKeys[48] and key == "n" and plugin then
+			local Negations = plugin:Negate( Selection.Items )
+			if Negations then
+				Selection:clear();
+				for i, v in pairs( Negations ) do
+					Selection:Add( v );
+				end
+			end
+			return;
+		end;
+		
+		-- Provide the abiltiy to separate via the shift + J key combination (plugin only)
+		if ActiveKeys[47] or ActiveKeys[48] and key == "j" and plugin then
+			local Separations = plugin:Separate( Selection.Items )
+			if Separations then
+				Selection:clear();
+				for i, v in pairs( Separations ) do
+					Selection:Add( v );
+				end
+			end
+			return;
+		end;
 
 		-- Provide the abiltiy to delete via the shift + X key combination
 		if ActiveKeys[47] or ActiveKeys[48] and key == "x" then
