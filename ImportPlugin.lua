@@ -20,15 +20,6 @@ Toolbar = Plugin:CreateToolbar( 'Building Tools by F3X' );
 Launcher = Toolbar:CreateButton( '', 'Import from Building Tools by F3X', plugin_icon );
 local GUI;
 
--- Initiate a server only if not in solo testing mode
--- (checked in a potentially unreliable way)
-wait( 3 );
-if Services.Players.NumPlayers > 0 then
-	SoloMode = true;
-else
-	Game:GetService 'NetworkServer';
-end;
-
 ------------------------------------------
 -- Load external dependencies
 ------------------------------------------
