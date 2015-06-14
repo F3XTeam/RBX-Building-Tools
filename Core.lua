@@ -54,12 +54,6 @@ if plugin then
 	-- Create the toolbar button
 	ToolbarButton = plugin:CreateToolbar( 'Building Tools by F3X' ):CreateButton( '', 'Building Tools by F3X', Assets.PluginIcon );
 
-	-- Initiate a server only if not in solo testing mode
-	-- (checked in a potentially unreliable way)
-	wait( 3 );
-	if Services.Players.NumPlayers == 0 then
-		Game:GetService 'NetworkServer';
-	end;
 elseif Tool:IsA 'Tool' then
 	ToolType		= 'tool';
 	GUIContainer	= Player:WaitForChild 'PlayerGui';
