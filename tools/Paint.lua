@@ -69,6 +69,7 @@ Tools.Paint.startHistoryRecord = function ( self )
 	self.State.HistoryRecord = {
 		targets = _cloneTable( Selection.Items );
 		initial_colors = {};
+		initial_color_states = {};
 		terminal_colors = {};
 		unapply = function ( self )
 			Selection:clear();
@@ -83,6 +84,9 @@ Tools.Paint.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
+					if Target:IsA('PartOperation') then
+						Target.UsePartColor = true
+					end
 					Target.BrickColor = self.terminal_colors[Target];
 					Selection:add( Target );
 				end;
@@ -92,6 +96,9 @@ Tools.Paint.startHistoryRecord = function ( self )
 	for _, Item in pairs( self.State.HistoryRecord.targets ) do
 		if Item then
 			self.State.HistoryRecord.initial_colors[Item] = Item.BrickColor;
+			if Item:IsA('PartOperation') then
+				self.State.HistoryRecord.initial_color_states[Item] = Item.UsePartColor
+			end
 		end;
 	end;
 
@@ -128,6 +135,9 @@ Tools.Paint.Listeners.Button1Up = function ()
 		-- Paint all of the selected items `Tools.Paint.Options.Color`
 		if self.Options.Color then
 			for _, Item in pairs( Selection.Items ) do
+				if Item:IsA('PartOperation') then
+					Item.UsePartColor = true
+				end
 				Item.BrickColor = self.Options.Color;
 			end;
 		end;
@@ -150,6 +160,9 @@ Tools.Paint.changeColor = function ( self, Color )
 
 		-- Then, we want to update the color of any items in the selection
 		for _, Item in pairs( Selection.Items ) do
+			if Item:IsA('PartOperation') then
+				Item.UsePartColor = true
+			end
 			Item.BrickColor = Color;
 		end;
 
