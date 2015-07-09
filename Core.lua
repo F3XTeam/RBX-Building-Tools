@@ -449,6 +449,11 @@ function cloneSelection()
 			local ItemCopy = Item:Clone();
 			ItemCopy.Parent = Services.Workspace;
 			table.insert( item_copies, ItemCopy );
+			ItemCopy.Archivable = false;
+			local ChangedListener = ItemCopy.Changed:connect(function()
+				ChangedListener:disconnect();
+				ItemCopy.Archivable = true
+			end) 
 		end;
 
 		-- Replace the selection with the copied items
