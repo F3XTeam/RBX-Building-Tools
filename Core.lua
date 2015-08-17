@@ -45,6 +45,7 @@ ToolAssetID = 142785488;
 Tool = script.Parent;
 Player = Services.Players.LocalPlayer;
 Mouse = nil;
+local showselectlines=true;
 
 -- Set tool or plugin-specific references
 if plugin then
@@ -846,9 +847,16 @@ Dragger = nil;
 
 function updateSelectionBoxColor()
 	-- Updates the color of the selectionboxes
-	for _, SelectionBox in pairs( SelectionBoxes ) do
-		SelectionBox.Color = SelectionBoxColor;
-	end;
+	if showselectlines==true then
+		for _, SelectionBox in pairs( SelectionBoxes ) do
+			SelectionBox.Color = SelectionBoxColor;
+			SelectionBox.Visible=true;
+		end;
+	else
+		for _, SelectionBox in pairs( SelectionBoxes ) do
+			SelectionBox.Visible=false;
+		end;
+	end 
 end;
 
 Selection = {
@@ -2382,7 +2390,7 @@ function equipBT( CurrentMouse )
 		equipTool( Tools.Move );
 	end;
 
-	if not TargetBox then
+	if not TargetBox and showselectlines==true then
 		TargetBox = Instance.new( "SelectionBox", UI );
 		TargetBox.Name = "BTTargetBox";
 		TargetBox.Color = BrickColor.new( "Institutional white" );
@@ -2504,7 +2512,11 @@ function equipBT( CurrentMouse )
 
 		elseif key == "p" then
 			equipTool( Tools.Decorate );
-
+			
+		elseif key == "t" then
+			showselectlines = not showselectlines;
+			updateSelectionBoxColor()
+			
 		end;
 
 		ActiveKeys[key_code] = key_code;
