@@ -2390,7 +2390,7 @@ function equipBT( CurrentMouse )
 		equipTool( Tools.Move );
 	end;
 
-	if not TargetBox and showselectlines==true then
+	if not TargetBox then
 		TargetBox = Instance.new( "SelectionBox", UI );
 		TargetBox.Name = "BTTargetBox";
 		TargetBox.Color = BrickColor.new( "Institutional white" );
