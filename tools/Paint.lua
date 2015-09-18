@@ -185,6 +185,45 @@ Tools.Paint.changeColor = function ( self, Color )
 
 end;
 
+local ToolTip 					= Instance.new('TextLabel')
+ToolTip.Name 					= 'ToolTip'
+ToolTip.BackgroundColor3 		= Color3.new(0, 0, 0)
+ToolTip.BackgroundTransparency 	= 0.7
+ToolTip.BorderSizePixel 		= 0
+ToolTip.Font					= Enum.Font.ArialBold
+ToolTip.FontSize				= Enum.FontSize.Size12
+ToolTip.Text					= ''
+ToolTip.TextStrokeTransparency	= true
+ToolTip.TextColor3				= Color3.new(1, 1, 1)
+ToolTip.TextStrokeColor3 		= Color3.new(0, 0, 0)
+ToolTip.TextXAlignment			= Enum.TextXAlignment.Left
+ToolTip.Visible 				= false
+ToolTip.Parent 					= Tool.Interfaces.BTPaintToolGUI
+
+for i, button in pairs(Tool.Interfaces.BTPaintToolGUI.Palette:GetChildren()) do
+	if BrickColor.new(v.Name) then
+		button.MouseEnter:connect(function() 
+	 		ToolTip.Visible = true
+	 		ToolTip.Text = '  '..button.Name
+	 		ToolTip.Position = UDim2.new(0, button.Position.X.Offset + 25, 0, button.Position.Y.Offset)
+	 		local size = 0
+	 		repeat
+	 			if ToolTip.Visible == false then
+	 				break
+	 			end
+	 			wait(0)
+	 			size = size + 3
+	 			ToolTip.Size = UDim2.new(0, size, 0, 20)
+	 		until ToolTip.TextFits = true
+ 		end) 
+ 		button.MouseLeave:connect(function()
+ 			ToolTip.Visible = false
+ 			ToolTip.Size = UDim2.new(0, 0, 0, 0)
+ 			ToolTip.Text = ''
+ 		end)
+ 	end
+end
+
 Tools.Paint.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet
