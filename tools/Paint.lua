@@ -198,6 +198,21 @@ Tools.Paint.showGUI = function ( self )
 				self:changeColor( BrickColor.new( ColorButton.Name ) );
 			end );
 		end;
+	
+		for i, v in pairs(Container.Palette:GetChildren()) do
+			if BrickColor.new(v.Name) then
+				v.MouseEnter:connect(function()
+					Container.Changes.Text.Text = v.Name;
+				end);
+				v.MouseLeave:connect(function()
+					if self.Options.Color then
+						Container.Changes.Text.Text = self.Options.Color.Name;
+					else
+						Container.Changes.Text.Text = 'select a color';
+					end;
+				end);
+			end;
+		end;
 
 		self.GUI = Container;
 	end;
@@ -215,5 +230,6 @@ Tools.Paint.hideGUI = function ( self )
 	end;
 
 end;
+
 
 Tools.Paint.Loaded = true;
