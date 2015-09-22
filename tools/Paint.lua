@@ -69,11 +69,15 @@ Tools.Paint.startHistoryRecord = function ( self )
 	self.State.HistoryRecord = {
 		targets = _cloneTable( Selection.Items );
 		initial_colors = {};
+		initial_color_states = {};
 		terminal_colors = {};
 		unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
+					if Target:IsA('PartOperation') then
+						Target.UsePartColor = self.initial_color_states[Target];
+					end;
 					Target.BrickColor = self.initial_colors[Target];
 					Selection:add( Target );
 				end;
@@ -83,6 +87,9 @@ Tools.Paint.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
+					if Target:IsA('PartOperation') then
+						Target.UsePartColor = self.initial_color_states[Target];
+					end;
 					Target.BrickColor = self.terminal_colors[Target];
 					Selection:add( Target );
 				end;
@@ -91,6 +98,9 @@ Tools.Paint.startHistoryRecord = function ( self )
 	};
 	for _, Item in pairs( self.State.HistoryRecord.targets ) do
 		if Item then
+			if Item:IsA('PartOperation') then
+				self.State.HistoryRecord.initial_color_states[Item] = Item.UsePartColor;
+			end;
 			self.State.HistoryRecord.initial_colors[Item] = Item.BrickColor;
 		end;
 	end;
@@ -128,6 +138,9 @@ Tools.Paint.Listeners.Button1Up = function ()
 		-- Paint all of the selected items `Tools.Paint.Options.Color`
 		if self.Options.Color then
 			for _, Item in pairs( Selection.Items ) do
+				if Item:IsA('PartOperation') then
+					Item.UsePartColor = true;
+				end;
 				Item.BrickColor = self.Options.Color;
 			end;
 		end;
@@ -150,6 +163,9 @@ Tools.Paint.changeColor = function ( self, Color )
 
 		-- Then, we want to update the color of any items in the selection
 		for _, Item in pairs( Selection.Items ) do
+			if Item:IsA('PartOperation') then
+				Item.UsePartColor = true;
+			end;
 			Item.BrickColor = Color;
 		end;
 
@@ -185,45 +201,6 @@ Tools.Paint.changeColor = function ( self, Color )
 
 end;
 
-local ToolTip 					= Instance.new('TextLabel')
-ToolTip.Name 					= 'ToolTip'
-ToolTip.BackgroundColor3 		= Color3.new(0, 0, 0)
-ToolTip.BackgroundTransparency 	= 0.7
-ToolTip.BorderSizePixel 		= 0
-ToolTip.Font					= Enum.Font.ArialBold
-ToolTip.FontSize				= Enum.FontSize.Size12
-ToolTip.Text					= ''
-ToolTip.TextStrokeTransparency	= true
-ToolTip.TextColor3				= Color3.new(1, 1, 1)
-ToolTip.TextStrokeColor3 		= Color3.new(0, 0, 0)
-ToolTip.TextXAlignment			= Enum.TextXAlignment.Left
-ToolTip.Visible 				= false
-ToolTip.Parent 					= Tool.Interfaces.BTPaintToolGUI
-
-for i, button in pairs(Tool.Interfaces.BTPaintToolGUI.Palette:GetChildren()) do
-	if BrickColor.new(v.Name) then
-		button.MouseEnter:connect(function() 
-	 		ToolTip.Visible = true
-	 		ToolTip.Text = '  '..button.Name
-	 		ToolTip.Position = UDim2.new(0, button.Position.X.Offset + 25, 0, button.Position.Y.Offset)
-	 		local size = 0
-	 		repeat
-	 			if ToolTip.Visible == false then
-	 				break
-	 			end
-	 			wait(0)
-	 			size = size + 3
-	 			ToolTip.Size = UDim2.new(0, size, 0, 20)
-	 		until ToolTip.TextFits = true
- 		end) 
- 		button.MouseLeave:connect(function()
- 			ToolTip.Visible = false
- 			ToolTip.Size = UDim2.new(0, 0, 0, 0)
- 			ToolTip.Text = ''
- 		end)
- 	end
-end
-
 Tools.Paint.showGUI = function ( self )
 
 	-- Initialize the GUI if it's not ready yet
@@ -233,8 +210,20 @@ Tools.Paint.showGUI = function ( self )
 		Container.Parent = UI;
 
 		for _, ColorButton in pairs( Container.Palette:GetChildren() ) do
-			ColorButton.MouseButton1Click:connect( function ()
+			ColorButton.MouseButton1Click:connect( function () -- Enabling the buttons
 				self:changeColor( BrickColor.new( ColorButton.Name ) );
+			end );
+
+			ColorButton.MouseEnter:connect(function() -- Enable the hover-over color label
+				Container.Changes.Text.Text = ColorButton.Name;
+			end );
+
+			ColorButton.MouseLeave:connect(function() -- And have it use the selected color when you're not hovering over
+				if self.Options.Color then
+					Container.Changes.Text.Text = self.Options.Color.Name;
+				else
+					Container.Changes.Text.Text = '';
+				end
 			end );
 		end;
 
@@ -254,5 +243,6 @@ Tools.Paint.hideGUI = function ( self )
 	end;
 
 end;
+
 
 Tools.Paint.Loaded = true;
