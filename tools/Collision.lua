@@ -116,7 +116,7 @@ Tools.Collision.startHistoryRecord = function ( self )
 
 	-- Create a history record
 	self.State.HistoryRecord = {
-		targets = _cloneTable( Selection.Items );
+		targets = Support.CloneTable(Selection.Items);
 		initial_collide = {};
 		terminal_collide = {};
 		initial_cframe = {};

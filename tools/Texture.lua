@@ -106,7 +106,7 @@ Tools.Texture.Listeners.Button2Down = function ()
 	-- in determining whether a surface was being
 	-- selected or the camera was being rotated
 	-- with the right mouse button)
-	local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
+	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 end;
@@ -115,7 +115,7 @@ Tools.Texture.Listeners.Button2Up = function ()
 
 	local self = Tools.Texture;
 
-	local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
+	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 	local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 	-- If a surface is selected, change the side option
@@ -133,7 +133,7 @@ Tools.Texture.startHistoryRecord = function ( self, textures )
 
 	-- Create a history record
 	self.State.HistoryRecord = {
-		targets = _cloneTable( textures );
+		targets = Support.CloneTable(textures);
 		initial_texture = {};
 		terminal_texture = {};
 		initial_transparency = {};
@@ -258,7 +258,7 @@ Tools.Texture.changeTexture = function ( self, new_texture )
 	-- Apply the new texture to any items w/ textures in the selection
 	-- that are on the side in the options
 	for _, Item in pairs( Selection.Items ) do
-		local textures_found = _getChildrenOfClass( Item, "Texture" );
+		local textures_found = Support.GetChildrenOfClass(Item, "Texture");
 		for _, Texture in pairs( textures_found ) do
 			if Texture.Face == self.Options.side then
 				table.insert( textures, Texture );
@@ -290,7 +290,7 @@ Tools.Texture.changeDecal = function ( self, new_decal )
 	-- Apply the new decal to any items w/ decals in the selection
 	-- that are on the side in the options
 	for _, Item in pairs( Selection.Items ) do
-		local decals_found = _getChildrenOfClass( Item, "Decal" );
+		local decals_found = Support.GetChildrenOfClass(Item, "Decal");
 		for _, Decal in pairs( decals_found ) do
 			if Decal.Face == self.Options.side then
 				table.insert( decals, Decal );
@@ -325,7 +325,7 @@ Tools.Texture.changeTransparency = function ( self, new_transparency )
 	for _, Item in pairs( Selection.Items ) do
 
 		if self.Options.mode == "texture" then
-			local textures_found = _getChildrenOfClass( Item, "Texture" );
+			local textures_found = Support.GetChildrenOfClass(Item, "Texture");
 			for _, Texture in pairs( textures_found ) do
 				if Texture.Face == self.Options.side then
 					table.insert( textures, Texture );
@@ -333,7 +333,7 @@ Tools.Texture.changeTransparency = function ( self, new_transparency )
 			end;
 
 		elseif self.Options.mode == "decal" then
-			local decals_found = _getChildrenOfClass( Item, "Decal" );
+			local decals_found = Support.GetChildrenOfClass(Item, "Decal");
 			for _, Decal in pairs( decals_found ) do
 				if Decal.Face == self.Options.side then
 					table.insert( textures, Decal );
@@ -358,7 +358,7 @@ Tools.Texture.changeFrequency = function ( self, direction, new_frequency )
 	-- Apply the new frequency to any items w/ textures
 	-- in the selection that are on the side in the options
 	for _, Item in pairs( Selection.Items ) do
-		local textures_found = _getChildrenOfClass( Item, "Texture" );
+		local textures_found = Support.GetChildrenOfClass(Item, "Texture");
 		for _, Texture in pairs( textures_found ) do
 			if Texture.Face == self.Options.side then
 				table.insert( textures, Texture );
@@ -404,7 +404,7 @@ Tools.Texture.addTexture = function ( self )
 	for _, Item in pairs( Selection.Items ) do
 
 		-- Check if the item has a texture already
-		local textures_found = _getChildrenOfClass( Item, "Texture" );
+		local textures_found = Support.GetChildrenOfClass(Item, "Texture");
 		local has_texture = false;
 		for _, Texture in pairs( textures_found ) do
 			if Texture.Face == self.Options.side then
@@ -456,7 +456,7 @@ Tools.Texture.addDecal = function ( self )
 	for _, Item in pairs( Selection.Items ) do
 
 		-- Check if the item has a decal already
-		local decals_found = _getChildrenOfClass( Item, "Decal" );
+		local decals_found = Support.GetChildrenOfClass(Item, "Decal");
 		local has_decal = false;
 		for _, Decal in pairs( decals_found ) do
 			if Decal.Face == self.Options.side then
@@ -506,7 +506,7 @@ Tools.Texture.removeTexture = function ( self )
 
 	-- Remove any textures on the selected side
 	for _, Item in pairs( Selection.Items ) do
-		local textures = _getChildrenOfClass( Item, "Texture" );
+		local textures = Support.GetChildrenOfClass(Item, "Texture");
 		for _, Texture in pairs( textures ) do
 			if Texture.Face == self.Options.side then
 				table.insert( HistoryRecord.textures, Texture );
@@ -543,7 +543,7 @@ Tools.Texture.removeDecal = function ( self )
 
 	-- Remove any decals on the selected side
 	for _, Item in pairs( Selection.Items ) do
-		local decals = _getChildrenOfClass( Item, "Decal" );
+		local decals = Support.GetChildrenOfClass(Item, "Decal");
 		for _, Decal in pairs( decals ) do
 			if Decal.Face == self.Options.side then
 				table.insert( HistoryRecord.decals, Decal );
@@ -582,7 +582,7 @@ Tools.Texture.updateGUI = function ( self )
 			-- Get the applicable textures
 			local textures = {};
 			for _, Item in pairs( Selection.Items ) do
-				local textures_found = _getChildrenOfClass( Item, "Texture" );
+				local textures_found = Support.GetChildrenOfClass(Item, "Texture");
 				for _, Texture in pairs( textures_found ) do
 					if Texture.Face == self.Options.side then
 						table.insert( textures, Texture );
@@ -659,13 +659,13 @@ Tools.Texture.updateGUI = function ( self )
 				self.GUI.ImageIDOption.TextBox.Text = texture_id and ( texture_id:match( "%?id=([0-9]+)" ) or "" ) or "*";
 			end;
 			if not self.State.transparency_focused then
-				self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = texture_transparency and _round( texture_transparency, 2 ) or "*";
+				self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = texture_transparency and Support.Round(texture_transparency, 2) or "*";
 			end;
 			if not self.State.rep_x_focused then
-				self.GUI.RepeatOption.XInput.TextBox.Text = texture_repeat_x and _round( texture_repeat_x, 2 ) or "*";
+				self.GUI.RepeatOption.XInput.TextBox.Text = texture_repeat_x and Support.Round(texture_repeat_x, 2) or "*";
 			end;
 			if not self.State.rep_y_focused then
-				self.GUI.RepeatOption.YInput.TextBox.Text = texture_repeat_y and _round( texture_repeat_y, 2 ) or "*";
+				self.GUI.RepeatOption.YInput.TextBox.Text = texture_repeat_y and Support.Round(texture_repeat_y, 2) or "*";
 			end;
 
 		elseif self.Options.mode == "decal" then
@@ -673,7 +673,7 @@ Tools.Texture.updateGUI = function ( self )
 			-- Get the applicable decals
 			local decals = {};
 			for _, Item in pairs( Selection.Items ) do
-				local decals_found = _getChildrenOfClass( Item, "Decal" );
+				local decals_found = Support.GetChildrenOfClass(Item, "Decal");
 				for _, Decal in pairs( decals_found ) do
 					if Decal.Face == self.Options.side then
 						table.insert( decals, Decal );
@@ -740,7 +740,7 @@ Tools.Texture.updateGUI = function ( self )
 				self.GUI.ImageIDOption.TextBox.Text = decal_id and ( decal_id:match( "%?id=([0-9]+)" ) or "" ) or "*";
 			end;
 			if not self.State.transparency_focused then
-				self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = decal_transparency and _round( decal_transparency, 2 ) or "*";
+				self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = decal_transparency and Support.Round(decal_transparency, 2) or "*";
 			end;
 
 		end;

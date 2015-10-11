@@ -79,7 +79,7 @@ Tools.Surface.Listeners.Equipped = function ()
 						table.insert(SelectionSurfaceTypes, Part[SurfacePropertyName]);
 					end;
 				end;
-				local CommonSurfaceType = _IdentifyCommonItem(SelectionSurfaceTypes);
+				local CommonSurfaceType = Support.IdentifyCommonItem(SelectionSurfaceTypes);
 
 				self.State.type = CommonSurfaceType;
 
@@ -129,7 +129,7 @@ Tools.Surface.Listeners.Button2Down = function ()
 	-- in determining whether a surface was being
 	-- selected or the camera was being rotated
 	-- with the right mouse button)
-	local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
+	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 end;
@@ -138,7 +138,7 @@ Tools.Surface.Listeners.Button2Up = function ()
 
 	local self = Tools.Surface;
 
-	local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
+	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 	local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 	-- If a surface is selected
@@ -156,7 +156,7 @@ Tools.Surface.startHistoryRecord = function ( self )
 
 	-- Create a history record
 	self.State.HistoryRecord = {
-		targets = _cloneTable( Selection.Items );
+		targets = Support.CloneTable(Selection.Items);
 		target_surface = self.Options.side;
 		initial_surfaces = {};
 		terminal_surfaces = {};

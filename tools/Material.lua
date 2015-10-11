@@ -129,7 +129,7 @@ Tools.Material.startHistoryRecord = function ( self )
 
 	-- Create a history record
 	self.State.HistoryRecord = {
-		targets = _cloneTable( Selection.Items );
+		targets = Support.CloneTable(Selection.Items);
 		initial_material = {};
 		terminal_material = {};
 		initial_transparency = {};
@@ -246,10 +246,10 @@ Tools.Material.updateGUI = function ( self )
 
 		-- Update the text inputs without interrupting the user
 		if not self.State.transparency_focused then
-			self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = self.State.transparency and tostring( _round( self.State.transparency, 2 ) ) or "*";
+			self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = self.State.transparency and tostring(Support.Round(self.State.transparency, 2)) or "*";
 		end;
 		if not self.State.reflectance_focused then
-			self.GUI.ReflectanceOption.ReflectanceInput.TextBox.Text = self.State.reflectance and tostring( _round( self.State.reflectance, 2 ) ) or "*";
+			self.GUI.ReflectanceOption.ReflectanceInput.TextBox.Text = self.State.reflectance and tostring(Support.Round(self.State.reflectance, 2)) or "*";
 		end;
 
 	else

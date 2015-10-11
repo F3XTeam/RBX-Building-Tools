@@ -105,7 +105,7 @@ Tools.Mesh.changeType = function ( self, new_type )
 	-- Apply type `new_type` to all the meshes in items from the selection
 	local meshes = {};
 	for _, Item in pairs( Selection.Items ) do
-		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
+		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
 		if Mesh then
 			table.insert( meshes, Mesh );
 		end;
@@ -138,7 +138,7 @@ Tools.Mesh.updateGUI = function ( self )
 
 		local meshes = {};
 		for _, Item in pairs( Selection.Items ) do
-			local Mesh = _getChildOfClass( Item, "SpecialMesh" );
+			local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
 			if Mesh then
 				table.insert( meshes, Mesh );
 			end;
@@ -278,22 +278,22 @@ Tools.Mesh.updateGUI = function ( self )
 			end;
 			self.TypeDropdown:selectOption( mesh_type and self.TypeDropdownLabels[mesh_type] or "*" );
 			if not self.State.scale_x_focused then
-				self.GUI.ScaleOption.XInput.TextBox.Text = mesh_scale_x and _round( mesh_scale_x, 2 ) or "*";
+				self.GUI.ScaleOption.XInput.TextBox.Text = mesh_scale_x and Support.Round(mesh_scale_x, 2) or "*";
 			end;
 			if not self.State.scale_y_focused then
-				self.GUI.ScaleOption.YInput.TextBox.Text = mesh_scale_y and _round( mesh_scale_y, 2 ) or "*";
+				self.GUI.ScaleOption.YInput.TextBox.Text = mesh_scale_y and Support.Round(mesh_scale_y, 2) or "*";
 			end;
 			if not self.State.scale_z_focused then
-				self.GUI.ScaleOption.ZInput.TextBox.Text = mesh_scale_z and _round( mesh_scale_z, 2 ) or "*";
+				self.GUI.ScaleOption.ZInput.TextBox.Text = mesh_scale_z and Support.Round(mesh_scale_z, 2) or "*";
 			end;
 			if not self.State.tint_r_focused then
-				self.GUI.TintOption.RInput.TextBox.Text = mesh_tint_r and _round( mesh_tint_r * 255, 0 ) or "*";
+				self.GUI.TintOption.RInput.TextBox.Text = mesh_tint_r and Support.Round(mesh_tint_r * 255, 0) or "*";
 			end;
 			if not self.State.tint_g_focused then
-				self.GUI.TintOption.GInput.TextBox.Text = mesh_tint_g and _round( mesh_tint_g * 255, 0 ) or "*";
+				self.GUI.TintOption.GInput.TextBox.Text = mesh_tint_g and Support.Round(mesh_tint_g * 255, 0) or "*";
 			end;
 			if not self.State.tint_b_focused then
-				self.GUI.TintOption.BInput.TextBox.Text = mesh_tint_b and _round( mesh_tint_b * 255, 0 ) or "*";
+				self.GUI.TintOption.BInput.TextBox.Text = mesh_tint_b and Support.Round(mesh_tint_b * 255, 0) or "*";
 			end;
 
 		-- If there are no meshes
@@ -491,14 +491,14 @@ Tools.Mesh.showGUI = function ( self )
 				if #args == 3 then
 					local meshes = {};
 					for _, Item in pairs( Selection.Items ) do
-						local Mesh = _getChildOfClass( Item, "SpecialMesh" );
+						local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
 						if Mesh then
 							table.insert( meshes, Mesh );
 						end;
 					end;
 					self:startHistoryRecord( meshes );
 					for _, Mesh in pairs( meshes ) do
-						Mesh.VertexColor = Vector3.new( _HSVToRGB( ... ) );
+						Mesh.VertexColor = Vector3.new(Support.HSVToRGB(...));
 					end;
 					self:finishHistoryRecord();
 				end;
@@ -537,7 +537,7 @@ Tools.Mesh.addMesh = function ( self )
 	local meshes = {};
 	local mesh_parents = {};
 	for _, Item in pairs( Selection.Items ) do
-		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
+		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
 		if not Mesh then
 			local Mesh = RbxUtility.Create "SpecialMesh" {
 				Parent = Item;
@@ -577,7 +577,7 @@ Tools.Mesh.removeMesh = function ( self )
 	local mesh_parents = {};
 	-- Remove meshes from all the selected items
 	for _, Item in pairs( Selection.Items ) do
-		local meshes_found = _getChildrenOfClass( Item, "SpecialMesh" );
+		local meshes_found = Support.GetChildrenOfClass(Item, "SpecialMesh");
 		for _, Mesh in pairs( meshes_found ) do
 			table.insert( meshes, Mesh );
 			mesh_parents[Mesh] = Mesh.Parent;
@@ -599,7 +599,7 @@ Tools.Mesh.startHistoryRecord = function ( self, meshes )
 
 	-- Create a history record
 	self.State.HistoryRecord = {
-		targets = _cloneTable( meshes );
+		targets = Support.CloneTable(meshes);
 		initial_type = {};
 		terminal_type = {};
 		initial_mesh = {};
@@ -674,7 +674,7 @@ Tools.Mesh.changeMesh = function ( self, MeshID )
 	local meshes = {};
 
 	for _, Item in pairs( Selection.Items ) do
-		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
+		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
 		if Mesh then
 			table.insert( meshes, Mesh );
 		end;
@@ -727,7 +727,7 @@ Tools.Mesh.changeTexture = function ( self, texture_id )
 	local meshes = {};
 
 	for _, Item in pairs( Selection.Items ) do
-		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
+		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
 		if Mesh then
 			table.insert( meshes, Mesh );
 		end;
@@ -755,7 +755,7 @@ Tools.Mesh.changeScale = function ( self, component, new_value )
 	local meshes = {};
 
 	for _, Item in pairs( Selection.Items ) do
-		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
+		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
 		if Mesh then
 			table.insert( meshes, Mesh );
 		end;
@@ -778,7 +778,7 @@ Tools.Mesh.changeTint = function ( self, component, new_value )
 	local meshes = {};
 
 	for _, Item in pairs( Selection.Items ) do
-		local Mesh = _getChildOfClass( Item, "SpecialMesh" );
+		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
 		if Mesh then
 			table.insert( meshes, Mesh );
 		end;

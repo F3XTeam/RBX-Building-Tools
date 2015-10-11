@@ -12,104 +12,8 @@ Services = {
 local HttpService		= Game:GetService 'HttpService';
 local ExportInterface	= script.Parent;
 
-
-----------------------
--- Helper functions
-----------------------
-
-function _splitString( str, delimiter )
-	-- Returns a table of string `str` split by pattern `delimiter`
-
-	local parts = {};
-	local pattern = ( "([^%s]+)" ):format( delimiter );
-
-	str:gsub( pattern, function ( part )
-		table.insert( parts, part );
-	end );
-
-	return parts;
-end;
-
-function _getAllDescendants( Parent )
-	-- Recursively gets all the descendants of  `Parent` and returns them
-
-	local descendants = {};
-
-	for _, Child in pairs( Parent:GetChildren() ) do
-
-		-- Add the direct descendants of `Parent`
-		table.insert( descendants, Child );
-
-		-- Add the descendants of each child
-		for _, Subchild in pairs( _getAllDescendants( Child ) ) do
-			table.insert( descendants, Subchild );
-		end;
-
-	end;
-
-	return descendants;
-
-end;
-
-function _findTableOccurrences( haystack, needle )
-	-- Returns the positions of instances of `needle` in table `haystack`
-	local positions = {};
-
-	-- Add any indexes from `haystack` that have `needle`
-	for index, value in pairs( haystack ) do
-		if value == needle then
-			table.insert( positions, index );
-		end;
-	end;
-
-	return positions;
-end;
-
-function _getChildOfClass( Parent, class_name, inherit )
-	-- Returns the first child of `Parent` that is of class `class_name`
-	-- or nil if it couldn't find any
-
-	-- Look for a child of `Parent` of class `class_name` and return it
-	if not inherit then
-		for _, Child in pairs( Parent:GetChildren() ) do
-			if Child.ClassName == class_name then
-				return Child;
-			end;
-		end;
-	else
-		for _, Child in pairs( Parent:GetChildren() ) do
-			if Child:IsA( class_name ) then
-				return Child;
-			end;
-		end;
-	end;
-
-	return nil;
-
-end;
-
-function _getChildrenOfClass( Parent, class_name, inherit )
-	-- Returns a table containing the children of `Parent` that are
-	-- of class `class_name`
-	local matches = {};
-
-
-	if not inherit then
-		for _, Child in pairs( Parent:GetChildren() ) do
-			if Child.ClassName == class_name then
-				table.insert( matches, Child );
-			end;
-		end;
-	else
-		for _, Child in pairs( Parent:GetChildren() ) do
-			if Child:IsA( class_name ) then
-				table.insert( matches, Child );
-			end;
-		end;
-	end;
-
-	return matches;
-end;
+local Tool = script.Parent.Parent;
+local Support = require(Tool:WaitForChild 'SupportLibrary');
 
 
 --------------------
@@ -138,11 +42,11 @@ function _generateSerializationID()
 end;
 
 function _splitNumberListString( str )
-	-- Returns the contents of _splitString( str, ", " ), except
+	-- Returns the contents of SplitString( str, ", " ), except
 	-- each value in the table is turned into a number
 
 	-- Get the number strings
-	local numbers = _splitString( str, ", " );
+	local numbers = Support.SplitString( str, ", " );
 
 	-- Turn them into numbers
 	for number_index, number in pairs( numbers ) do
@@ -240,9 +144,9 @@ function _serializeParts( parts )
 	local welds = {};
 	for object_id, Object in pairs( objects ) do
 		if Object:IsA( "BasePart" ) then
-			for _, Joint in pairs( _getAllDescendants( Services.Workspace ) ) do
+			for _, Joint in pairs( Support.GetAllDescendants( Services.Workspace ) ) do
 				if Joint:IsA( "Weld" ) and Joint.Name == "BTWeld" then
-					if Joint.Part0 == Object and #_findTableOccurrences( objects, Joint.Part1 ) > 0 then
+					if Joint.Part0 == Object and #Support.FindTableOccurrences( objects, Joint.Part1 ) > 0 then
 						table.insert( welds, Joint );
 					end;
 				end;
@@ -256,8 +160,8 @@ function _serializeParts( parts )
 		for _, Weld in pairs( welds ) do
 			local weld_id = _generateSerializationID();
 			local WeldData = {
-				_findTableOccurrences( objects, Weld.Part0 )[1],
-				_findTableOccurrences( objects, Weld.Part1 )[1],
+				Support.FindTableOccurrences( objects, Weld.Part0 )[1],
+				Support.FindTableOccurrences( objects, Weld.Part1 )[1],
 				_splitNumberListString( tostring( Weld.C1 ) )
 			};
 			data.welds[weld_id] = WeldData;
@@ -268,7 +172,7 @@ function _serializeParts( parts )
 	-- Get any meshes in the selection
 	local meshes = {};
 	for _, Part in pairs( parts ) do
-		local Mesh = _getChildOfClass( Part, "SpecialMesh" );
+		local Mesh = Support.GetChildOfClass( Part, "SpecialMesh" );
 		if Mesh then
 			table.insert( meshes, Mesh );
 		end;
@@ -280,7 +184,7 @@ function _serializeParts( parts )
 		for _, Mesh in pairs( meshes ) do
 			local mesh_id = _generateSerializationID();
 			local MeshData = {
-				_findTableOccurrences( objects, Mesh.Parent )[1],
+				Support.FindTableOccurrences( objects, Mesh.Parent )[1],
 				Mesh.MeshType.Value,
 				_splitNumberListString( tostring( Mesh.Scale ) ),
 				Mesh.MeshId,
@@ -295,11 +199,11 @@ function _serializeParts( parts )
 	-- Get any textures in the selection
 	local textures = {};
 	for _, Part in pairs( parts ) do
-		local textures_found = _getChildrenOfClass( Part, "Texture" );
+		local textures_found = Support.GetChildrenOfClass( Part, "Texture" );
 		for _, Texture in pairs( textures_found ) do
 			table.insert( textures, Texture );
 		end;
-		local decals_found = _getChildrenOfClass( Part, "Decal" );
+		local decals_found = Support.GetChildrenOfClass( Part, "Decal" );
 		for _, Decal in pairs( decals_found ) do
 			table.insert( textures, Decal );
 		end;
@@ -317,7 +221,7 @@ function _serializeParts( parts )
 			end;
 			local texture_id = _generateSerializationID();
 			local TextureData = {
-				_findTableOccurrences( objects, Texture.Parent )[1],
+				Support.FindTableOccurrences( objects, Texture.Parent )[1],
 				texture_type,
 				Texture.Face.Value,
 				Texture.Texture,
@@ -333,7 +237,7 @@ function _serializeParts( parts )
 	-- Get any lights in the selection
 	local lights = {};
 	for _, Part in pairs( parts ) do
-		local lights_found = _getChildrenOfClass( Part, "Light", true );
+		local lights_found = Support.GetChildrenOfClass( Part, "Light", true );
 		for _, Light in pairs( lights_found ) do
 			table.insert( lights, Light );
 		end;
@@ -351,7 +255,7 @@ function _serializeParts( parts )
 			end;
 			local light_id = _generateSerializationID();
 			local LightData = {
-				_findTableOccurrences( objects, Light.Parent )[1];
+				Support.FindTableOccurrences( objects, Light.Parent )[1];
 				light_type,
 				_splitNumberListString( tostring( Light.Color ) ),
 				Light.Brightness,
@@ -368,9 +272,9 @@ function _serializeParts( parts )
 	-- Get any decorations in the selection
 	local decorations = {};
 	for _, Part in pairs( parts ) do
-		table.insert( decorations, _getChildOfClass( Part, 'Smoke' ) )
-		table.insert( decorations, _getChildOfClass( Part, 'Fire' ) );
-		table.insert( decorations, _getChildOfClass( Part, 'Sparkles' ) );
+		table.insert( decorations, Support.GetChildOfClass( Part, 'Smoke' ) )
+		table.insert( decorations, Support.GetChildOfClass( Part, 'Fire' ) );
+		table.insert( decorations, Support.GetChildOfClass( Part, 'Sparkles' ) );
 	end;
 
 	-- Serialize any decorations
@@ -387,7 +291,7 @@ function _serializeParts( parts )
 			end;
 			local decoration_id = _generateSerializationID();
 			local DecorationData = {
-				_findTableOccurrences( objects, Decoration.Parent )[1],
+				Support.FindTableOccurrences( objects, Decoration.Parent )[1],
 				decoration_type
 			};
 			if decoration_type == 1 then

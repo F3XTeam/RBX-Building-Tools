@@ -78,7 +78,7 @@ Tools.Weld.Listeners.Button2Down = function ()
 	-- in determining whether a surface was being
 	-- selected or the camera was being rotated
 	-- with the right mouse button)
-	local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
+	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 end;
@@ -87,7 +87,7 @@ Tools.Weld.Listeners.Button2Up = function ()
 
 	local self = Tools.Weld;
 
-	local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
+	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 	local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 	-- If a part is selected
@@ -188,7 +188,7 @@ Tools.Weld.breakWelds = function ( self )
 
 	-- Break any welds we created for each item in the selection
 	local welds = {};
-	local all_objects = _getAllDescendants( Game.Workspace );
+	local all_objects = Support.GetAllDescendants(Game.Workspace);
 	for _, Weld in pairs( all_objects ) do
 		if Weld:IsA( "Weld" ) and Weld.Name == "BTWeld" then
 			for _, Item in pairs( Selection.Items ) do

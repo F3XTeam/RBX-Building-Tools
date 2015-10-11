@@ -103,7 +103,7 @@ Tools.Move.Listeners.Equipped = function ()
 	function AddStaticItem(Item)
 		
 		-- Make sure the item isn't already in the list
-		if #_findTableOccurrences(self.State.StaticItems, Item) > 0 then
+		if #Support.FindTableOccurrences(self.State.StaticItems, Item) > 0 then
 			return;
 		end;
 
@@ -132,7 +132,7 @@ Tools.Move.Listeners.Equipped = function ()
 	function RemoveStaticItem(Item)
 
 		-- Remove `Item` from the list
-		local StaticItemIndex = _findTableOccurrences(self.State.StaticItems, Item)[1];
+		local StaticItemIndex = Support.FindTableOccurrences(self.State.StaticItems, Item)[1];
 		if StaticItemIndex then
 			self.State.StaticItems[StaticItemIndex] = nil;
 		end;
@@ -257,17 +257,17 @@ Tools.Move.updateGUI = function ( self )
 
 				-- Set the first values for the first item
 				if item_index == 1 then
-					position_x, position_y, position_z = _round( Item.Position.x, 2 ), _round( Item.Position.y, 2 ), _round( Item.Position.z, 2 );
+					position_x, position_y, position_z = Support.Round(Item.Position.x, 2), Support.Round(Item.Position.y, 2), Support.Round(Item.Position.z, 2);
 
 				-- Otherwise, compare them and set them to `nil` if they're not identical
 				else
-					if position_x ~= _round( Item.Position.x, 2 ) then
+					if position_x ~= Support.Round(Item.Position.x, 2) then
 						position_x = nil;
 					end;
-					if position_y ~= _round( Item.Position.y, 2 ) then
+					if position_y ~= Support.Round(Item.Position.y, 2) then
 						position_y = nil;
 					end;
-					if position_z ~= _round( Item.Position.z, 2 ) then
+					if position_z ~= Support.Round(Item.Position.z, 2) then
 						position_z = nil;
 					end;
 				end;
@@ -327,7 +327,7 @@ Tools.Move.startHistoryRecord = function ( self )
 
 	-- Create a history record
 	self.State.HistoryRecord = {
-		targets = _cloneTable( Selection.Items );
+		targets = Support.CloneTable(Selection.Items);
 		initial_positions = {};
 		terminal_positions = {};
 		unapply = function ( self )
@@ -392,7 +392,7 @@ Tools.Move.StartDragging = function ( self, Target )
 	self.Dragger:MouseDown( Target, Target.CFrame:toObjectSpace( CFrame.new( Mouse.Hit.p ) ).p, Selection.Items );
 
 	-- Release the dragger once the left mouse button is released
-	self.Connections.DraggerConnection = Services.UserInputService.InputEnded:connect( function ( InputData )
+	self.Connections.DraggerConnection = UserInputService.InputEnded:connect( function ( InputData )
 		if InputData.UserInputType == Enum.UserInputType.MouseButton1 then
 			self:FinishDragging();
 		end;
@@ -601,7 +601,7 @@ Tools.Move.showHandles = function ( self, Part )
 			end;
 
 			-- Return stuff to normal once the mouse button is released
-			self.Connections.HandleReleaseListener = Services.UserInputService.InputEnded:connect( function ( InputData )
+			self.Connections.HandleReleaseListener = UserInputService.InputEnded:connect( function ( InputData )
 
 				-- Make sure the left mouse button was released
 				if InputData.UserInputType ~= Enum.UserInputType.MouseButton1 then

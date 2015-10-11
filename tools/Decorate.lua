@@ -195,59 +195,59 @@ Tools.Decorate.updateGUI = function ( self )
 
 		-- Update the smoke GUI data
 		if not self.State.smoke_color_r_focused then
-			self.GUI.Smoke.Options.ColorOption.RInput.TextBox.Text = smoke_color_r and _round( smoke_color_r * 255, 0 ) or '*';
+			self.GUI.Smoke.Options.ColorOption.RInput.TextBox.Text = smoke_color_r and Support.Round(smoke_color_r * 255, 0) or '*';
 		end;
 		if not self.State.smoke_color_g_focused then
-			self.GUI.Smoke.Options.ColorOption.GInput.TextBox.Text = smoke_color_g and _round( smoke_color_g * 255, 0 ) or '*';
+			self.GUI.Smoke.Options.ColorOption.GInput.TextBox.Text = smoke_color_g and Support.Round(smoke_color_g * 255, 0) or '*';
 		end;
 		if not self.State.smoke_color_b_focused then
-			self.GUI.Smoke.Options.ColorOption.BInput.TextBox.Text = smoke_color_b and _round( smoke_color_b * 255, 0 ) or '*';
+			self.GUI.Smoke.Options.ColorOption.BInput.TextBox.Text = smoke_color_b and Support.Round(smoke_color_b * 255, 0) or '*';
 		end;
 		if not self.State.smoke_opacity_focused then
-			self.GUI.Smoke.Options.OpacityOption.Input.TextBox.Text = smoke_opacity and _round( smoke_opacity, 2 ) or '*';
+			self.GUI.Smoke.Options.OpacityOption.Input.TextBox.Text = smoke_opacity and Support.Round(smoke_opacity, 2) or '*';
 		end;
 		if not self.State.smoke_velocity_focused then
-			self.GUI.Smoke.Options.VelocityOption.Input.TextBox.Text = smoke_velocity and _round( smoke_velocity, 2 ) or '*';
+			self.GUI.Smoke.Options.VelocityOption.Input.TextBox.Text = smoke_velocity and Support.Round(smoke_velocity, 2) or '*';
 		end;
 		if not self.State.smoke_size_focused then
-			self.GUI.Smoke.Options.SizeOption.Input.TextBox.Text = smoke_size and _round( smoke_size, 2 ) or '*';
+			self.GUI.Smoke.Options.SizeOption.Input.TextBox.Text = smoke_size and Support.Round(smoke_size, 2) or '*';
 		end;
 
 		-- Update the fire GUI data
 		if not self.State.fire_color_r_focused then
-			self.GUI.Fire.Options.ColorOption.RInput.TextBox.Text = fire_color_r and _round( fire_color_r * 255, 0 ) or '*';
+			self.GUI.Fire.Options.ColorOption.RInput.TextBox.Text = fire_color_r and Support.Round(fire_color_r * 255, 0) or '*';
 		end;
 		if not self.State.fire_color_g_focused then
-			self.GUI.Fire.Options.ColorOption.GInput.TextBox.Text = fire_color_g and _round( fire_color_g * 255, 0 ) or '*';
+			self.GUI.Fire.Options.ColorOption.GInput.TextBox.Text = fire_color_g and Support.Round(fire_color_g * 255, 0) or '*';
 		end;
 		if not self.State.fire_color_b_focused then
-			self.GUI.Fire.Options.ColorOption.BInput.TextBox.Text = fire_color_b and _round( fire_color_b * 255, 0 ) or '*';
+			self.GUI.Fire.Options.ColorOption.BInput.TextBox.Text = fire_color_b and Support.Round(fire_color_b * 255, 0) or '*';
 		end;
 		if not self.State.fire_2nd_color_r_focused then
-			self.GUI.Fire.Options.SecondColorOption.RInput.TextBox.Text = fire_2nd_color_r and _round( fire_2nd_color_r * 255, 0 ) or '*';
+			self.GUI.Fire.Options.SecondColorOption.RInput.TextBox.Text = fire_2nd_color_r and Support.Round(fire_2nd_color_r * 255, 0) or '*';
 		end;
 		if not self.State.fire_2nd_color_g_focused then
-			self.GUI.Fire.Options.SecondColorOption.GInput.TextBox.Text = fire_2nd_color_g and _round( fire_2nd_color_g * 255, 0 ) or '*';
+			self.GUI.Fire.Options.SecondColorOption.GInput.TextBox.Text = fire_2nd_color_g and Support.Round(fire_2nd_color_g * 255, 0) or '*';
 		end;
 		if not self.State.fire_2nd_color_b_focused then
-			self.GUI.Fire.Options.SecondColorOption.BInput.TextBox.Text = fire_2nd_color_b and _round( fire_2nd_color_b * 255, 0 ) or '*';
+			self.GUI.Fire.Options.SecondColorOption.BInput.TextBox.Text = fire_2nd_color_b and Support.Round(fire_2nd_color_b * 255, 0) or '*';
 		end;
 		if not self.State.fire_heat_focused then
-			self.GUI.Fire.Options.HeatOption.Input.TextBox.Text = fire_heat and _round( fire_heat, 2 ) or '*';
+			self.GUI.Fire.Options.HeatOption.Input.TextBox.Text = fire_heat and Support.Round(fire_heat, 2) or '*';
 		end;
 		if not self.State.fire_size_focused then
-			self.GUI.Fire.Options.SizeOption.Input.TextBox.Text = fire_size and _round( fire_size, 2 ) or '*';
+			self.GUI.Fire.Options.SizeOption.Input.TextBox.Text = fire_size and Support.Round(fire_size, 2) or '*';
 		end;
 
 		-- Update the sparkles GUI data
 		if not self.State.sparkles_color_r_focused then
-			self.GUI.Sparkles.Options.ColorOption.RInput.TextBox.Text = sparkles_color_r and _round( sparkles_color_r * 255, 0 ) or '*';
+			self.GUI.Sparkles.Options.ColorOption.RInput.TextBox.Text = sparkles_color_r and Support.Round(sparkles_color_r * 255, 0) or '*';
 		end;
 		if not self.State.sparkles_color_g_focused then
-			self.GUI.Sparkles.Options.ColorOption.GInput.TextBox.Text = sparkles_color_g and _round( sparkles_color_g * 255, 0 ) or '*';
+			self.GUI.Sparkles.Options.ColorOption.GInput.TextBox.Text = sparkles_color_g and Support.Round(sparkles_color_g * 255, 0) or '*';
 		end;
 		if not self.State.sparkles_color_b_focused then
-			self.GUI.Sparkles.Options.ColorOption.BInput.TextBox.Text = sparkles_color_b and _round( sparkles_color_b * 255, 0 ) or '*';
+			self.GUI.Sparkles.Options.ColorOption.BInput.TextBox.Text = sparkles_color_b and Support.Round(sparkles_color_b * 255, 0) or '*';
 		end;
 
 		if self.GUI.SelectNote.Visible then
@@ -525,7 +525,7 @@ Tools.Decorate.showGUI = function ( self )
 				-- If a color was picked, change the smoke's color
 				-- to the selected color
 				if #args == 3 then
-					self:changeSmokeColor( _HSVToRGB( ... ) );
+					self:changeSmokeColor(Support.HSVToRGB(...));
 				end;
 			end, self.State.smoke_color );
 		end );
@@ -642,7 +642,7 @@ Tools.Decorate.showGUI = function ( self )
 				-- If a color was picked, change the fire's color
 				-- to the selected color
 				if #args == 3 then
-					self:changeFireColor( _HSVToRGB( ... ) );
+					self:changeFireColor(Support.HSVToRGB(...));
 				end;
 			end, self.State.fire_color );
 		end );
@@ -702,7 +702,7 @@ Tools.Decorate.showGUI = function ( self )
 				-- If a color was picked, change the fire's secondary color
 				-- to the selected color
 				if #args == 3 then
-					self:changeFireColor2( _HSVToRGB( ... ) );
+					self:changeFireColor2(Support.HSVToRGB(...));
 				end;
 			end, self.State.fire_2nd_color );
 		end );
@@ -801,7 +801,7 @@ Tools.Decorate.showGUI = function ( self )
 				-- If a color was picked, change the sparkles' color
 				-- to the selected color
 				if #args == 3 then
-					self:changeSparklesColor( _HSVToRGB( ... ) );
+					self:changeSparklesColor(Support.HSVToRGB(...));
 				end;
 			end, self.State.sparkles_color );
 		end );
@@ -880,7 +880,7 @@ Tools.Decorate.getSmoke = function ( self )
 	local smoke = {};
 
 	for _, Item in pairs( Selection.Items ) do
-		local Smoke = _getChildOfClass( Item, 'Smoke' );
+		local Smoke = Support.GetChildOfClass(Item, 'Smoke');
 		if Smoke then
 			table.insert( smoke, Smoke );
 		end;
@@ -896,7 +896,7 @@ Tools.Decorate.getFire = function ( self )
 	local fire = {};
 
 	for _, Item in pairs( Selection.Items ) do
-		local Fire = _getChildOfClass( Item, 'Fire' );
+		local Fire = Support.GetChildOfClass(Item, 'Fire');
 		if Fire then
 			table.insert( fire, Fire );
 		end;
@@ -912,7 +912,7 @@ Tools.Decorate.getSparkles = function ( self )
 	local sparkles = {};
 
 	for _, Item in pairs( Selection.Items ) do
-		local Sparkles = _getChildOfClass( Item, 'Sparkles' );
+		local Sparkles = Support.GetChildOfClass(Item, 'Sparkles');
 		if Sparkles then
 			table.insert( sparkles, Sparkles );
 		end;
@@ -1074,7 +1074,7 @@ Tools.Decorate.addSmoke = function ( self )
 	local smoke = {};
 	local smoke_parents = {};
 	for _, Item in pairs( Selection.Items ) do
-		local Smoke = _getChildOfClass( Item, 'Smoke' );
+		local Smoke = Support.GetChildOfClass(Item, 'Smoke');
 		if not Smoke then
 			local Smoke = RbxUtility.Create( 'Smoke' ) {
 				Parent = Item;
@@ -1148,7 +1148,7 @@ Tools.Decorate.addFire = function ( self )
 	local fire = {};
 	local fire_parents = {};
 	for _, Item in pairs( Selection.Items ) do
-		local Fire = _getChildOfClass( Item, 'Fire' );
+		local Fire = Support.GetChildOfClass(Item, 'Fire');
 		if not Fire then
 			local Fire = RbxUtility.Create( 'Fire' ) {
 				Parent = Item;
@@ -1222,7 +1222,7 @@ Tools.Decorate.addSparkles = function ( self )
 	local sparkles = {};
 	local sparkles_parents = {};
 	for _, Item in pairs( Selection.Items ) do
-		local Sparkles = _getChildOfClass( Item, 'Sparkles' );
+		local Sparkles = Support.GetChildOfClass(Item, 'Sparkles');
 		if not Sparkles then
 			local Sparkles = RbxUtility.Create( 'Sparkles' ) {
 				Parent = Item;
@@ -1281,7 +1281,7 @@ Tools.Decorate.startHistoryRecord = function ( self, decorations )
 
 	-- Create a history record
 	self.State.HistoryRecord = {
-		targets = _cloneTable( decorations );
+		targets = Support.CloneTable(decorations);
 		initial_color = {};			terminal_color = {};
 		initial_2nd_color = {};		terminal_2nd_color = {};
 		initial_opacity = {};		terminal_opacity = {};

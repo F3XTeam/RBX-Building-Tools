@@ -98,7 +98,7 @@ Tools.Lighting.Listeners.Button2Down = function ()
 	-- in determining whether a surface was being
 	-- selected or the camera was being rotated
 	-- with the right mouse button)
-	local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
+	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 end;
@@ -107,7 +107,7 @@ Tools.Lighting.Listeners.Button2Up = function ()
 
 	local self = Tools.Lighting;
 
-	local cr_x, cr_y, cr_z = Services.Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
+	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
 	local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
 
 	-- If a surface is selected, change the side option
@@ -211,19 +211,19 @@ Tools.Lighting.updateGUI = function ( self )
 
 		-- Update the spotlight GUI data
 		if not self.State.sl_color_r_focused then
-			self.GUI.Spotlight.Options.ColorOption.RInput.TextBox.Text = sl_color_r and _round( sl_color_r * 255, 0 ) or '*';
+			self.GUI.Spotlight.Options.ColorOption.RInput.TextBox.Text = sl_color_r and Support.Round(sl_color_r * 255, 0) or '*';
 		end;
 		if not self.State.sl_color_g_focused then
-			self.GUI.Spotlight.Options.ColorOption.GInput.TextBox.Text = sl_color_g and _round( sl_color_g * 255, 0 ) or '*';
+			self.GUI.Spotlight.Options.ColorOption.GInput.TextBox.Text = sl_color_g and Support.Round(sl_color_g * 255, 0) or '*';
 		end;
 		if not self.State.sl_color_b_focused then
-			self.GUI.Spotlight.Options.ColorOption.BInput.TextBox.Text = sl_color_b and _round( sl_color_b * 255, 0 ) or '*';
+			self.GUI.Spotlight.Options.ColorOption.BInput.TextBox.Text = sl_color_b and Support.Round(sl_color_b * 255, 0) or '*';
 		end;
 		if not self.State.sl_brightness_focused then
-			self.GUI.Spotlight.Options.BrightnessOption.Input.TextBox.Text = sl_brightness and _round( sl_brightness, 2 ) or '*';
+			self.GUI.Spotlight.Options.BrightnessOption.Input.TextBox.Text = sl_brightness and Support.Round(sl_brightness, 2) or '*';
 		end;
 		if not self.State.sl_range_focused then
-			self.GUI.Spotlight.Options.RangeOption.Input.TextBox.Text = sl_range and _round( sl_range, 2 ) or '*';
+			self.GUI.Spotlight.Options.RangeOption.Input.TextBox.Text = sl_range and Support.Round(sl_range, 2) or '*';
 		end;
 		if sl_shadows == nil then
 			self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
@@ -242,25 +242,25 @@ Tools.Lighting.updateGUI = function ( self )
 			self.GUI.Spotlight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 0;
 		end;
 		if not self.State.sl_angle_focused then
-			self.GUI.Spotlight.Options.AngleOption.Input.TextBox.Text = sl_angle and _round( sl_angle, 2 ) or '*';
+			self.GUI.Spotlight.Options.AngleOption.Input.TextBox.Text = sl_angle and Support.Round(sl_angle, 2) or '*';
 		end;
 		self.SideDropdown:selectOption( sl_side and sl_side.Name:upper() or '*' );
 
 		-- Update the point light GUI info
 		if not self.State.pl_color_r_focused then
-			self.GUI.PointLight.Options.ColorOption.RInput.TextBox.Text = pl_color_r and _round( pl_color_r * 255, 0 ) or '*';
+			self.GUI.PointLight.Options.ColorOption.RInput.TextBox.Text = pl_color_r and Support.Round(pl_color_r * 255, 0) or '*';
 		end;
 		if not self.State.pl_color_g_focused then
-			self.GUI.PointLight.Options.ColorOption.GInput.TextBox.Text = pl_color_g and _round( pl_color_g * 255, 0 ) or '*';
+			self.GUI.PointLight.Options.ColorOption.GInput.TextBox.Text = pl_color_g and Support.Round(pl_color_g * 255, 0) or '*';
 		end;
 		if not self.State.pl_color_b_focused then
-			self.GUI.PointLight.Options.ColorOption.BInput.TextBox.Text = pl_color_b and _round( pl_color_b * 255, 0 ) or '*';
+			self.GUI.PointLight.Options.ColorOption.BInput.TextBox.Text = pl_color_b and Support.Round(pl_color_b * 255, 0) or '*';
 		end;
 		if not self.State.pl_brightness_focused then
-			self.GUI.PointLight.Options.BrightnessOption.Input.TextBox.Text = pl_brightness and _round( pl_brightness, 2 ) or '*';
+			self.GUI.PointLight.Options.BrightnessOption.Input.TextBox.Text = pl_brightness and Support.Round(pl_brightness, 2) or '*';
 		end;
 		if not self.State.pl_range_focused then
-			self.GUI.PointLight.Options.RangeOption.Input.TextBox.Text = pl_range and _round( pl_range, 2 ) or '*';
+			self.GUI.PointLight.Options.RangeOption.Input.TextBox.Text = pl_range and Support.Round(pl_range, 2) or '*';
 		end;
 		if pl_shadows == nil then
 			self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
@@ -506,7 +506,7 @@ Tools.Lighting.showGUI = function ( self )
 				-- If a color was picked, change the spotlights' color
 				-- to the selected color
 				if #args == 3 then
-					self:changeColor( 'spotlight', _HSVToRGB( ... ) );
+					self:changeColor('spotlight', Support.HSVToRGB(...));
 				end;
 			end, self.State.sl_color );
 		end );
@@ -627,7 +627,7 @@ Tools.Lighting.showGUI = function ( self )
 				-- If a color was picked, change the point lights' color
 				-- to the selected color
 				if #args == 3 then
-					self:changeColor( 'pointlight', _HSVToRGB( ... ) );
+					self:changeColor('pointlight', Support.HSVToRGB(...));
 				end;
 			end, self.State.pl_color );
 		end );
@@ -718,7 +718,7 @@ Tools.Lighting.getSpotlights = function ( self )
 	local spotlights = {};
 
 	for _, Item in pairs( Selection.Items ) do
-		local Spotlight = _getChildOfClass( Item, 'SpotLight' );
+		local Spotlight = Support.GetChildOfClass(Item, 'SpotLight');
 		if Spotlight then
 			table.insert( spotlights, Spotlight );
 		end;
@@ -734,7 +734,7 @@ Tools.Lighting.getPointLights = function ( self )
 	local pointlights = {};
 
 	for _, Item in pairs( Selection.Items ) do
-		local PointLight = _getChildOfClass( Item, 'PointLight' );
+		local PointLight = Support.GetChildOfClass(Item, 'PointLight');
 		if PointLight then
 			table.insert( pointlights, PointLight );
 		end;
@@ -866,7 +866,7 @@ Tools.Lighting.addLight = function ( self, light_type )
 	local lights = {};
 	local light_parents = {};
 	for _, Item in pairs( Selection.Items ) do
-		local Light = _getChildOfClass( Item, light_type );
+		local Light = Support.GetChildOfClass(Item, light_type);
 		if not Light then
 			local Light = RbxUtility.Create( light_type ) {
 				Parent = Item;
@@ -931,7 +931,7 @@ Tools.Lighting.startHistoryRecord = function ( self, lights )
 
 	-- Create a history record
 	self.State.HistoryRecord = {
-		targets = _cloneTable( lights );
+		targets = Support.CloneTable(lights);
 		initial_color = {};			terminal_color = {};
 		initial_brightness = {};	terminal_brightness = {};
 		initial_range = {};			terminal_range = {};

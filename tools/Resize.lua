@@ -222,7 +222,7 @@ Tools.Resize.startHistoryRecord = function ( self )
 
 	-- Create a history record
 	self.State.HistoryRecord = {
-		targets = _cloneTable( Selection.Items );
+		targets = Support.CloneTable(Selection.Items);
 		initial_positions = {};
 		terminal_positions = {};
 		initial_sizes = {};
@@ -316,17 +316,17 @@ Tools.Resize.updateGUI = function ( self )
 
 			-- Set the first values for the first item
 			if item_index == 1 then
-				size_x, size_y, size_z = _round( Item.Size.x, 2 ), _round( Item.Size.y, 2 ), _round( Item.Size.z, 2 );
+				size_x, size_y, size_z = Support.Round(Item.Size.x, 2), Support.Round(Item.Size.y, 2), Support.Round(Item.Size.z, 2);
 
 			-- Otherwise, compare them and set them to `nil` if they're not identical
 			else
-				if size_x ~= _round( Item.Size.x, 2 ) then
+				if size_x ~= Support.Round(Item.Size.x, 2) then
 					size_x = nil;
 				end;
-				if size_y ~= _round( Item.Size.y, 2 ) then
+				if size_y ~= Support.Round(Item.Size.y, 2) then
 					size_y = nil;
 				end;
-				if size_z ~= _round( Item.Size.z, 2 ) then
+				if size_z ~= Support.Round(Item.Size.z, 2) then
 					size_z = nil;
 				end;
 			end;

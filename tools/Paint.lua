@@ -67,7 +67,7 @@ Tools.Paint.startHistoryRecord = function ( self )
 
 	-- Create a history record
 	self.State.HistoryRecord = {
-		targets = _cloneTable( Selection.Items );
+		targets = Support.CloneTable(Selection.Items);
 		initial_colors = {};
 		terminal_colors = {};
 		unapply = function ( self )

@@ -70,7 +70,7 @@ Tools.Rotate.Listeners.Equipped = function ()
 	function AddStaticItem(Item)
 		
 		-- Make sure the item isn't already in the list
-		if #_findTableOccurrences(self.State.StaticItems, Item) > 0 then
+		if #Support.FindTableOccurrences(self.State.StaticItems, Item) > 0 then
 			return;
 		end;
 
@@ -99,7 +99,7 @@ Tools.Rotate.Listeners.Equipped = function ()
 	function RemoveStaticItem(Item)
 
 		-- Remove `Item` from the list
-		local StaticItemIndex = _findTableOccurrences(self.State.StaticItems, Item)[1];
+		local StaticItemIndex = Support.FindTableOccurrences(self.State.StaticItems, Item)[1];
 		if StaticItemIndex then
 			self.State.StaticItems[StaticItemIndex] = nil;
 		end;
@@ -325,7 +325,7 @@ Tools.Rotate.startHistoryRecord = function ( self )
 
 	-- Create a history record
 	self.State.HistoryRecord = {
-		targets = _cloneTable( Selection.Items );
+		targets = Support.CloneTable(Selection.Items);
 		initial_cframes = {};
 		terminal_cframes = {};
 		unapply = function ( self )
@@ -410,17 +410,17 @@ Tools.Rotate.updateGUI = function ( self )
 
 			-- Set the first values for the first item
 			if item_index == 1 then
-				rot_x, rot_y, rot_z = _round( math.deg( item_rot_x ), 2 ), _round( math.deg( item_rot_y ), 2 ), _round( math.deg( item_rot_z ), 2 );
+				rot_x, rot_y, rot_z = Support.Round(math.deg(item_rot_x), 2), Support.Round(math.deg(item_rot_y), 2), Support.Round(math.deg(item_rot_z), 2);
 
 			-- Otherwise, compare them and set them to `nil` if they're not identical
 			else
-				if rot_x ~= _round( math.deg( item_rot_x ), 2 ) then
+				if rot_x ~= Support.Round(math.deg(item_rot_x), 2) then
 					rot_x = nil;
 				end;
-				if rot_y ~= _round( math.deg( item_rot_y ), 2 ) then
+				if rot_y ~= Support.Round(math.deg(item_rot_y), 2) then
 					rot_y = nil;
 				end;
-				if rot_z ~= _round( math.deg( item_rot_z ), 2 ) then
+				if rot_z ~= Support.Round(math.deg(item_rot_z), 2) then
 					rot_z = nil;
 				end;
 			end;

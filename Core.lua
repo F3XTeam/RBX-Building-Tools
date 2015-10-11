@@ -1,22 +1,20 @@
 ------------------------------------------
 -- Create references to important objects
 ------------------------------------------
-Services = {
-	Workspace				= Game:GetService 'Workspace';
-	Players					= Game:GetService 'Players';
-	Debris					= Game:GetService 'Debris';
-	MarketplaceService		= Game:GetService 'MarketplaceService';
-	ContentProvider			= Game:GetService 'ContentProvider';
-	SoundService			= Game:GetService 'SoundService';
-	UserInputService		= Game:GetService 'UserInputService';
-	TestService				= Game:GetService 'TestService';
-	Selection				= Game:GetService 'Selection';
-	CoreGui					= Game:GetService 'CoreGui';
-	HttpService				= Game:GetService 'HttpService';
-	ChangeHistoryService	= Game:GetService 'ChangeHistoryService';
-	JointsService			= Game.JointsService;
-};
 
+-- Reference services
+Workspace				= Game:GetService 'Workspace';
+Players					= Game:GetService 'Players';
+MarketplaceService		= Game:GetService 'MarketplaceService';
+ContentProvider			= Game:GetService 'ContentProvider';
+SoundService			= Game:GetService 'SoundService';
+UserInputService		= Game:GetService 'UserInputService';
+SelectionService		= Game:GetService 'Selection';
+CoreGui					= Game:GetService 'CoreGui';
+HttpService				= Game:GetService 'HttpService';
+ChangeHistoryService	= Game:GetService 'ChangeHistoryService';
+
+-- Reference external assets
 Assets = {
 	DarkSlantedRectangle	= 'http://www.roblox.com/asset/?id=127774197';
 	LightSlantedRectangle	= 'http://www.roblox.com/asset/?id=127772502';
@@ -43,13 +41,13 @@ Assets = {
 ToolAssetID = 142785488;
 
 Tool = script.Parent;
-Player = Services.Players.LocalPlayer;
+Player = Players.LocalPlayer;
 Mouse = nil;
 
 -- Set tool or plugin-specific references
 if plugin then
 	ToolType		= 'plugin';
-	GUIContainer	= Services.CoreGui;
+	GUIContainer	= CoreGui;
 
 	-- Create the toolbar button
 	ToolbarButton = plugin:CreateToolbar( 'Building Tools by F3X' ):CreateButton( '', 'Building Tools by F3X', Assets.PluginIcon );
@@ -59,15 +57,17 @@ elseif Tool:IsA 'Tool' then
 	GUIContainer	= Player:WaitForChild 'PlayerGui';
 end;
 
+
 ------------------------------------------
 -- Load external dependencies
 ------------------------------------------
 
 RbxUtility = LoadLibrary 'RbxUtility';
+Support = require(Tool:WaitForChild 'SupportLibrary');
 
 -- Preload external assets
 for ResourceName, ResourceUrl in pairs( Assets ) do
-	Services.ContentProvider:Preload( ResourceUrl );
+	ContentProvider:Preload( ResourceUrl );
 end;
 
 repeat wait( 0 ) until _G.gloo;
@@ -76,315 +76,6 @@ Gloo = _G.gloo;
 Tool:WaitForChild 'HttpInterface';
 Tool:WaitForChild 'Interfaces';
 
-------------------------------------------
--- Define functions that are depended-upon
-------------------------------------------
-function _findTableOccurrences( haystack, needle )
-	-- Returns the positions of instances of `needle` in table `haystack`
-	local positions = {};
-
-	-- Add any indexes from `haystack` that have `needle`
-	for index, value in pairs( haystack ) do
-		if value == needle then
-			table.insert( positions, index );
-		end;
-	end;
-
-	return positions;
-end;
-
-function _round( number, places )
-	-- Returns `number` rounded to the number of decimal `places`
-	-- (from lua-users)
-
-	local mult = 10 ^ ( places or 0 );
-
-	return math.floor( number * mult + 0.5 ) / mult;
-
-end
-
-function _cloneTable( source )
-	-- Returns a deep copy of table `source`
-
-	-- Get a copy of `source`'s metatable, since the hacky method
-	-- we're using to copy the table doesn't include its metatable
-	local source_mt = getmetatable( source );
-
-	-- Return a copy of `source` including its metatable
-	return setmetatable( { unpack( source ) }, source_mt );
-end;
-
-function _getAllDescendants( Parent )
-	-- Recursively gets all the descendants of  `Parent` and returns them
-
-	local descendants = {};
-
-	for _, Child in pairs( Parent:GetChildren() ) do
-
-		-- Add the direct descendants of `Parent`
-		table.insert( descendants, Child );
-
-		-- Add the descendants of each child
-		for _, Subchild in pairs( _getAllDescendants( Child ) ) do
-			table.insert( descendants, Subchild );
-		end;
-
-	end;
-
-	return descendants;
-
-end;
-
-function _pointToScreenSpace( Point )
-	-- Returns Vector3 `Point`'s position on the screen when rendered
-	-- (kudos to stravant for this)
-
-	local point = Services.Workspace.CurrentCamera.CoordinateFrame:pointToObjectSpace( Point );
-	local aspectRatio = Mouse.ViewSizeX / Mouse.ViewSizeY;
-	local hfactor = math.tan( math.rad( Services.Workspace.CurrentCamera.FieldOfView ) / 2 )
-	local wfactor = aspectRatio * hfactor;
-
-	local x = ( point.x / point.z ) / -wfactor;
-	local y = ( point.y / point.z ) /  hfactor;
-
-	local screen_pos = Vector2.new( Mouse.ViewSizeX * ( 0.5 + 0.5 * x ), Mouse.ViewSizeY * ( 0.5 + 0.5 * y ) );
-	if ( screen_pos.x < 0 or screen_pos.x > Mouse.ViewSizeX ) or ( screen_pos.y < 0 or screen_pos.y > Mouse.ViewSizeY ) then
-		return nil;
-	end;
-	if Services.Workspace.CurrentCamera.CoordinateFrame:toObjectSpace( CFrame.new( Point ) ).z > 0 then
-		return nil;
-	end;
-
-	return screen_pos;
-
-end;
-
-function _cloneParts( parts )
-	-- Returns a table of cloned `parts`
-
-	local new_parts = {};
-
-	-- Copy the parts into `new_parts`
-	for part_index, Part in pairs( parts ) do
-		new_parts[part_index] = Part:Clone();
-	end;
-
-	return new_parts;
-end;
-
-function _replaceParts( old_parts, new_parts )
-	-- Removes `old_parts` and inserts `new_parts`
-
-	-- Remove old parts
-	for _, OldPart in pairs( old_parts ) do
-		OldPart.Parent = nil;
-	end;
-
-	-- Insert `new_parts
-	for _, NewPart in pairs( new_parts ) do
-		NewPart.Parent = Services.Workspace;
-		NewPart:MakeJoints();
-	end;
-
-end;
-
-function _splitString( str, delimiter )
-	-- Returns a table of string `str` split by pattern `delimiter`
-
-	local parts = {};
-	local pattern = ( "([^%s]+)" ):format( delimiter );
-
-	str:gsub( pattern, function ( part )
-		table.insert( parts, part );
-	end );
-
-	return parts;
-end;
-
-function _getChildOfClass( Parent, class_name, inherit )
-	-- Returns the first child of `Parent` that is of class `class_name`
-	-- or nil if it couldn't find any
-
-	-- Look for a child of `Parent` of class `class_name` and return it
-	if not inherit then
-		for _, Child in pairs( Parent:GetChildren() ) do
-			if Child.ClassName == class_name then
-				return Child;
-			end;
-		end;
-	else
-		for _, Child in pairs( Parent:GetChildren() ) do
-			if Child:IsA( class_name ) then
-				return Child;
-			end;
-		end;
-	end;
-
-	return nil;
-
-end;
-
-function _getChildrenOfClass( Parent, class_name, inherit )
-	-- Returns a table containing the children of `Parent` that are
-	-- of class `class_name`
-	local matches = {};
-
-
-	if not inherit then
-		for _, Child in pairs( Parent:GetChildren() ) do
-			if Child.ClassName == class_name then
-				table.insert( matches, Child );
-			end;
-		end;
-	else
-		for _, Child in pairs( Parent:GetChildren() ) do
-			if Child:IsA( class_name ) then
-				table.insert( matches, Child );
-			end;
-		end;
-	end;
-
-	return matches;
-end;
-
-function _HSVToRGB( hue, saturation, value )
-	-- Returns the RGB equivalent of the given HSV-defined color
-	-- (adapted from some code found around the web)
-
-	-- If it's achromatic, just return the value
-	if saturation == 0 then
-		return value;
-	end;
-
-	-- Get the hue sector
-	local hue_sector = math.floor( hue / 60 );
-	local hue_sector_offset = ( hue / 60 ) - hue_sector;
-
-	local p = value * ( 1 - saturation );
-	local q = value * ( 1 - saturation * hue_sector_offset );
-	local t = value * ( 1 - saturation * ( 1 - hue_sector_offset ) );
-
-	if hue_sector == 0 then
-		return value, t, p;
-	elseif hue_sector == 1 then
-		return q, value, p;
-	elseif hue_sector == 2 then
-		return p, value, t;
-	elseif hue_sector == 3 then
-		return p, q, value;
-	elseif hue_sector == 4 then
-		return t, p, value;
-	elseif hue_sector == 5 then
-		return value, p, q;
-	end;
-end;
-
-function _RGBToHSV( red, green, blue )
-	-- Returns the HSV equivalent of the given RGB-defined color
-	-- (adapted from some code found around the web)
-
-	local hue, saturation, value;
-
-	local min_value = math.min( red, green, blue );
-	local max_value = math.max( red, green, blue );
-
-	value = max_value;
-
-	local value_delta = max_value - min_value;
-
-	-- If the color is not black
-	if max_value ~= 0 then
-		saturation = value_delta / max_value;
-
-	-- If the color is purely black
-	else
-		saturation = 0;
-		hue = -1;
-		return hue, saturation, value;
-	end;
-
-	if red == max_value then
-		hue = ( green - blue ) / value_delta;
-	elseif green == max_value then
-		hue = 2 + ( blue - red ) / value_delta;
-	else
-		hue = 4 + ( red - green ) / value_delta;
-	end;
-
-	hue = hue * 60;
-	if hue < 0 then
-		hue = hue + 360;
-	end;
-
-	return hue, saturation, value;
-end;
-
-function _IdentifyCommonItem(Items)
-	-- Returns the common item in table `Items`, or `nil` if
-	-- they vary
-
-	local CommonItem = nil;
-
-	for ItemIndex, Item in pairs(Items) do
-
-		-- Set the initial item to compare against
-		if ItemIndex == 1 then
-			CommonItem = Item;
-
-		-- Check if this item is the same as the rest
-		else
-			-- If it isn't the same, there is no common item, so just stop right here
-			if Item ~= CommonItem then
-				return nil;
-			end;
-		end;
-
-	end;
-
-	-- Return the common item
-	return CommonItem;
-end;
-
-function CreateSignal()
-	-- Returns a ROBLOX-like signal for connections (RbxUtility's is buggy)
-
-	local Signal = {
-		Connections	= {};
-
-		Connect = function ( Signal, Handler )
-			table.insert( Signal.Connections, Handler );
-
-			local ConnectionController = {
-				Handler = Handler;
-				Disconnect = function ( Connection )
-					local ConnectionSearch = _findTableOccurrences( Signal.Connections, Connection.Handler );
-					if #ConnectionSearch > 0 then
-						local ConnectionIndex = ConnectionSearch[1];
-						table.remove( Signal.Connections, ConnectionIndex );
-					end;
-				end;
-			};
-
-			-- Add compatibility aliases
-			ConnectionController.disconnect = ConnectionController.Disconnect;
-
-			return ConnectionController;
-		end;
-
-		Fire = function ( Signal, ... )
-			for _, Connection in pairs( Signal.Connections ) do
-				Connection( ... );
-			end;
-		end;
-	};
-
-	-- Add compatibility aliases
-	Signal.connect	= Signal.Connect;
-	Signal.fire		= Signal.Fire;
-
-	return Signal;
-end;
-
 
 ------------------------------------------
 -- Prepare the UI
@@ -392,12 +83,14 @@ end;
 -- Wait for all parts of the base UI to fully replicate
 if ToolType == 'tool' then
 	local UIComponentCount = (Tool:WaitForChild 'UIComponentCount').Value;
-	repeat wait( 0.1 ) until #_getAllDescendants( Tool.Interfaces ) >= UIComponentCount;
+	repeat wait( 0.1 ) until #Support.GetAllDescendants(Tool.Interfaces) >= UIComponentCount;
 end;
+
 
 ------------------------------------------
 -- Create data containers
 ------------------------------------------
+
 ActiveKeys = {};
 
 CurrentTool = nil;
@@ -447,7 +140,7 @@ function cloneSelection()
 		-- Make a copy of every item in the selection and add it to table `item_copies`
 		for _, Item in pairs( Selection.Items ) do
 			local ItemCopy = Item:Clone();
-			ItemCopy.Parent = Services.Workspace;
+			ItemCopy.Parent = Workspace;
 			table.insert( item_copies, ItemCopy );
 		end;
 
@@ -470,7 +163,7 @@ function cloneSelection()
 				Selection:clear();
 				for _, Copy in pairs( self.copies ) do
 					if Copy then
-						Copy.Parent = Services.Workspace;
+						Copy.Parent = Workspace;
 						Copy:MakeJoints();
 						Selection:add( Copy );
 					end;
@@ -485,7 +178,7 @@ function cloneSelection()
 			Pitch = 1.5;
 			SoundId = Assets.ActionCompletionSound;
 			Volume = 1;
-			Parent = Player or Services.SoundService;
+			Parent = Player or SoundService;
 		};
 		Sound:Play();
 		Sound:Destroy();
@@ -511,7 +204,7 @@ function deleteSelection()
 		return;
 	end;
 
-	local selection_items = _cloneTable( Selection.Items );
+	local selection_items = Support.CloneTable(Selection.Items);
 
 	-- Create a history record
 	local HistoryRecord = {
@@ -557,7 +250,7 @@ function prismSelect()
 
 	-- Get all the parts in workspace
 	local workspace_parts = {};
-	local workspace_children = _getAllDescendants( Services.Workspace );
+	local workspace_children = Support.GetAllDescendants(Workspace);
 	for _, Child in pairs( workspace_children ) do
 		if Child:IsA( 'BasePart' ) and not Selection:find( Child ) then
 			table.insert( workspace_parts, Child );
@@ -583,7 +276,7 @@ function prismSelect()
 	end;
 
 	-- Delete the parts that were used to select the area
-	local selection_items = _cloneTable( Selection.Items );
+	local selection_items = Support.CloneTable(Selection.Items);
 	local selection_item_parents = {};
 	for _, Item in pairs( selection_items ) do
 		selection_item_parents[Item] = Item.Parent;
@@ -601,7 +294,7 @@ function prismSelect()
 	History:add( {
 		selection_parts = selection_items;
 		selection_part_parents = selection_item_parents;
-		new_selection = _cloneTable( Selection.Items );
+		new_selection = Support.CloneTable(Selection.Items);
 		apply = function ( self )
 			Selection:clear();
 			for _, Item in pairs( self.selection_parts ) do
@@ -637,7 +330,7 @@ end;
 function getToolName( tool )
 	-- Returns the name of `tool` as registered in `Tools`
 
-	local name_search = _findTableOccurrences( Tools, tool );
+	local name_search = Support.FindTableOccurrences(Tools, tool);
 	if #name_search > 0 then
 		return name_search[1];
 	end;
@@ -659,7 +352,7 @@ function IsVersionOutdated()
 	-- Returns whether this version of Building Tools is out of date
 
 	-- Check the most recent version number
-	local AssetInfo			= Services.MarketplaceService:GetProductInfo( ToolAssetID, Enum.InfoType.Asset );
+	local AssetInfo			= MarketplaceService:GetProductInfo( ToolAssetID, Enum.InfoType.Asset );
 	local VersionID 		= AssetInfo.Description:match( '%[Version: (.+)%]' );
 	local CurrentVersionID	= ( Tool:WaitForChild 'Version' ).Value;
 
@@ -679,7 +372,7 @@ HttpAvailable, HttpAvailabilityError = Tool.HttpInterface:WaitForChild('Test'):I
 -- Keep track of the latest HttpService availability status
 -- (which is only likely to change while in Studio, using the plugin)
 if ToolType == 'plugin' then
-	Services.HttpService.Changed:connect( function ()
+	HttpService.Changed:connect( function ()
 		HttpAvailable, HttpAvailabilityError = Tool.HttpInterface:WaitForChild('Test'):InvokeServer();
 	end );
 end;
@@ -839,7 +532,7 @@ UI = RbxUtility.Create "ScreenGui" {
 if ToolType == 'tool' then
 	UI.Parent = GUIContainer;
 elseif ToolType == 'plugin' then
-	UI.Parent = Services.CoreGui;
+	UI.Parent = CoreGui;
 end;
 
 Dragger = nil;
@@ -884,7 +577,7 @@ Selection = {
 		end;
 
 		-- Make sure `NewPart` isn't already in the selection
-		if #_findTableOccurrences( self.Items, NewPart ) > 0 then
+		if #Support.FindTableOccurrences(self.Items, NewPart) > 0 then
 			return false;
 		end;
 
@@ -958,7 +651,7 @@ Selection = {
 	["clear"] = function ( self )
 
 		-- Go through all the items in the selection and call `self.remove` on them
-		for _, Item in pairs( _cloneTable( self.Items ) ) do
+		for _, Item in pairs(Support.CloneTable(self.Items)) do
 			self:remove( Item, true );
 		end;
 
@@ -1105,11 +798,12 @@ end;
 -- Keep the Studio selection up-to-date (if applicable)
 if ToolType == 'plugin' then
 	Selection.Changed:connect( function ()
-		Services.Selection:Set( Selection.Items );
+		SelectionService:Set( Selection.Items );
 	end );
 end;
 
 Tools = {};
+
 
 ------------------------------------------
 -- Define other utilities needed by tools
@@ -1245,6 +939,7 @@ function createDropdown()
 
 end;
 
+
 ------------------------------------------
 -- Provide an interface to the 2D
 -- selection system
@@ -1294,7 +989,7 @@ Select2D = {
 		end );
 
 		-- Listen for when the selection ends (when the left mouse button is released)
-		self.Connections.SelectionEnd = Services.UserInputService.InputEnded:connect( function ( InputData )
+		self.Connections.SelectionEnd = UserInputService.InputEnded:connect( function ( InputData )
 			if InputData.UserInputType == Enum.UserInputType.MouseButton1 then
 				self:select();
 				self:finish();
@@ -1309,13 +1004,13 @@ Select2D = {
 			return;
 		end;
 
-		for _, Object in pairs( _getAllDescendants( Services.Workspace ) ) do
+		for _, Object in pairs(Support.GetAllDescendants(Workspace)) do
 
 			-- Make sure we can select this part
 			if isSelectable( Object ) then
 
 				-- Check if the part is rendered within the range of the selection area
-				local PartPosition = _pointToScreenSpace( Object.Position );
+				local PartPosition = Workspace.CurrentCamera:WorldToScreenPoint(Object.Position);
 				if PartPosition then
 					local left_check = PartPosition.x >= self.GUI.Rectangle.AbsolutePosition.x;
 					local right_check = PartPosition.x <= ( self.GUI.Rectangle.AbsolutePosition.x + self.GUI.Rectangle.AbsoluteSize.x );
@@ -1642,7 +1337,7 @@ History = {
 -- Link up to Studio's history system if this is the plugin
 if ToolType == 'plugin' then
 	History.Changed:connect(function ()
-		Services.ChangeHistoryService:SetWaypoint 'Building Tools by F3X';
+		ChangeHistoryService:SetWaypoint 'Building Tools by F3X';
 	end);
 end;
 
@@ -1685,7 +1380,7 @@ ColorPicker = {
 
 		-- Update the GUI
 		local start_color = start_color or Color3.new( 1, 0, 0 );
-		self:_changeColor( _RGBToHSV( start_color.r, start_color.g, start_color.b ) );
+		self:_changeColor(Support.RGBToHSV(start_color.r, start_color.g, start_color.b));
 
 		-- Add functionality to the GUI's interactive elements
 		table.insert( self.Connections, self.GUI.HueSaturation.MouseButton1Down:connect( function ( x, y )
@@ -1826,9 +1521,9 @@ ColorPicker = {
 		self.GUI.HueSaturation.Cursor.Position = UDim2.new( 0, 209 * self.hue / 360 - 8, 0, ( 1 - self.saturation ) * 200 - 8 );
 		self.GUI.Value.Cursor.Position = UDim2.new( 0, -2, 0, ( 1 - self.value ) * 200 - 8 );
 
-		local color = Color3.new( _HSVToRGB( self.hue, self.saturation, self.value ) );
+		local color = Color3.new(Support.HSVToRGB(self.hue, self.saturation, self.value));
 		self.GUI.ColorDisplay.BackgroundColor3 = color;
-		self.GUI.Value.ColorBG.BackgroundColor3 = Color3.new( _HSVToRGB( self.hue, self.saturation, 1 ) );
+		self.GUI.Value.ColorBG.BackgroundColor3 = Color3.new(Support.HSVToRGB(self.hue, self.saturation, 1));
 
 		self.GUI.HueOption.Bar.BackgroundColor3 = color;
 		self.GUI.SaturationOption.Bar.BackgroundColor3 = color;
@@ -1983,7 +1678,7 @@ IE = {
 				Pitch = 1.5;
 				SoundId = Assets.ActionCompletionSound;
 				Volume = 1;
-				Parent = Player or Services.SoundService;
+				Parent = Player or SoundService;
 			};
 			Sound:Play();
 			Sound:Destroy();
@@ -1993,6 +1688,7 @@ IE = {
 	end;
 
 };
+
 
 ------------------------------------------
 -- Prepare the dock UI
@@ -2212,6 +1908,7 @@ History.Changed:connect( function ()
 
 end );
 
+
 ------------------------------------------
 -- An interface for the group system
 ------------------------------------------
@@ -2224,15 +1921,15 @@ Groups = {
 	UI = Tool.Interfaces.BTGroupsGUI:Clone();
 
 	-- Provide an event to track new groups
-	GroupAdded = CreateSignal();
+	GroupAdded = Support.CreateSignal();
 
 	NewGroup = function ( Groups )
 		local Group = {
 			Name		= 'Group ' .. ( #Groups.Data + 1 );
 			Items		= {};
 			Ignoring	= false;
-			Changed		= CreateSignal();
-			Updated		= CreateSignal();
+			Changed		= Support.CreateSignal();
+			Updated		= Support.CreateSignal();
 
 			Rename = function ( Group, NewName )
 				Group.Name = NewName;
@@ -2246,7 +1943,7 @@ Groups = {
 
 			Update = function ( Group, NewItems )
 				-- Set the new items
-				Group.Items = _cloneTable( NewItems );
+				Group.Items = Support.CloneTable(NewItems);
 				Group.Updated:Fire();
 			end;
 
@@ -2273,7 +1970,7 @@ Groups = {
 
 		-- Check for any groups that ignore their parts and if `Part` is in any of them
 		for _, Group in pairs( Groups.Data ) do
-			if Group.Ignoring and #_findTableOccurrences( Group.Items, Part ) > 0 then
+			if Group.Ignoring and #Support.FindTableOccurrences(Group.Items, Part) > 0 then
 				return true;
 			end;
 		end;
@@ -2369,6 +2066,7 @@ Groups.GroupAdded:Connect( function ( Group )
 	end;
 end );
 
+
 ------------------------------------------
 -- Attach tool event listeners
 ------------------------------------------
@@ -2396,7 +2094,7 @@ function equipBT( CurrentMouse )
 
 	-- Update the internal selection if this is a plugin
 	if ToolType == 'plugin' then
-		for _, Item in pairs( Services.Selection:Get() ) do
+		for _, Item in pairs( SelectionService:Get() ) do
 			Selection:add( Item );
 		end;
 	end;
@@ -2542,7 +2240,7 @@ function equipBT( CurrentMouse )
 
 	end ) );
 
-	table.insert( Connections, Services.UserInputService.InputEnded:connect( function ( InputData )
+	table.insert( Connections, UserInputService.InputEnded:connect( function ( InputData )
 
 		if InputData.UserInputType == Enum.UserInputType.MouseButton1 then
 			clicking = false;
@@ -2697,6 +2395,7 @@ function unequipBT()
 
 end;
 
+
 ------------------------------------------
 -- Provide the platform's environment for
 -- other tool scripts to extend upon
@@ -2776,7 +2475,7 @@ end;
 	Selection:clear();
 
 	-- Select all the parts within `Model` (filtered by Selection:add)
-	local Descendants = _getAllDescendants(Model);
+	local Descendants = Support.GetAllDescendants(Model);
 	for _, Descendant in pairs(Descendants) do
 		Selection:add(Descendant);
 	end;
