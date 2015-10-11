@@ -2156,8 +2156,43 @@ function equipBT( CurrentMouse )
 			return;
 		end;
 
+		-- Show the groups GUI when shift + g is pressed
 		if key == "g" and ( ActiveKeys[47] or ActiveKeys[48] ) then
 			Groups:ToggleUI();
+			return;
+		end;
+
+		-- Select all parts within the parent of the focused part
+		-- when [ is pressed
+		if key == "[" then
+
+			-- Make sure we have a part that's focused
+			local FocusedPart = Selection.Last;
+			if not FocusedPart then
+				return;
+			end;
+
+			-- Make sure the part isn't a child of Workspace,
+			-- since that would cause us to select everything
+			if FocusedPart.Parent == Workspace then
+				return;
+			end;
+
+			-- Clear the selection (or not), depending on whether
+			-- it's part of a multiselection
+			if not (ActiveKeys[47] or ActiveKeys[48]) then
+				Selection:clear();
+			end;
+
+			-- Select all the parts within the parent of the focused part
+			local SearchField = Support.GetAllDescendants(FocusedPart.Parent);
+			for _, Item in pairs(SearchField) do
+				Selection:add(Item);
+			end;
+
+			-- Select the part itself
+			Selection:add(FocusedPart);
+
 			return;
 		end;
 
