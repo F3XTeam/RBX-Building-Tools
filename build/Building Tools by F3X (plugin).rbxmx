@@ -617,6 +617,7 @@ Selection = {
 			SelectionBoxes[NewPart].Name = "BTSelectionBox";
 			SelectionBoxes[NewPart].Color = SelectionBoxColor;
 			SelectionBoxes[NewPart].Adornee = NewPart;
+			SelectionBoxes[NewPart].LineThickness = 0.05;
 			SelectionBoxes[NewPart].Transparency = 0.5;
 		end;
 
