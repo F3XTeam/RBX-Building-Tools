@@ -277,4 +277,30 @@ function SupportLibrary.CreateSignal()
 	return Signal;
 end;
 
+function SupportLibrary.GetPartCorners(Part)
+	-- Returns a table of the given part's corners' CFrames
+
+	-- Make references to functions called a lot for efficiency
+	local Insert = table.insert;
+	local ToWorldSpace = CFrame.new().toWorldSpace;
+	local NewCFrame = CFrame.new;
+
+	-- Get info about the part
+	local PartCFrame = Part.CFrame;
+	local SizeX, SizeY, SizeZ = Part.Size.x / 2, Part.Size.y / 2, Part.Size.z / 2;
+
+	-- Get each corner
+	local Corners = {};
+	Insert(Corners, ToWorldSpace(PartCFrame, NewCFrame(SizeX, SizeY, SizeZ)));
+	Insert(Corners, ToWorldSpace(PartCFrame, NewCFrame(-SizeX, SizeY, SizeZ)));
+	Insert(Corners, ToWorldSpace(PartCFrame, NewCFrame(SizeX, -SizeY, SizeZ)));
+	Insert(Corners, ToWorldSpace(PartCFrame, NewCFrame(SizeX, SizeY, -SizeZ)));
+	Insert(Corners, ToWorldSpace(PartCFrame, NewCFrame(-SizeX, SizeY, -SizeZ)));
+	Insert(Corners, ToWorldSpace(PartCFrame, NewCFrame(-SizeX, -SizeY, SizeZ)));
+	Insert(Corners, ToWorldSpace(PartCFrame, NewCFrame(SizeX, -SizeY, -SizeZ)));
+	Insert(Corners, ToWorldSpace(PartCFrame, NewCFrame(-SizeX, -SizeY, -SizeZ)));
+
+	return Corners;
+end;
+
 return SupportLibrary;
