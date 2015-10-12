@@ -64,6 +64,7 @@ end;
 
 RbxUtility = LoadLibrary 'RbxUtility';
 Support = require(Tool:WaitForChild 'SupportLibrary');
+Security = require(Tool:WaitForChild 'SecurityModule');
 
 -- Preload external assets
 for ResourceName, ResourceUrl in pairs( Assets ) do
@@ -342,6 +343,11 @@ function isSelectable( Object )
 
 	if not Object or not Object.Parent or not Object:IsA( "BasePart" ) or Object.Locked or Selection:find( Object ) or Groups:IsPartIgnored( Object ) then
 		return false;
+	end;
+
+	-- If areas are enabled, check if the player can manipulate this part
+	if Security.AreAreasEnabled() then
+		return Security.IsPartAuthorizedForPlayer(Object, Player);
 	end;
 
 	-- If it passes all checks, return true
