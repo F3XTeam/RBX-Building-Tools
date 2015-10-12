@@ -5,6 +5,9 @@ Support = require(Tool.SupportLibrary);
 -- Initialize the security module
 Security = {};
 
+-- The distance above the area-defining part that counts as part of the area
+Security.AreaHeight = 500;
+
 -- Track the enabling of areas
 Security.Areas = Workspace:FindFirstChild('[Private Building Areas]');
 Workspace.ChildAdded:connect(function (Child)
@@ -263,8 +266,8 @@ function Security.GetPointArea(Point)
 		local Offset = Area.CFrame:toObjectSpace(Point);
 		local Extents = Area.Size / 2;
 
-		-- Check if the corner is within the XZ plane of the area, and within 500 above the area
-		if math.abs(Offset.x) <= Extents.x and Offset.y <= 500 and Offset.y >= Extents.y and math.abs(Offset.z) <= Extents.z then
+		-- Check if the corner is within the XZ plane of the area, and within the height of the area
+		if math.abs(Offset.x) <= Extents.x and Offset.y <= Security.AreaHeight and Offset.y >= Extents.y and math.abs(Offset.z) <= Extents.z then
 			return Area;
 		end;
 
