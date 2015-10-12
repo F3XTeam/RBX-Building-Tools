@@ -1,3 +1,8 @@
+-- Services
+MarketplaceService = Game:GetService 'MarketplaceService';
+HttpService = Game:GetService 'HttpService';
+Workspace = Game:GetService 'Workspace';
+
 -- References
 Tool = script.Parent;
 Support = require(Tool.SupportLibrary);
@@ -104,7 +109,7 @@ function Security.IsAreaAuthorizedForPlayer(Area, Player)
 		if GroupData and type(GroupData) == 'table' and GroupData.id and type(GroupData.id) == 'number' then
 
 			-- Check if the player is in the given group
-			local PlayerInGroup = Player:IsInGroup(GroupsData.id);
+			local PlayerInGroup = Player:IsInGroup(GroupData.id);
 			if PlayerInGroup then
 
 				-- If all the player needs is to be in the group, authorize them
@@ -181,20 +186,24 @@ function Security.IsAreaAuthorizedForPlayer(Area, Player)
 		if Player.MembershipType == Enum.MembershipType.None then
 			return true;
 		end;
-	elseif Permissions:FindFirstChild 'AnyBC' and Permissions.AnyBC.Value then
+	end;
+	if Permissions:FindFirstChild 'AnyBC' and Permissions.AnyBC.Value then
 		if Player.MembershipType ~= Enum.MembershipType.None then
 			return true;
 		end;
-	elseif Permissions:FindFirstChild 'BC' and Permissions.BC.Value then
-		if Player.MembershipType ~= Enum.MembershipType.BuildersClub then
+	end
+	if Permissions:FindFirstChild 'BC' and Permissions.BC.Value then
+		if Player.MembershipType == Enum.MembershipType.BuildersClub then
 			return true;
 		end;
-	elseif Permissions:FindFirstChild 'TBC' and Permissions.TBC.Value then
-		if Player.MembershipType ~= Enum.MembershipType.TurboBuildersClub then
+	end;
+	if Permissions:FindFirstChild 'TBC' and Permissions.TBC.Value then
+		if Player.MembershipType == Enum.MembershipType.TurboBuildersClub then
 			return true;
 		end;
-	elseif Permissions:FindFirstChild 'OBC' and Permissions.OBC.Value then
-		if Player.MembershipType ~= Enum.MembershipType.OutrageousBuildersClub then
+	end;
+	if Permissions:FindFirstChild 'OBC' and Permissions.OBC.Value then
+		if Player.MembershipType == Enum.MembershipType.OutrageousBuildersClub then
 			return true;
 		end;
 	end;
@@ -208,7 +217,7 @@ function Security.IsAreaAuthorizedForPlayer(Area, Player)
 
 	-- Grant access through a custom ModuleScript if it exists
 	if Permissions:FindFirstChild 'Custom' then
-		if require(Permissions.Custom)() then
+		if require(Permissions.Custom)(Player) then
 			return true;
 		end;
 	end;
