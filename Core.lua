@@ -976,7 +976,7 @@ Selection = {
 		-- Fire events
 		self.Changed:fire();
 
-	end;	
+	end;
 
 };
 
@@ -1025,7 +1025,7 @@ function calculateExtents(Items, StaticExtents, JustExtents)
 			table_insert(XPoints, Corner['x']);
 			table_insert(YPoints, Corner['y']);
 			table_insert(ZPoints, Corner['z']);
-			
+
 			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( -SizeX, SizeY, SizeZ ) );
 			table_insert(XPoints, Corner['x']);
 			table_insert(YPoints, Corner['y']);
@@ -1035,27 +1035,27 @@ function calculateExtents(Items, StaticExtents, JustExtents)
 			table_insert(XPoints, Corner['x']);
 			table_insert(YPoints, Corner['y']);
 			table_insert(ZPoints, Corner['z']);
-			
+
 			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( SizeX, SizeY, -SizeZ ) );
 			table_insert(XPoints, Corner['x']);
 			table_insert(YPoints, Corner['y']);
 			table_insert(ZPoints, Corner['z']);
-			
+
 			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( -SizeX, SizeY, -SizeZ ) );
 			table_insert(XPoints, Corner['x']);
 			table_insert(YPoints, Corner['y']);
 			table_insert(ZPoints, Corner['z']);
-			
+
 			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( -SizeX, -SizeY, SizeZ ) );
 			table_insert(XPoints, Corner['x']);
 			table_insert(YPoints, Corner['y']);
 			table_insert(ZPoints, Corner['z']);
-			
+
 			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( SizeX, -SizeY, -SizeZ ) );
 			table_insert(XPoints, Corner['x']);
 			table_insert(YPoints, Corner['y']);
 			table_insert(ZPoints, Corner['z']);
-			
+
 			Corner = cframe_toWorldSpace( PartCFrame, cframe_new( -SizeX, -SizeY, -SizeZ ) );
 			table_insert(XPoints, Corner['x']);
 			table_insert(YPoints, Corner['y']);
@@ -1079,7 +1079,7 @@ function calculateExtents(Items, StaticExtents, JustExtents)
 			Minimum = { x = MinX, y = MinY, z = MinZ };
 			Maximum = { x = MaxX, y = MaxY, z = MaxZ };
 		};
-	
+
 	else
 
 		-- Get the size between the extents
@@ -1652,7 +1652,7 @@ end;
 -- system
 ------------------------------------------
 ColorPicker = {
-	
+
 	-- Keep some state data
 	["enabled"] = false;
 	["callback"] = nil;
@@ -2458,45 +2458,16 @@ function equipBT( CurrentMouse )
 			return;
 		end;
 
-		-- Show the groups GUI when shift + g is pressed
 		if key == "g" and ( ActiveKeys[47] or ActiveKeys[48] ) then
 			Groups:ToggleUI();
 			return;
 		end;
 
-		-- Select all parts within the parent of the focused part
-		-- when [ is pressed
-		if key == "[" then
-
-			-- Make sure we have a part that's focused
-			local FocusedPart = Selection.Last;
-			if not FocusedPart then
-				return;
-			end;
-
-			-- Make sure the part isn't a child of Workspace,
-			-- since that would cause us to select everything
-			if FocusedPart.Parent == Services.Workspace then
-				return;
-			end;
-
-			-- Clear the selection (or not), depending on whether
-			-- it's part of a multiselection
-			if not (ActiveKeys[47] or ActiveKeys[48]) then
-				Selection:clear();
-			end;
-
-			-- Select all the parts within the parent of the focused part
-			local SearchField = _getAllDescendants(FocusedPart.Parent);
-			for _, Item in pairs(SearchField) do
-				Selection:add(Item);
-			end;
-
-			-- Select the part itself
-			Selection:add(FocusedPart);
-
+		if key == "h" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+			Dock.Visible = not Dock.Visible;
 			return;
 		end;
+
 
 		if key == "z" then
 			equipTool( Tools.Move );
