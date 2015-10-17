@@ -1054,14 +1054,14 @@ end;
 Tools.Decorate.addSmoke = function ( self )
 
 	local HistoryRecord = {
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Smoke in pairs( self.smoke ) do
 				Smoke.Parent = self.smoke_parents[Smoke];
 				Selection:add( Smoke.Parent );
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Smoke in pairs( self.smoke ) do
 				Selection:add( Smoke.Parent );
@@ -1087,21 +1087,21 @@ Tools.Decorate.addSmoke = function ( self )
 
 	HistoryRecord.smoke = smoke;
 	HistoryRecord.smoke_parents = smoke_parents;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
 Tools.Decorate.removeSmoke = function ( self )
 
 	local HistoryRecord = {
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Smoke in pairs( self.smoke ) do
 				Selection:add( Smoke.Parent );
 				Smoke.Parent = nil;
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Smoke in pairs( self.smoke ) do
 				Smoke.Parent = self.smoke_parents[Smoke];
@@ -1121,21 +1121,21 @@ Tools.Decorate.removeSmoke = function ( self )
 
 	HistoryRecord.smoke = smoke;
 	HistoryRecord.smoke_parents = smoke_parents;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
 Tools.Decorate.addFire = function ( self )
 
 	local HistoryRecord = {
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Fire in pairs( self.fire ) do
 				Fire.Parent = self.fire_parents[Fire];
 				Selection:add( Fire.Parent );
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Fire in pairs( self.fire ) do
 				Selection:add( Fire.Parent );
@@ -1161,21 +1161,21 @@ Tools.Decorate.addFire = function ( self )
 
 	HistoryRecord.fire = fire;
 	HistoryRecord.fire_parents = fire_parents;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
 Tools.Decorate.removeFire = function ( self )
 
 	local HistoryRecord = {
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Fire in pairs( self.fire ) do
 				Selection:add( Fire.Parent );
 				Fire.Parent = nil;
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Fire in pairs( self.fire ) do
 				Fire.Parent = self.fire_parents[Fire];
@@ -1195,21 +1195,21 @@ Tools.Decorate.removeFire = function ( self )
 
 	HistoryRecord.fire = fire;
 	HistoryRecord.fire_parents = fire_parents;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
 Tools.Decorate.addSparkles = function ( self )
 
 	local HistoryRecord = {
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Sparkles in pairs( self.sparkles ) do
 				Sparkles.Parent = self.sparkles_parents[Sparkles];
 				Selection:add( Sparkles.Parent );
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Sparkles in pairs( self.sparkles ) do
 				Selection:add( Sparkles.Parent );
@@ -1236,21 +1236,21 @@ Tools.Decorate.addSparkles = function ( self )
 
 	HistoryRecord.sparkles = sparkles;
 	HistoryRecord.sparkles_parents = sparkles_parents;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
 Tools.Decorate.removeSparkles = function ( self )
 
 	local HistoryRecord = {
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Sparkles in pairs( self.sparkles ) do
 				Selection:add( Sparkles.Parent );
 				Sparkles.Parent = nil;
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Sparkles in pairs( self.sparkles ) do
 				Sparkles.Parent = self.sparkles_parents[Sparkles];
@@ -1270,7 +1270,7 @@ Tools.Decorate.removeSparkles = function ( self )
 
 	HistoryRecord.sparkles = sparkles;
 	HistoryRecord.sparkles_parents = sparkles_parents;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
@@ -1289,7 +1289,7 @@ Tools.Decorate.startHistoryRecord = function ( self, decorations )
 		initial_velocity = {};		terminal_velocity = {};
 		initial_size = {};			terminal_size = {};
 		initial_heat = {};			terminal_heat = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -1311,7 +1311,7 @@ Tools.Decorate.startHistoryRecord = function ( self, decorations )
 				end;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -1379,7 +1379,7 @@ Tools.Decorate.finishHistoryRecord = function ( self )
 			end;
 		end;
 	end;
-	History:add( self.State.HistoryRecord );
+	History:Add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
 end;

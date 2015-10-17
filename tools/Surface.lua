@@ -161,7 +161,7 @@ Tools.Surface.startHistoryRecord = function ( self )
 		target_surface = self.Options.side;
 		initial_surfaces = {};
 		terminal_surfaces = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -173,7 +173,7 @@ Tools.Surface.startHistoryRecord = function ( self )
 				end;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -226,7 +226,7 @@ Tools.Surface.finishHistoryRecord = function ( self )
 		end;
 	end;
 
-	History:add( self.State.HistoryRecord );
+	History:Add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
 end;

@@ -846,14 +846,14 @@ end;
 Tools.Lighting.addLight = function ( self, light_type )
 
 	local HistoryRecord = {
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Light in pairs( self.lights ) do
 				Light.Parent = self.light_parents[Light];
 				Selection:add( Light.Parent );
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Light in pairs( self.lights ) do
 				Selection:add( Light.Parent );
@@ -879,21 +879,21 @@ Tools.Lighting.addLight = function ( self, light_type )
 
 	HistoryRecord.lights = lights;
 	HistoryRecord.light_parents = light_parents;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
 Tools.Lighting.removeLight = function ( self, light_type )
 
 	local HistoryRecord = {
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Light in pairs( self.lights ) do
 				Selection:add( Light.Parent );
 				Light.Parent = nil;
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Light in pairs( self.lights ) do
 				Light.Parent = self.light_parents[Light];
@@ -920,7 +920,7 @@ Tools.Lighting.removeLight = function ( self, light_type )
 
 	HistoryRecord.lights = lights;
 	HistoryRecord.light_parents = light_parents;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
@@ -940,7 +940,7 @@ Tools.Lighting.startHistoryRecord = function ( self, lights )
 		-- Spotlights only
 		initial_side = {};			terminal_side = {};
 		initial_angle = {};			terminal_angle = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -956,7 +956,7 @@ Tools.Lighting.startHistoryRecord = function ( self, lights )
 				end;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -1006,7 +1006,7 @@ Tools.Lighting.finishHistoryRecord = function ( self )
 			end;
 		end;
 	end;
-	History:add( self.State.HistoryRecord );
+	History:Add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
 end;

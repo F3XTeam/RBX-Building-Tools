@@ -121,20 +121,20 @@ Tools.NewPart.Listeners.Button1Down = function ()
 
 	local HistoryRecord = {
 		target = NewPart;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			if self.target then
 				self.target.Parent = Workspace;
 				Selection:add( self.target );
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			if self.target then
 				self.target.Parent = nil;
 			end;
 		end;
 	};
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 	-- Switch to the move tool and simulate clicking so
 	-- that the user could easily position their new part

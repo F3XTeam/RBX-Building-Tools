@@ -137,7 +137,7 @@ Tools.Material.startHistoryRecord = function ( self )
 		terminal_transparency = {};
 		initial_reflectance = {};
 		terminal_reflectance = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -148,7 +148,7 @@ Tools.Material.startHistoryRecord = function ( self )
 				end;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -183,7 +183,7 @@ Tools.Material.finishHistoryRecord = function ( self )
 			self.State.HistoryRecord.terminal_reflectance[Item] = Item.Reflectance;
 		end;
 	end;
-	History:add( self.State.HistoryRecord );
+	History:Add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
 end;

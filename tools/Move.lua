@@ -331,7 +331,7 @@ Tools.Move.startHistoryRecord = function ( self )
 		targets = Support.CloneTable(Selection.Items);
 		initial_positions = {};
 		terminal_positions = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -341,7 +341,7 @@ Tools.Move.startHistoryRecord = function ( self )
 				end;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -371,7 +371,7 @@ Tools.Move.finishHistoryRecord = function ( self )
 			self.State.HistoryRecord.terminal_positions[Item] = Item.CFrame;
 		end;
 	end;
-	History:add( self.State.HistoryRecord );
+	History:Add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
 end;

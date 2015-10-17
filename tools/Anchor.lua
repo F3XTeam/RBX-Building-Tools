@@ -123,7 +123,7 @@ Tools.Anchor.startHistoryRecord = function ( self )
 		terminal_positions = {};
 		initial_anchors = {};
 		terminal_anchors = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -136,7 +136,7 @@ Tools.Anchor.startHistoryRecord = function ( self )
 				end;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -171,7 +171,7 @@ Tools.Anchor.finishHistoryRecord = function ( self )
 			self.State.HistoryRecord.terminal_positions[Item] = Item.CFrame;
 		end;
 	end;
-	History:add( self.State.HistoryRecord );
+	History:Add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
 end;
