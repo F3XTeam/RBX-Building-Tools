@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Lighting = {};
+Tools.Lighting.Name = 'Lighting Tool';
 
 -- Define the tool's color
 Tools.Lighting.Color = BrickColor.new( "Really black" );

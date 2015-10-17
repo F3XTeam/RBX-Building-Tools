@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Resize = {};
+Tools.Resize.Name = 'Resize Tool';
 
 -- Create structures that will be used within the tool
 Tools.Resize.Connections = {};

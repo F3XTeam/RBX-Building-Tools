@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the main container for this tool
 Tools.Move = {};
+Tools.Move.Name = 'Move Tool';
 
 -- Define the color of the tool
 Tools.Move.Color = BrickColor.new( "Deep orange" );

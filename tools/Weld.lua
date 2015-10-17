@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Weld = {};
+Tools.Weld.Name = 'Weld Tool';
 
 -- Define the tool's color
 Tools.Weld.Color = BrickColor.new( "Really black" );

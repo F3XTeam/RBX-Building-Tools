@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the main container for this tool
 Tools.Paint = {};
+Tools.Paint.Name = 'Paint Tool';
 
 -- Define the color of the tool
 Tools.Paint.Color = BrickColor.new( "Really red" );

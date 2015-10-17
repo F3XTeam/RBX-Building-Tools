@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.NewPart = {};
+Tools.NewPart.Name = 'New Part Tool';
 
 -- Define the tool's color
 Tools.NewPart.Color = BrickColor.new( "Really black" );

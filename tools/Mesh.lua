@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Mesh = {};
+Tools.Mesh.Name = 'Mesh Tool';
 
 -- Define the tool's color
 Tools.Mesh.Color = BrickColor.new( "Bright violet" );

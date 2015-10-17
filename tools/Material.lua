@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Material = {};
+Tools.Material.Name = 'Material Tool';
 Tools.Material.Color = BrickColor.new( "Bright violet" );
 Tools.Material.Connections = {};
 Tools.Material.State = {

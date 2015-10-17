@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Texture = {};
+Tools.Texture.Name = 'Texture Tool';
 
 -- Define the tool's color
 Tools.Texture.Color = BrickColor.new( "Bright violet" );

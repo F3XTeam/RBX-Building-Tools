@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Rotate = {};
+Tools.Rotate.Name = 'Rotate Tool';
 
 -- Create structures to hold data that the tool needs
 Tools.Rotate.Connections = {};
