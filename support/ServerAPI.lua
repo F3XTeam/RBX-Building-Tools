@@ -9,6 +9,7 @@ Workspace = Game:GetService 'Workspace';
 -- Libraries
 RbxUtility = LoadLibrary 'RbxUtility';
 Support = require(Tool.SupportLibrary);
+Security = require(Tool.SecurityModule);
 Create = RbxUtility.Create;
 CreateSignal = RbxUtility.CreateSignal;
 
@@ -101,7 +102,38 @@ Actions = {
 		return NewPart;
 	end;
 
-	['ModifyPart'] = function (Part, Property, NewValue)
+	['Change'] = function (Object, Changes)
+		-- Performs the requested changes to `Object`'s properties
+
+		local Part;
+
+		-- Figure out the part this change applies to
+		if Object:IsA 'BasePart' then
+			Part = Object;
+		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Smoke' or Object:IsA 'Light' then
+			Part = Object.Parent;
+		end;
+
+		-- Only perform changes to authorized parts
+		if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
+
+			-- Apply changes
+			-- TODO: Restrict certain properties
+			for Property, Value in pairs(Changes) do
+				Object[Property] = Value;
+			end;
+
+		end;
+
+	end;
+
+	['MakeJoints'] = function (Part)
+		-- Calls the Part's MakeJoints method
+
+		-- Only perform changes to authorized parts
+		if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
+			Part:MakeJoints();
+		end;
 
 	end;
 

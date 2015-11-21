@@ -355,6 +355,44 @@ function isSelectable( Object )
 	return true;
 end;
 
+function Change(Object, Changes)
+	-- Performs a local and server-side change on `Object`
+
+	local Part;
+	if Object:IsA 'BasePart' then
+		Part = Object;
+	elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Smoke' or Object:IsA 'Light' then
+		Part = Object.Parent;
+	end;
+
+	-- Only perform changes to authorized parts
+	if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
+
+		-- Apply changes locally
+		for Property, Value in pairs(Changes) do
+			Object[Property] = Value;
+		end;
+
+		-- Send changes to server
+		ServerAPI:InvokeServer('Change', Object, Changes);
+
+	end;
+
+end;
+
+function MakeJoints(Part)
+	-- Performs a server-side call to Part:MakeJoints()
+
+	-- Only perform changes to authorized parts
+	if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
+
+		-- Send changes to server
+		ServerAPI:InvokeServer('MakeJoints', Part);
+
+	end;
+
+end;
+
 function IsVersionOutdated()
 	-- Returns whether this version of Building Tools is out of date
 
