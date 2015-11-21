@@ -27,7 +27,7 @@ Tools.NewPart.State = {
 
 -- Maintain a container for options
 Tools.NewPart.Options = {
-	["type"] = "normal"
+	["type"] = "Normal"
 };
 
 -- Keep a container for platform event connections
@@ -74,46 +74,8 @@ Tools.NewPart.Listeners.Button1Down = function ()
 
 	local self = Tools.NewPart;
 
-	local NewPart;
-
-	-- Create the new part of type `self.Options.type`
-	if self.Options.type == "normal" then
-		NewPart = Instance.new( "Part", Workspace );
-		NewPart.FormFactor = Enum.FormFactor.Custom;
-		NewPart.Size = Vector3.new( 4, 1, 2 );
-	elseif self.Options.type == "truss" then
-		NewPart = Instance.new( "TrussPart", Workspace );
-	elseif self.Options.type == "wedge" then
-		NewPart = Instance.new( "WedgePart", Workspace );
-		NewPart.FormFactor = Enum.FormFactor.Custom;
-		NewPart.Size = Vector3.new( 4, 1, 2 );
-	elseif self.Options.type == "corner" then
-		NewPart = Instance.new( "CornerWedgePart", Workspace );
-	elseif self.Options.type == "cylinder" then
-		NewPart = Instance.new( "Part", Workspace );
-		NewPart.Shape = "Cylinder";
-		NewPart.FormFactor = Enum.FormFactor.Custom;
-		NewPart.TopSurface = Enum.SurfaceType.Smooth;
-		NewPart.BottomSurface = Enum.SurfaceType.Smooth;
-	elseif self.Options.type == "ball" then
-		NewPart = Instance.new( "Part", Workspace );
-		NewPart.Shape = "Ball";
-		NewPart.FormFactor = Enum.FormFactor.Custom;
-		NewPart.TopSurface = Enum.SurfaceType.Smooth;
-		NewPart.BottomSurface = Enum.SurfaceType.Smooth;
-	elseif self.Options.type == "seat" then
-		NewPart = Instance.new( "Seat", Workspace );
-		NewPart.FormFactor = Enum.FormFactor.Custom;
-		NewPart.Size = Vector3.new( 4, 1, 2 );
-	elseif self.Options.type == "vehicle seat" then
-		NewPart = Instance.new( "VehicleSeat", Workspace );
-		NewPart.Size = Vector3.new( 4, 1, 2 );
-	elseif self.Options.type == "spawn" then
-		NewPart = Instance.new( "SpawnLocation", Workspace );
-		NewPart.FormFactor = Enum.FormFactor.Custom;
-		NewPart.Size = Vector3.new( 4, 1, 2 );
-	end;
-	NewPart.Anchored = true;
+	-- Request the creation of new part of type `Options.type`
+	local NewPart = ServerAPI:InvokeServer('CreatePart', self.Options.type, CFrame.new(Mouse.Hit.p));
 
 	-- Select the new part
 	Selection:clear();
@@ -140,7 +102,6 @@ Tools.NewPart.Listeners.Button1Down = function ()
 	-- that the user could easily position their new part
 	equipTool( Tools.Move );
 	Tools.Move.ManualTarget = NewPart;
-	NewPart.CFrame = CFrame.new( Mouse.Hit.p );
 	Tools.Move.Listeners.Button1Down();
 	Tools.Move.Listeners.Move();
 
@@ -168,33 +129,15 @@ Tools.NewPart.showGUI = function ( self )
 		TypeDropdown.Frame.Position = UDim2.new( 0, 70, 0, 0 );
 		TypeDropdown.Frame.Size = UDim2.new( 0, 140, 0, 25 );
 
-		TypeDropdown:addOption( "NORMAL" ).MouseButton1Up:connect( function ()
-			self:changeType( "normal" );
-		end );
-		TypeDropdown:addOption( "TRUSS" ).MouseButton1Up:connect( function ()
-			self:changeType( "truss" );
-		end );
-		TypeDropdown:addOption( "WEDGE" ).MouseButton1Up:connect( function ()
-			self:changeType( "wedge" );
-		end );
-		TypeDropdown:addOption( "CORNER" ).MouseButton1Up:connect( function ()
-			self:changeType( "corner" );
-		end );
-		TypeDropdown:addOption( "CYLINDER" ).MouseButton1Up:connect( function ()
-			self:changeType( "cylinder" );
-		end );
-		TypeDropdown:addOption( "BALL" ).MouseButton1Up:connect( function ()
-			self:changeType( "ball" );
-		end );
-		TypeDropdown:addOption( "SEAT" ).MouseButton1Up:connect( function ()
-			self:changeType( "seat" );
-		end );
-		TypeDropdown:addOption( "VEHICLE SEAT" ).MouseButton1Up:connect( function ()
-			self:changeType( "vehicle seat" );
-		end );
-		TypeDropdown:addOption( "SPAWN" ).MouseButton1Up:connect( function ()
-			self:changeType( "spawn" );
-		end );
+
+		local Types = { 'Normal', 'Truss', 'Wedge', 'Corner', 'Cylinder', 'Ball', 'Seat', 'Vehicle Seat', 'Spawn' };
+
+		-- Add dropdown options for every type
+		for _, Type in pairs(Types) do
+			TypeDropdown:addOption(Type:upper()).MouseButton1Up:connect(function ()
+				self:changeType(Type);
+			end);
+		end;
 
 		self.GUI = Container;
 	end;
