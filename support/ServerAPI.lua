@@ -67,6 +67,7 @@ Actions = {
 			NewPart.FormFactor = Enum.FormFactor.Custom;
 			NewPart.TopSurface = Enum.SurfaceType.Smooth;
 			NewPart.BottomSurface = Enum.SurfaceType.Smooth;
+			NewPart.Size = Vector3.new(2, 2, 2);
 
 		elseif PartType == 'Ball' then
 			NewPart = Instance.new('Part', Workspace);
