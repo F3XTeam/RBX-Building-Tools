@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Weld = {};
+Tools.Weld.Name = 'Weld Tool';
 
 -- Define the tool's color
 Tools.Weld.Color = BrickColor.new( "Really black" );
@@ -101,7 +102,7 @@ Tools.Weld.weld = function ( self )
 
 	local HistoryRecord = {
 		weld_parents = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Weld in pairs( self.welds ) do
 				Selection:add( Weld.Part0 );
@@ -109,7 +110,7 @@ Tools.Weld.weld = function ( self )
 				Weld.Parent = nil;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Weld in pairs( self.welds ) do
 				Weld.Parent = self.weld_parents[Weld];
@@ -146,7 +147,7 @@ Tools.Weld.weld = function ( self )
 	end;
 
 	HistoryRecord.welds = welds;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 	-- Update the change bar
 	self.GUI.Changes.Text.Text = "created " .. #welds .. " weld" .. ( #welds ~= 1 and "s" or "" );
@@ -168,7 +169,7 @@ Tools.Weld.breakWelds = function ( self )
 
 	local HistoryRecord = {
 		weld_parents = {};
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Weld in pairs( self.welds ) do
 				Selection:add( Weld.Part0 );
@@ -176,7 +177,7 @@ Tools.Weld.breakWelds = function ( self )
 				Weld.Parent = nil;
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Weld in pairs( self.welds ) do
 				Selection:add( Weld.Part1 );
@@ -204,7 +205,7 @@ Tools.Weld.breakWelds = function ( self )
 	end;
 
 	HistoryRecord.welds = welds;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 	-- Update the change bar
 	self.GUI.Changes.Text.Text = "broke " .. #welds .. " weld" .. ( #welds ~= 1 and "s" or "" );

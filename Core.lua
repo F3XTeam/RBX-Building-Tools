@@ -64,6 +64,7 @@ end;
 
 RbxUtility = LoadLibrary 'RbxUtility';
 Support = require(Tool:WaitForChild 'SupportLibrary');
+ServerAPI = Tool:WaitForChild 'ServerAPI';
 
 -- Preload external assets
 for ResourceName, ResourceUrl in pairs( Assets ) do
@@ -152,14 +153,14 @@ function cloneSelection()
 
 		local HistoryRecord = {
 			copies = item_copies;
-			unapply = function ( self )
+			Unapply = function ( self )
 				for _, Copy in pairs( self.copies ) do
 					if Copy then
 						Copy.Parent = nil;
 					end;
 				end;
 			end;
-			apply = function ( self )
+			Apply = function ( self )
 				Selection:clear();
 				for _, Copy in pairs( self.copies ) do
 					if Copy then
@@ -170,7 +171,7 @@ function cloneSelection()
 				end;
 			end;
 		};
-		History:add( HistoryRecord );
+		History:Add( HistoryRecord );
 
 		-- Play a confirmation sound
 		local Sound = RbxUtility.Create "Sound" {
@@ -210,14 +211,14 @@ function deleteSelection()
 	local HistoryRecord = {
 		targets = selection_items;
 		parents = {};
-		apply = function ( self )
+		Apply = function ( self )
 			for _, Target in pairs( self.targets ) do
 				if Target then
 					Target.Parent = nil;
 				end;
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -234,7 +235,7 @@ function deleteSelection()
 		Item.Parent = nil;
 	end;
 
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
@@ -291,11 +292,11 @@ function prismSelect()
 	end;
 
 	-- Add a history record
-	History:add( {
+	History:Add( {
 		selection_parts = selection_items;
 		selection_part_parents = selection_item_parents;
 		new_selection = Support.CloneTable(Selection.Items);
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Item in pairs( self.selection_parts ) do
 				Item.Parent = nil;
@@ -304,7 +305,7 @@ function prismSelect()
 				Selection:add( Item );
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Item in pairs( self.selection_parts ) do
 				Item.Parent = self.selection_part_parents[Item];
@@ -590,6 +591,7 @@ Selection = {
 			SelectionBoxes[NewPart].Name = "BTSelectionBox";
 			SelectionBoxes[NewPart].Color = SelectionBoxColor;
 			SelectionBoxes[NewPart].Adornee = NewPart;
+			SelectionBoxes[NewPart].LineThickness = 0.05;
 			SelectionBoxes[NewPart].Transparency = 0.5;
 		end;
 
@@ -1265,74 +1267,72 @@ SelectEdge = {
 -- system
 ------------------------------------------
 History = {
+	
+	Data = {};
 
-	-- Keep a container for the actual history data
-	["Data"] = {};
+	-- The current position in the history stack
+	Index = 0;
 
-	-- Keep state data
-	["index"] = 0;
-
-	-- Provide events for the platform to listen for changes
-	["Changed"] = RbxUtility.CreateSignal();
-
-	-- Provide functions to control the system
-	["undo"] = function ( self )
-
-		-- Make sure we're not getting out of boundary
-		if self.index - 1 < 0 then
-			return;
-		end;
-
-		-- Fetch the history record & unapply it
-		local CurrentRecord = self.Data[self.index];
-		CurrentRecord:unapply();
-
-		-- Go back in the history
-		self.index = self.index - 1;
-
-		-- Fire the relevant events
-		self.Changed:fire();
-
-	end;
-
-	["redo"] = function ( self )
-
-		-- Make sure we're not getting out of boundary
-		if self.index + 1 > #self.Data then
-			return;
-		end;
-
-		-- Go forward in the history
-		self.index = self.index + 1;
-
-		-- Fetch the new history record & apply it
-		local NewRecord = self.Data[self.index];
-		NewRecord:apply();
-
-		-- Fire the relevant events
-		self.Changed:fire();
-
-	end;
-
-	["add"] = function ( self, Record )
-
-		-- Place the record in its right spot
-		self.Data[self.index + 1] = Record;
-
-		-- Advance the history index
-		self.index = self.index + 1;
-
-		-- Clear out the following history
-		for index = self.index + 1, #self.Data do
-			self.Data[index] = nil;
-		end;
-
-		-- Fire the relevant events
-		self.Changed:fire();
-
-	end;
+	-- An event firing upon any change in the history
+	Changed = RbxUtility.CreateSignal();
 
 };
+
+function History:Undo()
+
+	-- Stay within boundaries
+	if History.Index - 1 < 0 then
+		return;
+	end;
+
+	-- Get the history record, unapply it
+	local Record = History.Data[History.Index];
+	Record:Unapply();
+
+	-- Update the index
+	History.Index = History.Index - 1;
+
+	-- Fire the Changed event
+	History.Changed:fire();
+
+end;
+
+function History:Redo()
+
+	-- Stay within boundaries
+	if History.Index + 1 > #History.Data then
+		return;
+	end;
+
+	-- Update the index
+	History.Index = History.Index + 1;
+
+	-- Get the history record and apply it
+	local Record = History.Data[History.Index];
+	Record:Apply();
+
+	-- Fire the Changed event
+	History.Changed:fire();
+
+end;
+
+function History:Add(Record)
+
+	-- Update the index
+	History.Index = History.Index + 1;
+
+	-- Register the new history record
+	History.Data[History.Index] = Record;
+
+	-- Clear history ahead
+	for Index = History.Index + 1, #History.Data do
+		History.Data[Index] = nil;
+	end;
+
+	-- Fire the Changed event
+	History.Changed:fire();
+
+end;
 
 -- Link up to Studio's history system if this is the plugin
 if ToolType == 'plugin' then
@@ -1820,10 +1820,10 @@ Dock.HelpInfo.Content:Destroy();
 
 -- Add functionality to the other GUI buttons
 Dock.SelectionButtons.UndoButton.MouseButton1Up:connect( function ()
-	History:undo();
+	History:Undo();
 end );
 Dock.SelectionButtons.RedoButton.MouseButton1Up:connect( function ()
-	History:redo();
+	History:Redo();
 end );
 Dock.SelectionButtons.DeleteButton.MouseButton1Up:connect( function ()
 	deleteSelection();
@@ -1885,12 +1885,12 @@ History.Changed:connect( function ()
 	if #History.Data > 0 then
 
 		-- If we're at the beginning
-		if History.index == 0 then
+		if History.Index == 0 then
 			Dock.SelectionButtons.UndoButton.Image = Assets.UndoInactiveDecal;
 			Dock.SelectionButtons.RedoButton.Image = Assets.RedoActiveDecal;
 
 		-- If we're at the end
-		elseif History.index == #History.Data then
+		elseif History.Index == #History.Data then
 			Dock.SelectionButtons.UndoButton.Image = Assets.UndoActiveDecal;
 			Dock.SelectionButtons.RedoButton.Image = Assets.RedoInactiveDecal;
 
@@ -2129,12 +2129,12 @@ function equipBT( CurrentMouse )
 
 		-- Undo if shift+z is pressed
 		if key == "z" and ( ActiveKeys[47] or ActiveKeys[48] ) then
-			History:undo();
+			History:Undo();
 			return;
 
 		-- Redo if shift+y is pressed
 		elseif key == "y" and ( ActiveKeys[47] or ActiveKeys[48] ) then
-			History:redo();
+			History:Redo();
 			return;
 		end;
 
@@ -2156,8 +2156,43 @@ function equipBT( CurrentMouse )
 			return;
 		end;
 
+		-- Show the groups GUI when shift + g is pressed
 		if key == "g" and ( ActiveKeys[47] or ActiveKeys[48] ) then
 			Groups:ToggleUI();
+			return;
+		end;
+
+		-- Select all parts within the parent of the focused part
+		-- when [ is pressed
+		if key == "[" then
+
+			-- Make sure we have a part that's focused
+			local FocusedPart = Selection.Last;
+			if not FocusedPart then
+				return;
+			end;
+
+			-- Make sure the part isn't a child of Workspace,
+			-- since that would cause us to select everything
+			if FocusedPart.Parent == Workspace then
+				return;
+			end;
+
+			-- Clear the selection (or not), depending on whether
+			-- it's part of a multiselection
+			if not (ActiveKeys[47] or ActiveKeys[48]) then
+				Selection:clear();
+			end;
+
+			-- Select all the parts within the parent of the focused part
+			local SearchField = Support.GetAllDescendants(FocusedPart.Parent);
+			for _, Item in pairs(SearchField) do
+				Selection:add(Item);
+			end;
+
+			-- Select the part itself
+			Selection:add(FocusedPart);
+
 			return;
 		end;
 

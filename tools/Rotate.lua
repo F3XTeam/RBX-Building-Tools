@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Rotate = {};
+Tools.Rotate.Name = 'Rotate Tool';
 
 -- Create structures to hold data that the tool needs
 Tools.Rotate.Connections = {};
@@ -328,7 +329,7 @@ Tools.Rotate.startHistoryRecord = function ( self )
 		targets = Support.CloneTable(Selection.Items);
 		initial_cframes = {};
 		terminal_cframes = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -338,7 +339,7 @@ Tools.Rotate.startHistoryRecord = function ( self )
 				end;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -368,7 +369,7 @@ Tools.Rotate.finishHistoryRecord = function ( self )
 			self.State.HistoryRecord.terminal_cframes[Item] = Item.CFrame;
 		end;
 	end;
-	History:add( self.State.HistoryRecord );
+	History:Add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
 end;

@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Collision = {};
+Tools.Collision.Name = 'Collision Tool';
 
 -- Create structures to hold data that the tool needs
 Tools.Collision.Connections = {};
@@ -121,7 +122,7 @@ Tools.Collision.startHistoryRecord = function ( self )
 		terminal_collide = {};
 		initial_cframe = {};
 		terminal_cframe = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -132,7 +133,7 @@ Tools.Collision.startHistoryRecord = function ( self )
 				end;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -165,7 +166,7 @@ Tools.Collision.finishHistoryRecord = function ( self )
 			self.State.HistoryRecord.terminal_cframe[Item] = Item.CFrame;
 		end;
 	end;
-	History:add( self.State.HistoryRecord );
+	History:Add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
 end;

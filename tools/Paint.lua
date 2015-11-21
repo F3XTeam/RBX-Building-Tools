@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the main container for this tool
 Tools.Paint = {};
+Tools.Paint.Name = 'Paint Tool';
 
 -- Define the color of the tool
 Tools.Paint.Color = BrickColor.new( "Really red" );
@@ -70,7 +71,7 @@ Tools.Paint.startHistoryRecord = function ( self )
 		targets = Support.CloneTable(Selection.Items);
 		initial_colors = {};
 		terminal_colors = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -79,7 +80,7 @@ Tools.Paint.startHistoryRecord = function ( self )
 				end;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -108,7 +109,7 @@ Tools.Paint.finishHistoryRecord = function ( self )
 			self.State.HistoryRecord.terminal_colors[Item] = Item.BrickColor;
 		end;
 	end;
-	History:add( self.State.HistoryRecord );
+	History:Add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
 end;

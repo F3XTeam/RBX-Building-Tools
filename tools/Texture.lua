@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Texture = {};
+Tools.Texture.Name = 'Texture Tool';
 
 -- Define the tool's color
 Tools.Texture.Color = BrickColor.new( "Bright violet" );
@@ -142,7 +143,7 @@ Tools.Texture.startHistoryRecord = function ( self, textures )
 		terminal_repeat = {};
 		initial_side = {};
 		terminal_side = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -157,7 +158,7 @@ Tools.Texture.startHistoryRecord = function ( self, textures )
 				end;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -202,7 +203,7 @@ Tools.Texture.finishHistoryRecord = function ( self )
 			end;
 		end;
 	end;
-	History:add( self.State.HistoryRecord );
+	History:Add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
 end;
@@ -382,14 +383,14 @@ end;
 Tools.Texture.addTexture = function ( self )
 
 	local HistoryRecord = {
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Texture in pairs( self.textures ) do
 				Texture.Parent = self.texture_parents[Texture];
 				Selection:add( Texture.Parent );
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Texture in pairs( self.textures ) do
 				Selection:add( Texture.Parent );
@@ -427,21 +428,21 @@ Tools.Texture.addTexture = function ( self )
 
 	HistoryRecord.textures = textures;
 	HistoryRecord.texture_parents = texture_parents;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
 Tools.Texture.addDecal = function ( self )
 
 	local HistoryRecord = {
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Decal in pairs( self.decals ) do
 				Decal.Parent = self.decal_parents[Decal];
 				Selection:add( Decal.Parent );
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Decal in pairs( self.decals ) do
 				Selection:add( Decal.Parent );
@@ -479,7 +480,7 @@ Tools.Texture.addDecal = function ( self )
 
 	HistoryRecord.decals = decals;
 	HistoryRecord.decal_parents = decal_parents;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
@@ -488,14 +489,14 @@ Tools.Texture.removeTexture = function ( self )
 	local HistoryRecord = {
 		textures = {};
 		texture_parents = {};
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Texture in pairs( self.textures ) do
 				Selection:add( Texture.Parent );
 				Texture.Parent = nil;
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Texture in pairs( self.textures ) do
 				Texture.Parent = self.texture_parents[Texture];
@@ -516,7 +517,7 @@ Tools.Texture.removeTexture = function ( self )
 		end;
 	end;
 
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
@@ -525,14 +526,14 @@ Tools.Texture.removeDecal = function ( self )
 	local HistoryRecord = {
 		decals = {};
 		decal_parents = {};
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Decal in pairs( self.decals ) do
 				Selection:add( Decal.Parent );
 				Decal.Parent = nil;
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Decal in pairs( self.decals ) do
 				Decal.Parent = self.decal_parents[Decal];
@@ -553,7 +554,7 @@ Tools.Texture.removeDecal = function ( self )
 		end;
 	end;
 
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 

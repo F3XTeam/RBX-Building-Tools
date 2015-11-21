@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Resize = {};
+Tools.Resize.Name = 'Resize Tool';
 
 -- Create structures that will be used within the tool
 Tools.Resize.Connections = {};
@@ -227,7 +228,7 @@ Tools.Resize.startHistoryRecord = function ( self )
 		terminal_positions = {};
 		initial_sizes = {};
 		terminal_sizes = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -238,7 +239,7 @@ Tools.Resize.startHistoryRecord = function ( self )
 				end;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -271,7 +272,7 @@ Tools.Resize.finishHistoryRecord = function ( self )
 			self.State.HistoryRecord.terminal_positions[Item] = Item.CFrame;
 		end;
 	end;
-	History:add( self.State.HistoryRecord );
+	History:Add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
 end;

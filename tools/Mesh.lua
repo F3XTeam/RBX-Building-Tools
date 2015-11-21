@@ -12,6 +12,7 @@ setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
 
 -- Create the tool
 Tools.Mesh = {};
+Tools.Mesh.Name = 'Mesh Tool';
 
 -- Define the tool's color
 Tools.Mesh.Color = BrickColor.new( "Bright violet" );
@@ -516,14 +517,14 @@ end;
 Tools.Mesh.addMesh = function ( self )
 
 	local HistoryRecord = {
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Mesh in pairs( self.meshes ) do
 				Mesh.Parent = self.mesh_parents[Mesh];
 				Selection:add( Mesh.Parent );
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Mesh in pairs( self.meshes ) do
 				Selection:add( Mesh.Parent );
@@ -550,21 +551,21 @@ Tools.Mesh.addMesh = function ( self )
 
 	HistoryRecord.meshes = meshes;
 	HistoryRecord.mesh_parents = mesh_parents;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
 Tools.Mesh.removeMesh = function ( self )
 
 	local HistoryRecord = {
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Mesh in pairs( self.meshes ) do
 				Selection:add( Mesh.Parent );
 				Mesh.Parent = nil;
 			end;
 		end;
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Mesh in pairs( self.meshes ) do
 				Mesh.Parent = self.mesh_parents[Mesh];
@@ -587,7 +588,7 @@ Tools.Mesh.removeMesh = function ( self )
 
 	HistoryRecord.meshes = meshes;
 	HistoryRecord.mesh_parents = mesh_parents;
-	History:add( HistoryRecord );
+	History:Add( HistoryRecord );
 
 end;
 
@@ -610,7 +611,7 @@ Tools.Mesh.startHistoryRecord = function ( self, meshes )
 		terminal_scale = {};
 		initial_tint = {};
 		terminal_tint = {};
-		unapply = function ( self )
+		Unapply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -623,7 +624,7 @@ Tools.Mesh.startHistoryRecord = function ( self, meshes )
 				end;
 			end;
 		end;
-		apply = function ( self )
+		Apply = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
@@ -664,7 +665,7 @@ Tools.Mesh.finishHistoryRecord = function ( self )
 			self.State.HistoryRecord.terminal_tint[Item] = Item.VertexColor;
 		end;
 	end;
-	History:add( self.State.HistoryRecord );
+	History:Add( self.State.HistoryRecord );
 	self.State.HistoryRecord = nil;
 
 end;
