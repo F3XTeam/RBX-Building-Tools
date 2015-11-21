@@ -65,6 +65,7 @@ end;
 RbxUtility = LoadLibrary 'RbxUtility';
 Support = require(Tool:WaitForChild 'SupportLibrary');
 ServerAPI = Tool:WaitForChild 'ServerAPI';
+Security = require(Tool:WaitForChild 'SecurityModule');
 
 -- Preload external assets
 for ResourceName, ResourceUrl in pairs( Assets ) do
@@ -343,6 +344,11 @@ function isSelectable( Object )
 
 	if not Object or not Object.Parent or not Object:IsA( "BasePart" ) or Object.Locked or Selection:find( Object ) or Groups:IsPartIgnored( Object ) then
 		return false;
+	end;
+
+	-- If areas are enabled, check if the player can manipulate this part
+	if Security.AreAreasEnabled() then
+		return Security.IsPartAuthorizedForPlayer(Object, Player);
 	end;
 
 	-- If it passes all checks, return true
@@ -2308,19 +2314,28 @@ function equipBT( CurrentMouse )
 
 	table.insert( Connections, Mouse.Move:connect( function ()
 
-		-- If the mouse has moved since it was clicked, start 2D selection mode
-		if not override_selection and not Select2D.enabled and clicking and selecting and ( click_x ~= Mouse.X or click_y ~= Mouse.Y ) then
-			Select2D:start();
-		end;
+		-- Ignore target box updating if selection is temporarily disabled
+		if not override_selection then
 
-		-- If the target has changed, update the selectionbox appropriately
-		if not override_selection and isSelectable( Mouse.Target ) and TargetBox.Adornee ~= Mouse.Target then
-			TargetBox.Adornee = Mouse.Target;
-		end;
+			-- If the mouse has moved since it was clicked, start 2D selection mode
+			if not Select2D.enabled and clicking and selecting and ( click_x ~= Mouse.X or click_y ~= Mouse.Y ) then
+				Select2D:start();
+			end;
 
-		-- When aiming at something invalid, don't highlight any targets
-		if not override_selection and not isSelectable( Mouse.Target ) then
-			TargetBox.Adornee = nil;
+			-- If the target has changed, update the targetbox appropriately
+			if TargetBox.Adornee ~= Mouse.Target then
+				TargetBox.Adornee = Mouse.Target;
+
+				-- When the part is selectable, show the targetbox
+				if isSelectable(Mouse.Target) then
+					TargetBox.Transparency = 0.5;
+
+				-- When aiming at something invalid, hide the targetbox
+				else
+					TargetBox.Transparency = 1;
+				end;
+			end;
+
 		end;
 
 		-- Fire tool listeners
