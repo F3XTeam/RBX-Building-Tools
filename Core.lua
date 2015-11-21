@@ -64,6 +64,7 @@ end;
 
 RbxUtility = LoadLibrary 'RbxUtility';
 Support = require(Tool:WaitForChild 'SupportLibrary');
+ServerAPI = Tool:WaitForChild 'ServerAPI';
 
 -- Preload external assets
 for ResourceName, ResourceUrl in pairs( Assets ) do
