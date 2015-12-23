@@ -72,11 +72,22 @@ for ResourceName, ResourceUrl in pairs( Assets ) do
 	ContentProvider:Preload( ResourceUrl );
 end;
 
+-- Wait for gloo to load
 repeat wait( 0 ) until _G.gloo;
 Gloo = _G.gloo;
 
+-- Wait for other components to load
 Tool:WaitForChild 'HttpInterface';
 Tool:WaitForChild 'Interfaces';
+Tool:WaitForChild 'FilterModeAllowed';
+
+-- Determine whether filter mode is enabled
+FilterMode = (Workspace.FilteringEnabled and Tool.FilterModeAllowed.Value) and true or false;
+
+-- Keep track of possible future changes in filter mode
+Tool.FilterModeAllowed.Changed:connect(function ()
+	FilterMode = (Workspace.FilteringEnabled and Tool.FilterModeAllowed.Value) and true or false;
+end);
 
 
 ------------------------------------------
@@ -353,6 +364,53 @@ function isSelectable( Object )
 
 	-- If it passes all checks, return true
 	return true;
+end;
+
+function Change(Object, Changes)
+	-- Performs a local and server-side change on `Object`
+
+	local Part;
+	if Object:IsA 'BasePart' then
+		Part = Object;
+	elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Smoke' or Object:IsA 'Light' then
+		Part = Object.Parent;
+	end;
+
+	-- Only perform changes to authorized parts
+	if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
+
+		-- If in filter mode, only send changes to server
+		if FilterMode then
+			ServerAPI:InvokeServer('Change', Object, Changes);
+
+		-- If filter mode is disabled, apply changes locally and instantly
+		elseif not FilterMode then
+			for Property, Value in pairs(Changes) do
+				Object[Property] = Value;
+			end;
+		end;
+
+	end;
+
+end;
+
+function MakeJoints(Part)
+	-- Performs a server-side call to Part:MakeJoints()
+
+	-- Only perform changes to authorized parts
+	if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
+
+		-- If in filter mode, request changes from the server
+		if FilterMode then
+			ServerAPI:InvokeServer('MakeJoints', Part);
+
+		-- If in local mode (filtering disabled), apply changes locally and directly
+		elseif not FilterMode then
+			Part:MakeJoints();
+		end;
+
+	end;
+
 end;
 
 function IsVersionOutdated()

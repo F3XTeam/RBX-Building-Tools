@@ -31,6 +31,16 @@ end);
 function Security.IsPartAuthorizedForPlayer(Part, Player)
 	-- Returns whether `Player` can manipulate `Part`
 
+	-- Automatically deny access if the part is locked
+	if Part.Locked then
+		return false;
+	end;
+
+	-- Automatically grant access if areas are disabled
+	if not Security.AreAreasEnabled() then
+		return true;
+	end;
+
 	-- Figure out what protection this part is under
 	local Public, Areas = Security.GetPartAreas(Part);
 

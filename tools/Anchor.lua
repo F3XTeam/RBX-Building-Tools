@@ -127,12 +127,14 @@ Tools.Anchor.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.RotVelocity = Vector3.new( 0, 0, 0 );
-					Target.Velocity = Vector3.new( 0, 0, 0 );
-					Target.CFrame = self.initial_positions[Target];
-					Target.Anchored = self.initial_anchors[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
+					Change(Target, {
+						RotVelocity = Vector3.new(0, 0, 0);
+						Velocity = Vector3.new(0, 0, 0);
+						CFrame = self.initial_positions[Target];
+						Anchored = self.initial_anchors[Target];
+					});
+					MakeJoints(Target);
+					Selection:add(Target);
 				end;
 			end;
 		end;
@@ -140,12 +142,14 @@ Tools.Anchor.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.RotVelocity = Vector3.new( 0, 0, 0 );
-					Target.Velocity = Vector3.new( 0, 0, 0 );
-					Target.CFrame = self.terminal_positions[Target];
-					Target.Anchored = self.terminal_anchors[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
+					Change(Target, {
+						RotVelocity = Vector3.new(0, 0, 0);
+						Velocity = Vector3.new(0, 0, 0);
+						CFrame = self.terminal_positions[Target];
+						Anchored = self.terminal_anchors[Target];
+					});
+					MakeJoints(Target);
+					Selection:add(Target);
 				end;
 			end;
 		end;
@@ -182,8 +186,8 @@ Tools.Anchor.anchor = function ( self )
 
 	-- Anchor all the items in the selection
 	for _, Item in pairs( Selection.Items ) do
-		Item.Anchored = true;
-		Item:MakeJoints();
+		Change(Item, { Anchored = true });
+		MakeJoints(Item);
 	end;
 
 	self:finishHistoryRecord();
@@ -196,10 +200,12 @@ Tools.Anchor.unanchor = function ( self )
 
 	-- Unanchor all the items in the selection
 	for _, Item in pairs( Selection.Items ) do
-		Item.Anchored = false;
-		Item.Velocity = Vector3.new( 0, 0, 0 );
-		Item.RotVelocity = Vector3.new( 0, 0, 0 );
-		Item:MakeJoints();
+		Change(Item, {
+			Anchored = false;
+			Velocity = Vector3.new(0, 0, 0);
+			RotVelocity = Vector3.new(0, 0, 0);
+		});
+		MakeJoints(Item);
 	end;
 
 	self:finishHistoryRecord();
