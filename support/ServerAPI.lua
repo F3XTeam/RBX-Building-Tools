@@ -13,8 +13,8 @@ Security = require(Tool.SecurityModule);
 Create = RbxUtility.Create;
 CreateSignal = RbxUtility.CreateSignal;
 
--- Keep track of created parts in memory to not lose them in garbage collection
-CreatedParts = {};
+-- Keep track of created items in memory to not lose them in garbage collection
+CreatedInstances = {};
 
 -- List of actions that could be requested
 Actions = {
@@ -34,7 +34,7 @@ Actions = {
 			local Clone = Item:Clone();
 			Clone.Parent = Workspace;
 			table.insert(Clones, Clone);
-			CreatedParts[Item] = Item;
+			CreatedInstances[Item] = Item;
 		end;
 
 		-- Return the clones
@@ -44,56 +44,10 @@ Actions = {
 	['CreatePart'] = function (PartType, Position)
 		-- Creates a new part based on `PartType`
 
-		local NewPart;
-
-		if PartType == 'Normal' then
-			NewPart = Instance.new('Part', Workspace);
-			NewPart.FormFactor = Enum.FormFactor.Custom;
-			NewPart.Size = Vector3.new(4, 1, 2);
-
-		elseif PartType == 'Truss' then
-			NewPart = Instance.new('TrussPart', Workspace);
-
-		elseif PartType == 'Wedge' then
-			NewPart = Instance.new('WedgePart', Workspace);
-			NewPart.FormFactor = Enum.FormFactor.Custom;
-			NewPart.Size = Vector3.new(4, 1, 2);
-
-		elseif PartType == 'Corner' then
-			NewPart = Instance.new('CornerWedgePart', Workspace);
-
-		elseif PartType == 'Cylinder' then
-			NewPart = Instance.new('Part', Workspace);
-			NewPart.Shape = 'Cylinder';
-			NewPart.FormFactor = Enum.FormFactor.Custom;
-			NewPart.TopSurface = Enum.SurfaceType.Smooth;
-			NewPart.BottomSurface = Enum.SurfaceType.Smooth;
-			NewPart.Size = Vector3.new(2, 2, 2);
-
-		elseif PartType == 'Ball' then
-			NewPart = Instance.new('Part', Workspace);
-			NewPart.Shape = 'Ball';
-			NewPart.FormFactor = Enum.FormFactor.Custom;
-			NewPart.TopSurface = Enum.SurfaceType.Smooth;
-			NewPart.BottomSurface = Enum.SurfaceType.Smooth;
-
-		elseif PartType == 'Seat' then
-			NewPart = Instance.new('Seat', Workspace);
-			NewPart.FormFactor = Enum.FormFactor.Custom;
-			NewPart.Size = Vector3.new(4, 1, 2);
-
-		elseif PartType == 'Vehicle Seat' then
-			NewPart = Instance.new('VehicleSeat', Workspace);
-			NewPart.Size = Vector3.new(4, 1, 2);
-
-		elseif PartType == 'Spawn' then
-			NewPart = Instance.new('SpawnLocation', Workspace);
-			NewPart.FormFactor = Enum.FormFactor.Custom;
-			NewPart.Size = Vector3.new(4, 1, 2);
-		end;
-
-		-- Make sure the part is anchored
-		NewPart.Anchored = true;
+		-- Create the part
+		local NewPart = Support.CreatePart(PartType);
+		NewPart.Parent = Workspace;
+		CreatedInstances[NewPart] = NewPart;
 
 		-- Position the part
 		NewPart.CFrame = Position;
@@ -110,7 +64,7 @@ Actions = {
 		-- Figure out the part this change applies to
 		if Object:IsA 'BasePart' then
 			Part = Object;
-		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Smoke' or Object:IsA 'Light' then
+		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
 			Part = Object.Parent;
 		end;
 
@@ -127,6 +81,29 @@ Actions = {
 
 	end;
 
+	['CreateDecoration'] = function (Type, Parent)
+		-- Creates a new decoration of type `Type` for part `Parent`
+
+		local Decoration;
+
+		-- Create and parent the decoration
+		if Type == 'Smoke' then
+			Decoration = Instance.new('Smoke', Parent);
+
+		elseif Type == 'Fire' then
+			Decoration = Instance.new('Fire', Parent);
+
+		elseif Type == 'Sparkles' then
+			Decoration = Instance.new('Sparkles', Parent);
+		end;
+
+		-- Register the decoration
+		CreatedInstances[Decoration] = Decoration;
+
+		-- Return the decoration
+		return Decoration;
+	end;
+
 	['MakeJoints'] = function (Part)
 		-- Calls the Part's MakeJoints method
 
@@ -135,6 +112,38 @@ Actions = {
 			Part:MakeJoints();
 		end;
 
+	end;
+
+	['SetParent'] = function (Object, Parent)
+		-- Sets `Object`'s parent to `Parent`
+
+		-- If this is a part, make sure we have permission to modify it
+		if Object:IsA 'BasePart' then
+			if not Security.IsPartAuthorizedForPlayer(Object, Player) then
+				return;
+			end;
+
+		-- If this is a decoration, make sure we have permission to modify it, and the new parent part
+		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
+			
+			-- Make sure we can modify the current parent of the decoration (if any)
+			if Object.Parent and Object.Parent:IsA 'BasePart' then
+				if not Security.IsPartAuthorizedForPlayer(Object.Parent, Player) then
+					return;
+				end;
+			end;
+
+			-- Make sure we can modify the target parent part
+			if Parent and Parent:IsA 'BasePart' then
+				if not Security.IsPartAuthorizedForPlayer(Parent, Player) then
+					return;
+				end;
+			end;
+
+		end;
+
+		-- If no authorization checks have failed, perform the setting
+		Object.Parent = Parent;
 	end;
 
 };

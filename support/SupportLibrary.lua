@@ -303,4 +303,61 @@ function SupportLibrary.GetPartCorners(Part)
 	return Corners;
 end;
 
+function SupportLibrary.CreatePart(PartType)
+	-- Creates and returns new part based on `PartType` with sensible defaults
+
+	local NewPart;
+
+	if PartType == 'Normal' then
+		NewPart = Instance.new('Part');
+		NewPart.FormFactor = Enum.FormFactor.Custom;
+		NewPart.Size = Vector3.new(4, 1, 2);
+
+	elseif PartType == 'Truss' then
+		NewPart = Instance.new('TrussPart');
+
+	elseif PartType == 'Wedge' then
+		NewPart = Instance.new('WedgePart');
+		NewPart.FormFactor = Enum.FormFactor.Custom;
+		NewPart.Size = Vector3.new(4, 1, 2);
+
+	elseif PartType == 'Corner' then
+		NewPart = Instance.new('CornerWedgePart');
+
+	elseif PartType == 'Cylinder' then
+		NewPart = Instance.new('Part');
+		NewPart.Shape = 'Cylinder';
+		NewPart.FormFactor = Enum.FormFactor.Custom;
+		NewPart.TopSurface = Enum.SurfaceType.Smooth;
+		NewPart.BottomSurface = Enum.SurfaceType.Smooth;
+		NewPart.Size = Vector3.new(2, 2, 2);
+
+	elseif PartType == 'Ball' then
+		NewPart = Instance.new('Part');
+		NewPart.Shape = 'Ball';
+		NewPart.FormFactor = Enum.FormFactor.Custom;
+		NewPart.TopSurface = Enum.SurfaceType.Smooth;
+		NewPart.BottomSurface = Enum.SurfaceType.Smooth;
+
+	elseif PartType == 'Seat' then
+		NewPart = Instance.new('Seat');
+		NewPart.FormFactor = Enum.FormFactor.Custom;
+		NewPart.Size = Vector3.new(4, 1, 2);
+
+	elseif PartType == 'Vehicle Seat' then
+		NewPart = Instance.new('VehicleSeat');
+		NewPart.Size = Vector3.new(4, 1, 2);
+
+	elseif PartType == 'Spawn' then
+		NewPart = Instance.new('SpawnLocation');
+		NewPart.FormFactor = Enum.FormFactor.Custom;
+		NewPart.Size = Vector3.new(4, 1, 2);
+	end;
+	
+	-- Make sure the part is anchored
+	NewPart.Anchored = true;
+
+	return NewPart;
+end;
+
 return SupportLibrary;

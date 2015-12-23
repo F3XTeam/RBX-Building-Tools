@@ -82,11 +82,11 @@ Tool:WaitForChild 'Interfaces';
 Tool:WaitForChild 'FilterModeAllowed';
 
 -- Determine whether filter mode is enabled
-FilterMode = (Workspace.FilteringEnabled and Tool.FilterModeAllowed.Value) and true or false;
+FilterMode = (Workspace.FilteringEnabled and Game:FindFirstChild 'NetworkClient' and Tool.FilterModeAllowed.Value) and true or false;
 
 -- Keep track of possible future changes in filter mode
 Tool.FilterModeAllowed.Changed:connect(function ()
-	FilterMode = (Workspace.FilteringEnabled and Tool.FilterModeAllowed.Value) and true or false;
+	FilterMode = (Workspace.FilteringEnabled and Game:FindFirstChild 'NetworkClient' and Tool.FilterModeAllowed.Value) and true or false;
 end);
 
 
@@ -150,11 +150,17 @@ function cloneSelection()
 
 		local item_copies = {};
 
-		-- Make a copy of every item in the selection and add it to table `item_copies`
-		for _, Item in pairs( Selection.Items ) do
-			local ItemCopy = Item:Clone();
-			ItemCopy.Parent = Workspace;
-			table.insert( item_copies, ItemCopy );
+		-- Send the request for cloning these parts if filter mode is on
+		if FilterMode then
+			item_copies = ServerAPI:InvokeServer('Clone', Selection.Items);
+
+		-- Otherwise, make the copies directly locally
+		else 
+			for _, Item in pairs( Selection.Items ) do
+				local ItemCopy = Item:Clone();
+				ItemCopy.Parent = Workspace;
+				table.insert( item_copies, ItemCopy );
+			end;
 		end;
 
 		-- Replace the selection with the copied items
@@ -168,7 +174,7 @@ function cloneSelection()
 			Unapply = function ( self )
 				for _, Copy in pairs( self.copies ) do
 					if Copy then
-						Copy.Parent = nil;
+						SetParent(Copy, nil);
 					end;
 				end;
 			end;
@@ -176,9 +182,9 @@ function cloneSelection()
 				Selection:clear();
 				for _, Copy in pairs( self.copies ) do
 					if Copy then
-						Copy.Parent = Workspace;
-						Copy:MakeJoints();
-						Selection:add( Copy );
+						SetParent(Copy, Workspace);
+						MakeJoints(Copy);
+						Selection:add(Copy);
 					end;
 				end;
 			end;
@@ -372,7 +378,7 @@ function Change(Object, Changes)
 	local Part;
 	if Object:IsA 'BasePart' then
 		Part = Object;
-	elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Smoke' or Object:IsA 'Light' then
+	elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
 		Part = Object.Parent;
 	end;
 
@@ -392,6 +398,47 @@ function Change(Object, Changes)
 
 	end;
 
+end;
+
+function SetParent(Object, Parent)
+	-- Sets `Object`'s parent to `Parent`
+
+	-- If in filter mode, request parenting from the server
+	if FilterMode then
+		ServerAPI:InvokeServer('SetParent', Object, Parent);
+
+	-- Otherwise, set parent directly
+	else
+
+		-- If this is a part, make sure we have permission to modify it
+		if Object:IsA 'BasePart' then
+			if not Security.IsPartAuthorizedForPlayer(Object, Player) then
+				return;
+			end;
+
+		-- If this is a decoration, make sure we have permission to modify it, and the new parent part
+		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
+			
+			-- Make sure we can modify the current parent of the decoration (if any)
+			if Object.Parent and Object.Parent:IsA 'BasePart' then
+				if not Security.IsPartAuthorizedForPlayer(Object.Parent, Player) then
+					return;
+				end;
+			end;
+
+			-- Make sure we can modify the target parent part
+			if Parent and Parent:IsA 'BasePart' then
+				if not Security.IsPartAuthorizedForPlayer(Parent, Player) then
+					return;
+				end;
+			end;
+
+		end;
+
+		-- If no authorization checks have failed, perform the setting
+		Object.Parent = Parent;
+
+	end;
 end;
 
 function MakeJoints(Part)

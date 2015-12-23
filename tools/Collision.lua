@@ -126,10 +126,12 @@ Tools.Collision.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.CanCollide = self.initial_collide[Target];
-					Target.CFrame = self.initial_cframe[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
+					Change(Target, {
+						CanCollide = self.initial_collide[Target];
+						CFrame = self.initial_cframe[Target];
+					});
+					MakeJoints(Target);
+					Selection:add(Target);
 				end;
 			end;
 		end;
@@ -137,10 +139,12 @@ Tools.Collision.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.CanCollide = self.terminal_collide[Target];
-					Target.CFrame = self.terminal_cframe[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
+					Change(Target, {
+						CanCollide = self.terminal_collide[Target];
+						CFrame = self.terminal_cframe[Target];
+					});
+					MakeJoints(Target);
+					Selection:add(Target);
 				end;
 			end;
 		end;
@@ -177,8 +181,10 @@ Tools.Collision.enable = function ( self )
 
 	-- Enable collision for all the items in the selection
 	for _, Item in pairs( Selection.Items ) do
-		Item.CanCollide = true;
-		Item:MakeJoints();
+		Change(Item, {
+			CanCollide = true;
+		});
+		MakeJoints(Item);
 	end;
 
 	self:finishHistoryRecord();
@@ -191,8 +197,10 @@ Tools.Collision.disable = function ( self )
 
 	-- Disable collision for all the items in the selection
 	for _, Item in pairs( Selection.Items ) do
-		Item.CanCollide = false;
-		Item:MakeJoints();
+		Change(Item, {
+			CanCollide = false;
+		});
+		MakeJoints(Item);
 	end;
 
 	self:finishHistoryRecord();

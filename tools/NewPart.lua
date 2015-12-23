@@ -74,8 +74,18 @@ Tools.NewPart.Listeners.Button1Down = function ()
 
 	local self = Tools.NewPart;
 
-	-- Request the creation of new part of type `Options.type`
-	local NewPart = ServerAPI:InvokeServer('CreatePart', self.Options.type, CFrame.new(Mouse.Hit.p));
+	local NewPart;
+
+	-- If in filter mode, request from the server the creation of a new part of type `Options.type`
+	if FilterMode then
+		NewPart = ServerAPI:InvokeServer('CreatePart', self.Options.type, CFrame.new(Mouse.Hit.p));
+
+	-- Otherwise, create the part locally instantly
+	else
+		NewPart = Support.CreatePart(self.Options.type);
+		NewPart.Parent = Workspace;
+		NewPart.CFrame = CFrame.new(Mouse.Hit.p);
+	end;
 
 	-- Select the new part
 	Selection:clear();
@@ -86,13 +96,13 @@ Tools.NewPart.Listeners.Button1Down = function ()
 		Apply = function ( self )
 			Selection:clear();
 			if self.target then
-				self.target.Parent = Workspace;
-				Selection:add( self.target );
+				SetParent(self.target, Workspace);
+				Selection:add(self.target);
 			end;
 		end;
 		Unapply = function ( self )
 			if self.target then
-				self.target.Parent = nil;
+				SetParent(self.target, nil);
 			end;
 		end;
 	};

@@ -821,7 +821,9 @@ Tools.Decorate.changeSmokeOpacity = function ( self, new_opacity )
 
 	self:startHistoryRecord( smoke );
 	for _, Smoke in pairs( smoke ) do
-		Smoke.Opacity = new_opacity;
+		Change(Smoke, {
+			Opacity = new_opacity;
+		});
 	end;
 	self:finishHistoryRecord();
 
@@ -833,7 +835,9 @@ Tools.Decorate.changeSmokeVelocity = function ( self, new_velocity )
 
 	self:startHistoryRecord( smoke );
 	for _, Smoke in pairs( smoke ) do
-		Smoke.RiseVelocity = new_velocity;
+		Change(Smoke, {
+			RiseVelocity = new_velocity;
+		});
 	end;
 	self:finishHistoryRecord();
 
@@ -845,7 +849,9 @@ Tools.Decorate.changeSmokeSize = function ( self, new_size )
 
 	self:startHistoryRecord( smoke );
 	for _, Smoke in pairs( smoke ) do
-		Smoke.Size = new_size;
+		Change(Smoke, {
+			Size = new_size;
+		});
 	end;
 	self:finishHistoryRecord();
 
@@ -857,7 +863,9 @@ Tools.Decorate.changeFireHeat = function ( self, new_velocity )
 
 	self:startHistoryRecord( fire );
 	for _, Fire in pairs( fire ) do
-		Fire.Heat = new_velocity;
+		Change(Fire, {
+			Heat = new_velocity;
+		});
 	end;
 	self:finishHistoryRecord();
 
@@ -869,7 +877,9 @@ Tools.Decorate.changeFireSize = function ( self, new_size )
 
 	self:startHistoryRecord( fire );
 	for _, Fire in pairs( fire ) do
-		Fire.Size = new_size;
+		Change(Fire, {
+			Size = new_size;
+		});
 	end;
 	self:finishHistoryRecord();
 
@@ -936,11 +946,13 @@ Tools.Decorate.changeSmokeColor = function ( self, ... )
 		local component_value = args[2];
 
 		for _, Smoke in pairs( targets ) do
-			Smoke.Color = Color3.new(
-				component == 'r' and component_value or Smoke.Color.r,
-				component == 'g' and component_value or Smoke.Color.g,
-				component == 'b' and component_value or Smoke.Color.b
-			);
+			Change(Smoke, {
+				Color = Color3.new(
+					component == 'r' and component_value or Smoke.Color.r,
+					component == 'g' and component_value or Smoke.Color.g,
+					component == 'b' and component_value or Smoke.Color.b
+				);
+			});
 		end;
 
 	-- If all 3 components of the color are being changed
@@ -948,7 +960,9 @@ Tools.Decorate.changeSmokeColor = function ( self, ... )
 		local r, g, b = ...;
 
 		for _, Smoke in pairs( targets ) do
-			Smoke.Color = Color3.new( r, g, b );
+			Change(Smoke, {
+				Color = Color3.new( r, g, b );
+			});
 		end;
 	end;
 
@@ -968,11 +982,13 @@ Tools.Decorate.changeFireColor = function ( self, ... )
 		local component_value = args[2];
 
 		for _, Fire in pairs( targets ) do
-			Fire.Color = Color3.new(
-				component == 'r' and component_value or Fire.Color.r,
-				component == 'g' and component_value or Fire.Color.g,
-				component == 'b' and component_value or Fire.Color.b
-			);
+			Change(Fire, {
+				Color = Color3.new(
+					component == 'r' and component_value or Fire.Color.r,
+					component == 'g' and component_value or Fire.Color.g,
+					component == 'b' and component_value or Fire.Color.b
+				);
+			});
 		end;
 
 	-- If all 3 components of the color are being changed
@@ -980,7 +996,9 @@ Tools.Decorate.changeFireColor = function ( self, ... )
 		local r, g, b = ...;
 
 		for _, Fire in pairs( targets ) do
-			Fire.Color = Color3.new( r, g, b );
+			Change(Fire, {
+				Color = Color3.new( r, g, b );
+			});
 		end;
 	end;
 
@@ -1000,11 +1018,13 @@ Tools.Decorate.changeFireColor2 = function ( self, ... )
 		local component_value = args[2];
 
 		for _, Fire in pairs( targets ) do
-			Fire.SecondaryColor = Color3.new(
-				component == 'r' and component_value or Fire.Color.r,
-				component == 'g' and component_value or Fire.Color.g,
-				component == 'b' and component_value or Fire.Color.b
-			);
+			Change(Fire, {
+				SecondaryColor = Color3.new(
+					component == 'r' and component_value or Fire.Color.r,
+					component == 'g' and component_value or Fire.Color.g,
+					component == 'b' and component_value or Fire.Color.b
+				);
+			});
 		end;
 
 	-- If all 3 components of the color are being changed
@@ -1012,7 +1032,9 @@ Tools.Decorate.changeFireColor2 = function ( self, ... )
 		local r, g, b = ...;
 
 		for _, Fire in pairs( targets ) do
-			Fire.SecondaryColor = Color3.new( r, g, b );
+			Change(Fire, {
+				SecondaryColor = Color3.new( r, g, b );
+			});
 		end;
 	end;
 
@@ -1032,11 +1054,13 @@ Tools.Decorate.changeSparklesColor = function ( self, ... )
 		local component_value = args[2];
 
 		for _, Sparkles in pairs( targets ) do
-			Sparkles.SparkleColor = Color3.new(
-				component == 'r' and component_value or Sparkles.SparkleColor.r,
-				component == 'g' and component_value or Sparkles.SparkleColor.g,
-				component == 'b' and component_value or Sparkles.SparkleColor.b
-			);
+			Change(Sparkles, {
+				SparkleColor = Color3.new(
+					component == 'r' and component_value or Sparkles.SparkleColor.r,
+					component == 'g' and component_value or Sparkles.SparkleColor.g,
+					component == 'b' and component_value or Sparkles.SparkleColor.b
+				);
+			});
 		end;
 
 	-- If all 3 components of the color are being changed
@@ -1044,7 +1068,9 @@ Tools.Decorate.changeSparklesColor = function ( self, ... )
 		local r, g, b = ...;
 
 		for _, Sparkles in pairs( targets ) do
-			Sparkles.SparkleColor = Color3.new( r, g, b );
+			Change(Sparkles, {
+				SparkleColor = Color3.new( r, g, b );
+			});
 		end;
 	end;
 
@@ -1057,31 +1083,45 @@ Tools.Decorate.addSmoke = function ( self )
 		Apply = function ( self )
 			Selection:clear();
 			for _, Smoke in pairs( self.smoke ) do
-				Smoke.Parent = self.smoke_parents[Smoke];
-				Selection:add( Smoke.Parent );
+				SetParent(Smoke, self.smoke_parents[Smoke]);
+				Selection:add(Smoke.Parent);
 			end;
 		end;
 		Unapply = function ( self )
 			Selection:clear();
 			for _, Smoke in pairs( self.smoke ) do
-				Selection:add( Smoke.Parent );
-				Smoke.Parent = nil;
+				Selection:add(Smoke.Parent);
+				SetParent(Smoke, nil);
 			end;
 		end;
 	};
 
-	-- Add smoke to all the items from the selection that
-	-- don't already have smoke
+	-- Add smoke to all the items from the selection that don't already have smoke
 	local smoke = {};
 	local smoke_parents = {};
+
+	-- Go through each selected part
 	for _, Item in pairs( Selection.Items ) do
+
+		-- Make sure it doesn't already have smoke
 		local Smoke = Support.GetChildOfClass(Item, 'Smoke');
 		if not Smoke then
-			local Smoke = RbxUtility.Create( 'Smoke' ) {
-				Parent = Item;
-			};
+
+			local Smoke;
+
+			-- Create the smoke server-side if filter mode is on
+			if FilterMode then
+				Smoke = ServerAPI:InvokeServer('CreateDecoration', 'Smoke', Item);
+
+			-- Otherwise create it locally
+			else
+				Smoke = Instance.new('Smoke', Item);
+			end;
+
+			-- Register the new smoke
 			table.insert( smoke, Smoke );
 			smoke_parents[Smoke] = Item;
+
 		end;
 	end;
 
@@ -1097,15 +1137,15 @@ Tools.Decorate.removeSmoke = function ( self )
 		Apply = function ( self )
 			Selection:clear();
 			for _, Smoke in pairs( self.smoke ) do
-				Selection:add( Smoke.Parent );
-				Smoke.Parent = nil;
+				Selection:add(Smoke.Parent);
+				SetParent(Smoke, nil);
 			end;
 		end;
 		Unapply = function ( self )
 			Selection:clear();
 			for _, Smoke in pairs( self.smoke ) do
-				Smoke.Parent = self.smoke_parents[Smoke];
-				Selection:add( Smoke.Parent );
+				SetParent(Smoke, self.smoke_parents[Smoke]);
+				Selection:add(Smoke.Parent);
 			end;
 		end;
 	};
@@ -1116,7 +1156,7 @@ Tools.Decorate.removeSmoke = function ( self )
 	-- Remove smoke from all the selected items
 	for _, Smoke in pairs( smoke ) do
 		smoke_parents[Smoke] = Smoke.Parent;
-		Smoke.Parent = nil;
+		SetParent(Smoke, nil);
 	end;
 
 	HistoryRecord.smoke = smoke;
@@ -1131,31 +1171,45 @@ Tools.Decorate.addFire = function ( self )
 		Apply = function ( self )
 			Selection:clear();
 			for _, Fire in pairs( self.fire ) do
-				Fire.Parent = self.fire_parents[Fire];
-				Selection:add( Fire.Parent );
+				SetParent(Fire, self.fire_parents[Fire]);
+				Selection:add(Fire.Parent);
 			end;
 		end;
 		Unapply = function ( self )
 			Selection:clear();
 			for _, Fire in pairs( self.fire ) do
 				Selection:add( Fire.Parent );
-				Fire.Parent = nil;
+				SetParent(Fire, nil);
 			end;
 		end;
 	};
 
-	-- Add fire to all the items from the selection that
-	-- don't already have fire
+	-- Add fire to all the items from the selection that don't already have fire
 	local fire = {};
 	local fire_parents = {};
+
+	-- Go through each selected part
 	for _, Item in pairs( Selection.Items ) do
+
+		-- Make sure it doesn't already have fire
 		local Fire = Support.GetChildOfClass(Item, 'Fire');
 		if not Fire then
-			local Fire = RbxUtility.Create( 'Fire' ) {
-				Parent = Item;
-			};
+
+			local Fire;
+
+			-- Request creation of fire for the part if in filter mode
+			if FilterMode then
+				Fire = ServerAPI:InvokeServer('CreateDecoration', 'Fire', Item);
+
+			-- Otherwise create the fire locally
+			else
+				Fire = Instance.new('Fire', Item);
+			end;
+
+			-- Register the new fire
 			table.insert( fire, Fire );
 			fire_parents[Fire] = Item;
+
 		end;
 	end;
 
@@ -1172,13 +1226,13 @@ Tools.Decorate.removeFire = function ( self )
 			Selection:clear();
 			for _, Fire in pairs( self.fire ) do
 				Selection:add( Fire.Parent );
-				Fire.Parent = nil;
+				SetParent(Fire, nil);
 			end;
 		end;
 		Unapply = function ( self )
 			Selection:clear();
 			for _, Fire in pairs( self.fire ) do
-				Fire.Parent = self.fire_parents[Fire];
+				SetParent(Fire, self.fire_parents[Fire]);
 				Selection:add( Fire.Parent );
 			end;
 		end;
@@ -1190,7 +1244,7 @@ Tools.Decorate.removeFire = function ( self )
 	-- Remove fire from all the selected items
 	for _, Fire in pairs( fire ) do
 		fire_parents[Fire] = Fire.Parent;
-		Fire.Parent = nil;
+		SetParent(Fire, nil);
 	end;
 
 	HistoryRecord.fire = fire;
@@ -1205,32 +1259,50 @@ Tools.Decorate.addSparkles = function ( self )
 		Apply = function ( self )
 			Selection:clear();
 			for _, Sparkles in pairs( self.sparkles ) do
-				Sparkles.Parent = self.sparkles_parents[Sparkles];
-				Selection:add( Sparkles.Parent );
+				SetParent(Sparkles, self.sparkles_parents[Sparkles]);
+				Selection:add(Sparkles.Parent);
 			end;
 		end;
 		Unapply = function ( self )
 			Selection:clear();
 			for _, Sparkles in pairs( self.sparkles ) do
 				Selection:add( Sparkles.Parent );
-				Sparkles.Parent = nil;
+				SetParent(Sparkles, nil);
 			end;
 		end;
 	};
 
-	-- Add sparkles to all the items from the selection that
-	-- don't already have sparkles
+	-- Add sparkles to all the items from the selection that don't already have sparkles
 	local sparkles = {};
 	local sparkles_parents = {};
+
+	-- Go through each selected part
 	for _, Item in pairs( Selection.Items ) do
+
+		-- Make sure it doesn't already have sparkles
 		local Sparkles = Support.GetChildOfClass(Item, 'Sparkles');
 		if not Sparkles then
-			local Sparkles = RbxUtility.Create( 'Sparkles' ) {
-				Parent = Item;
-				SparkleColor = Color3.new( 1, 0, 0 );
-			};
+
+			local Sparkles;
+
+			-- Create sparkles server-side if filter mode is on
+			if FilterMode then
+				Sparkles = ServerAPI:InvokeServer('CreateDecoration', 'Sparkles', Item);
+
+			-- Otherwise create them locally
+			else
+				Sparkles = Instance.new('Sparkles', Item);
+			end;
+
+			-- Set a default color to the sparkles
+			Change(Sparkles, {
+				SparkleColor = Color3.new(1, 0, 0);
+			});
+
+			-- Register the new sparkles
 			table.insert( sparkles, Sparkles );
 			sparkles_parents[Sparkles] = Item;
+
 		end;
 	end;
 
@@ -1247,13 +1319,13 @@ Tools.Decorate.removeSparkles = function ( self )
 			Selection:clear();
 			for _, Sparkles in pairs( self.sparkles ) do
 				Selection:add( Sparkles.Parent );
-				Sparkles.Parent = nil;
+				SetParent(Sparkles, nil);
 			end;
 		end;
 		Unapply = function ( self )
 			Selection:clear();
 			for _, Sparkles in pairs( self.sparkles ) do
-				Sparkles.Parent = self.sparkles_parents[Sparkles];
+				SetParent(Sparkles, self.sparkles_parents[Sparkles]);
 				Selection:add( Sparkles.Parent );
 			end;
 		end;
@@ -1265,7 +1337,7 @@ Tools.Decorate.removeSparkles = function ( self )
 	-- Remove fire from all the selected items
 	for _, Sparkles in pairs( sparkles ) do
 		sparkles_parents[Sparkles] = Sparkles.Parent;
-		Sparkles.Parent = nil;
+		SetParent(Sparkles, nil);
 	end;
 
 	HistoryRecord.sparkles = sparkles;
@@ -1295,18 +1367,26 @@ Tools.Decorate.startHistoryRecord = function ( self, decorations )
 				if Target then
 					Selection:add( Target.Parent );
 					if Target:IsA( 'Sparkles' ) then
-						Target.SparkleColor = self.initial_color[Target];
+						Change(Target, {
+							SparkleColor = self.initial_color[Target];
+						});
 					else
-						Target.Color = self.initial_color[Target];
-						Target.Size = self.initial_size[Target];
+						Change(Target, {
+							Color = self.initial_color[Target];
+							Size = self.initial_size[Target];
+						});
 					end;
 					if Target:IsA( 'Smoke' ) then
-						Target.Opacity = self.initial_opacity[Target];
-						Target.RiseVelocity = self.initial_velocity[Target];
+						Change(Target, {
+							Opacity = self.initial_opacity[Target];
+							RiseVelocity = self.initial_velocity[Target];
+						});
 					end;
 					if Target:IsA( 'Fire' ) then
-						Target.SecondaryColor = self.initial_2nd_color[Target];
-						Target.Heat = self.initial_heat[Target];
+						Change(Target, {
+							SecondaryColor = self.initial_2nd_color[Target];
+							Heat = self.initial_heat[Target];
+						});
 					end;
 				end;
 			end;
@@ -1317,18 +1397,26 @@ Tools.Decorate.startHistoryRecord = function ( self, decorations )
 				if Target then
 					Selection:add( Target.Parent );
 					if Target:IsA( 'Sparkles' ) then
-						Target.SparkleColor = self.terminal_color[Target];
+						Change(Target, {
+							SparkleColor = self.terminal_color[Target];
+						});
 					else
-						Target.Color = self.terminal_color[Target];
-						Target.Size = self.terminal_size[Target];
+						Change(Target, {
+							Color = self.terminal_color[Target];
+							Size = self.terminal_size[Target];
+						});
 					end;
 					if Target:IsA( 'Smoke' ) then
-						Target.Opacity = self.terminal_opacity[Target];
-						Target.RiseVelocity = self.terminal_velocity[Target];
+						Change(Target, {
+							Opacity = self.terminal_opacity[Target];
+							RiseVelocity = self.terminal_velocity[Target];
+						});
 					end;
 					if Target:IsA( 'Fire' ) then
-						Target.SecondaryColor = self.terminal_2nd_color[Target];
-						Target.Heat = self.terminal_heat[Target];
+						Change(Target, {
+							SecondaryColor = self.terminal_2nd_color[Target];
+							Heat = self.terminal_heat[Target];
+						});
 					end;
 				end;
 			end;
