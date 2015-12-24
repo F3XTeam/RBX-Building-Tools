@@ -114,7 +114,9 @@ Tools.Mesh.changeType = function ( self, new_type )
 
 	self:startHistoryRecord( meshes );
 	for _, Mesh in pairs( meshes ) do
-		Mesh.MeshType = new_type;
+		Change(Mesh, {
+			MeshType = new_type;
+		});
 	end;
 	self:finishHistoryRecord();
 
@@ -520,32 +522,48 @@ Tools.Mesh.addMesh = function ( self )
 		Apply = function ( self )
 			Selection:clear();
 			for _, Mesh in pairs( self.meshes ) do
-				Mesh.Parent = self.mesh_parents[Mesh];
-				Selection:add( Mesh.Parent );
+				SetParent(Mesh, self.mesh_parents[Mesh]);
+				Selection:add(Mesh.Parent);
 			end;
 		end;
 		Unapply = function ( self )
 			Selection:clear();
 			for _, Mesh in pairs( self.meshes ) do
-				Selection:add( Mesh.Parent );
-				Mesh.Parent = nil;
+				Selection:add(Mesh.Parent);
+				SetParent(Mesh, nil);
 			end;
 		end;
 	};
 
-	-- Add meshes to all the items from the selection that
-	-- don't already have one
+	-- Add meshes to all the items from the selection that don't already have one
 	local meshes = {};
 	local mesh_parents = {};
+
+	-- Go through each selected part
 	for _, Item in pairs( Selection.Items ) do
 		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
 		if not Mesh then
-			local Mesh = RbxUtility.Create "SpecialMesh" {
-				Parent = Item;
+
+			local Mesh;
+
+			-- Create the mesh on the server if filter mode is on
+			if FilterMode then
+				Mesh = ServerAPI:InvokeServer('CreateMesh', Item);
+
+			-- Create it locally otherwise
+			else
+				Mesh = Instance.new('SpecialMesh', Item);
+			end;
+
+			-- Set the mesh's default type
+			Change(Mesh, {
 				MeshType = Enum.MeshType.Brick;
-			};
+			});
+
+			-- Register the new mesh
 			table.insert( meshes, Mesh );
 			mesh_parents[Mesh] = Item;
+
 		end;
 	end;
 
@@ -561,28 +579,29 @@ Tools.Mesh.removeMesh = function ( self )
 		Apply = function ( self )
 			Selection:clear();
 			for _, Mesh in pairs( self.meshes ) do
-				Selection:add( Mesh.Parent );
-				Mesh.Parent = nil;
+				Selection:add(Mesh.Parent);
+				SetParent(Mesh, nil);
 			end;
 		end;
 		Unapply = function ( self )
 			Selection:clear();
 			for _, Mesh in pairs( self.meshes ) do
-				Mesh.Parent = self.mesh_parents[Mesh];
-				Selection:add( Mesh.Parent );
+				SetParent(Mesh, self.mesh_parents[Mesh]);
+				Selection:add(Mesh.Parent);
 			end;
 		end;
 	};
 
 	local meshes = {};
 	local mesh_parents = {};
+
 	-- Remove meshes from all the selected items
 	for _, Item in pairs( Selection.Items ) do
 		local meshes_found = Support.GetChildrenOfClass(Item, "SpecialMesh");
 		for _, Mesh in pairs( meshes_found ) do
 			table.insert( meshes, Mesh );
 			mesh_parents[Mesh] = Mesh.Parent;
-			Mesh.Parent = nil;
+			SetParent(Mesh, nil);
 		end;
 	end;
 
@@ -616,11 +635,13 @@ Tools.Mesh.startHistoryRecord = function ( self, meshes )
 			for _, Target in pairs( self.targets ) do
 				if Target then
 					Selection:add( Target.Parent );
-					Target.MeshType = self.initial_type[Target];
-					Target.MeshId = self.initial_mesh[Target];
-					Target.TextureId = self.initial_texture[Target];
-					Target.Scale = self.initial_scale[Target];
-					Target.VertexColor = self.initial_tint[Target];
+					Change(Target, {
+						MeshType = self.initial_type[Target];
+						MeshId = self.initial_mesh[Target];
+						TextureId = self.initial_texture[Target];
+						Scale = self.initial_scale[Target];
+						VertexColor = self.initial_tint[Target];
+					});
 				end;
 			end;
 		end;
@@ -629,11 +650,13 @@ Tools.Mesh.startHistoryRecord = function ( self, meshes )
 			for _, Target in pairs( self.targets ) do
 				if Target then
 					Selection:add( Target.Parent );
-					Target.MeshType = self.terminal_type[Target];
-					Target.MeshId = self.terminal_mesh[Target];
-					Target.TextureId = self.terminal_texture[Target];
-					Target.Scale = self.terminal_scale[Target];
-					Target.VertexColor = self.terminal_tint[Target];
+					Change(Target, {
+						MeshType = self.terminal_type[Target];
+						MeshId = self.terminal_mesh[Target];
+						TextureId = self.terminal_texture[Target];
+						Scale = self.terminal_scale[Target];
+						VertexColor = self.terminal_tint[Target];
+					});
 				end;
 			end;
 		end;
@@ -681,8 +704,7 @@ Tools.Mesh.changeMesh = function ( self, MeshID )
 		end;
 	end;
 
-	-- Check if the given ID is not a mesh but an item containing a mesh, and extract
-	-- the mesh data
+	-- Check if the given ID is not a mesh but an item containing a mesh, and extract the mesh data
 	local TextureID, Tint, Scale;
 	if HttpAvailable then
 		local BaseMeshExtractionUrl = 'http://www.f3xteam.com/bt/getFirstMeshData/%s';
@@ -707,16 +729,24 @@ Tools.Mesh.changeMesh = function ( self, MeshID )
 	self:startHistoryRecord( meshes );
 	for _, Mesh in pairs( meshes ) do
 		if MeshID then
-			Mesh.MeshId = "http://www.roblox.com/asset/?id=" .. MeshID;
+			Change(Mesh, {
+				MeshId = "http://www.roblox.com/asset/?id=" .. MeshID;
+			});
 		end;
 		if TextureID then
-			Mesh.TextureId = "http://www.roblox.com/asset/?id=" .. TextureID;
+			Change(Mesh, {
+				TextureId = "http://www.roblox.com/asset/?id=" .. TextureID;
+			});
 		end;
 		if Tint then
-			Mesh.VertexColor = Tint;
+			Change(Mesh, {
+				VertexColor = Tint;
+			});
 		end;
 		if Scale then
-			Mesh.Scale = Scale;
+			Change(Mesh, {
+				Scale = Scale;
+			});
 		end;
 	end;
 	self:finishHistoryRecord();
@@ -745,7 +775,9 @@ Tools.Mesh.changeTexture = function ( self, texture_id )
 
 	self:startHistoryRecord( meshes );
 	for _, Mesh in pairs( meshes ) do
-		Mesh.TextureId = "http://www.roblox.com/asset/?id=" .. texture_id;
+		Change(Mesh, {
+			TextureId = "http://www.roblox.com/asset/?id=" .. texture_id;
+		});
 	end;
 	self:finishHistoryRecord();
 
@@ -764,11 +796,13 @@ Tools.Mesh.changeScale = function ( self, component, new_value )
 
 	self:startHistoryRecord( meshes );
 	for _, Mesh in pairs( meshes ) do
-		Mesh.Scale = Vector3.new(
-			component == 'x' and new_value or Mesh.Scale.x,
-			component == 'y' and new_value or Mesh.Scale.y,
-			component == 'z' and new_value or Mesh.Scale.z
-		);
+		Change(Mesh, {
+			Scale = Vector3.new(
+				component == 'x' and new_value or Mesh.Scale.x,
+				component == 'y' and new_value or Mesh.Scale.y,
+				component == 'z' and new_value or Mesh.Scale.z
+			);
+		});
 	end;
 	self:finishHistoryRecord();
 
@@ -787,11 +821,13 @@ Tools.Mesh.changeTint = function ( self, component, new_value )
 
 	self:startHistoryRecord( meshes );
 	for _, Mesh in pairs( meshes ) do
-		Mesh.VertexColor = Vector3.new(
-			component == 'r' and new_value or Mesh.VertexColor.x,
-			component == 'g' and new_value or Mesh.VertexColor.y,
-			component == 'b' and new_value or Mesh.VertexColor.z
-		);
+		Change(Mesh, {
+			VertexColor = Vector3.new(
+				component == 'r' and new_value or Mesh.VertexColor.x,
+				component == 'g' and new_value or Mesh.VertexColor.y,
+				component == 'b' and new_value or Mesh.VertexColor.z
+			);
+		});
 	end;
 	self:finishHistoryRecord();
 

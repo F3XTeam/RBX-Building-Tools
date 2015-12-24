@@ -122,7 +122,11 @@ function equipTool( NewTool )
 
 		-- Recolor the handle
 		if ToolType == 'tool' then
-			Tool.Handle.BrickColor = NewTool.Color;
+			if FilterMode then
+				ServerAPI:InvokeServer('RecolorHandle', NewTool.Color);
+			else
+				Tool.Handle.BrickColor = NewTool.Color;
+			end;
 		end;
 
 		-- Highlight the right button on the dock
@@ -378,7 +382,7 @@ function Change(Object, Changes)
 	local Part;
 	if Object:IsA 'BasePart' then
 		Part = Object;
-	elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
+	elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
 		Part = Object.Parent;
 	end;
 
@@ -417,7 +421,7 @@ function SetParent(Object, Parent)
 			end;
 
 		-- If this is a decoration, make sure we have permission to modify it, and the new parent part
-		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
+		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
 			
 			-- Make sure we can modify the current parent of the decoration (if any)
 			if Object.Parent and Object.Parent:IsA 'BasePart' then

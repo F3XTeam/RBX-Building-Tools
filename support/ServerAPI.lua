@@ -64,7 +64,7 @@ Actions = {
 		-- Figure out the part this change applies to
 		if Object:IsA 'BasePart' then
 			Part = Object;
-		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
+		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
 			Part = Object.Parent;
 		end;
 
@@ -83,6 +83,11 @@ Actions = {
 
 	['CreateDecoration'] = function (Type, Parent)
 		-- Creates a new decoration of type `Type` for part `Parent`
+
+		-- Only perform changes to authorized parts
+		if not Security.IsPartAuthorizedForPlayer(Parent, Player) then
+			return;
+		end;
 
 		local Decoration;
 
@@ -106,6 +111,11 @@ Actions = {
 
 	['CreateDecoration'] = function (Type, Parent)
 		-- Creates a new decoration of type `Type` for part `Parent`
+
+		-- Only perform changes to authorized parts
+		if not Security.IsPartAuthorizedForPlayer(Parent, Player) then
+			return;
+		end;
 
 		local Decoration;
 
@@ -129,6 +139,11 @@ Actions = {
 
 	['CreateLight'] = function (Type, Parent)
 		-- Creates a new light of type `Type` for part `Parent`
+
+		-- Only perform changes to authorized parts
+		if not Security.IsPartAuthorizedForPlayer(Parent, Player) then
+			return;
+		end;
 
 		local Light;
 
@@ -167,7 +182,7 @@ Actions = {
 			end;
 
 		-- If this is a decoration, make sure we have permission to modify it, and the new parent part
-		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'Mesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
+		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
 			
 			-- Make sure we can modify the current parent of the decoration (if any)
 			if Object.Parent and Object.Parent:IsA 'BasePart' then
@@ -187,6 +202,24 @@ Actions = {
 
 		-- If no authorization checks have failed, perform the setting
 		Object.Parent = Parent;
+	end;
+
+	['CreateMesh'] = function (Parent)
+		-- Creates a new SpecialMesh inside `Parent`
+
+		-- Only perform changes to authorized parts
+		if not Security.IsPartAuthorizedForPlayer(Parent, Player) then
+			return;
+		end;
+
+		-- Create and parent the mesh
+		local Mesh = Instance.new('SpecialMesh', Parent);
+
+		-- Register the light
+		CreatedInstances[Mesh] = Mesh;
+
+		-- Return the mesh
+		return Mesh;
 	end;
 
 };
