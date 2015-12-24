@@ -691,7 +691,9 @@ Tools.Lighting.changeSide = function ( self, side )
 
 	self:startHistoryRecord( lights );
 	for _, Light in pairs( lights ) do
-		Light.Face = side;
+		Change(Light, {
+			Face = side;
+		});
 	end;
 	self:finishHistoryRecord();
 
@@ -707,7 +709,9 @@ Tools.Lighting.changeAngle = function ( self, angle )
 
 	self:startHistoryRecord( lights );
 	for _, Light in pairs( lights ) do
-		Light.Angle = angle;
+		Change(Light, {
+			Angle = angle;
+		});
 	end;
 	self:finishHistoryRecord();
 
@@ -764,11 +768,13 @@ Tools.Lighting.changeColor = function ( self, target, ... )
 		local component_value = args[2];
 
 		for _, Light in pairs( targets ) do
-			Light.Color = Color3.new(
-				component == 'r' and component_value or Light.Color.r,
-				component == 'g' and component_value or Light.Color.g,
-				component == 'b' and component_value or Light.Color.b
-			);
+			Change(Light, {
+				Color = Color3.new(
+					component == 'r' and component_value or Light.Color.r,
+					component == 'g' and component_value or Light.Color.g,
+					component == 'b' and component_value or Light.Color.b
+				);
+			});
 		end;
 
 	-- If all 3 components of the color are being changed
@@ -776,7 +782,9 @@ Tools.Lighting.changeColor = function ( self, target, ... )
 		local r, g, b = ...;
 
 		for _, Light in pairs( targets ) do
-			Light.Color = Color3.new( r, g, b );
+			Change(Light, {
+				Color = Color3.new( r, g, b );
+			});
 		end;
 	end;
 
@@ -796,7 +804,9 @@ Tools.Lighting.changeBrightness = function ( self, target, new_brightness )
 	self:startHistoryRecord( targets );
 
 	for _, Light in pairs( targets ) do
-		Light.Brightness = new_brightness;
+		Change(Light, {
+			Brightness = new_brightness;
+		});
 	end;
 
 	self:finishHistoryRecord();
@@ -816,7 +826,9 @@ Tools.Lighting.changeRange = function ( self, target, new_range )
 	self:startHistoryRecord( targets );
 
 	for _, Light in pairs( targets ) do
-		Light.Range = new_range;
+		Change(Light, {
+			Range = new_range;
+		});
 	end;
 
 	self:finishHistoryRecord();
@@ -836,7 +848,9 @@ Tools.Lighting.changeShadows = function ( self, target, new_shadows )
 	self:startHistoryRecord( targets );
 
 	for _, Light in pairs( targets ) do
-		Light.Shadows = new_shadows;
+		Change(Light, {
+			Shadows = new_shadows;
+		});
 	end;
 
 	self:finishHistoryRecord();
@@ -849,31 +863,45 @@ Tools.Lighting.addLight = function ( self, light_type )
 		Apply = function ( self )
 			Selection:clear();
 			for _, Light in pairs( self.lights ) do
-				Light.Parent = self.light_parents[Light];
-				Selection:add( Light.Parent );
+				SetParent(Light, self.light_parents[Light]);
+				Selection:add(Light.Parent);
 			end;
 		end;
 		Unapply = function ( self )
 			Selection:clear();
 			for _, Light in pairs( self.lights ) do
-				Selection:add( Light.Parent );
-				Light.Parent = nil;
+				Selection:add(Light.Parent);
+				SetParent(Light, nil);
 			end;
 		end;
 	};
 
-	-- Add lights to all the items from the selection that
-	-- don't already have one
+	-- Add lights to all the items from the selection that don't already have one
 	local lights = {};
 	local light_parents = {};
+
+	-- Go through each selected part
 	for _, Item in pairs( Selection.Items ) do
+
+		-- Make sure it doesn't already have a light
 		local Light = Support.GetChildOfClass(Item, light_type);
 		if not Light then
-			local Light = RbxUtility.Create( light_type ) {
-				Parent = Item;
-			};
+
+			local Light;
+
+			-- Request creation of the light from the server if in filter mode
+			if FilterMode then
+				Light = ServerAPI:InvokeServer('CreateLight', light_type, Item);
+
+			-- Otherwise create it locally/instantly
+			else
+				Light = Instance.new(light_type, Item);
+			end;
+
+			-- Register the new light
 			table.insert( lights, Light );
 			light_parents[Light] = Item;
+
 		end;
 	end;
 
@@ -889,15 +917,15 @@ Tools.Lighting.removeLight = function ( self, light_type )
 		Apply = function ( self )
 			Selection:clear();
 			for _, Light in pairs( self.lights ) do
-				Selection:add( Light.Parent );
-				Light.Parent = nil;
+				Selection:add(Light.Parent);
+				SetParent(Light, nil);
 			end;
 		end;
 		Unapply = function ( self )
 			Selection:clear();
 			for _, Light in pairs( self.lights ) do
-				Light.Parent = self.light_parents[Light];
-				Selection:add( Light.Parent );
+				SetParent(Light, self.light_parents[Light]);
+				Selection:add(Light.Parent);
 			end;
 		end;
 	};
@@ -915,7 +943,7 @@ Tools.Lighting.removeLight = function ( self, light_type )
 
 	for _, Light in pairs( lights ) do
 		light_parents[Light] = Light.Parent;
-		Light.Parent = nil;
+		SetParent(Light, nil);
 	end;
 
 	HistoryRecord.lights = lights;
@@ -945,13 +973,17 @@ Tools.Lighting.startHistoryRecord = function ( self, lights )
 			for _, Target in pairs( self.targets ) do
 				if Target then
 					Selection:add( Target.Parent );
-					Target.Color = self.initial_color[Target];
-					Target.Brightness = self.initial_brightness[Target];
-					Target.Range = self.initial_range[Target];
-					Target.Shadows = self.initial_shadows[Target];
+					Change(Target, {
+						Color = self.initial_color[Target];
+						Brightness = self.initial_brightness[Target];
+						Range = self.initial_range[Target];
+						Shadows = self.initial_shadows[Target];
+					});
 					if Target:IsA( 'SpotLight' ) then
-						Target.Face = self.initial_side[Target];
-						Target.Angle = self.initial_angle[Target];
+						Change(Target, {
+							Face = self.initial_side[Target];
+							Angle = self.initial_angle[Target];
+						});
 					end;
 				end;
 			end;
@@ -961,13 +993,17 @@ Tools.Lighting.startHistoryRecord = function ( self, lights )
 			for _, Target in pairs( self.targets ) do
 				if Target then
 					Selection:add( Target.Parent );
-					Target.Color = self.terminal_color[Target];
-					Target.Brightness = self.terminal_brightness[Target];
-					Target.Range = self.terminal_range[Target];
-					Target.Shadows = self.terminal_shadows[Target];
+					Change(Target, {
+						Color = self.terminal_color[Target];
+						Brightness = self.terminal_brightness[Target];
+						Range = self.terminal_range[Target];
+						Shadows = self.terminal_shadows[Target];
+					});
 					if Target:IsA( 'SpotLight' ) then
-						Target.Face = self.terminal_side[Target];
-						Target.Angle = self.terminal_angle[Target];
+						Change(Target, {
+							Face = self.terminal_side[Target];
+							Angle = self.terminal_angle[Target];
+						});
 					end;
 				end;
 			end;

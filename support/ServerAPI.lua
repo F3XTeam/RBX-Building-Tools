@@ -104,6 +104,49 @@ Actions = {
 		return Decoration;
 	end;
 
+	['CreateDecoration'] = function (Type, Parent)
+		-- Creates a new decoration of type `Type` for part `Parent`
+
+		local Decoration;
+
+		-- Create and parent the decoration
+		if Type == 'Smoke' then
+			Decoration = Instance.new('Smoke', Parent);
+
+		elseif Type == 'Fire' then
+			Decoration = Instance.new('Fire', Parent);
+
+		elseif Type == 'Sparkles' then
+			Decoration = Instance.new('Sparkles', Parent);
+		end;
+
+		-- Register the decoration
+		CreatedInstances[Decoration] = Decoration;
+
+		-- Return the decoration
+		return Decoration;
+	end;
+
+	['CreateLight'] = function (Type, Parent)
+		-- Creates a new light of type `Type` for part `Parent`
+
+		local Light;
+
+		-- Create and parent the light
+		if Type == 'SpotLight' then
+			Light = Instance.new('SpotLight', Parent);
+
+		elseif Type == 'PointLight' then
+			Light = Instance.new('PointLight', Parent);
+		end;
+
+		-- Register the light
+		CreatedInstances[Light] = Light;
+
+		-- Return the light
+		return Light;
+	end;
+
 	['MakeJoints'] = function (Part)
 		-- Calls the Part's MakeJoints method
 
