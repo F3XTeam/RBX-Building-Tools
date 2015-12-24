@@ -464,6 +464,25 @@ function MakeJoints(Part)
 
 end;
 
+function BreakJoints(Part)
+	-- Performs a server-side call to Part:BreakJoints()
+
+	-- Only perform changes to authorized parts
+	if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
+
+		-- If in filter mode, request changes from the server
+		if FilterMode then
+			ServerAPI:InvokeServer('BreakJoints', Part);
+
+		-- If in local mode (filtering disabled), apply changes locally and directly
+		elseif not FilterMode then
+			Part:BreakJoints();
+		end;
+
+	end;
+
+end;
+
 function IsVersionOutdated()
 	-- Returns whether this version of Building Tools is out of date
 

@@ -172,6 +172,16 @@ Actions = {
 
 	end;
 
+	['BreakJoints'] = function (Part)
+		-- Calls the Part's BreakJoints method
+
+		-- Only perform changes to authorized parts
+		if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
+			Part:BreakJoints();
+		end;
+
+	end;
+
 	['SetParent'] = function (Object, Parent)
 		-- Sets `Object`'s parent to `Parent`
 

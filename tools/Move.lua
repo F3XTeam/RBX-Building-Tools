@@ -309,11 +309,13 @@ Tools.Move.changePosition = function ( self, component, new_value )
 
 	-- Change the position of each item selected
 	for _, Item in pairs( Selection.Items ) do
-		Item.CFrame = CFrame.new(
-			component == 'x' and new_value or Item.Position.x,
-			component == 'y' and new_value or Item.Position.y,
-			component == 'z' and new_value or Item.Position.z
-		) * CFrame.Angles( Item.CFrame:toEulerAnglesXYZ() );
+		Change(Item, {
+			CFrame = CFrame.new(
+				component == 'x' and new_value or Item.Position.x,
+				component == 'y' and new_value or Item.Position.y,
+				component == 'z' and new_value or Item.Position.z
+			) * CFrame.Angles( Item.CFrame:toEulerAnglesXYZ() );
+		});
 	end;
 
 	self:finishHistoryRecord();
@@ -335,9 +337,11 @@ Tools.Move.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.CFrame = self.initial_positions[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
+					Change(Target, {
+						CFrame = self.initial_positions[Target];
+					});
+					MakeJoints(Target);
+					Selection:add(Target);
 				end;
 			end;
 		end;
@@ -345,9 +349,11 @@ Tools.Move.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.CFrame = self.terminal_positions[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
+					Change(Target, {
+						CFrame = self.terminal_positions[Target];
+					});
+					MakeJoints(Target);
+					Selection:add(Target);
 				end;
 			end;
 		end;
@@ -380,8 +386,10 @@ Tools.Move.StartDragging = function ( self, Target )
 	-- Begins dragging the current selection
 
 	for _, Item in pairs( Selection.Items ) do
-		Item.RotVelocity = Vector3.new( 0, 0, 0 );
-		Item.Velocity = Vector3.new( 0, 0, 0 );
+		Change(Item, {
+			RotVelocity = Vector3.new(0, 0, 0);
+			Velocity = Vector3.new(0, 0, 0);
+		});
 	end;
 
 	self:startHistoryRecord();
@@ -419,6 +427,15 @@ Tools.Move.FinishDragging = function ( self )
 	self.Dragger:Destroy();
 	self.Dragger = nil;
 
+	-- Replicate changes to server if in filter mode
+	if FilterMode then
+		for _, Item in pairs(Selection.Items) do
+			Change(Item, {
+				CFrame = Item.CFrame
+			});
+		end;
+	end;
+
 	self:finishHistoryRecord();
 
 end;
@@ -455,7 +472,17 @@ Tools.Move.Listeners.Move = function ()
 
 	override_selection = true;
 
+	-- Perform the emulated mouse movement
 	self.Dragger:MouseMove( Mouse.UnitRay );
+
+	-- Replicate changes to server if in filter mode
+	if FilterMode then
+		for _, Item in pairs(Selection.Items) do
+			Change(Item, {
+				CFrame = Item.CFrame
+			});
+		end;
+	end;
 
 end;
 
@@ -597,7 +624,9 @@ Tools.Move.showHandles = function ( self, Part )
 				self.State.PreMove[Item] = Item:Clone();
 
 				-- Anchor each item
-				Item.Anchored = true;
+				Change(Item, {
+					Anchored = true;
+				});
 
 			end;
 
@@ -624,11 +653,25 @@ Tools.Move.showHandles = function ( self, Part )
 				-- Restore properties that may have been changed temporarily
 				-- from the pre-movement state copies
 				for Item, PreviousItemState in pairs( self.State.PreMove ) do
-					Item.Anchored = PreviousItemState.Anchored;
+					Change(Item, {
+						Anchored = PreviousItemState.Anchored;
+					});
+
 					self.State.PreMove[Item] = nil;
-					Item:MakeJoints();
-					Item.Velocity = Vector3.new( 0, 0, 0 );
-					Item.RotVelocity = Vector3.new( 0, 0, 0 );
+
+					-- Update the positions on the server if in filter mode
+					if FilterMode then
+						Change(Item, {
+							CFrame = Item.CFrame;
+						});
+					end;
+
+					MakeJoints(Item);
+
+					Change(Item, {
+						Velocity = Vector3.new(0, 0, 0);
+						RotVelocity = Vector3.new(0, 0, 0);
+					});
 				end;
 
 			end );
@@ -662,7 +705,7 @@ Tools.Move.showHandles = function ( self, Part )
 			for _, Item in pairs( Selection.Items ) do
 
 				-- Remove any joints connected with `Item` so that it can freely move
-				Item:BreakJoints();
+				BreakJoints(Item);
 
 				-- Update the position of `Item` depending on the type of axes that is currently set
 				if face == Enum.NormalId.Top then
