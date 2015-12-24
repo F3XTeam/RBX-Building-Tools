@@ -141,10 +141,12 @@ Tools.Material.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.Material = self.initial_material[Target];
-					Target.Transparency = self.initial_transparency[Target];
-					Target.Reflectance = self.initial_reflectance[Target];
-					Selection:add( Target );
+					Change(Target, {
+						Material = self.initial_material[Target];
+						Transparency = self.initial_transparency[Target];
+						Reflectance = self.initial_reflectance[Target];
+					});
+					Selection:add(Target);
 				end;
 			end;
 		end;
@@ -152,10 +154,12 @@ Tools.Material.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.Material = self.terminal_material[Target];
-					Target.Transparency = self.terminal_transparency[Target];
-					Target.Reflectance = self.terminal_reflectance[Target];
-					Selection:add( Target );
+					Change(Target, {
+						Material = self.terminal_material[Target];
+						Transparency = self.terminal_transparency[Target];
+						Reflectance = self.terminal_reflectance[Target];
+					});
+					Selection:add(Target);
 				end;
 			end;
 		end;
@@ -194,7 +198,9 @@ Tools.Material.changeMaterial = function ( self, material_type )
 
 	-- Apply `material_type` to all items in the selection
 	for _, Item in pairs( Selection.Items ) do
-		Item.Material = material_type;
+		Change(Item, {
+			Material = material_type;
+		});
 	end;
 
 	self:finishHistoryRecord();
@@ -210,7 +216,9 @@ Tools.Material.changeTransparency = function ( self, transparency )
 
 	-- Apply `transparency` to all items in the selection
 	for _, Item in pairs( Selection.Items ) do
-		Item.Transparency = transparency;
+		Change(Item, {
+			Transparency = transparency;
+		});
 	end;
 
 	self:finishHistoryRecord();
@@ -223,7 +231,9 @@ Tools.Material.changeReflectance = function ( self, reflectance )
 
 	-- Apply `reflectance` to all items in the selection
 	for _, Item in pairs( Selection.Items ) do
-		Item.Reflectance = reflectance;
+		Change(Item, {
+			Reflectance = reflectance;
+		});
 	end;
 
 	self:finishHistoryRecord();
