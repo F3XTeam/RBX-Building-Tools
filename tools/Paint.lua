@@ -75,7 +75,9 @@ Tools.Paint.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.BrickColor = self.initial_colors[Target];
+					Change(Target, {
+						BrickColor = self.initial_colors[Target];
+					});
 					Selection:add( Target );
 				end;
 			end;
@@ -84,7 +86,9 @@ Tools.Paint.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.BrickColor = self.terminal_colors[Target];
+					Change(Target, {
+						BrickColor = self.terminal_colors[Target];
+					});
 					Selection:add( Target );
 				end;
 			end;
@@ -129,7 +133,9 @@ Tools.Paint.Listeners.Button1Up = function ()
 		-- Paint all of the selected items `Tools.Paint.Options.Color`
 		if self.Options.Color then
 			for _, Item in pairs( Selection.Items ) do
-				Item.BrickColor = self.Options.Color;
+				Change(Item, {
+					BrickColor = self.Options.Color;
+				});
 			end;
 		end;
 
@@ -151,7 +157,9 @@ Tools.Paint.changeColor = function ( self, Color )
 
 		-- Then, we want to update the color of any items in the selection
 		for _, Item in pairs( Selection.Items ) do
-			Item.BrickColor = Color;
+			Change(Item, {
+				BrickColor = Color;
+			});
 		end;
 
 		self:finishHistoryRecord();
