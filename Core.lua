@@ -232,7 +232,7 @@ function deleteSelection()
 		Apply = function ( self )
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.Parent = nil;
+					SetParent(Target, nil);
 				end;
 			end;
 		end;
@@ -240,9 +240,9 @@ function deleteSelection()
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.Parent = self.parents[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
+					SetParent(Target, self.parents[Target]);
+					MakeJoints(Target);
+					Selection:add(Target);
 				end;
 			end;
 		end;
@@ -250,7 +250,7 @@ function deleteSelection()
 
 	for _, Item in pairs( selection_items ) do
 		HistoryRecord.parents[Item] = Item.Parent;
-		Item.Parent = nil;
+		SetParent(Item, nil);
 	end;
 
 	History:Add( HistoryRecord );
