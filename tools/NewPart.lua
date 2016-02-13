@@ -110,10 +110,8 @@ Tools.NewPart.Listeners.Button1Down = function ()
 
 	-- Switch to the move tool and simulate clicking so
 	-- that the user could easily position their new part
-	equipTool( Tools.Move );
-	Tools.Move.ManualTarget = NewPart;
-	Tools.Move.Listeners.Button1Down();
-	Tools.Move.Listeners.Move();
+	equipTool(Tools.Move);
+	Tools.Move.SetUpDragging(NewPart);
 
 end;
 

@@ -15,6 +15,20 @@ function SupportLibrary.FindTableOccurrences(Haystack, Needle)
 	return Positions;
 end;
 
+function SupportLibrary.IsInTable(Haystack, Needle)
+	-- Returns whether the given `Needle` can be found within table `Haystack`
+
+	-- Go through every value in `Haystack` and return whether `Needle` is found
+	for _, Value in pairs(Haystack) do
+		if Value == Needle then
+			return true;
+		end;
+	end;
+
+	-- If no instances were found, return false
+	return false;
+end;
+
 function SupportLibrary.Round(Number, Places)
 	-- Returns `Number` rounded to the number of decimal `Places`
 	-- (from lua-users)
@@ -358,6 +372,25 @@ function SupportLibrary.CreatePart(PartType)
 	NewPart.Anchored = true;
 
 	return NewPart;
+end;
+
+function SupportLibrary.ImportServices()
+	-- Adds references to common services into the calling environment
+
+	-- Get the calling environment
+	local CallingEnvironment = getfenv(2);
+
+	-- Add the services
+	CallingEnvironment.Workspace = Game:GetService 'Workspace';
+	CallingEnvironment.Players = Game:GetService 'Players';
+	CallingEnvironment.MarketplaceService = Game:GetService 'MarketplaceService';
+	CallingEnvironment.ContentProvider = Game:GetService 'ContentProvider';
+	CallingEnvironment.SoundService = Game:GetService 'SoundService';
+	CallingEnvironment.UserInputService = Game:GetService 'UserInputService';
+	CallingEnvironment.SelectionService = Game:GetService 'Selection';
+	CallingEnvironment.CoreGui = Game:GetService 'CoreGui';
+	CallingEnvironment.HttpService = Game:GetService 'HttpService';
+	CallingEnvironment.ChangeHistoryService = Game:GetService 'ChangeHistoryService';
 end;
 
 return SupportLibrary;

@@ -232,10 +232,12 @@ Tools.Resize.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.Size = self.initial_sizes[Target];
-					Target.CFrame = self.initial_positions[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
+					Change(Target, {
+						Size = self.initial_sizes[Target];
+						CFrame = self.initial_positions[Target];
+					});
+					MakeJoints(Target);
+					Selection:add(Target);
 				end;
 			end;
 		end;
@@ -243,10 +245,12 @@ Tools.Resize.startHistoryRecord = function ( self )
 			Selection:clear();
 			for _, Target in pairs( self.targets ) do
 				if Target then
-					Target.Size = self.terminal_sizes[Target];
-					Target.CFrame = self.terminal_positions[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
+					Change(Target, {
+						Size = self.terminal_sizes[Target];
+						CFrame = self.terminal_positions[Target];
+					});
+					MakeJoints(Target);
+					Selection:add(Target);
 				end;
 			end;
 		end;
@@ -286,14 +290,18 @@ Tools.Resize.changeSize = function ( self, component, new_value )
 		local OldCFrame = Item.CFrame;
 		-- Make the item be able to be freely resized
 		if ( pcall( function () local test = Item.FormFactor; end ) ) then
-			Item.FormFactor = Enum.FormFactor.Custom;
+			Change(Item, {
+				FormFactor = Enum.FormFactor.Custom;
+			});
 		end;
-		Item.Size = Vector3.new(
-			component == 'x' and new_value or Item.Size.x,
-			component == 'y' and new_value or Item.Size.y,
-			component == 'z' and new_value or Item.Size.z
-		);
-		Item.CFrame = OldCFrame;
+		Change(Item, {
+			Size = Vector3.new(
+				component == 'x' and new_value or Item.Size.x,
+				component == 'y' and new_value or Item.Size.y,
+				component == 'z' and new_value or Item.Size.z
+			);
+			CFrame = OldCFrame;
+		});
 	end;
 
 	self:finishHistoryRecord();
@@ -403,16 +411,32 @@ Tools.Resize.showHandles = function ( self, Part )
 
 				-- Make the item be able to be freely resized
 				if ( pcall( function () local test = Item.FormFactor; end ) ) then
-					Item.FormFactor = Enum.FormFactor.Custom;
+					Change(Item, {
+						FormFactor = Enum.FormFactor.Custom;
+					});
 				end;
 
 				-- Anchor each item
-				Item.Anchored = true;
+				Change(Item, {
+					Anchored = true;
+				});
 
 			end;
 
 			-- Return stuff to normal once the mouse button is released
 			self.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
+
+				-- Sync the changes to the server if in filter mode
+				if FilterMode then
+					for _, Item in pairs(Selection.Items) do
+						BreakJoints(Item);
+						Change(Item, {
+							Size = Item.Size;
+							CFrame = Item.CFrame;
+						});
+						MakeJoints(Item);
+					end;
+				end;
 
 				-- Prevent the platform from thinking we're selecting
 				override_selection = true;
@@ -429,9 +453,11 @@ Tools.Resize.showHandles = function ( self, Part )
 				-- Restore properties that may have been changed temporarily
 				-- from the pre-resize state copies
 				for Item, PreviousItemState in pairs( self.State.PreResize ) do
-					Item.Anchored = PreviousItemState.Anchored;
+					Change(Item, {
+						Anchored = PreviousItemState.Anchored;
+					});
 					self.State.PreResize[Item] = nil;
-					Item:MakeJoints();
+					MakeJoints(Item);
 				end;
 
 			end );

@@ -3,15 +3,15 @@ ServerAPI = script.Parent;
 Tool = ServerAPI.Parent;
 Player = nil;
 
--- Services
-Workspace = Game:GetService 'Workspace';
-
 -- Libraries
 RbxUtility = LoadLibrary 'RbxUtility';
 Support = require(Tool.SupportLibrary);
 Security = require(Tool.SecurityModule);
 Create = RbxUtility.Create;
 CreateSignal = RbxUtility.CreateSignal;
+
+-- Import services
+Support.ImportServices();
 
 -- Keep track of created items in memory to not lose them in garbage collection
 CreatedInstances = {};
@@ -210,7 +210,8 @@ Actions = {
 
 		end;
 
-		-- If no authorization checks have failed, perform the setting
+		-- If no authorization checks have failed, keep the part in memory & perform the setting
+		CreatedInstances[Object] = Object;
 		Object.Parent = Parent;
 	end;
 
@@ -230,6 +231,38 @@ Actions = {
 
 		-- Return the mesh
 		return Mesh;
+	end;
+
+	['SyncMove'] = function (Changes)
+		-- Updates parts server-side given their new CFrames
+
+		for _, Change in pairs(Changes) do
+
+			-- Get the changes
+			local Part = Change.Part;
+			local NewCFrame = Change.CFrame;
+
+			-- Make sure the parts exist
+			if Part then
+
+				-- Stabilize the parts and maintain the original anchor state
+				local Anchored = Part.Anchored;
+				Part.Anchored = true;
+				Part:BreakJoints();
+				Part.Velocity = Vector3.new();
+				Part.RotVelocity = Vector3.new();
+
+				-- Set the part's CFrame
+				Part.CFrame = NewCFrame;
+
+				-- Restore the part's original state
+				Part:MakeJoints();
+				Part.Anchored = Anchored;
+
+			end;
+
+		end;
+
 	end;
 
 };

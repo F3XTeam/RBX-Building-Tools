@@ -60,6 +60,31 @@ function Security.IsPartAuthorizedForPlayer(Part, Player)
 	return false;
 end;
 
+function Security.IsPointAuthorizedForPlayer(Point, Player)
+	-- Returns whether `Player` is authorized to space point `Point`
+
+	-- Automatically grant access if areas are disabled
+	if not Security.AreAreasEnabled() then
+		return true;
+	end;
+
+	-- Figure out what protection this point is in
+	local Area = Security.GetPointArea(Point);
+
+	-- Automatically grant authorization if in public space
+	if not Area then
+		return true;
+	end;
+
+	-- Base permission off the point's area
+	if Security.IsAreaAuthorizedForPlayer(Area, Player) then
+		return true;
+	end;
+
+	-- If the player doesn't meet any conditions, deny access
+	return false;
+end;
+
 function Security.IsAreaAuthorizedForPlayer(Area, Player)
 	-- Returns whether `Player` has permission to manipulate parts in this area
 
@@ -282,7 +307,7 @@ function Security.GetPointArea(Point)
 	for _, Area in pairs(Security.Areas:GetChildren()) do
 
 		-- Get the corner's offset from the area
-		local Offset = Area.CFrame:toObjectSpace(Point);
+		local Offset = Point - Area.Position;
 		local Extents = Area.Size / 2;
 
 		-- Check if the corner is within the XZ plane of the area, and within the height of the area

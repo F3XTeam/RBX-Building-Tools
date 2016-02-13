@@ -2,17 +2,19 @@
 -- Create references to important objects
 ------------------------------------------
 
--- Reference services
-Workspace				= Game:GetService 'Workspace';
-Players					= Game:GetService 'Players';
-MarketplaceService		= Game:GetService 'MarketplaceService';
-ContentProvider			= Game:GetService 'ContentProvider';
-SoundService			= Game:GetService 'SoundService';
-UserInputService		= Game:GetService 'UserInputService';
-SelectionService		= Game:GetService 'Selection';
-CoreGui					= Game:GetService 'CoreGui';
-HttpService				= Game:GetService 'HttpService';
-ChangeHistoryService	= Game:GetService 'ChangeHistoryService';
+Tool = script.Parent;
+
+-- Import service references
+Support = require(Tool:WaitForChild 'SupportLibrary');
+Support.ImportServices();
+
+-- Load RbxUtility
+RbxUtility = LoadLibrary 'RbxUtility';
+Create = RbxUtility.Create;
+
+-- Load other BT systems
+ServerAPI = Tool:WaitForChild 'ServerAPI';
+Security = require(Tool:WaitForChild 'SecurityModule');
 
 -- Reference external assets
 Assets = {
@@ -40,7 +42,6 @@ Assets = {
 -- The ID of the tool model on ROBLOX
 ToolAssetID = 142785488;
 
-Tool = script.Parent;
 Player = Players.LocalPlayer;
 Mouse = nil;
 
@@ -61,11 +62,6 @@ end;
 ------------------------------------------
 -- Load external dependencies
 ------------------------------------------
-
-RbxUtility = LoadLibrary 'RbxUtility';
-Support = require(Tool:WaitForChild 'SupportLibrary');
-ServerAPI = Tool:WaitForChild 'ServerAPI';
-Security = require(Tool:WaitForChild 'SecurityModule');
 
 -- Preload external assets
 for ResourceName, ResourceUrl in pairs( Assets ) do
@@ -107,6 +103,7 @@ end;
 ActiveKeys = {};
 
 CurrentTool = nil;
+LastTool = nil;
 
 function equipTool( NewTool )
 
@@ -119,14 +116,12 @@ function equipTool( NewTool )
 		end;
 
 		CurrentTool = NewTool;
+		LastTool = CurrentTool;
 
 		-- Recolor the handle
 		if ToolType == 'tool' then
-			if FilterMode then
-				ServerAPI:InvokeServer('RecolorHandle', NewTool.Color);
-			else
-				Tool.Handle.BrickColor = NewTool.Color;
-			end;
+			Tool.Handle.BrickColor = NewTool.Color;
+			coroutine.wrap(function () ServerAPI:InvokeServer('RecolorHandle', NewTool.Color) end)();
 		end;
 
 		-- Highlight the right button on the dock
@@ -137,6 +132,10 @@ function equipTool( NewTool )
 		if Button then
 			Button.BackgroundTransparency = 0;
 		end;
+
+		-- Update selection box colors
+		SelectionBoxColor = NewTool.Color;
+		updateSelectionBoxColor();
 
 		-- Run (if existent) the new tool's `Equipped` listener
 		if NewTool.Listeners.Equipped then
@@ -363,7 +362,7 @@ end;
 function isSelectable( Object )
 	-- Returns whether `Object` is selectable
 
-	if not Object or not Object.Parent or not Object:IsA( "BasePart" ) or Object.Locked or Selection:find( Object ) or Groups:IsPartIgnored( Object ) then
+	if not Object or not Object.Parent or not Object:IsA( "BasePart" ) or Object.Locked or Groups:IsPartIgnored( Object ) then
 		return false;
 	end;
 
@@ -670,8 +669,6 @@ elseif ToolType == 'plugin' then
 	UI.Parent = CoreGui;
 end;
 
-Dragger = nil;
-
 function updateSelectionBoxColor()
 	-- Updates the color of the selectionboxes
 	for _, SelectionBox in pairs( SelectionBoxes ) do
@@ -725,7 +722,7 @@ Selection = {
 			SelectionBoxes[NewPart].Name = "BTSelectionBox";
 			SelectionBoxes[NewPart].Color = SelectionBoxColor;
 			SelectionBoxes[NewPart].Adornee = NewPart;
-			SelectionBoxes[NewPart].LineThickness = 0.05;
+			SelectionBoxes[NewPart].LineThickness = 0.025;
 			SelectionBoxes[NewPart].Transparency = 0.5;
 		end;
 
@@ -820,7 +817,7 @@ local cframe_toWorldSpace = CFrame.new().toWorldSpace;
 local math_min = math.min;
 local math_max = math.max;
 
-function calculateExtents(Items, StaticExtents, JustExtents)
+function CalculateExtents(Items, StaticExtents, JustExtents)
 	-- Returns the size and position of a boundary box that covers the extents
 	-- of the parts in table `Items`
 
@@ -1075,6 +1072,314 @@ function createDropdown()
 
 end;
 
+function ToggleSwitch(CurrentButtonName, SwitchContainer)
+	-- Toggles between the buttons in a switch
+
+	-- Get the current button
+	local CurrentButton = SwitchContainer[CurrentButtonName];
+
+	-- Reset all buttons
+	for _, Button in pairs(SwitchContainer:GetChildren()) do
+
+		-- Make sure to not mistake the option label for a button
+		if Button.Name ~= 'Label' then
+
+			-- Set appearance to disabled
+			Button.SelectedIndicator.BackgroundTransparency = 1;
+			Button.Background.Image = Assets.LightSlantedRectangle;
+
+		end;
+
+	end;
+
+	-- Set the current button's appearance to enabled
+	CurrentButton.SelectedIndicator.BackgroundTransparency = 0;
+	CurrentButton.Background.Image = Assets.DarkSlantedRectangle;
+
+end;
+
+BoundingBoxEnabled = false;
+BoundingBox = nil;
+InactiveBoundingBox = nil;
+BoundingBoxHandleCallback = nil;
+
+function StartBoundingBox(HandleAttachmentCallback)
+	-- Creates and starts a selection bounding box
+
+	-- Make sure there isn't already a bounding box
+	if BoundingBoxEnabled then
+		return;
+	end;
+
+	-- Indicate that the bounding box is enabled
+	BoundingBoxEnabled = true;
+
+	-- Create the box
+	BoundingBox = Create 'Part' {
+		Name = 'BTBoundingBox';
+		CanCollide = false;
+		Transparency = 1;
+		Anchored = true;
+		Locked = true;
+	};
+
+	-- Make the mouse ignore it
+	Mouse.TargetFilter = BoundingBox;
+
+	-- Make sure to calculate our static extents
+	RecalculateStaticExtents = true;
+	StartAggregatingStaticParts();
+
+	-- Begin the bounding box's updater
+	BoundingBoxUpdater = ScheduleRecurringTask(UpdateBoundingBox, 0.05);
+
+	-- Attach handles if requested
+	if HandleAttachmentCallback then
+		BoundingBoxHandleCallback = HandleAttachmentCallback;
+		BoundingBoxHandleCallback(BoundingBox);
+	end;
+
+end;
+
+function UpdateBoundingBox()
+	-- Updates the bounding box to fit the selection's extents
+
+	-- Make sure the bounding box is enabled
+	if not BoundingBoxEnabled then
+		return;
+	end;
+
+	-- If the bounding box is inactive, and should now be active, update it
+	if InactiveBoundingBox and #Selection.Items > 0 then
+		BoundingBox = InactiveBoundingBox;
+		InactiveBoundingBox = nil;
+		BoundingBoxHandleCallback(BoundingBox);
+
+	-- If the bounding box is active, and there are no parts, disable it
+	elseif BoundingBox and #Selection.Items == 0 then
+		InactiveBoundingBox = BoundingBox;
+		BoundingBox = nil;
+		BoundingBoxHandleCallback(BoundingBox);
+		return;
+
+	-- Don't try to update the bounding box if there are no parts
+	elseif #Selection.Items == 0 then
+		return;
+	end;
+
+	-- Recalculate the extents of static items as needed only
+	if RecalculateStaticExtents then
+		StaticExtents = CalculateExtents(StaticParts, nil, true);
+		RecalculateStaticExtents = false;
+	end;
+
+	-- Update the bounding box
+	local BoundingBoxSize, BoundingBoxCFrame = CalculateExtents(Selection.Items, StaticExtents);
+	BoundingBox.Size = BoundingBoxSize;
+	BoundingBox.CFrame = BoundingBoxCFrame;
+
+end;
+
+function ClearBoundingBox()
+	-- Clears the selection bounding box
+
+	-- Make sure there's a bounding box
+	if not BoundingBoxEnabled then
+		return;
+	end;
+
+	-- If there's a bounding box updater, stop it
+	if BoundingBoxUpdater then
+		BoundingBoxUpdater:Stop();
+		BoundingBoxUpdater = nil;
+	end;
+
+	-- Stop tracking static parts
+	StopAggregatingStaticParts();
+
+	-- Delete the bounding box
+	if BoundingBox then
+		BoundingBox:Destroy();
+		BoundingBox = nil;
+	elseif InactiveBoundingBox then
+		InactiveBoundingBox:Destroy();
+		InactiveBoundingBox = nil;
+	end;
+
+	-- Mark the bounding box as disabled
+	BoundingBoxEnabled = false;
+
+	-- Clear the bounding box handle callback
+	BoundingBoxHandleCallback(nil);
+	BoundingBoxHandleCallback = nil;
+
+end;
+
+StaticParts = {};
+StaticPartMonitors = {};
+StaticExtents = {};
+RecalculateStaticExtents = true;
+AggregatingStaticParts = false;
+StaticPartAggregators = {};
+
+function AddStaticPart(Part)
+	-- Adds the static part to the list for state tracking
+
+	-- Make sure the part isn't already in the list
+	if #Support.FindTableOccurrences(StaticParts, Part) > 0 then
+		return;
+	end;
+
+	-- Add the part to the list
+	table.insert(StaticParts, Part);
+
+	-- Starts monitoring the part
+	StaticPartMonitors[Part] = Part.Changed:connect(function (Property)
+
+		if Property == 'CFrame' or Property == 'Size' then
+			RecalculateStaticExtents = true;
+
+		elseif Property == 'Anchored' and not Part.Anchored then
+			RemoveStaticPart(Part);
+		end;
+	end);
+
+	-- Recalculate the extents including this new part
+	RecalculateStaticExtents = true;
+
+end;
+
+function RemoveStaticPart(Part)
+	-- Removes the part from the static part tracking list
+
+	-- Get the part's key in the list
+	local PartKey = Support.FindTableOccurrences(StaticParts, Part)[1];
+
+	-- Remove it from the list
+	if PartKey then
+		StaticParts[PartKey] = nil;
+	end;
+
+	-- Clear its state monitors
+	if StaticPartMonitors[Part] then
+		StaticPartMonitors[Part]:disconnect();
+		StaticPartMonitors[Part] = nil;
+	end;
+
+	-- Recalculate static extents without this removed part
+	RecalculateStaticExtents = true;
+
+end;
+
+function StartAggregatingStaticParts()
+	-- Begins to look for and identify static parts
+
+	-- Add current static parts
+	for _, Part in pairs(Selection.Items) do
+		if Part.Anchored then
+			AddStaticPart(Part);
+		end;
+	end;
+
+	-- Add newly selected anchored parts
+	table.insert(StaticPartAggregators, Selection.ItemAdded:connect(function (Part)
+		if Part.Anchored then
+			AddStaticPart(Part);
+		end;
+	end));
+
+	-- Remove deselected parts
+	table.insert(StaticPartAggregators, Selection.ItemRemoved:connect(function (Part, Clearing)
+
+		-- Make sure it isn't being removed in a full clearance
+		if Clearing then
+			return;
+		end;
+
+		-- Remove the item
+		RemoveStaticPart(Part);
+
+	end));
+
+	-- Manually clear the static part and monitor list when a clearance occurs to prevent recalculation
+	table.insert(StaticPartAggregators, Selection.Cleared:connect(function ()
+
+		-- Remove all monitors
+		for MonitorKey, Monitor in pairs(StaticPartMonitors) do
+			Monitor:disconnect();
+			StaticPartMonitors[MonitorKey] = nil;
+		end;
+
+		-- Clear all static part information
+		StaticParts = {};
+		StaticExtents = nil;
+
+	end));
+
+end;
+
+function StopAggregatingStaticParts()
+	-- Stops looking for static parts, clears unnecessary data
+
+	-- Disconnect all aggregators
+	for AggregatorKey, Aggregator in pairs(StaticPartAggregators) do
+		Aggregator:disconnect();
+		StaticPartAggregators[AggregatorKey] = nil;
+	end;
+
+	-- Remove all static part monitors
+	for MonitorKey, Monitor in pairs(StaticPartMonitors) do
+		Monitor:disconnect();
+		StaticPartMonitors[MonitorKey] = nil;
+	end;
+
+	-- Clear all static part information
+	StaticParts = {};
+	StaticExtents = nil;
+
+end;
+
+RecurringTasks = {};
+
+function ScheduleRecurringTask(TaskFunction, Interval)
+	-- Repeats `Task` every `Interval` seconds until stopped
+
+	local Task = {};
+
+	coroutine.wrap(function ()
+
+		-- Create a task object
+		Task = {
+
+			-- A switch determining if it's running or not
+			Running = true;
+
+			-- A function to stop this task
+			Stop = function (Task)
+				Task.Running = false;
+			end;
+
+			-- References to the task function and set interval
+			TaskFunction = TaskFunction;
+			Interval = Interval;
+
+		};
+
+		-- Repeat the task
+		while wait(Task.Interval) and Task.Running do
+			Task.TaskFunction();
+		end;
+
+	end)();
+
+	-- Register the task
+	table.insert(RecurringTasks, Task);
+
+	-- Return the task object
+	return Task;
+
+end;
+
 
 ------------------------------------------
 -- Provide an interface to the 2D
@@ -1111,9 +1416,10 @@ Select2D = {
 			Name = "Rectangle";
 			Active = false;
 			Parent = self.GUI;
-			BackgroundColor3 = Color3.new( 0, 0, 0 );
+			BackgroundColor3 = Color3.new(100/255, 100/255, 100/255);
+			BorderColor3 = Color3.new(0, 0, 0);
 			BackgroundTransparency = 0.5;
-			BorderSizePixel = 0;
+			BorderSizePixel = 1;
 			Position = UDim2.new( 0, math.min( click_x, Mouse.X ), 0, math.min( click_y, Mouse.Y ) );
 			Size = UDim2.new( 0, math.max( click_x, Mouse.X ) - math.min( click_x, Mouse.X ), 0, math.max( click_y, Mouse.Y ) - math.min( click_y, Mouse.Y ) );
 		};
@@ -1146,8 +1452,8 @@ Select2D = {
 			if isSelectable( Object ) then
 
 				-- Check if the part is rendered within the range of the selection area
-				local PartPosition = Workspace.CurrentCamera:WorldToScreenPoint(Object.Position);
-				if PartPosition then
+				local PartPosition, ScreenVisible = Workspace.CurrentCamera:WorldToScreenPoint(Object.Position);
+				if PartPosition and ScreenVisible then
 					local left_check = PartPosition.x >= self.GUI.Rectangle.AbsolutePosition.x;
 					local right_check = PartPosition.x <= ( self.GUI.Rectangle.AbsolutePosition.x + self.GUI.Rectangle.AbsoluteSize.x );
 					local top_check = PartPosition.y >= self.GUI.Rectangle.AbsolutePosition.y;
@@ -2209,16 +2515,15 @@ function equipBT( CurrentMouse )
 
 	Mouse = CurrentMouse;
 
-	-- Enable the move tool if there's no tool currently enabled
-	if not CurrentTool then
-		equipTool( Tools.Move );
-	end;
+	-- Equip the last tool, or the move tool by default
+	equipTool(LastTool or Tools.Move);
 
 	if not TargetBox then
 		TargetBox = Instance.new( "SelectionBox", UI );
 		TargetBox.Name = "BTTargetBox";
 		TargetBox.Color = BrickColor.new( "Institutional white" );
 		TargetBox.Transparency = 0.5;
+		TargetBox.LineThickness = 0.05;
 	end;
 
 	-- Enable any temporarily-disabled selection boxes
@@ -2231,11 +2536,6 @@ function equipBT( CurrentMouse )
 		for _, Item in pairs( SelectionService:Get() ) do
 			Selection:add( Item );
 		end;
-	end;
-
-	-- Call the `Equipped` listener of the current tool
-	if CurrentTool and CurrentTool.Listeners.Equipped then
-		CurrentTool.Listeners.Equipped();
 	end;
 
 	-- Show the dock
@@ -2455,7 +2755,7 @@ function equipBT( CurrentMouse )
 				TargetBox.Adornee = Mouse.Target;
 
 				-- When the part is selectable, show the targetbox
-				if isSelectable(Mouse.Target) then
+				if isSelectable(Mouse.Target) and not Selection:find(Mouse.Target) then
 					TargetBox.Transparency = 0.5;
 
 				-- When aiming at something invalid, hide the targetbox
@@ -2570,6 +2870,9 @@ function unequipBT()
 	if CurrentTool and CurrentTool.Listeners.Unequipped then
 		CurrentTool.Listeners.Unequipped();
 	end;
+
+	-- Clear the current tool
+	CurrentTool = nil;
 
 end;
 
