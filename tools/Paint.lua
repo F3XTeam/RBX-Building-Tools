@@ -147,7 +147,7 @@ end;
 
 Tools.Paint.changeColor = function ( self, Color )
 
-	-- Alright so if `Color` is given, set that as the preferred color
+	-- Alright, so if `Color` is given, set that as the preferred color
 	if Color then
 
 		-- First of all, change the color option itself
@@ -224,5 +224,26 @@ Tools.Paint.hideGUI = function ( self )
 	end;
 
 end;
+
+Selection.Changed:connect( function()
+	for _, ColorSquare in pairs( self.GUI.Palette:GetChildren() ) do
+		ColorSquare.Text = "";
+	end;
+	
+	local Color
+	
+	for SelectionIndex, SelectionItem in pairs( Selection.Items ) do
+		if SelectionIndex == 1 then
+			Color = SelectionItem.BrickColor
+		elseif SelectionItem.BrickColor ~= Color then
+			Color = nil
+			break
+		end
+	end
+
+	if Color then
+		self.GUI.Palette[Color.Name].Text = "X";
+	end
+end )
 
 Tools.Paint.Loaded = true;
