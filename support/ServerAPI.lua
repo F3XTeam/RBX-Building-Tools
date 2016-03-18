@@ -7,6 +7,7 @@ Player = nil;
 RbxUtility = LoadLibrary 'RbxUtility';
 Support = require(Tool.SupportLibrary);
 Security = require(Tool.SecurityModule);
+RegionModule = require(Tool['Region by AxisAngle']);
 Create = RbxUtility.Create;
 CreateSignal = RbxUtility.CreateSignal;
 
@@ -15,6 +16,13 @@ Support.ImportServices();
 
 -- Keep track of created items in memory to not lose them in garbage collection
 CreatedInstances = {};
+
+-- Determine whether we're in tool or plugin mode
+if Tool:IsA 'Tool' then
+	ToolMode = 'Tool';
+elseif Tool:IsA 'Model' then
+	ToolMode = 'Plugin';
+end;
 
 -- List of actions that could be requested
 Actions = {
@@ -236,32 +244,61 @@ Actions = {
 	['SyncMove'] = function (Changes)
 		-- Updates parts server-side given their new CFrames
 
+		-- Grab a list of every part we're attempting to modify
+		local Parts = {};
 		for _, Change in pairs(Changes) do
+			if Change.Part then
+				table.insert(Parts, Change.Part);
+			end;
+		end;
 
-			-- Get the changes
-			local Part = Change.Part;
-			local NewCFrame = Change.CFrame;
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
-			-- Make sure the parts exist
-			if Part then
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
 
-				-- Stabilize the parts and maintain the original anchor state
-				local Anchored = Part.Anchored;
-				Part.Anchored = true;
-				Part:BreakJoints();
-				Part.Velocity = Vector3.new();
-				Part.RotVelocity = Vector3.new();
+		-- Reorganize the changes
+		local ChangeSet = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				Change.InitialState = { Anchored = Change.Part.Anchored, CFrame = Change.Part.CFrame };
+				ChangeSet[Change.Part] = Change;
+			end;
+		end;
 
-				-- Set the part's CFrame
-				Part.CFrame = NewCFrame;
+		-- Perform each change
+		for Part, Change in pairs(ChangeSet) do
 
-				-- Restore the part's original state
-				Part:MakeJoints();
-				Part.Anchored = Anchored;
+			-- Stabilize the parts and maintain the original anchor state
+			Part.Anchored = true;
+			Part:BreakJoints();
+			Part.Velocity = Vector3.new();
+			Part.RotVelocity = Vector3.new();
 
+			-- Set the part's CFrame
+			Part.CFrame = Change.CFrame;
+
+		end;
+
+		-- Make sure the player is authorized to move parts into this area
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+
+			-- Revert changes if unauthorized destination
+			for Part, Change in pairs(ChangeSet) do
+				Part.CFrame = Change.InitialState.CFrame;
 			end;
 
 		end;
+
+		-- Restore the parts' original states
+		for Part, Change in pairs(ChangeSet) do
+			Part:MakeJoints();
+			Part.Anchored = Change.InitialState.Anchored;
+		end;
+
 
 	end;
 

@@ -10,10 +10,8 @@ Core = _G.BTCoreEnv[script.Parent.Parent];
 Selection = Core.Selection;
 Create = Core.Create;
 Support = Core.Support;
+Security = Core.Security;
 Support.ImportServices();
-
--- Load necessary external modules
-RegionModule = require(Core.Tool:WaitForChild 'Region by AxisAngle');
 
 -- Initialize the tool
 local MoveTool = {
@@ -159,9 +157,11 @@ function UpdateUI()
 	-- Only show and calculate selection info if it's not empty
 	if #Selection.Items == 0 then
 		MoveTool.UI.Info.Visible = false;
+		MoveTool.UI.Size = UDim2.new(0, 245, 0, 90);
 		return;
 	else
 		MoveTool.UI.Info.Visible = true;
+		MoveTool.UI.Size = UDim2.new(0, 245, 0, 150);
 	end;
 
 	---------------------------------------------
@@ -280,20 +280,15 @@ function AttachHandles(Part, Autofocus)
 		Core.override_selection = true;
 
 		-- Stop parts from moving, and capture the initial state of the parts
-		for _, Part in pairs(Selection.Items) do
-			InitialState[Part] = { Anchored = Part.Anchored, CFrame = Part.CFrame, CanCollide = Part.CanCollide };
-			Part.Anchored = true;
-			Part.CanCollide = false;
-			Part:BreakJoints();
-			Part.Velocity = Vector3.new();
-			Part.RotVelocity = Vector3.new();
-		end;
+		InitialState = PreparePartsForDragging();
 
 		-- Track the change
 		TrackChange();
 
 		-- Cache area permissions information
-		AreaPermissions = GetPermissionsCache();
+		if Core.ToolType == 'tool' then
+			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+		end;
 
 		------------------------------------------------------
 		-- Finalize changes to parts when the handle is let go
@@ -343,6 +338,7 @@ function AttachHandles(Part, Autofocus)
 		-- Get the axis multiplier for this face
 		local AxisMultiplier = AxisMultipliers[Face];
 
+		-- Move each part
 		for _, Part in pairs(Selection.Items) do
 
 			-- Move along standard axes
@@ -369,12 +365,17 @@ function AttachHandles(Part, Autofocus)
 
 		end;
 
+		-- Update the "distance moved" indicator
+		if MoveTool.UI then
+			MoveTool.UI.Changes.Text.Text = 'moved ' .. math.abs(Distance) .. ' studs';
+		end;
+
 		----------------------------------------
 		-- Check for relevant area authorization
 		----------------------------------------
 
 		-- Make sure we're not entering any unauthorized private areas
-		if ArePartsViolatingAreas(AreaPermissions) then
+		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
 			Selection.Last.CFrame = InitialState[Selection.Last].CFrame;
 			TranslatePartsRelativeToPart(Selection.Last, InitialState, Selection.Items);
 		end;
@@ -443,13 +444,36 @@ function SetAxisPosition(Axis, Position)
 	-- Track this change
 	TrackChange();
 
+	-- Prepare parts to be moved
+	local InitialState = PreparePartsForDragging();
+
 	-- Update each part
 	for _, Part in pairs(Selection.Items) do
+
+		-- Set the part's new CFrame
 		Part.CFrame = CFrame.new(
 			Axis == 'X' and Position or Part.Position.X,
 			Axis == 'Y' and Position or Part.Position.Y,
 			Axis == 'Z' and Position or Part.Position.Z
 		) * CFrame.Angles(Part.CFrame:toEulerAnglesXYZ());
+
+	end;
+
+	-- Cache up permissions for all private areas
+	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+
+	-- Revert changes if player is not authorized to move parts to target destination
+	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+		for Part, PartState in pairs(InitialState) do
+			Part.CFrame = PartState.CFrame;
+		end;
+	end;
+
+	-- Restore the parts' original states
+	for Part, PartState in pairs(InitialState) do
+		Part.CanCollide = InitialState[Part].CanCollide;
+		Part:MakeJoints();
+		Part.Anchored = InitialState[Part].Anchored;
 	end;
 
 	-- Register the change
@@ -636,7 +660,10 @@ function StartDragging(BasePart, InitialState)
 	Core.ClearBoundingBox();
 
 	-- Cache area permissions information
-	local AreaPermissions = GetPermissionsCache();
+	local AreaPermissions;
+	if Core.ToolType == 'tool' then
+		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+	end;
 
 	-- Determine the base point and part for the dragging
 	local BasePart = BasePart or Core.Mouse.Target;
@@ -717,7 +744,7 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	----------------------------------------
 
 	-- Make sure we're not entering any unauthorized private areas
-	if ArePartsViolatingAreas(AreaPermissions) then
+	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
 		BasePart.CFrame = InitialState[BasePart].CFrame;
 		TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
 	end;
@@ -781,24 +808,6 @@ function GetAlignedTargetPoint(Target, TargetPoint, TargetNormal)
 	return AlignedTargetPoint;
 end;
 
-function GetPermissionsCache()
-	-- Returns a cache of the current player's authorization to all areas
-
-	-- Make sure security is enabled
-	if Core.ToolType ~= 'tool' or not Core.Security.AreAreasEnabled() then
-		return;
-	end;
-
-	-- Build the cache of permissions for each area
-	local Cache = {};
-	for _, Area in pairs(Core.Security.Areas:GetChildren()) do
-		Cache[Area] = Core.Security.IsAreaAuthorizedForPlayer(Area, Core.Player);
-	end;
-
-	-- Return the permissions cache
-	return Cache;
-end;
-
 function GetIncrementMultiple(Number, Increment)
 
 	-- Get how far the actual distance is from a multiple of our increment
@@ -820,35 +829,6 @@ function GetIncrementMultiple(Number, Increment)
 	end;
 
 	return Number;
-end;
-
-function ArePartsViolatingAreas(AreaPermissions)
-	-- Returns whether the selected parts are inside any unauthorized parts
-
-	-- Make sure area security is being enforced
-	if Core.ToolType ~= 'tool' or not Core.Security.AreAreasEnabled() then
-		return false;
-	end;
-	
-	-- Go through each area and check if any part violates its permissions
-	for Area, Authorized in pairs(AreaPermissions) do
-
-		-- Get all parts from the selection within this area
-		local Region = RegionModule.new(
-			Area.CFrame * CFrame.new(0, Area.Size.Y / 2 + Core.Security.AreaHeight / 2, 0),
-			Vector3.new(Area.Size.X, Core.Security.AreaHeight, Area.Size.Z)
-		);
-		local ContainedParts = Region:CastParts(Selection.Items);
-
-		-- If parts end up in this area, check if it's unauthorized
-		if #ContainedParts > 0 and not Authorized then
-			return true;
-		end;
-
-	end;
-
-	-- If no area authorization violations occur, return false
-	return false;
 end;
 
 function TranslatePartsRelativeToPart(BasePart, InitialState, Parts)

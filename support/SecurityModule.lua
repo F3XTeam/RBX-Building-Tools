@@ -5,7 +5,8 @@ Workspace = Game:GetService 'Workspace';
 
 -- References
 Tool = script.Parent;
-Support = require(Tool.SupportLibrary);
+Support = require(Tool:WaitForChild 'SupportLibrary');
+RegionModule = require(Tool:WaitForChild 'Region by AxisAngle');
 
 -- Initialize the security module
 Security = {};
@@ -317,6 +318,89 @@ function Security.GetPointArea(Point)
 
 	end;
 
+end;
+
+function Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions)
+	-- Returns whether the given parts are inside any unauthorized areas
+
+	-- Make sure area security is being enforced
+	if not Security.AreAreasEnabled() then
+		return false;
+	end;
+
+	-- Make sure there is a permissions cache
+	AreaPermissions = AreaPermissions or {};
+
+	-- Check with areas the parts are in
+	local Areas = Security.GetSelectionAreas(Parts);
+
+	-- Check authorization for each relevant area
+	for _, Area in pairs(Areas) do
+
+		-- If unauthorized, call a violation
+		if AreaPermissions[Area] == false then
+			return true;
+
+		-- Determine authorization if not in given permissions cache
+		elseif AreaPermissions[Area] == nil then
+			AreaPermissions[Area] = Security.IsAreaAuthorizedForPlayer(Area, Player);
+			if not AreaPermissions[Area] then
+				return true;
+			end;
+		end;
+
+	end;
+
+	-- If no area authorization violations occur, return false
+	return false;
+end;
+
+function Security.GetSelectionAreas(Selection)
+	-- Returns a list of areas that the selection of parts is in
+
+	-- Make sure areas are enabled
+	if not Security.AreAreasEnabled() then
+		return {};
+	end;
+
+	-- Check each area to find out if any of the parts are within
+	local Areas = {};
+	for _, Area in pairs(Security.Areas:GetChildren()) do
+
+		-- Get all parts from the selection within this area
+		local Region = RegionModule.new(
+			Area.CFrame * CFrame.new(0, Security.AreaHeight / 2 - Area.Size.Y / 2, 0),
+			Vector3.new(Area.Size.X, Security.AreaHeight + Area.Size.Y, Area.Size.Z)
+		);
+		local ContainedParts = Region:CastParts(Selection);
+
+		-- If parts are in this area, remember the area
+		if #ContainedParts > 0 then
+			table.insert(Areas, Area);
+		end;
+
+	end;
+
+	-- Return the areas where any of the given parts exist
+	return Areas;
+end;
+
+function Security.GetPermissions(Areas, Player)
+	-- Returns a cache of the current player's authorization to the given areas
+
+	-- Make sure security is enabled
+	if not Security.AreAreasEnabled() then
+		return;
+	end;
+
+	-- Build the cache of permissions for each area
+	local Cache = {};
+	for _, Area in pairs(Areas) do
+		Cache[Area] = Security.IsAreaAuthorizedForPlayer(Area, Player);
+	end;
+
+	-- Return the permissions cache
+	return Cache;
 end;
 
 

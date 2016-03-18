@@ -368,7 +368,7 @@ function isSelectable( Object )
 
 	-- If areas are enabled, check if the player can manipulate this part
 	if Security.AreAreasEnabled() then
-		return Security.IsPartAuthorizedForPlayer(Object, Player);
+		return not Security.ArePartsViolatingAreas({ Object }, Player, {});
 	end;
 
 	-- If it passes all checks, return true
