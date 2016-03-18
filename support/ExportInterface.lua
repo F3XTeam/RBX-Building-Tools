@@ -115,6 +115,7 @@ function _serializeParts( parts )
 	};
 
 	local objects = {};
+	local objectIDs = {};
 
 	-- Store part data
 	for _, Part in pairs( parts ) do
@@ -138,17 +139,16 @@ function _serializeParts( parts )
 		};
 		data.parts[part_id] = PartData;
 		objects[part_id] = Part;
+		objectIDs[Part] = part_id;
 	end;
 
 	-- Get any welds in the selection
 	local welds = {};
 	for object_id, Object in pairs( objects ) do
 		if Object:IsA( "BasePart" ) then
-			for _, Joint in pairs( Support.GetAllDescendants( Services.Workspace ) ) do
-				if Joint:IsA( "Weld" ) and Joint.Name == "BTWeld" then
-					if Joint.Part0 == Object and #Support.FindTableOccurrences( objects, Joint.Part1 ) > 0 then
-						table.insert( welds, Joint );
-					end;
+			for _, Child in pairs(Object:GetChildren()) do
+				if Child.Name == 'BTWeld' and Child:IsA 'Weld' and objectIDs[Child.Part0] and objectIDs[Child.Part1] then
+					table.insert(welds, Child);
 				end;
 			end;
 		end;
@@ -160,12 +160,13 @@ function _serializeParts( parts )
 		for _, Weld in pairs( welds ) do
 			local weld_id = _generateSerializationID();
 			local WeldData = {
-				Support.FindTableOccurrences( objects, Weld.Part0 )[1],
-				Support.FindTableOccurrences( objects, Weld.Part1 )[1],
+				objectIDs[Weld.Part0],
+				objectIDs[Weld.Part1],
 				_splitNumberListString( tostring( Weld.C1 ) )
 			};
 			data.welds[weld_id] = WeldData;
 			objects[weld_id] = Weld;
+			objectIDs[Weld] = weld_id;
 		end;
 	end;
 
@@ -184,7 +185,7 @@ function _serializeParts( parts )
 		for _, Mesh in pairs( meshes ) do
 			local mesh_id = _generateSerializationID();
 			local MeshData = {
-				Support.FindTableOccurrences( objects, Mesh.Parent )[1],
+				objectIDs[Mesh.Parent],
 				Mesh.MeshType.Value,
 				_splitNumberListString( tostring( Mesh.Scale ) ),
 				Mesh.MeshId,
@@ -193,6 +194,7 @@ function _serializeParts( parts )
 			};
 			data.meshes[mesh_id] = MeshData;
 			objects[mesh_id] = Mesh;
+			objectIDs[Mesh] = mesh_id;
 		end;
 	end;
 
@@ -221,7 +223,7 @@ function _serializeParts( parts )
 			end;
 			local texture_id = _generateSerializationID();
 			local TextureData = {
-				Support.FindTableOccurrences( objects, Texture.Parent )[1],
+				objectIDs[Texture.Parent],
 				texture_type,
 				Texture.Face.Value,
 				Texture.Texture,
@@ -231,6 +233,7 @@ function _serializeParts( parts )
 			};
 			data.textures[texture_id] = TextureData;
 			objects[texture_id] = Texture;
+			objectIDs[Texture] = texture_id;
 		end;
 	end;
 
@@ -255,7 +258,7 @@ function _serializeParts( parts )
 			end;
 			local light_id = _generateSerializationID();
 			local LightData = {
-				Support.FindTableOccurrences( objects, Light.Parent )[1];
+				objectIDs[Light.Parent],
 				light_type,
 				_splitNumberListString( tostring( Light.Color ) ),
 				Light.Brightness,
@@ -266,6 +269,7 @@ function _serializeParts( parts )
 			};
 			data.lights[light_id] = LightData;
 			objects[light_id] = Light;
+			objectIDs[Light] = light_id;
 		end;
 	end;
 
@@ -291,7 +295,7 @@ function _serializeParts( parts )
 			end;
 			local decoration_id = _generateSerializationID();
 			local DecorationData = {
-				Support.FindTableOccurrences( objects, Decoration.Parent )[1],
+				objectIDs[Decoration.Parent],
 				decoration_type
 			};
 			if decoration_type == 1 then
@@ -309,10 +313,12 @@ function _serializeParts( parts )
 			end;
 			data.decorations[decoration_id] = DecorationData;
 			objects[decoration_id] = Decoration;
+			objectIDs[Decoration] = decoration_id;
 		end;
 	end;
 
-	return HttpService:JSONEncode( data );
+	-- Return the encoded data
+	return HttpService:JSONEncode(data);
 
 end;
 

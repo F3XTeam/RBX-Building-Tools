@@ -330,7 +330,7 @@ function import( creation_id )
 		showGUI( "We couldn't get your creation", ':(' );
 		return false;
 	end;
-	if not pcall( function () creation_data = RbxUtility.DecodeJSON( creation_data ); end ) then
+	if not pcall( function () creation_data = Services.HttpService:JSONDecode( creation_data ); end ) then
 		showGUI( "We couldn't get your creation", ":'(" );
 		return false;
 	end;
