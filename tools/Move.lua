@@ -11,6 +11,7 @@ Selection = Core.Selection;
 Create = Core.Create;
 Support = Core.Support;
 Security = Core.Security;
+SnapTracking = Core.SnapTracking;
 Support.ImportServices();
 
 -- Initialize the tool
@@ -56,6 +57,7 @@ function Unequip()
 	HideUI();
 	ClearConnections();
 	Core.ClearBoundingBox();
+	SnapTracking.StopTracking();
 
 end;
 
@@ -432,9 +434,74 @@ function BindShortcutKeys()
 				MoveTool.UI.IncrementOption.Increment.TextBox:CaptureFocus();
 			end;
 
+		-- Check if the R key was pressed down, and it wasn't Shift R
+		elseif InputInfo.KeyCode == Enum.KeyCode.R and not (Core.ActiveKeys[Enum.KeyCode.LeftShift] or Core.ActiveKeys[Enum.KeyCode.RightShift]) then
+
+			-- Make sure it wasn't pressed while typing
+			if UserInputService:GetFocusedTextBox() then
+				return;
+			end;
+
+			-- Start tracking snap points nearest to the mouse
+			StartSnapping();
+
 		end;
 
 	end));
+
+	-- Track ending user input while this tool is equipped
+	table.insert(Connections, UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
+
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
+			return;
+		end;
+
+		-- Make sure this is input from the keyboard
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
+		end;
+
+		-- Check if the R key was let go
+		if InputInfo.KeyCode == Enum.KeyCode.R then
+
+			-- Make sure it wasn't pressed while typing
+			if UserInputService:GetFocusedTextBox() then
+				return;
+			end;
+
+			-- Stop snapping point tracking if it was enabled
+			SnapTracking.StopTracking();
+
+		end;
+
+	end));
+
+end;
+
+-- Event that fires when new point comes into focus while snapping
+local PointSnapped = Core.RbxUtility.CreateSignal();
+
+function StartSnapping()
+	-- Starts tracking snap points nearest to the mouse
+
+	-- Start tracking the closest snapping point
+	SnapTracking.StartTracking(function (NewPoint)
+
+		-- Fire `SnappedPoint` and update `SnappedPoint` when there is a new snap point in focus
+		if NewPoint then
+			SnappedPoint = NewPoint.p;
+			PointSnapped:fire(SnappedPoint);
+		end;
+
+	end);
+
+	-- When beginning to drag, allow the base point to be chosen from any parts' snap points
+	Connections.SnapTargetUpdate = Core.TargetChanged:connect(function (NewTarget)
+		if not Dragging then
+			SnapTracking.SetTrackingTarget(NewTarget);
+		end;
+	end);
 
 end;
 
@@ -585,7 +652,7 @@ function EnableDragging()
 		end;
 
 		-- Prepare for dragging
-		SetUpDragging(Core.Mouse.Target);
+		SetUpDragging(Core.Mouse.Target, SnapTracking.Enabled and SnappedPoint or nil);
 
 	end);
 
@@ -615,7 +682,7 @@ UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
 
 end);
 
-function SetUpDragging(BasePart)
+function SetUpDragging(BasePart, BasePoint)
 	-- Sets up and initiates dragging based on the given base part
 
 	-- Prevent selection while dragging
@@ -623,7 +690,7 @@ function SetUpDragging(BasePart)
 
 	-- Prepare parts, and start dragging
 	InitialState = PreparePartsForDragging();
-	StartDragging(BasePart, InitialState);
+	StartDragging(BasePart, InitialState, BasePoint);
 
 end;
 
@@ -647,7 +714,7 @@ function PreparePartsForDragging()
 	return InitialState;
 end;
 
-function StartDragging(BasePart, InitialState)
+function StartDragging(BasePart, InitialState, BasePoint)
 	-- Begins dragging the selection
 
 	-- Indicate that we're dragging
@@ -681,6 +748,27 @@ function StartDragging(BasePart, InitialState)
 		math.abs(BasePartOffset.Z) >= BasePart.Size.Z / 2 and (BasePart.Size.Z / 2 * (BasePartOffset.Z > 0 and 1 or -1)) or BasePartOffset.Z
 	);
 
+	-- Use the given base point instead if any
+	if BasePoint then
+		BasePartOffset = BasePart.Position - BasePoint;
+	end;
+
+	-- Prepare snapping in case it is enabled, and make sure to override its default target selection
+	SnapTracking.CustomMouseTracking = true;
+	Connections.DragSnapping = PointSnapped:connect(function (SnappedPoint)
+
+		-- Align the selection's base point to the snapped point
+		BasePart.CFrame = CFrame.new(SnappedPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ());
+		TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+
+		-- Make sure we're not entering any unauthorized private areas
+		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+			BasePart.CFrame = InitialState[BasePart].CFrame;
+			TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+		end;
+
+	end);
+
 	-- Start up the dragging action
 	Connections.Drag = Core.Mouse.Move:connect(function ()
 		DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions);
@@ -705,9 +793,36 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 		IgnoreList
 	);
 
-	------------------------------------------------
-	-- Move the selection towards the right location
-	------------------------------------------------
+	-------------------------------------------------
+	-- Move the selection towards any snapped points
+	-------------------------------------------------
+
+	-- If snapping is enabled, update the current snap point and drag to it instead
+	if SnapTracking.Enabled then
+
+		-- Use the raycasted target point as the mouse point for snap point tracking
+		SnapTracking.MousePoint = TargetPoint;
+
+		-- Update the tracking target for snap tracking, only if it's an unlocked part
+		if Target and Target.Parent and not Target.Locked then
+			SnapTracking.SetTrackingTarget(Target);
+
+		-- If new target is not an unlocked part, clear the tracking target
+		else
+			SnapTracking.SetTrackingTarget(nil);
+		end;
+
+		-- Update snap point tracking, and the UI
+		SnapTracking.Update();
+
+		-- Skip dragging the selection to the mouse (regular dragging)
+		return;
+
+	end;
+
+	-------------------------------------------------------
+	-- Move the selection towards the right mouse location
+	-------------------------------------------------------
 
 	-- Get the increment-aligned target point
 	TargetPoint = GetAlignedTargetPoint(Target, TargetPoint, TargetNormal);
@@ -862,6 +977,12 @@ function FinishDragging()
 	-- Stop the dragging action
 	Connections.Drag:disconnect()
 	Connections.Drag = nil;
+
+	-- Stop, clean up snapping point tracking
+	SnapTracking.StopTracking();
+	SnapTracking.CustomMouseTracking = false;
+	Connections.DragSnapping:disconnect();
+	Connections.DragSnapping = nil;
 
 	-- Restore the original state of each part
 	for _, Part in pairs(Selection.Items) do

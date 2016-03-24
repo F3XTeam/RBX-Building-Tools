@@ -654,6 +654,8 @@ SelectionBoxes = {};
 SelectionExistenceListeners = {};
 SelectionBoxColor = BrickColor.new( "Cyan" );
 TargetBox = nil;
+TargetChanged = RbxUtility.CreateSignal();
+SelectedTargetChanged = RbxUtility.CreateSignal();
 
 -- Keep a container for temporary connections
 -- from the platform
@@ -1623,7 +1625,7 @@ SelectEdge = {
 
 		end );
 
-		self.Connections.ClickListener = Mouse.Button1Up:connect( function ()
+		self.Connections.ClickListener = Mouse.Button1Down:connect( function ()
 			override_selection = true;
 			self:select( edgeSelectionCallback );
 		end );
@@ -2443,7 +2445,7 @@ Groups.GroupAdded:Connect( function ( Group )
 	GroupButton.IgnoreButton.RightTooltip.Text.Text = Group.Ignoring and 'UNIGNORE' or 'IGNORE';
 
 	GroupButton.GroupName.MouseButton1Click:connect( function ()
-		Group:Select( ActiveKeys[47] or ActiveKeys[48] );
+		Group:Select( ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift] );
 	end );
 
 	Group.Changed:Connect( function ()
@@ -2507,6 +2509,204 @@ Groups.GroupAdded:Connect( function ( Group )
 end );
 
 
+-----------------------------------
+-- Snapping point selection system
+-----------------------------------
+
+SnapTracking = {};
+SnapTracking.Enabled = false;
+
+function SnapTracking.StartTracking(Callback)
+	-- Starts displaying the given target's snap point nearest to the mouse, calls back every time a new point is approached
+
+	-- Make sure tracking isn't already on
+	if SnapTracking.Enabled then
+		SnapTracking.StopTracking();
+	end;
+
+	-- Indicate that tracking is now enabled
+	SnapTracking.Enabled = true;
+
+	-- Start the UI
+	SnapTracking.StartUI();
+
+	-- Store callback to send changes in current snapping point
+	SnapTracking.SetCallback(Callback);
+
+	-- Start tracking mouse movement
+	SnapTracking.MouseTracking = Mouse.Move:connect(function ()
+		if not SnapTracking.CustomMouseTracking then
+			SnapTracking.MousePoint = Mouse.Hit.p;
+			SnapTracking.Update();
+		end;
+	end);
+
+	-- Update the tracking and UI to the current mouse and proximity state
+	if not SnapTracking.CustomMouseTracking then
+		SnapTracking.MousePoint = Mouse.Hit.p;
+		SnapTracking.SetTrackingTarget(Mouse.Target);
+		SnapTracking.Update();
+	end;
+
+end;
+
+function SnapTracking.SetCallback(Callback)
+	-- Sets the function that is called back whenever a new snap point is in focus
+	SnapTracking.Callback = Callback;
+	SnapTracking.Update();
+end;
+
+function SnapTracking.StartUI()
+	-- Creates the point marking UI
+	SnapTracking.PointMarker = Tool.Interfaces.PointMarker:Clone();
+	SnapTracking.PointMarker.Parent = UI;
+end;
+
+function SnapTracking.ClearUI()
+	-- Removes the point marking UI
+
+	-- Make sure tracking is currently enabled
+	if not SnapTracking.Enabled then
+		return;
+	end;
+
+	-- Remove the point marker UI
+	SnapTracking.PointMarker:Destroy();
+	SnapTracking.PointMarker = nil;
+
+end;
+
+function SnapTracking.Update()
+	-- Updates the current closest point, reflects it on UI, calls callback function
+
+	-- Make sure tracking is currently enabled
+	if not SnapTracking.Enabled then
+		return;
+	end;
+
+	-- Calculate the closest point
+	local ClosestPoint = SnapTracking.GetClosestPoint();
+
+	-- Inform the callback function
+	SnapTracking.Callback(ClosestPoint);
+
+	-- Update the point marker UI
+	SnapTracking.UpdateUI(ClosestPoint);
+
+end;
+
+function SnapTracking.UpdateUI(Point)
+	-- Updates the point marker UI to reflect the position of the current closest snap point
+
+	-- Make sure tracking is enabled, and that the UI has started
+	if not SnapTracking.Enabled or not SnapTracking.PointMarker then
+		return;
+	end;
+
+	-- Make sure there's actually a point that needs to be marked, or hide the point marker
+	if not Point then
+		SnapTracking.PointMarker.Visible = false;
+		return;
+	end;
+
+	-- Map the point's position on the screen
+	local PointPosition, PointVisible = Workspace.CurrentCamera:WorldToScreenPoint(Point.p);
+
+	-- Move the point marker UI to the point's position on the screen
+	SnapTracking.PointMarker.Visible = PointVisible;
+	SnapTracking.PointMarker.Position = UDim2.new(0, PointPosition.X, 0, PointPosition.Y);
+
+end;
+
+function SnapTracking.SetTrackingTarget(NewTarget)
+	-- Sets the target part whose snapping points' proximity we are tracking
+	SnapTracking.Target = NewTarget;
+	SnapTracking.Update();
+end;
+
+function SnapTracking.GetClosestPoint()
+	-- Find the current nearest snapping point for the target, update the GUI
+
+	-- Make sure there's a target part to track, and a current mouse position to calculate proximity relative to
+	if not SnapTracking.Target or not SnapTracking.MousePoint then
+		return nil;
+	end;
+
+	local SnappingPoints = {};
+	local SnappingPointProximity = {};
+
+	-- Get the current target's snapping points
+	local PartCFrame = SnapTracking.Target.CFrame;
+	local PartSize = SnapTracking.Target.Size / 2;
+	local SizeX, SizeY, SizeZ = PartSize.X, PartSize.Y, PartSize.Z;
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, SizeY, SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, SizeY, SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, -SizeY, SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, SizeY, -SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, SizeY, -SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, -SizeY, SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, -SizeY, -SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, -SizeY, -SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, SizeY, 0));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, 0, SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(0, SizeY, SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, 0, 0));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(0, SizeY, 0));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(0, 0, SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, SizeY, 0));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, 0, SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(0, -SizeY, SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, 0, 0));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(0, -SizeY, 0));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(0, 0, -SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, -SizeY, 0));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, 0, -SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(0, SizeY, -SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, -SizeY, 0));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, 0, -SizeZ));
+	table.insert(SnappingPoints, PartCFrame * CFrame.new(0, -SizeY, -SizeZ));
+
+	-- Calculate proximity of each snapping point to the mouse
+	for SnappingPointKey, SnappingPoint in ipairs(SnappingPoints) do
+		SnappingPointProximity[SnappingPointKey] = (SnapTracking.MousePoint - SnappingPoint.p).magnitude;
+	end;
+
+	-- Sort out the closest snapping point
+	local ClosestPointKey = 1;
+	for PointKey, Proximity in pairs(SnappingPointProximity) do
+		if Proximity < SnappingPointProximity[ClosestPointKey] then
+			ClosestPointKey = PointKey;
+		end;
+	end;
+
+	-- Return the closest point
+	return SnappingPoints[ClosestPointKey];
+end;
+
+function SnapTracking.StopTracking()
+	-- Stops tracking the current closest snapping point, cleans up
+
+	-- Make sure we're currently tracking
+	if not SnapTracking.Enabled then
+		return;
+	end;
+
+	-- Stop tracking the mouse and its proximity to snapping points
+	SnapTracking.MouseTracking:disconnect();
+	SnapTracking.MouseTracking = nil;
+
+	-- Clear the point marker UI from the screen
+	SnapTracking.ClearUI();
+
+	-- Clear the previous tracking target, and callback
+	SnapTracking.Target = nil;
+	SnapTracking.Callback = nil;
+
+	-- Indicate that tracking is no longer enabled
+	SnapTracking.Enabled = false;
+
+end;
+
 ------------------------------------------
 -- Attach tool event listeners
 ------------------------------------------
@@ -2544,61 +2744,72 @@ function equipBT( CurrentMouse )
 	-- Display any startup notifications
 	coroutine.wrap( ShowStartupNotifications )();
 
-	table.insert( Connections, Mouse.KeyDown:connect( function ( key )
+	table.insert(Connections, UserInputService.InputBegan:connect(function (InputInfo, GameProcessedEvent)
 
-		local key = key:lower();
-		local key_code = key:byte();
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
+			return;
+		end;
+
+		-- Make sure this is input from the keyboard
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
+		end;
+
+		-- Make sure the key wasn't pressed while typing
+		if UserInputService:GetFocusedTextBox() then
+			return;
+		end;
 
 		-- Provide the abiltiy to delete via the shift + X key combination
-		if ActiveKeys[47] or ActiveKeys[48] and key == "x" then
+		if InputInfo.KeyCode == Enum.KeyCode.X and (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
 			deleteSelection();
 			return;
 		end;
 
 		-- Provide the ability to clone via the shift + C key combination
-		if ActiveKeys[47] or ActiveKeys[48] and key == "c" then
+		if InputInfo.KeyCode == Enum.KeyCode.C and (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
 			cloneSelection();
 			return;
 		end;
 
 		-- Undo if shift+z is pressed
-		if key == "z" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+		if InputInfo.KeyCode == Enum.KeyCode.Z and (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
 			History:Undo();
 			return;
 
 		-- Redo if shift+y is pressed
-		elseif key == "y" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+		elseif InputInfo.KeyCode == Enum.KeyCode.Y and (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
 			History:Redo();
 			return;
 		end;
 
 		-- Serialize and dump selection to logs if shift+p is pressed
-		if key == "p" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+		if InputInfo.KeyCode == Enum.KeyCode.P and (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
 			IE:export();
 			return;
 		end;
 
 		-- Perform a prism selection if shift + k is pressed
-		if key == "k" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+		if InputInfo.KeyCode == Enum.KeyCode.K and (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
 			prismSelect();
 			return;
 		end;
 
 		-- Clear the selection if shift + r is pressed
-		if key == "r" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+		if InputInfo.KeyCode == Enum.KeyCode.R and (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
 			Selection:clear();
 			return;
 		end;
 
 		-- Show the groups GUI when shift + g is pressed
-		if key == "g" and ( ActiveKeys[47] or ActiveKeys[48] ) then
+		if InputInfo.KeyCode == Enum.KeyCode.G and (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
 			Groups:ToggleUI();
 			return;
 		end;
 
-		-- Select all parts within the parent of the focused part
-		-- when [ is pressed
-		if key == "[" then
+		-- Select all parts within the parent of the focused part when [ is pressed
+		if InputInfo.KeyCode == Enum.KeyCode.LeftBracket then
 
 			-- Make sure we have a part that's focused
 			local FocusedPart = Selection.Last;
@@ -2614,7 +2825,7 @@ function equipBT( CurrentMouse )
 
 			-- Clear the selection (or not), depending on whether
 			-- it's part of a multiselection
-			if not (ActiveKeys[47] or ActiveKeys[48]) then
+			if not (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
 				Selection:clear();
 			end;
 
@@ -2630,68 +2841,79 @@ function equipBT( CurrentMouse )
 			return;
 		end;
 
-		if key == "z" then
+		if InputInfo.KeyCode == Enum.KeyCode.Z then
 			equipTool( Tools.Move );
 
-		elseif key == "x" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.X then
 			equipTool( Tools.Resize );
 
-		elseif key == "c" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.C then
 			equipTool( Tools.Rotate );
 
-		elseif key == "v" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.V then
 			equipTool( Tools.Paint );
 
-		elseif key == "b" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.B then
 			equipTool( Tools.Surface );
 
-		elseif key == "n" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.N then
 			equipTool( Tools.Material );
 
-		elseif key == "m" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.M then
 			equipTool( Tools.Anchor );
 
-		elseif key == "k" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.K then
 			equipTool( Tools.Collision );
 
-		elseif key == "j" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.J then
 			equipTool( Tools.NewPart );
 
-		elseif key == "h" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.H then
 			equipTool( Tools.Mesh );
 
-		elseif key == "g" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.G then
 			equipTool( Tools.Texture );
 
-		elseif key == "f" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.F then
 			equipTool( Tools.Weld );
 
-		elseif key == "u" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.U then
 			equipTool( Tools.Lighting );
 
-		elseif key == "p" then
+		elseif InputInfo.KeyCode == Enum.KeyCode.P then
 			equipTool( Tools.Decorate );
 
 		end;
 
-		ActiveKeys[key_code] = key_code;
-		ActiveKeys[key] = key;
+		-- Indicate that the key has been pressed down and is now active
+		ActiveKeys[InputInfo.KeyCode] = true;
 
-		-- If it's now in multiselection mode, update `selecting`
-		-- (these are the left/right ctrl & shift keys)
-		if ActiveKeys[47] or ActiveKeys[48] or ActiveKeys[49] or ActiveKeys[50] then
-			selecting = ActiveKeys[47] or ActiveKeys[48] or ActiveKeys[49] or ActiveKeys[50];
+		-- If it's now in multiselection mode, update `selecting` with the shift key that activated it
+		if ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift] then
+			selecting = ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift];
 		end;
 
-	end ) );
+	end));
 
-	table.insert( Connections, Mouse.KeyUp:connect( function ( key )
+	table.insert(Connections, UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
 
-		local key = key:lower();
-		local key_code = key:byte();
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
+			return;
+		end;
 
-		ActiveKeys[key_code] = nil;
-		ActiveKeys[key] = nil;
+		-- Make sure this is input from the keyboard
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
+		end;
+
+		-- Make sure the key wasn't pressed while typing
+		if UserInputService:GetFocusedTextBox() then
+			return;
+		end;
+
+		-- Update the active keys to reflect the release of this key
+		ActiveKeys[InputInfo.KeyCode] = nil;
 
 		-- If it's no longer in multiselection mode, update `selecting` & related values
 		if selecting and not ActiveKeys[selecting] then
@@ -2704,10 +2926,10 @@ function equipBT( CurrentMouse )
 
 		-- Fire tool listeners
 		if CurrentTool and CurrentTool.Listeners.KeyUp then
-			CurrentTool.Listeners.KeyUp( key );
+			CurrentTool.Listeners.KeyUp(InputInfo.KeyCode);
 		end;
 
-	end ) );
+	end));
 
 	table.insert( Connections, UserInputService.InputEnded:connect( function ( InputData )
 
@@ -2754,14 +2976,27 @@ function equipBT( CurrentMouse )
 			if TargetBox.Adornee ~= Mouse.Target then
 				TargetBox.Adornee = Mouse.Target;
 
-				-- When the part is selectable, show the targetbox
-				if isSelectable(Mouse.Target) and not Selection:find(Mouse.Target) then
-					TargetBox.Transparency = 0.5;
+				-- When the part is selectable, show the targetbox, and fire relevant events
+				if isSelectable(Mouse.Target) then
+
+					-- Show that the target is selectable if it is
+					if not Selection:find(Mouse.Target) then
+						TargetBox.Transparency = 0.5;
+
+					-- If already selected, only fire the SelectedTargetChanged event
+					else
+						TargetBox.Transparency = 1;
+						SelectedTargetChanged:fire(Mouse.Target);
+					end;
 
 				-- When aiming at something invalid, hide the targetbox
 				else
 					TargetBox.Transparency = 1;
 				end;
+
+				-- Fire the TargetChanged event
+				TargetChanged:fire(Mouse.Target);
+
 			end;
 
 		end;
