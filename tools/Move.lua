@@ -333,48 +333,13 @@ function AttachHandles(Part, Autofocus)
 		-- Calculate the increment-aligned drag distance
 		Distance = GetIncrementMultiple(Distance, MoveTool.Increment);
 
-		--------------------------------------------------------------------
 		-- Move the parts along the selected axes by the calculated distance
-		--------------------------------------------------------------------
-
-		-- Get the axis multiplier for this face
-		local AxisMultiplier = AxisMultipliers[Face];
-
-		-- Move each part
-		for _, Part in pairs(Selection.Items) do
-
-			-- Move along standard axes
-			if MoveTool.Axes == 'Global' then
-				Part.CFrame = InitialState[Part].CFrame + (Distance * AxisMultiplier);
-
-			-- Move along item's axes
-			elseif MoveTool.Axes == 'Local' then
-				Part.CFrame = InitialState[Part].CFrame * CFrame.new(Distance * AxisMultiplier);
-
-			-- Move along focused part's axes
-			elseif MoveTool.Axes == 'Last' then
-
-				-- Calculate the focused part's position
-				local RelativeTo = InitialState[Selection.Last].CFrame * CFrame.new(Distance * AxisMultiplier);
-
-				-- Calculate how far apart we should be from the focused part
-				local Offset = InitialState[Selection.Last].CFrame:toObjectSpace(InitialState[Part].CFrame);
-
-				-- Move relative to the focused part by this part's offset from it
-				Part.CFrame = RelativeTo * Offset;
-
-			end;
-
-		end;
+		DragPartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Last, Selection.Items, InitialState);
 
 		-- Update the "distance moved" indicator
 		if MoveTool.UI then
 			MoveTool.UI.Changes.Text.Text = 'moved ' .. math.abs(Distance) .. ' studs';
 		end;
-
-		----------------------------------------
-		-- Check for relevant area authorization
-		----------------------------------------
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
@@ -383,6 +348,41 @@ function AttachHandles(Part, Autofocus)
 		end;
 
 	end);
+
+end;
+
+function DragPartsAlongAxesByFace(Face, Distance, Axes, BasePart, Parts, InitialState)
+	-- Moves the given parts, along the given axis mode, in the given face direction, by the given distance
+
+	-- Get the axis multiplier for this face
+	local AxisMultiplier = AxisMultipliers[Face];
+
+	-- Move each part
+	for _, Part in pairs(Parts) do
+
+		-- Move along standard axes
+		if Axes == 'Global' then
+			Part.CFrame = InitialState[Part].CFrame + (Distance * AxisMultiplier);
+
+		-- Move along item's axes
+		elseif Axes == 'Local' then
+			Part.CFrame = InitialState[Part].CFrame * CFrame.new(Distance * AxisMultiplier);
+
+		-- Move along focused part's axes
+		elseif Axes == 'Last' then
+
+			-- Calculate the focused part's position
+			local RelativeTo = InitialState[BasePart].CFrame * CFrame.new(Distance * AxisMultiplier);
+
+			-- Calculate how far apart we should be from the focused part
+			local Offset = InitialState[BasePart].CFrame:toObjectSpace(InitialState[Part].CFrame);
+
+			-- Move relative to the focused part by this part's offset from it
+			Part.CFrame = RelativeTo * Offset;
+
+		end;
+
+	end;
 
 end;
 
@@ -947,6 +947,7 @@ function GetIncrementMultiple(Number, Increment)
 end;
 
 function TranslatePartsRelativeToPart(BasePart, InitialState, Parts)
+	-- Moves the given parts to BasePart's current position, with their original offset from it
 
 	for _, Part in pairs(Parts) do
 
