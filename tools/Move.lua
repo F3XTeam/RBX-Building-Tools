@@ -334,7 +334,7 @@ function AttachHandles(Part, Autofocus)
 		Distance = GetIncrementMultiple(Distance, MoveTool.Increment);
 
 		-- Move the parts along the selected axes by the calculated distance
-		DragPartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Last, Selection.Items, InitialState);
+		MovePartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Last, Selection.Items, InitialState);
 
 		-- Update the "distance moved" indicator
 		if MoveTool.UI then
@@ -351,7 +351,7 @@ function AttachHandles(Part, Autofocus)
 
 end;
 
-function DragPartsAlongAxesByFace(Face, Distance, Axes, BasePart, Parts, InitialState)
+function MovePartsAlongAxesByFace(Face, Distance, Axes, BasePart, Parts, InitialState)
 	-- Moves the given parts, along the given axis mode, in the given face direction, by the given distance
 
 	-- Get the axis multiplier for this face
@@ -397,18 +397,18 @@ function BindShortcutKeys()
 			return;
 		end;
 
-		-- Make sure this is input is a key press
+		-- Make sure this input is a key press
 		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
+		end;
+
+		-- Make sure it wasn't pressed while typing
+		if UserInputService:GetFocusedTextBox() then
 			return;
 		end;
 
 		-- Check if the enter key was pressed
 		if InputInfo.KeyCode == Enum.KeyCode.Return or InputInfo.KeyCode == Enum.KeyCode.KeypadEnter then
-
-			-- Make sure it wasn't pressed while typing
-			if UserInputService:GetFocusedTextBox() then
-				return;
-			end;
 
 			-- Toggle the current axis mode
 			if MoveTool.Axes == 'Global' then
@@ -424,11 +424,6 @@ function BindShortcutKeys()
 		-- Check if the - key was pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.Minus or InputInfo.KeyCode == Enum.KeyCode.KeypadMinus then
 
-			-- Make sure it wasn't pressed while typing
-			if UserInputService:GetFocusedTextBox() then
-				return;
-			end;
-
 			-- Focus on the increment input
 			if MoveTool.UI then
 				MoveTool.UI.IncrementOption.Increment.TextBox:CaptureFocus();
@@ -437,13 +432,33 @@ function BindShortcutKeys()
 		-- Check if the R key was pressed down, and it wasn't Shift R
 		elseif InputInfo.KeyCode == Enum.KeyCode.R and not (Core.ActiveKeys[Enum.KeyCode.LeftShift] or Core.ActiveKeys[Enum.KeyCode.RightShift]) then
 
-			-- Make sure it wasn't pressed while typing
-			if UserInputService:GetFocusedTextBox() then
-				return;
-			end;
-
 			-- Start tracking snap points nearest to the mouse
 			StartSnapping();
+
+
+		-- Nudge up if the 8 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadEight then
+			NudgeSelectionByFace(Enum.NormalId.Top);
+
+		-- Nudge down if the 2 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadTwo then
+			NudgeSelectionByFace(Enum.NormalId.Bottom);
+
+		-- Nudge forward if the 9 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadNine then
+			NudgeSelectionByFace(Enum.NormalId.Front);
+
+		-- Nudge backward if the 1 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadOne then
+			NudgeSelectionByFace(Enum.NormalId.Back);
+
+		-- Nudge left if the 4 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadFour then
+			NudgeSelectionByFace(Enum.NormalId.Left);
+
+		-- Nudge right if the 6 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadSix then
+			NudgeSelectionByFace(Enum.NormalId.Right);
 
 		end;
 
@@ -525,6 +540,40 @@ function SetAxisPosition(Axis, Position)
 		) * CFrame.Angles(Part.CFrame:toEulerAnglesXYZ());
 
 	end;
+
+	-- Cache up permissions for all private areas
+	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+
+	-- Revert changes if player is not authorized to move parts to target destination
+	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+		for Part, PartState in pairs(InitialState) do
+			Part.CFrame = PartState.CFrame;
+		end;
+	end;
+
+	-- Restore the parts' original states
+	for Part, PartState in pairs(InitialState) do
+		Part.CanCollide = InitialState[Part].CanCollide;
+		Part:MakeJoints();
+		Part.Anchored = InitialState[Part].Anchored;
+	end;
+
+	-- Register the change
+	RegisterChange();
+
+end;
+
+function NudgeSelectionByFace(Face)
+	-- Nudges the selection along the current axes mode in the direction of the focused part's face
+
+	-- Track this change
+	TrackChange();
+
+	-- Prepare parts to be moved
+	local InitialState = PreparePartsForDragging();
+
+	-- Perform the movement
+	MovePartsAlongAxesByFace(Face, MoveTool.Increment, MoveTool.Axes, Selection.Last, Selection.Items, InitialState);
 
 	-- Cache up permissions for all private areas
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
