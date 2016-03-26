@@ -842,9 +842,9 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 		IgnoreList
 	);
 
-	-------------------------------------------------
+	------------------------------------------------
 	-- Move the selection towards any snapped points
-	-------------------------------------------------
+	------------------------------------------------
 
 	-- If snapping is enabled, update the current snap point and drag to it instead
 	if SnapTracking.Enabled then
@@ -869,9 +869,9 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 
 	end;
 
-	-------------------------------------------------------
+	------------------------------------------------------
 	-- Move the selection towards the right mouse location
-	-------------------------------------------------------
+	------------------------------------------------------
 
 	-- Get the increment-aligned target point
 	TargetPoint = GetAlignedTargetPoint(Target, TargetPoint, TargetNormal);

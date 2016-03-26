@@ -299,6 +299,72 @@ Actions = {
 			Part.Anchored = Change.InitialState.Anchored;
 		end;
 
+	end;
+
+	['SyncResize'] = function (Changes)
+		-- Updates parts server-side given their new sizes and CFrames
+
+		-- Grab a list of every part we're attempting to modify
+		local Parts = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				table.insert(Parts, Change.Part);
+			end;
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
+
+		-- Reorganize the changes
+		local ChangeSet = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				Change.InitialState = { Anchored = Change.Part.Anchored, Size = Change.Part.Size, CFrame = Change.Part.CFrame };
+				ChangeSet[Change.Part] = Change;
+			end;
+		end;
+
+		-- Perform each change
+		for Part, Change in pairs(ChangeSet) do
+
+			-- Stabilize the parts and maintain the original anchor state
+			Part.Anchored = true;
+			Part:BreakJoints();
+			Part.Velocity = Vector3.new();
+			Part.RotVelocity = Vector3.new();
+
+			-- Ensure the part has a "Custom" form factor to resize properly
+			if Part:IsA 'FormFactorPart' then
+				Part.FormFactor = Enum.FormFactor.Custom;
+			end;
+
+			-- Set the part's size and CFrame
+			Part.Size = Change.Size;
+			Part.CFrame = Change.CFrame;
+
+		end;
+
+		-- Make sure the player is authorized to move parts into this area
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+
+			-- Revert changes if unauthorized destination
+			for Part, Change in pairs(ChangeSet) do
+				Part.Size = Change.InitialState.Size;
+				Part.CFrame = Change.InitialState.CFrame;
+			end;
+
+		end;
+
+		-- Restore the parts' original states
+		for Part, Change in pairs(ChangeSet) do
+			Part:MakeJoints();
+			Part.Anchored = Change.InitialState.Anchored;
+		end;
 
 	end;
 
