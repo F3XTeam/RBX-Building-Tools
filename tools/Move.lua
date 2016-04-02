@@ -55,6 +55,7 @@ function Unequip()
 
 	-- Clear unnecessary resources
 	HideUI();
+	HideHandles();
 	ClearConnections();
 	Core.ClearBoundingBox();
 	SnapTracking.StopTracking();
@@ -255,9 +256,10 @@ function AttachHandles(Part, Autofocus)
 		Connections.AutofocusHandle = nil;
 	end;
 
-	-- Just attach the handles if they already exist
+	-- Just attach and show the handles if they already exist
 	if Handles then
 		Handles.Adornee = Part;
+		Handles.Visible = true;
 		return;
 	end;
 
@@ -348,6 +350,25 @@ function AttachHandles(Part, Autofocus)
 		end;
 
 	end);
+
+end;
+
+function HideHandles()
+	-- Hides the resizing handles
+
+	-- Make sure handles exist and are visible
+	if not Handles or not Handles.Visible then
+		return;
+	end;
+
+	-- Hide the handles
+	Handles.Visible = false;
+
+	-- Disable handle autofocus if enabled
+	if Connections.AutofocusHandle then
+		Connections.AutofocusHandle:disconnect();
+		Connections.AutofocusHandle = nil;
+	end;
 
 end;
 
