@@ -4,802 +4,622 @@ repeat wait() until (
 	_G.BTCoreEnv[script.Parent.Parent] and
 	_G.BTCoreEnv[script.Parent.Parent].CoreReady
 );
-setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
+Core = _G.BTCoreEnv[script.Parent.Parent];
 
-------------------------------------------
--- Rotate tool
-------------------------------------------
+-- Import relevant references
+Selection = Core.Selection;
+Create = Core.Create;
+Support = Core.Support;
+Security = Core.Security;
+SnapTracking = Core.SnapTracking;
+Support.ImportServices();
 
--- Create the tool
-Tools.Rotate = {};
-Tools.Rotate.Name = 'Rotate Tool';
+-- Initialize the tool
+local RotateTool = {
 
--- Create structures to hold data that the tool needs
-Tools.Rotate.Connections = {};
+	Name = 'Rotate Tool';
+	Color = BrickColor.new 'Bright green';
 
-Tools.Rotate.Options = {
-	["increment"] = 15;
-	["pivot"] = "center"
+	-- Default options
+	Increment = 15;
+	Pivot = 'Center';
+
+	-- Standard platform event interface
+	Listeners = {};
+
 };
 
-Tools.Rotate.State = {
-	["PreRotation"] = {};
-	["rotating"] = false;
-	["previous_distance"] = 0;
-	["degrees_rotated"] = 0;
-	["rotation_size"] = 0;
-};
+-- Container for temporary connections (disconnected automatically)
+local Connections = {};
 
-Tools.Rotate.Listeners = {};
+function Equip()
+	-- Enables the tool's equipped functionality
 
--- Define the color of the tool
-Tools.Rotate.Color = BrickColor.new( "Bright green" );
+	-- Set our current pivot mode
+	SetPivot(RotateTool.Pivot);
 
--- Start adding functionality to the tool
-Tools.Rotate.Listeners.Equipped = function ()
+	-- Start up our interface
+	ShowUI();
+	BindShortcutKeys();
 
-	local self = Tools.Rotate;
+end;
 
-	-- Change the color of selection boxes temporarily
-	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = self.Color;
-	updateSelectionBoxColor();
+function Unequip()
+	-- Disables the tool's equipped functionality
 
-	-- Reveal the GUI
-	self:showGUI();
+	-- Clear unnecessary resources
+	HideUI();
+	HideHandles();
+	ClearConnections();
+	Core.ClearBoundingBox();
+	SnapTracking.StopTracking();
 
-	-- Create the boundingbox if it doesn't already exist
-	if not self.BoundingBox then
-		self.BoundingBox = RbxUtility.Create "Part" {
-			Name = "BTBoundingBox";
-			CanCollide = false;
-			Transparency = 1;
-			Anchored = true;
-		};
+end;
+
+RotateTool.Listeners.Equipped = Equip;
+RotateTool.Listeners.Unequipped = Unequip;
+
+function ClearConnections()
+	-- Clears out temporary connections
+
+	for ConnectionKey, Connection in pairs(Connections) do
+		Connection:disconnect();
+		Connections[ConnectionKey] = nil;
 	end;
-	Mouse.TargetFilter = self.BoundingBox;
 
-	-- Update the pivot option
-	self:changePivot( self.Options.pivot );
+end;
 
-	self.State.StaticItems = {};
-	self.State.StaticExtents = nil;
-	self.State.RecalculateStaticExtents = true;	
+function ShowUI()
+	-- Creates and reveals the UI
+
+	-- Only reveal UI if already created
+	if RotateTool.UI then
+		RotateTool.UI.Visible = true;
+		return;
+	end;
+
+	-- Create the UI
+	RotateTool.UI = Core.Tool.Interfaces.BTRotateToolGUI:Clone();
+	RotateTool.UI.Parent = Core.UI;
+	RotateTool.UI.Visible = true;
+
+	-- Add functionality to the pivot option switch
+	local PivotSwitch = RotateTool.UI.PivotOption;
+	PivotSwitch.Center.Button.MouseButton1Down:connect(function ()
+		SetPivot('Center');
+	end);
+	PivotSwitch.Local.Button.MouseButton1Down:connect(function ()
+		SetPivot('Local');
+	end);
+	PivotSwitch.Last.Button.MouseButton1Down:connect(function ()
+		SetPivot('Last');
+	end);
+
+	-- Add functionality to the increment input
+	local IncrementInput = RotateTool.UI.IncrementOption.Increment.TextBox;
+	IncrementInput.FocusLost:connect(function (EnterPressed)
+		RotateTool.Increment = tonumber(IncrementInput.Text) or RotateTool.Increment;
+		IncrementInput.Text = RotateTool.Increment;
+	end);
+
+	-- Add functionality to the rotation inputs
+	local XInput = RotateTool.UI.Info.RotationInfo.X.TextBox;
+	local YInput = RotateTool.UI.Info.RotationInfo.Y.TextBox;
+	local ZInput = RotateTool.UI.Info.RotationInfo.Z.TextBox;
+	XInput.FocusLost:connect(function (EnterPressed)
+		local NewAngle = tonumber(XInput.Text);
+		if NewAngle then
+			SetAxisAngle('X', NewAngle);
+		end;
+	end);
+	YInput.FocusLost:connect(function (EnterPressed)
+		local NewAngle = tonumber(YInput.Text);
+		if NewAngle then
+			SetAxisAngle('Y', NewAngle);
+		end;
+	end);
+	ZInput.FocusLost:connect(function (EnterPressed)
+		local NewAngle = tonumber(ZInput.Text);
+		if NewAngle then
+			SetAxisAngle('Z', NewAngle);
+		end;
+	end);
+
+	-- Update the UI every 0.1 seconds
+	Core.ScheduleRecurringTask(UpdateUI, 0.1);
+
+end;
+
+function HideUI()
+	-- Hides the tool UI
+
+	-- Make sure there's a UI
+	if not RotateTool.UI then
+		return;
+	end;
+
+	-- Hide the UI
+	RotateTool.UI.Visible = false;
+
+end;
+
+function UpdateUI()
+	-- Updates information on the UI
+
+	-- Make sure the UI's on
+	if not RotateTool.UI then
+		return;
+	end;
+
+	-- Only show and calculate selection info if it's not empty
+	if #Selection.Items == 0 then
+		RotateTool.UI.Info.Visible = false;
+		RotateTool.UI.Size = UDim2.new(0, 245, 0, 90);
+		return;
+	else
+		RotateTool.UI.Info.Visible = true;
+		RotateTool.UI.Size = UDim2.new(0, 245, 0, 150);
+	end;
+
+	-----------------------------------------
+	-- Update the size information indicators
+	-----------------------------------------
+
+	-- Identify common angles across axes
+	local XVariations, YVariations, ZVariations = {}, {}, {};
+	for _, Part in pairs(Selection.Items) do
+		table.insert(XVariations, Support.Round(Part.Rotation.X, 2));
+		table.insert(YVariations, Support.Round(Part.Rotation.Y, 2));
+		table.insert(ZVariations, Support.Round(Part.Rotation.Z, 2));
+	end;
+	local CommonX = Support.IdentifyCommonItem(XVariations);
+	local CommonY = Support.IdentifyCommonItem(YVariations);
+	local CommonZ = Support.IdentifyCommonItem(ZVariations);
+
+	-- Shortcuts to indicators
+	local XIndicator = RotateTool.UI.Info.RotationInfo.X.TextBox;
+	local YIndicator = RotateTool.UI.Info.RotationInfo.Y.TextBox;
+	local ZIndicator = RotateTool.UI.Info.RotationInfo.Z.TextBox;
+
+	-- Update each indicator if it's not currently being edited
+	if not XIndicator:IsFocused() then
+		XIndicator.Text = CommonX or '*';
+	end;
+	if not YIndicator:IsFocused() then
+		YIndicator.Text = CommonY or '*';
+	end;
+	if not ZIndicator:IsFocused() then
+		ZIndicator.Text = CommonZ or '*';
+	end;
+
+end;
+
+function SetPivot(PivotMode)
+	-- Sets the given rotation pivot mode
+
+	-- Update setting
+	RotateTool.Pivot = PivotMode;
+
+	-- Update the UI switch
+	if RotateTool.UI then
+		Core.ToggleSwitch(PivotMode, RotateTool.UI.PivotOption);
+	end;
+
+	-- Disable any unnecessary bounding boxes
+	Core.ClearBoundingBox();
+
+	-- For center mode, use bounding box handles
+	if PivotMode == 'Center' then
+		Core.StartBoundingBox(AttachHandles);
+
+	-- For local mode, use focused part handles
+	elseif PivotMode == 'Local' then
+		AttachHandles(Selection.Last, true); 
+
+	-- For last mode, use focused part handles
+	elseif PivotMode == 'Last' then
+		AttachHandles(Selection.Last, true);
+	end;
+
+end;
+
+local Handles;
+
+function AttachHandles(Part, Autofocus)
+	-- Creates and attaches handles to `Part`, and optionally automatically attaches to the focused part
 	
-	local StaticItemMonitors = {};
+	-- Enable autofocus if requested and not already on
+	if Autofocus and not Connections.AutofocusHandle then
+		Connections.AutofocusHandle = Selection.Changed:connect(function ()
+			Handles.Adornee = Selection.Last;
+		end);
 
-	function AddStaticItem(Item)
-		
-		-- Make sure the item isn't already in the list
-		if #Support.FindTableOccurrences(self.State.StaticItems, Item) > 0 then
-			return;
+	-- Disable autofocus if not requested and on
+	elseif not Autofocus and Connections.AutofocusHandle then
+		Connections.AutofocusHandle:disconnect();
+		Connections.AutofocusHandle = nil;
+	end;
+
+	-- Just attach and show the handles if they already exist
+	if Handles then
+		Handles.Adornee = Part;
+		Handles.Visible = true;
+		return;
+	end;
+
+	-- Create the handles
+	Handles = Create 'ArcHandles' {
+		Name = 'BTRotationHandles';
+		Color = RotateTool.Color;
+		Parent = Core.GUIContainer;
+		Adornee = Part;
+	};
+
+	--------------------------------------------------------
+	-- Prepare for rotating parts when the handle is clicked
+	--------------------------------------------------------
+
+	local InitialState = {};
+	local AreaPermissions;
+	local PivotPoint;
+
+	Handles.MouseButton1Down:connect(function ()
+
+		-- Prevent selection
+		Core.override_selection = true;
+
+		-- Stop parts from moving, and capture the initial state of the parts
+		InitialState = PreparePartsForRotating();
+
+		-- Track the change
+		TrackChange();
+
+		-- Cache area permissions information
+		if Core.ToolType == 'tool' then
+			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 		end;
 
-		-- Add the item to the list
-		table.insert(self.State.StaticItems, Item);
+		-- Set the pivot point to the center of the selection if in Center mode
+		if RotateTool.Pivot == 'Center' then
+			local BoundingBoxSize, BoundingBoxCFrame = Core.CalculateExtents(Selection.Items, StaticExtents);
+			PivotPoint = BoundingBoxCFrame;
 
-		-- Attach state monitors
-		StaticItemMonitors[Item] = Item.Changed:connect(function (Property)
+		-- Set the pivot point to the center of the focused part if in Last mode
+		elseif RotateTool.Pivot == 'Last' then
+			PivotPoint = InitialState[Selection.Last].CFrame;
+		end;
 
-			-- To tell when the extents may have changed
-			if Property == 'CFrame' or Property == 'Size' then
-				self.State.RecalculateStaticExtents = true;
-			
-			-- To tell when it's no longer static
-			elseif Property == 'Anchored' and not Item.Anchored then
-				RemoveStaticItem(Item);
+		------------------------------------------------------
+		-- Finalize changes to parts when the handle is let go
+		------------------------------------------------------
+
+		Connections.HandleRelease = UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
+
+			-- Make sure this was button 1 being released
+			if InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1 then
+				return;
 			end;
+
+			-- Prevent selection
+			Core.override_selection = true;
+
+			-- Clear this connection to prevent it from firing again
+			Connections.HandleRelease:disconnect();
+			Connections.HandleRelease = nil;
+
+			-- Make joints, restore original anchor and collision states
+			for _, Part in pairs(Selection.Items) do
+				Part.CanCollide = InitialState[Part].CanCollide;
+				Part:MakeJoints();
+				Part.Anchored = InitialState[Part].Anchored;
+			end;
+
+			-- Register the change
+			RegisterChange();
 
 		end);
 
-		-- Recalculate the static extents
-		self.State.RecalculateStaticExtents = true;
+	end);
 
-	end;
+	------------------------------------------
+	-- Update parts when the handles are moved
+	------------------------------------------
 
-	function RemoveStaticItem(Item)
+	Handles.MouseDrag:connect(function (Axis, Rotation)
 
-		-- Remove `Item` from the list
-		local StaticItemIndex = Support.FindTableOccurrences(self.State.StaticItems, Item)[1];
-		if StaticItemIndex then
-			self.State.StaticItems[StaticItemIndex] = nil;
+		-- Turn the rotation amount into degrees
+		Rotation = math.deg(Rotation);
+
+		-- Calculate the increment-aligned rotation amount
+		Rotation = GetIncrementMultiple(Rotation, RotateTool.Increment);
+
+		-- Perform the rotation
+		RotatePartsAroundPivot(RotateTool.Pivot, PivotPoint, Axis, Rotation, Selection.Items, InitialState);
+
+		-- Update the "degrees rotated" indicator
+		if RotateTool.UI then
+			RotateTool.UI.Changes.Text.Text = 'rotated ' .. math.abs(Rotation) .. ' degrees';
 		end;
 
-		-- Remove `Item`'s state monitors
-		if StaticItemMonitors[Item] then
-			StaticItemMonitors[Item]:disconnect();
-			StaticItemMonitors[Item] = nil;
-		end;
-
-		-- Recalculate static extents
-		self.State.RecalculateStaticExtents = true;
-
-	end;
-
-	for _, Item in pairs(Selection.Items) do
-		if Item.Anchored then
-			AddStaticItem(Item);
-		end;
-	end;
-
-	table.insert(self.Connections, Selection.ItemAdded:connect(function (Item)
-		if Item.Anchored then
-			AddStaticItem(Item);
-		end;
-	end));
-
-	table.insert(self.Connections, Selection.ItemRemoved:connect(function (Item, Clearing)
-
-		-- Make sure this isn't part of a mass removal (i.e. a clearance),
-		-- and that the item is actually in the list of static parts
-		if Clearing or not StaticItemMonitors[Item] then
-			return;
-		end;
-
-		RemoveStaticItem(Item);
-
-	end));
-
-	table.insert(self.Connections, Selection.Cleared:connect(function ()
-		for MonitorIndex, Monitor in pairs(StaticItemMonitors) do
-			Monitor:disconnect();
-			StaticItemMonitors[MonitorIndex] = nil;
-		end;
-		self.State.StaticExtents = nil;
-		self.State.StaticItems = {};
-	end));
-
-	-- Oh, and update the boundingbox and the GUI regularly
-	coroutine.wrap( function ()
-		updater_on = true;
-
-		-- Provide a function to stop the loop
-		self.Updater = function ()
-			updater_on = false;
-		end;
-
-		while wait( 0.1 ) and updater_on do
-
-			-- Make sure the tool's equipped
-			if CurrentTool == self then
-
-				-- Update the GUI if it's visible
-				if self.GUI and self.GUI.Visible then
-					self:updateGUI();
-				end;
-
-				-- Update the boundingbox if it's visible
-				if self.Options.pivot == "center" then
-					self:updateBoundingBox();
-				end;
-
+		-- Make sure we're not entering any unauthorized private areas
+		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+			for Part, PartState in pairs(InitialState) do
+				Part.CFrame = PartState.CFrame;
 			end;
-
 		end;
 
-	end )();
-
-	-- Also enable the ability to select an edge as a pivot
-	SelectEdge:start( function ( EdgeMarker )
-		self:changePivot( "last" );
-		self.Options.PivotPoint = EdgeMarker.CFrame;
-		self.Connections.EdgeSelectionRemover = Selection.Changed:connect( function ()
-			self.Options.PivotPoint = nil;
-			if self.Connections.EdgeSelectionRemover then
-				self.Connections.EdgeSelectionRemover:disconnect();
-				self.Connections.EdgeSelectionRemover = nil;
-			end;
-		end );
-		self:showHandles( EdgeMarker );
-	end );
+	end);
 
 end;
 
-Tools.Rotate.Listeners.Unequipped = function ()
+function HideHandles()
+	-- Hides the resizing handles
 
-	local self = Tools.Rotate;
-
-	-- Stop the update loop
-	if self.Updater then
-		self.Updater();
-		self.Updater = nil;
+	-- Make sure handles exist and are visible
+	if not Handles or not Handles.Visible then
+		return;
 	end;
-
-	-- Disable the ability to select edges
-	SelectEdge:stop();
-	if self.Options.PivotPoint then
-		self.Options.PivotPoint = nil;
-	end;
-
-	-- Hide the GUI
-	self:hideGUI();
 
 	-- Hide the handles
-	self:hideHandles();
+	Handles.Visible = false;
 
-	-- Clear out any temporary connections
-	for connection_index, Connection in pairs( self.Connections ) do
-		Connection:disconnect();
-		self.Connections[connection_index] = nil;
-	end;
-
-	-- Restore the original color of the selection boxes
-	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
-
-end;
-
-Tools.Rotate.Listeners.Button1Down = function ()
-
-	local self = Tools.Rotate;
-
-	if not self.State.rotating and self.Options.PivotPoint then
-		self.Options.PivotPoint = nil;
+	-- Disable handle autofocus if enabled
+	if Connections.AutofocusHandle then
+		Connections.AutofocusHandle:disconnect();
+		Connections.AutofocusHandle = nil;
 	end;
 
 end;
 
-Tools.Rotate.Listeners.KeyUp = function ( Key )
-	local self = Tools.Rotate;
+function RotatePartsAroundPivot(PivotMode, PivotPoint, Axis, Rotation, Parts, InitialState)
+	-- Rotates the given `Parts` around `PivotMode` (using `PivotPoint` if applicable)'s `Axis` by `Rotation`
 
-	-- Provide a keyboard shortcut to the increment input
-	if Key == '-' and self.GUI then
-		self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
-	end;
-end;
+	-- Create a CFrame that increments rotation by `Rotation` around `Axis`
+	local RotationCFrame = CFrame.fromAxisAngle(Vector3.FromAxis(Axis), math.rad(Rotation));
 
-Tools.Rotate.showGUI = function ( self )
+	-- Rotate each part
+	for _, Part in pairs(Parts) do
 
-	-- Initialize the GUI if it's not ready yet
-	if not self.GUI then
+		-- Rotate around the selection's center, or the currently focused part
+		if PivotMode == 'Center' or PivotMode == 'Last' then
 
-		local Container = Tool.Interfaces.BTRotateToolGUI:Clone();
-		Container.Parent = UI;
+			-- Calculate the focused part's rotation
+			local RelativeTo = PivotPoint * RotationCFrame;
 
-		-- Change the pivot type option when the button is clicked
-		Container.PivotOption.Center.Button.MouseButton1Down:connect( function ()
-			self:changePivot( "center" );
-		end );
+			-- Calculate this part's offset from the focused part's rotation
+			local Offset = PivotPoint:toObjectSpace(InitialState[Part].CFrame);
 
-		Container.PivotOption.Local.Button.MouseButton1Down:connect( function ()
-			self:changePivot( "local" );
-		end );
+			-- Rotate relative to the focused part by this part's offset from it
+			Part.CFrame = RelativeTo * Offset;
 
-		Container.PivotOption.Last.Button.MouseButton1Down:connect( function ()
-			self:changePivot( "last" );
-		end );
+		-- Rotate around the part's center
+		elseif RotateTool.Pivot == 'Local' then
+			Part.CFrame = InitialState[Part].CFrame * RotationCFrame;
 
-		-- Change the increment option when the value of the textbox is updated
-		Container.IncrementOption.Increment.TextBox.FocusLost:connect( function ( enter_pressed )
-			self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
-			Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
-		end );
-
-		-- Add functionality to the rotation inputs
-		Container.Info.RotationInfo.X.TextButton.MouseButton1Down:connect( function ()
-			self.State.rot_x_focused = true;
-			Container.Info.RotationInfo.X.TextBox:CaptureFocus();
-		end );
-		Container.Info.RotationInfo.X.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.Info.RotationInfo.X.TextBox.Text );
-			if potential_new then
-				self:changeRotation( 'x', math.rad( potential_new ) );
-			end;
-			self.State.rot_x_focused = false;
-		end );
-		Container.Info.RotationInfo.Y.TextButton.MouseButton1Down:connect( function ()
-			self.State.rot_y_focused = true;
-			Container.Info.RotationInfo.Y.TextBox:CaptureFocus();
-		end );
-		Container.Info.RotationInfo.Y.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.Info.RotationInfo.Y.TextBox.Text );
-			if potential_new then
-				self:changeRotation( 'y', math.rad( potential_new ) );
-			end;
-			self.State.rot_y_focused = false;
-		end );
-		Container.Info.RotationInfo.Z.TextButton.MouseButton1Down:connect( function ()
-			self.State.rot_z_focused = true;
-			Container.Info.RotationInfo.Z.TextBox:CaptureFocus();
-		end );
-		Container.Info.RotationInfo.Z.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.Info.RotationInfo.Z.TextBox.Text );
-			if potential_new then
-				self:changeRotation( 'z', math.rad( potential_new ) );
-			end;
-			self.State.rot_z_focused = false;
-		end );
-
-		self.GUI = Container;
-	end;
-
-	-- Reveal the GUI
-	self.GUI.Visible = true;
-
-end;
-
-Tools.Rotate.startHistoryRecord = function ( self )
-
-	if self.State.HistoryRecord then
-		self.State.HistoryRecord = nil;
-	end;
-
-	-- Create a history record
-	self.State.HistoryRecord = {
-		targets = Support.CloneTable(Selection.Items);
-		initial_cframes = {};
-		terminal_cframes = {};
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Target.CFrame = self.initial_cframes[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
-				end;
-			end;
-		end;
-		Apply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Target.CFrame = self.terminal_cframes[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
-				end;
-			end;
-		end;
-	};
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.initial_cframes[Item] = Item.CFrame;
-		end;
-	end;
-
-end;
-
-Tools.Rotate.finishHistoryRecord = function ( self )
-
-	if not self.State.HistoryRecord then
-		return;
-	end;
-
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.terminal_cframes[Item] = Item.CFrame;
-		end;
-	end;
-	History:Add( self.State.HistoryRecord );
-	self.State.HistoryRecord = nil;
-
-end;
-
-Tools.Rotate.changeRotation = function ( self, component, new_value )
-
-	self:startHistoryRecord();
-
-	-- Change the rotation of each item selected
-	for _, Item in pairs( Selection.Items ) do
-		local old_x_rot, old_y_rot, old_z_rot = Item.CFrame:toEulerAnglesXYZ();
-		Item.CFrame = CFrame.new( Item.Position ) * CFrame.Angles(
-			component == 'x' and new_value or old_x_rot,
-			component == 'y' and new_value or old_y_rot,
-			component == 'z' and new_value or old_z_rot
-		);
-	end;
-
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Rotate.updateGUI = function ( self )
-
-	-- Make sure the GUI exists
-	if not self.GUI then
-		return;
-	end;
-
-	local GUI = self.GUI;
-
-	if #Selection.Items > 0 then
-
-		-- Look for identical numbers in each axis
-		local rot_x, rot_y, rot_z = nil, nil, nil;
-		for item_index, Item in pairs( Selection.Items ) do
-
-			local item_rot_x, item_rot_y, item_rot_z = Item.CFrame:toEulerAnglesXYZ();
-
-			-- Set the first values for the first item
-			if item_index == 1 then
-				rot_x, rot_y, rot_z = Support.Round(math.deg(item_rot_x), 2), Support.Round(math.deg(item_rot_y), 2), Support.Round(math.deg(item_rot_z), 2);
-
-			-- Otherwise, compare them and set them to `nil` if they're not identical
-			else
-				if rot_x ~= Support.Round(math.deg(item_rot_x), 2) then
-					rot_x = nil;
-				end;
-				if rot_y ~= Support.Round(math.deg(item_rot_y), 2) then
-					rot_y = nil;
-				end;
-				if rot_z ~= Support.Round(math.deg(item_rot_z), 2) then
-					rot_z = nil;
-				end;
-			end;
-
-		end;
-
-		-- Update the size info on the GUI
-		if not self.State.rot_x_focused then
-			GUI.Info.RotationInfo.X.TextBox.Text = rot_x and tostring( rot_x ) or "*";
-		end;
-		if not self.State.rot_y_focused then
-			GUI.Info.RotationInfo.Y.TextBox.Text = rot_y and tostring( rot_y ) or "*";
-		end;
-		if not self.State.rot_z_focused then
-			GUI.Info.RotationInfo.Z.TextBox.Text = rot_z and tostring( rot_z ) or "*";
-		end;
-
-		GUI.Info.Visible = true;
-	else
-		GUI.Info.Visible = false;
-	end;
-
-	if self.State.degrees_rotated then
-		GUI.Changes.Text.Text = "rotated " .. tostring( self.State.degrees_rotated ) .. " degrees";
-		GUI.Changes.Position = GUI.Info.Visible and UDim2.new( 0, 5, 0, 165 ) or UDim2.new( 0, 5, 0, 100 );
-		GUI.Changes.Visible = true;
-	else
-		GUI.Changes.Text.Text = "";
-		GUI.Changes.Visible = false;
-	end;
-
-end;
-
-Tools.Rotate.hideGUI = function ( self )
-
-	-- Hide the GUI if it exists
-	if self.GUI then
-		self.GUI.Visible = false;
-	end;
-
-end;
-
-Tools.Rotate.updateBoundingBox = function ( self )
-
-	if #Selection.Items > 0 then
-		if self.State.RecalculateStaticExtents then
-			self.State.StaticExtents = calculateExtents(self.State.StaticItems, nil, true);
-			self.State.RecalculateStaticExtents = false;
-		end;
-		local SelectionSize, SelectionPosition = calculateExtents(Selection.Items, self.State.StaticExtents);
-		self.BoundingBox.Size = SelectionSize;
-		self.BoundingBox.CFrame = SelectionPosition;
-		self:showHandles( self.BoundingBox );
-
-	else
-		self:hideHandles();
-	end;
-
-end;
-
-Tools.Rotate.changePivot = function ( self, new_pivot )
-
-	-- Have a quick reference to the GUI (if any)
-	local PivotOptionGUI = self.GUI and self.GUI.PivotOption or nil;
-
-	-- Disconnect any handle-related listeners that are specific to a certain pivot option
-	if self.Connections.HandleFocusChangeListener then
-		self.Connections.HandleFocusChangeListener:disconnect();
-		self.Connections.HandleFocusChangeListener = nil;
-	end;
-
-	if self.Connections.HandleSelectionChangeListener then
-		self.Connections.HandleSelectionChangeListener:disconnect();
-		self.Connections.HandleSelectionChangeListener = nil;
-	end;
-
-	-- Remove any temporary edge selection
-	if self.Options.PivotPoint then
-		self.Options.PivotPoint = nil;
-	end;
-
-	if new_pivot == "center" then
-
-		-- Update the options
-		self.Options.pivot = "center";
-
-		-- Focus the handles on the boundingbox
-		self:showHandles( self.BoundingBox );
-
-		-- Update the GUI's option panel
-		if self.GUI then
-			PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 0;
-			PivotOptionGUI.Center.Background.Image = Assets.DarkSlantedRectangle;
-			PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
-			PivotOptionGUI.Local.Background.Image = Assets.LightSlantedRectangle;
-			PivotOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
-			PivotOptionGUI.Last.Background.Image = Assets.LightSlantedRectangle;
-		end;
-
-	end;
-
-	if new_pivot == "local" then
-
-		-- Update the options
-		self.Options.pivot = "local";
-
-		-- Always have the handles on the most recent addition to the selection
-		self.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
-
-			-- Clear out any previous adornee
-			self:hideHandles();
-
-			-- If there /is/ a last item in the selection, attach the handles to it
-			if Selection.Last then
-				self:showHandles( Selection.Last );
-			end;
-
-		end );
-
-		-- Switch the adornee of the handles if the second mouse button is pressed
-		self.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
-
-			-- Make sure the platform doesn't think we're selecting
-			override_selection = true;
-
-			-- If the target is in the selection, make it the new adornee
-			if Selection:find( Mouse.Target ) then
-				Selection:focus( Mouse.Target );
-				self:showHandles( Mouse.Target );
-			end;
-
-		end );
-
-		-- Finally, attach the handles to the last item added to the selection (if any)
-		if Selection.Last then
-			self:showHandles( Selection.Last );
-		end;
-
-		-- Update the GUI's option panel
-		if self.GUI then
-			PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 1;
-			PivotOptionGUI.Center.Background.Image = Assets.LightSlantedRectangle;
-			PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 0;
-			PivotOptionGUI.Local.Background.Image = Assets.DarkSlantedRectangle;
-			PivotOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
-			PivotOptionGUI.Last.Background.Image = Assets.LightSlantedRectangle;
-		end;
-
-	end;
-
-	if new_pivot == "last" then
-
-		-- Update the options
-		self.Options.pivot = "last";
-
-		-- Always have the handles on the most recent addition to the selection
-		self.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
-
-			-- Clear out any previous adornee
-			if not self.Options.PivotPoint then
-				self:hideHandles();
-			end;
-
-			-- If there /is/ a last item in the selection, attach the handles to it
-			if Selection.Last and not self.Options.PivotPoint then
-				self:showHandles( Selection.Last );
-			end;
-
-		end );
-
-		-- Switch the adornee of the handles if the second mouse button is pressed
-		self.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
-
-			-- Make sure the platform doesn't think we're selecting
-			override_selection = true;
-
-			-- If the target is in the selection, make it the new adornee
-			if Selection:find( Mouse.Target ) then
-				Selection:focus( Mouse.Target );
-				self:showHandles( Mouse.Target );
-			end;
-
-		end );
-
-		-- Finally, attach the handles to the last item added to the selection (if any)
-		if Selection.Last then
-			self:showHandles( Selection.Last );
-		end;
-
-		-- Update the GUI's option panel
-		if self.GUI then
-			PivotOptionGUI.Center.SelectedIndicator.BackgroundTransparency = 1;
-			PivotOptionGUI.Center.Background.Image = Assets.LightSlantedRectangle;
-			PivotOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
-			PivotOptionGUI.Local.Background.Image = Assets.LightSlantedRectangle;
-			PivotOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 0;
-			PivotOptionGUI.Last.Background.Image = Assets.DarkSlantedRectangle;
 		end;
 
 	end;
 
 end;
 
+function BindShortcutKeys()
+	-- Enables useful shortcut keys for this tool
 
-Tools.Rotate.showHandles = function ( self, Part )
+	-- Track user input while this tool is equipped
+	table.insert(Connections, UserInputService.InputBegan:connect(function (InputInfo, GameProcessedEvent)
 
-	-- Create the handles if they don't exist yet
-	if not self.Handles then
-
-		-- Create the object
-		self.Handles = RbxUtility.Create "ArcHandles" {
-			Name = "BTRotationHandles";
-			Color = self.Color;
-			Parent = GUIContainer;
-		};
-
-		-- Add functionality to the handles
-
-		self.Handles.MouseButton1Down:connect( function ()
-
-			-- Prevent the platform from thinking we're selecting
-			override_selection = true;
-			self.State.rotating = true;
-
-			-- Clear the change stats
-			self.State.degrees_rotated = 0;
-			self.State.rotation_size = 0;
-
-			self:startHistoryRecord();
-
-			-- Do a few things to the selection before manipulating it
-			for _, Item in pairs( Selection.Items ) do
-
-				-- Keep a copy of the state of each item
-				self.State.PreRotation[Item] = Item:Clone();
-
-				-- Anchor each item
-				Item.Anchored = true;
-
-			end;
-
-			-- Also keep the position of the original selection
-			local PreRotationSize, PreRotationPosition = calculateExtents( self.State.PreRotation );
-			self.State.PreRotationPosition = PreRotationPosition;
-
-			-- Return stuff to normal once the mouse button is released
-			self.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
-
-				-- Prevent the platform from thinking we're selecting
-				override_selection = true;
-				self.State.rotating = false;
-
-				-- Stop this connection from firing again
-				if self.Connections.HandleReleaseListener then
-					self.Connections.HandleReleaseListener:disconnect();
-					self.Connections.HandleReleaseListener = nil;
-				end;
-
-				self:finishHistoryRecord();
-
-				-- Restore properties that may have been changed temporarily
-				-- from the pre-rotation state copies
-				for Item, PreviousItemState in pairs( self.State.PreRotation ) do
-					Item.Anchored = PreviousItemState.Anchored;
-					self.State.PreRotation[Item] = nil;
-					Item:MakeJoints();
-				end;
-
-			end );
-
-		end );
-
-		self.Handles.MouseDrag:connect( function ( axis, drag_distance )
-
-			-- Round down and convert the drag distance to degrees to make it easier to work with
-			local drag_distance = math.floor( math.deg( drag_distance ) );
-
-			-- Calculate which multiple of the increment to use based on the current angle's
-			-- proximity to their nearest upper and lower multiples
-
-			local difference = drag_distance % self.Options.increment;
-
-			local lower_degree = drag_distance - difference;
-			local upper_degree = drag_distance - difference + self.Options.increment;
-
-			local lower_degree_proximity = math.abs( drag_distance - lower_degree );
-			local upper_degree_proximity = math.abs( drag_distance - upper_degree );
-
-			if lower_degree_proximity <= upper_degree_proximity then
-				drag_distance = lower_degree;
-			else
-				drag_distance = upper_degree;
-			end;
-
-			local increase = self.Options.increment * math.floor( drag_distance / self.Options.increment );
-
-			self.State.degrees_rotated = drag_distance;
-
-			-- Go through the selection and make changes to it
-			for _, Item in pairs( Selection.Items ) do
-
-				-- Keep a copy of `Item` in case we need to revert anything
-				local PreviousItemState = Item:Clone();
-
-				-- Break any of `Item`'s joints so it can move freely
-				Item:BreakJoints();
-
-				-- Rotate `Item` according to the options and the handle that was used
-				if axis == Enum.Axis.Y then
-					if self.Options.pivot == "center" then
-						Item.CFrame = self.State.PreRotationPosition:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, math.rad( increase ), 0 ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.State.PreRotationPosition ):inverse() );
-					elseif self.Options.pivot == "local" then
-						Item.CFrame = self.State.PreRotation[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, math.rad( increase ), 0 ) );
-					elseif self.Options.pivot == "last" then
-						Item.CFrame = ( self.Options.PivotPoint or self.State.PreRotation[Selection.Last].CFrame ):toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, math.rad( increase ), 0 ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.Options.PivotPoint or self.State.PreRotation[Selection.Last].CFrame ):inverse() );
-					end;
-				elseif axis == Enum.Axis.X then
-					if self.Options.pivot == "center" then
-						Item.CFrame = self.State.PreRotationPosition:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( math.rad( increase ), 0, 0 ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.State.PreRotationPosition ):inverse() );
-					elseif self.Options.pivot == "local" then
-						Item.CFrame = self.State.PreRotation[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( math.rad( increase ), 0, 0 ) );
-					elseif self.Options.pivot == "last" then
-						Item.CFrame = ( self.Options.PivotPoint or self.State.PreRotation[Selection.Last].CFrame ):toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( math.rad( increase ), 0, 0 ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.Options.PivotPoint or self.State.PreRotation[Selection.Last].CFrame ):inverse() );
-					end;
-				elseif axis == Enum.Axis.Z then
-					if self.Options.pivot == "center" then
-						Item.CFrame = self.State.PreRotationPosition:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, 0, math.rad( increase ) ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.State.PreRotationPosition ):inverse() );
-					elseif self.Options.pivot == "local" then
-						Item.CFrame = self.State.PreRotation[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, 0, math.rad( increase ) ) );
-					elseif self.Options.pivot == "last" then
-						Item.CFrame = ( self.Options.PivotPoint or self.State.PreRotation[Selection.Last].CFrame ):toWorldSpace( CFrame.new( 0, 0, 0 ) * CFrame.Angles( 0, 0, math.rad( increase ) ) ):toWorldSpace( self.State.PreRotation[Item].CFrame:toObjectSpace( self.Options.PivotPoint or self.State.PreRotation[Selection.Last].CFrame ):inverse() );
-					end;
-				end;
-
-				-- Make joints with surrounding parts again once the resizing is done
-				Item:MakeJoints();
-
-			end;
-
-		end );
-
-	end;
-
-	-- Stop listening for the existence of the previous adornee (if any)
-	if self.Connections.AdorneeExistenceListener then
-		self.Connections.AdorneeExistenceListener:disconnect();
-		self.Connections.AdorneeExistenceListener = nil;
-	end;
-
-	-- Attach the handles to `Part`
-	self.Handles.Adornee = Part;
-
-	-- Make sure to hide the handles if `Part` suddenly stops existing
-	self.Connections.AdorneeExistenceListener = Part.AncestryChanged:connect( function ( Object, NewParent )
-
-		-- Make sure this change in parent applies directly to `Part`
-		if Object ~= Part then
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
 			return;
 		end;
 
-		-- Show the handles according to the existence of the part
-		if NewParent == nil then
-			self:hideHandles();
-		else
-			self:showHandles( Part );
+		-- Make sure this input is a key press
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
 		end;
 
-	end );
+		-- Make sure it wasn't pressed while typing
+		if UserInputService:GetFocusedTextBox() then
+			return;
+		end;
+
+		-- Check if the enter key was pressed
+		if InputInfo.KeyCode == Enum.KeyCode.Return or InputInfo.KeyCode == Enum.KeyCode.KeypadEnter then
+
+			-- Toggle the current axis mode
+			if RotateTool.Pivot == 'Center' then
+				SetPivot('Local');
+
+			elseif RotateTool.Pivot == 'Local' then
+				SetPivot('Last');
+
+			elseif RotateTool.Pivot == 'Last' then
+				SetPivot('Center');
+			end;
+
+		-- Check if the - key was pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.Minus or InputInfo.KeyCode == Enum.KeyCode.KeypadMinus then
+
+			-- Focus on the increment input
+			if RotateTool.UI then
+				RotateTool.UI.IncrementOption.Increment.TextBox:CaptureFocus();
+			end;
+
+		end;
+
+	end));
 
 end;
 
-Tools.Rotate.hideHandles = function ( self )
+function SetAxisAngle(Axis, Angle)
+	-- Sets the selection's angle on axis `Axis` to `Angle`
 
-	-- Hide the handles if they exist
-	if self.Handles then
-		self.Handles.Adornee = nil;
+	-- Turn the given angle from degrees to radians
+	local Angle = math.rad(Angle);
+
+	-- Track this change
+	TrackChange();
+
+	-- Prepare parts to be moved
+	local InitialState = PreparePartsForRotating();
+
+	-- Update each part
+	for _, Part in pairs(Selection.Items) do
+
+		-- Set the part's new CFrame
+		Part.CFrame = CFrame.new(Part.Position) * CFrame.Angles(
+			Axis == 'X' and Angle or math.rad(Part.Rotation.X),
+			Axis == 'Y' and Angle or math.rad(Part.Rotation.Y),
+			Axis == 'Z' and Angle or math.rad(Part.Rotation.Z)
+		);
+
+	end;
+
+	-- Cache up permissions for all private areas
+	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+
+	-- Revert changes if player is not authorized to move parts to target destination
+	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+		for Part, PartState in pairs(InitialState) do
+			Part.CFrame = PartState.CFrame;
+		end;
+	end;
+
+	-- Restore the parts' original states
+	for Part, PartState in pairs(InitialState) do
+		Part.CanCollide = InitialState[Part].CanCollide;
+		Part:MakeJoints();
+		Part.Anchored = InitialState[Part].Anchored;
+	end;
+
+	-- Register the change
+	RegisterChange();
+
+end;
+
+
+function TrackChange()
+
+	-- Start the record
+	HistoryRecord = {
+		Parts = Support.CloneTable(Selection.Items);
+		BeforeCFrame = {};
+		AfterCFrame = {};
+
+		Unapply = function (Record)
+			-- Reverts this change
+
+			-- Clear the selection
+			Selection:clear();
+
+			-- Put together the change request
+			local Changes = {};
+			for _, Part in pairs(Record.Parts) do
+				table.insert(Changes, { Part = Part, CFrame = Record.BeforeCFrame[Part] });
+
+				-- Select the part
+				Selection:add(Part);
+			end;
+
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncRotate', Changes);
+
+		end;
+
+		Apply = function (Record)
+			-- Applies this change
+
+			-- Clear the selection
+			Selection:clear();
+
+			-- Put together the change request
+			local Changes = {};
+			for _, Part in pairs(Record.Parts) do
+				table.insert(Changes, { Part = Part, CFrame = Record.AfterCFrame[Part] });
+
+				-- Select the part
+				Selection:add(Part);
+			end;
+
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncRotate', Changes);
+
+		end;
+
+	};
+
+	-- Collect the selection's initial state
+	for _, Part in pairs(HistoryRecord.Parts) do
+		HistoryRecord.BeforeCFrame[Part] = Part.CFrame;
 	end;
 
 end;
 
-Tools.Rotate.Loaded = true;
+function RegisterChange()
+	-- Finishes creating the history record and registers it
+
+	-- Make sure there's an in-progress history record
+	if not HistoryRecord then
+		return;
+	end;
+
+	-- Collect the selection's final state
+	local Changes = {};
+	for _, Part in pairs(HistoryRecord.Parts) do
+		HistoryRecord.AfterCFrame[Part] = Part.CFrame;
+		table.insert(Changes, { Part = Part, CFrame = Part.CFrame });
+	end;
+
+	-- Send the change to the server
+	Core.ServerAPI:InvokeServer('SyncRotate', Changes);
+
+	-- Register the record and clear the staging
+	Core.History:Add(HistoryRecord);
+	HistoryRecord = nil;
+
+end;
+
+function PreparePartsForRotating()
+	-- Prepares parts for rotating and returns the initial state of the parts
+
+	local InitialState = {};
+
+	-- Stop parts from moving, and capture the initial state of the parts
+	for _, Part in pairs(Selection.Items) do
+		InitialState[Part] = { Anchored = Part.Anchored, CFrame = Part.CFrame, CanCollide = Part.CanCollide };
+		Part.Anchored = true;
+		Part.CanCollide = false;
+		Part:BreakJoints();
+		Part.Velocity = Vector3.new();
+		Part.RotVelocity = Vector3.new();
+	end;
+
+	return InitialState;
+end;
+
+function GetIncrementMultiple(Number, Increment)
+
+	-- Get how far the actual distance is from a multiple of our increment
+	local MultipleDifference = Number % Increment;
+
+	-- Identify the closest lower and upper multiples of the increment
+	local LowerMultiple = Number - MultipleDifference;
+	local UpperMultiple = Number - MultipleDifference + Increment;
+
+	-- Calculate to which of the two multiples we're closer
+	local LowerMultipleProximity = math.abs(Number - LowerMultiple);
+	local UpperMultipleProximity = math.abs(Number - UpperMultiple);
+
+	-- Use the closest multiple of our increment as the distance moved
+	if LowerMultipleProximity <= UpperMultipleProximity then
+		Number = LowerMultiple;
+	else
+		Number = UpperMultiple;
+	end;
+
+	return Number;
+end;
+
+-- Mark the tool as fully loaded
+Core.Tools.Rotate = RotateTool;
+RotateTool.Loaded = true;
