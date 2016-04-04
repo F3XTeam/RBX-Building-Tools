@@ -4,225 +4,353 @@ repeat wait() until (
 	_G.BTCoreEnv[script.Parent.Parent] and
 	_G.BTCoreEnv[script.Parent.Parent].CoreReady
 );
-setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
+Core = _G.BTCoreEnv[script.Parent.Parent];
 
-------------------------------------------
--- Paint tool
-------------------------------------------
+-- Import relevant references
+Selection = Core.Selection;
+Create = Core.Create;
+Support = Core.Support;
+Security = Core.Security;
+Support.ImportServices();
 
--- Create the main container for this tool
-Tools.Paint = {};
-Tools.Paint.Name = 'Paint Tool';
+-- Initialize the tool
+local PaintTool = {
 
--- Define the color of the tool
-Tools.Paint.Color = BrickColor.new( "Really red" );
+	Name = 'Paint Tool';
+	Color = BrickColor.new 'Really red';
 
--- Define options
-Tools.Paint.Options = {
-	["Color"] = nil
+	-- Default options
+	BrickColor = nil;
+
+	-- Standard platform event interface
+	Listeners = {};
+
 };
 
-Tools.Paint.State = {};
+-- Container for temporary connections (disconnected automatically)
+local Connections = {};
 
--- Add listeners
-Tools.Paint.Listeners = {};
+function Equip()
+	-- Enables the tool's equipped functionality
 
-Tools.Paint.Listeners.Equipped = function ()
-
-	local self = Tools.Paint;
-
-	-- Change the color of selection boxes temporarily
-	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = self.Color;
-	updateSelectionBoxColor();
-
-	-- Show the GUI
-	self:showGUI();
-
-	-- Update the selected color
-	self:changeColor( self.Options.Color );
+	-- Start up our interface
+	ShowUI();
+	BindShortcutKeys();
+	EnableClickPainting();
 
 end;
 
-Tools.Paint.Listeners.Unequipped = function ()
+function Unequip()
+	-- Disables the tool's equipped functionality
 
-	local self = Tools.Paint;
-
-	-- Clear out the preferred color option
-	self:changeColor( nil );
-
-	-- Hide the GUI
-	self:hideGUI();
-
-	-- Restore the original color of the selection boxes
-	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
+	-- Clear unnecessary resources
+	HideUI();
+	ClearConnections();
 
 end;
 
-Tools.Paint.startHistoryRecord = function ( self )
+PaintTool.Listeners.Equipped = Equip;
+PaintTool.Listeners.Unequipped = Unequip;
 
-	if self.State.HistoryRecord then
-		self.State.HistoryRecord = nil;
-	end;
+function ClearConnections()
+	-- Clears out temporary connections
 
-	-- Create a history record
-	self.State.HistoryRecord = {
-		targets = Support.CloneTable(Selection.Items);
-		initial_colors = {};
-		terminal_colors = {};
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Change(Target, {
-						BrickColor = self.initial_colors[Target];
-					});
-					Selection:add( Target );
-				end;
-			end;
-		end;
-		Apply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Change(Target, {
-						BrickColor = self.terminal_colors[Target];
-					});
-					Selection:add( Target );
-				end;
-			end;
-		end;
-	};
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.initial_colors[Item] = Item.BrickColor;
-		end;
+	for ConnectionKey, Connection in pairs(Connections) do
+		Connection:disconnect();
+		Connections[ConnectionKey] = nil;
 	end;
 
 end;
 
-Tools.Paint.finishHistoryRecord = function ( self )
+-- Import the color list
+local Colors = require(script:WaitForChild 'Colors');
 
-	if not self.State.HistoryRecord then
+function ShowUI()
+	-- Creates and reveals the UI
+
+	-- Only reveal UI if already created
+	if PaintTool.UI then
+		PaintTool.UI.Visible = true;
 		return;
 	end;
 
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.terminal_colors[Item] = Item.BrickColor;
-		end;
+	-- Create the UI
+	PaintTool.UI = Core.Tool.Interfaces.BTPaintToolGUI:Clone();
+	PaintTool.UI.Parent = Core.UI;
+	PaintTool.UI.Visible = true;
+
+	-- Populate the palette
+	local Columns = 11;
+	for Index, Color in ipairs(Colors) do
+
+		-- Get the BrickColor for this color
+		local Color = BrickColor.new(Color);
+
+		-- Calculate the column and row for this button
+		local Column = (Index - 1) % Columns;
+		local Row = math.floor((Index - 1) / Columns);
+
+		-- Create the button for this color
+		local Button = Create 'TextButton' {
+			Parent = PaintTool.UI.Palette;
+			Name = Color.Name;
+			BackgroundColor3 = Color.Color;
+			Size = UDim2.new(1 / Columns, 0, 1 / Columns, 0);
+			Position = UDim2.new(Column * (1 / Columns), 0, Row * (1 / Columns), 0);
+			SizeConstraint = Enum.SizeConstraint.RelativeXX;
+			BorderSizePixel = 0;
+			TextColor3 = Color3.new(1, 1, 1);
+			Text = '';
+			FontSize = Enum.FontSize.Size8;
+			Font = Enum.Font.ArialBold;
+			TextStrokeTransparency = 0.15;
+			TextStrokeColor3 = Color3.new(0, 0, 0);
+		};
+
+		-- Recolor the selection when the button is clicked
+		Button.MouseButton1Click:connect(function ()
+			SetColor(Color);
+		end);
+
 	end;
-	History:Add( self.State.HistoryRecord );
-	self.State.HistoryRecord = nil;
+
+	-- Paint selection when current color indicator is clicked
+	PaintTool.UI.LastColor.MouseButton1Click:connect(PaintParts);
+
+	-- Update the UI every 0.1 seconds
+	Core.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
-Tools.Paint.Listeners.Button1Up = function ()
+function HideUI()
+	-- Hides the tool UI
 
-	local self = Tools.Paint;
+	-- Make sure there's a UI
+	if not PaintTool.UI then
+		return;
+	end;
 
-	-- Make sure that they clicked on one of the items in their selection
-	-- (and they weren't multi-selecting)
-	if Selection:find( Mouse.Target ) and not selecting and not selecting then
+	-- Hide the UI
+	PaintTool.UI.Visible = false;
 
-		override_selection = true;
+end;
 
-		self:startHistoryRecord();
+function UpdateUI()
+	-- Updates information on the UI
 
-		-- Paint all of the selected items `Tools.Paint.Options.Color`
-		if self.Options.Color then
-			for _, Item in pairs( Selection.Items ) do
-				Change(Item, {
-					BrickColor = self.Options.Color;
-				});
+	-- Make sure the UI's on
+	if not PaintTool.UI then
+		return;
+	end;
+
+	-----------------------------------------
+	-- Update the color information indicator
+	-----------------------------------------
+
+	-- Clear old color indicators
+	for _, Button in pairs(PaintTool.UI.Palette:GetChildren()) do
+		Button.Text = '';
+	end;
+
+	-- Indicate the variety of colors in the selection
+	for _, Part in pairs(Selection.Items) do
+		PaintTool.UI.Palette[Part.BrickColor.Name].Text = '-';
+	end;
+
+end;
+
+function SetColor(Color)
+	-- Changes the color option to `Color`
+
+	-- Set the color option
+	PaintTool.BrickColor = Color;
+
+	-- Shortcuts to color indicators
+	local ColorLabel = PaintTool.UI.LastColor.ColorName;
+	local ColorSquare = ColorLabel.ColorSquare;
+
+	-- Update the indicators
+	ColorLabel.Visible = true;
+	ColorLabel.Text = Color.Name;
+	ColorSquare.BackgroundColor3 = Color.Color;
+	ColorSquare.Position = UDim2.new(0.5, -ColorLabel.TextBounds.X / 2 - 16, 0.2, 1);
+
+	-- Paint currently selected parts
+	PaintParts();
+
+end;
+
+function PaintParts()
+	-- Recolors the selection with the selected color
+
+	-- Make sure a color has been selected
+	if not PaintTool.BrickColor then
+		return;
+	end;
+
+	-- Track changes
+	TrackChange();
+
+	-- Change the color of the parts locally
+	for _, Part in pairs(Selection.Items) do
+		Part.BrickColor = PaintTool.BrickColor;
+
+		-- Allow part coloring for unions
+		if Part.ClassName == 'UnionOperation' then
+			Part.UsePartColor = true;
+		end;
+	end;
+
+	-- Register changes
+	RegisterChange();
+
+end;
+
+function BindShortcutKeys()
+	-- Enables useful shortcut keys for this tool
+
+	-- Track user input while this tool is equipped
+	table.insert(Connections, UserInputService.InputBegan:connect(function (InputInfo, GameProcessedEvent)
+
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
+			return;
+		end;
+
+		-- Make sure this input is a key press
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
+		end;
+
+		-- Make sure it wasn't pressed while typing
+		if UserInputService:GetFocusedTextBox() then
+			return;
+		end;
+
+		-- Check if the enter key was pressed
+		if InputInfo.KeyCode == Enum.KeyCode.Return or InputInfo.KeyCode == Enum.KeyCode.KeypadEnter then
+
+			-- Paint the selection with the current color
+			PaintParts();
+
+		end;
+
+		-- Check if the R key was pressed
+		if InputInfo.KeyCode == Enum.KeyCode.R and not (Core.ActiveKeys[Enum.KeyCode.LeftShift] or Core.ActiveKeys[Enum.KeyCode.RightShift]) then
+
+			-- Set the current color to that of the current mouse target (if any)
+			if Core.Mouse.Target then
+				SetColor(Core.Mouse.Target.BrickColor);
 			end;
+
 		end;
 
-		self:finishHistoryRecord();
+	end));
 
+end;
+
+function EnableClickPainting()
+	-- Allows the player to paint parts by clicking on them
+
+	-- Watch out for clicks on selected parts (use selection system-linked core event)
+	PaintTool.Listeners.Button1Up = function ()
+		if Selection:find(Core.Mouse.Target) and not Core.selecting then
+
+			-- Paint the selected parts
+			PaintParts();
+
+		end;
 	end;
 
 end;
 
-Tools.Paint.changeColor = function ( self, Color )
+function TrackChange()
 
-	-- Alright so if `Color` is given, set that as the preferred color
-	if Color then
+	-- Start the record
+	HistoryRecord = {
+		Parts = Support.CloneTable(Selection.Items);
+		BeforeColor = {};
+		BeforeUnionColoring = {};
+		AfterColor = {};
 
-		-- First of all, change the color option itself
-		self.Options.Color = Color;
+		Unapply = function (Record)
+			-- Reverts this change
 
-		self:startHistoryRecord();
+			-- Clear the selection
+			Selection:clear();
 
-		-- Then, we want to update the color of any items in the selection
-		for _, Item in pairs( Selection.Items ) do
-			Change(Item, {
-				BrickColor = Color;
-			});
-		end;
+			-- Put together the change request
+			local Changes = {};
+			for _, Part in pairs(Record.Parts) do
+				table.insert(Changes, { Part = Part, Color = Record.BeforeColor[Part], UnionColoring = Record.BeforeUnionColoring[Part] });
 
-		self:finishHistoryRecord();
-
-		-- After that, we want to mark our new color in the palette
-		if self.GUI then
-
-			-- First clear out any other marks
-			for _, ColorSquare in pairs( self.GUI.Palette:GetChildren() ) do
-				ColorSquare.Text = "";
+				-- Select the part
+				Selection:add(Part);
 			end;
 
-			-- Then mark the right square
-			self.GUI.Palette[Color.Name].Text = "X";
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncColor', Changes);
 
 		end;
 
-	-- Otherwise, let's assume no color at all
-	else
+		Apply = function (Record)
+			-- Applies this change
 
-		-- Set the preferred color to none
-		self.Options.Color = nil;
+			-- Clear the selection
+			Selection:clear();
 
-		-- Clear out any color option marks on any of the squares
-		if self.GUI then
-			for _, ColorSquare in pairs( self.GUI.Palette:GetChildren() ) do
-				ColorSquare.Text = "";
+			-- Put together the change request
+			local Changes = {};
+			for _, Part in pairs(Record.Parts) do
+				table.insert(Changes, { Part = Part, Color = Record.AfterColor[Part], UnionColoring = true });
+
+				-- Select the part
+				Selection:add(Part);
 			end;
+
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncColor', Changes);
+
 		end;
 
-	end;
+	};
 
-end;
+	-- Collect the selection's initial state
+	for _, Part in pairs(HistoryRecord.Parts) do
+		HistoryRecord.BeforeColor[Part] = Part.BrickColor;
 
-Tools.Paint.showGUI = function ( self )
-
-	-- Initialize the GUI if it's not ready yet
-	if not self.GUI then
-
-		local Container = Tool.Interfaces.BTPaintToolGUI:Clone();
-		Container.Parent = UI;
-
-		for _, ColorButton in pairs( Container.Palette:GetChildren() ) do
-			ColorButton.MouseButton1Click:connect( function ()
-				self:changeColor( BrickColor.new( ColorButton.Name ) );
-			end );
+		-- If this part is a union, collect its UsePartColor state
+		if Part.ClassName == 'UnionOperation' then
+			HistoryRecord.BeforeUnionColoring[Part] = Part.UsePartColor;
 		end;
-
-		self.GUI = Container;
-	end;
-
-	-- Reveal the GUI
-	self.GUI.Visible = true;
-
-end;
-
-Tools.Paint.hideGUI = function ( self )
-
-	-- Hide the GUI if it exists
-	if self.GUI then
-		self.GUI.Visible = false;
 	end;
 
 end;
 
-Tools.Paint.Loaded = true;
+function RegisterChange()
+	-- Finishes creating the history record and registers it
+
+	-- Make sure there's an in-progress history record
+	if not HistoryRecord then
+		return;
+	end;
+
+	-- Collect the selection's final state
+	local Changes = {};
+	for _, Part in pairs(HistoryRecord.Parts) do
+		HistoryRecord.AfterColor[Part] = Part.BrickColor;
+		table.insert(Changes, { Part = Part, Color = Part.BrickColor, UnionColoring = true });
+	end;
+
+	-- Send the change to the server
+	Core.ServerAPI:InvokeServer('SyncColor', Changes);
+
+	-- Register the record and clear the staging
+	Core.History:Add(HistoryRecord);
+	HistoryRecord = nil;
+
+end;
+
+-- Mark the tool as fully loaded
+Core.Tools.Paint = PaintTool;
+PaintTool.Loaded = true;
