@@ -999,7 +999,7 @@ function createDropdown()
 				Size = UDim2.new( 1, -30, 1, 0 );
 				ZIndex = 3;
 				Font = Enum.Font.ArialBold;
-				FontSize = Enum.FontSize.Size12;
+				FontSize = Enum.FontSize.Size10;
 				Text = option;
 				TextColor3 = Color3.new( 1, 1, 1 );
 				TextXAlignment = Enum.TextXAlignment.Left;
@@ -1063,7 +1063,7 @@ function createDropdown()
 		Size = UDim2.new( 1, -30, 1, 0 );
 		ZIndex = 3;
 		Font = Enum.Font.ArialBold;
-		FontSize = Enum.FontSize.Size12;
+		FontSize = Enum.FontSize.Size10;
 		Text = "";
 		TextColor3 = Color3.new( 1, 1, 1 );
 		TextXAlignment = Enum.TextXAlignment.Left;
