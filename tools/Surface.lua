@@ -4,375 +4,428 @@ repeat wait() until (
 	_G.BTCoreEnv[script.Parent.Parent] and
 	_G.BTCoreEnv[script.Parent.Parent].CoreReady
 );
-setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
+Core = _G.BTCoreEnv[script.Parent.Parent];
 
-------------------------------------------
--- Surface tool
-------------------------------------------
+-- Import relevant references
+Selection = Core.Selection;
+Create = Core.Create;
+Support = Core.Support;
+Security = Core.Security;
+Support.ImportServices();
 
--- Create the tool
-Tools.Surface = {};
-Tools.Surface.Name = 'Surface Tool';
+-- Initialize the tool
+local SurfaceTool = {
 
--- Define the tool's color
-Tools.Surface.Color = BrickColor.new( "Bright violet" );
+	Name = 'Surface Tool';
+	Color = BrickColor.new 'Bright violet';
 
--- Keep a container for temporary connections
-Tools.Surface.Connections = {};
+	-- Default options
+	Surface = 'All';
 
--- Keep a container for state data
-Tools.Surface.State = {
-	["type"] = nil;
+	-- Standard platform event interface
+	Listeners = {};
+
 };
 
--- Maintain a container for options
-Tools.Surface.Options = {
-	["side"] = Enum.NormalId.Front;
-};
+-- Container for temporary connections (disconnected automatically)
+local Connections = {};
 
--- Keep a container for platform event connections
-Tools.Surface.Listeners = {};
+function Equip()
+	-- Enables the tool's equipped functionality
 
--- Start adding functionality to the tool
-Tools.Surface.Listeners.Equipped = function ()
+	-- Start up our interface
+	ShowUI();
+	EnableSurfaceSelection();
 
-	local self = Tools.Surface;
-
-	-- Change the color of selection boxes temporarily
-	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = self.Color;
-	updateSelectionBoxColor();
-
-	-- Reveal the GUI
-	self:showGUI();
-
-	-- Restore the side option
-	self:changeSurface( self.Options.side );
-
-	-- Update the GUI regularly
-	coroutine.wrap( function ()
-		updater_on = true;
-
-		-- Provide a function to stop the loop
-		self.Updater = function ()
-			updater_on = false;
-		end;
-
-		while wait( 0.1 ) and updater_on do
-
-			-- Make sure the tool's equipped
-			if CurrentTool == self then
-
-				-- Get the common surface type
-				local SelectionSurfaceTypes = {};
-				if self.Options.side == '*' then
-					for _, Part in pairs(Selection.Items) do
-						table.insert(SelectionSurfaceTypes, Part.TopSurface);
-						table.insert(SelectionSurfaceTypes, Part.BottomSurface);
-						table.insert(SelectionSurfaceTypes, Part.LeftSurface);
-						table.insert(SelectionSurfaceTypes, Part.RightSurface);
-						table.insert(SelectionSurfaceTypes, Part.FrontSurface);
-						table.insert(SelectionSurfaceTypes, Part.BackSurface);
-					end;
-				else
-					local SurfacePropertyName = self.Options.side.Name .. 'Surface';
-					for _, Part in pairs(Selection.Items) do
-						table.insert(SelectionSurfaceTypes, Part[SurfacePropertyName]);
-					end;
-				end;
-				local CommonSurfaceType = Support.IdentifyCommonItem(SelectionSurfaceTypes);
-
-				self.State.type = CommonSurfaceType;
-
-				-- Update the GUI if it's visible
-				if self.GUI and self.GUI.Visible then
-					self:updateGUI();
-				end;
-
-			end;
-
-		end;
-
-	end )();
+	-- Set our current surface mode
+	SetSurface(SurfaceTool.Surface);
 
 end;
 
-Tools.Surface.Listeners.Unequipped = function ()
+function Unequip()
+	-- Disables the tool's equipped functionality
 
-	local self = Tools.Surface;
+	-- Clear unnecessary resources
+	HideUI();
+	ClearConnections();
 
-	-- Stop the GUI updating loop
-	if self.Updater then
-		self.Updater();
-		self.Updater = nil;
-	end;
+end;
 
-	-- Hide the GUI
-	self:hideGUI();
+SurfaceTool.Listeners.Equipped = Equip;
+SurfaceTool.Listeners.Unequipped = Unequip;
 
-	-- Disconnect temporary connections
-	for connection_index, Connection in pairs( self.Connections ) do
+function ClearConnections()
+	-- Clears out temporary connections
+
+	for ConnectionKey, Connection in pairs(Connections) do
 		Connection:disconnect();
-		self.Connections[connection_index] = nil;
-	end;
-
-	-- Restore the original color of selection boxes
-	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
-
-end;
-
-Tools.Surface.Listeners.Button2Down = function ()
-
-	local self = Tools.Surface;
-
-	-- Capture the camera rotation (for later use
-	-- in determining whether a surface was being
-	-- selected or the camera was being rotated
-	-- with the right mouse button)
-	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
-	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
-
-end;
-
-Tools.Surface.Listeners.Button2Up = function ()
-
-	local self = Tools.Surface;
-
-	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
-	local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
-
-	-- If a surface is selected
-	if Selection:find( Mouse.Target ) and self.State.PreB2DownCameraRotation == CameraRotation then
-		self:changeSurface( Mouse.TargetSurface );
+		Connections[ConnectionKey] = nil;
 	end;
 
 end;
 
-Tools.Surface.startHistoryRecord = function ( self )
+function ShowUI()
+	-- Creates and reveals the UI
 
-	if self.State.HistoryRecord then
-		self.State.HistoryRecord = nil;
+	-- Reveal UI if already created
+	if SurfaceTool.UI then
+
+		-- Reveal the UI
+		SurfaceTool.UI.Visible = true;
+
+		-- Update the UI every 0.1 seconds
+		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+
+		-- Skip UI creation
+		return;
+
 	end;
 
-	-- Create a history record
-	self.State.HistoryRecord = {
-		targets = Support.CloneTable(Selection.Items);
-		target_surface = self.Options.side;
-		initial_surfaces = {};
-		terminal_surfaces = {};
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					for Surface, SurfaceType in pairs(self.initial_surfaces[Target]) do
-						Target[Surface] = SurfaceType;
-					end;
-					Target:MakeJoints();
-					Selection:add( Target );
-				end;
-			end;
-		end;
-		Apply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					for Surface, SurfaceType in pairs(self.terminal_surfaces[Target]) do
-						Target[Surface] = SurfaceType;
-					end;
-					Target:MakeJoints();
-					Selection:add( Target );
-				end;
-			end;
-		end;
-	};
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.initial_surfaces[Item] = {};
-			if self.State.HistoryRecord.target_surface == '*' then
-				self.State.HistoryRecord.initial_surfaces[Item].RightSurface = Item.RightSurface;
-				self.State.HistoryRecord.initial_surfaces[Item].LeftSurface = Item.LeftSurface;
-				self.State.HistoryRecord.initial_surfaces[Item].FrontSurface = Item.FrontSurface;
-				self.State.HistoryRecord.initial_surfaces[Item].BackSurface = Item.BackSurface;
-				self.State.HistoryRecord.initial_surfaces[Item].TopSurface = Item.TopSurface;
-				self.State.HistoryRecord.initial_surfaces[Item].BottomSurface = Item.BottomSurface;
-			else
-				self.State.HistoryRecord.initial_surfaces[Item][self.State.HistoryRecord.target_surface.Name .. 'Surface'] = Item[self.State.HistoryRecord.target_surface.Name .. 'Surface'];
-			end;
-		end;
-	end;
+	-- Create the UI
+	SurfaceTool.UI = Core.Tool.Interfaces.BTSurfaceToolGUI:Clone();
+	SurfaceTool.UI.Parent = Core.UI;
+	SurfaceTool.UI.Visible = true;
+
+	-- Create the surface selection dropdown
+	SurfaceDropdown = Core.createDropdown();
+	SurfaceDropdown.Frame.Parent = SurfaceTool.UI.SideOption;
+	SurfaceDropdown.Frame.Position = UDim2.new(0, 30, 0, 0);
+	SurfaceDropdown.Frame.Size = UDim2.new(0, 72, 0, 25);
+
+	-- Add the surface options to the dropdown
+	SurfaceDropdown:addOption('ALL').MouseButton1Up:connect(function ()
+		SetSurface('All');
+	end);
+	SurfaceDropdown:addOption('TOP').MouseButton1Up:connect(function ()
+		SetSurface('Top');
+	end);
+	SurfaceDropdown:addOption('BOTTOM').MouseButton1Up:connect(function ()
+		SetSurface('Bottom');
+	end);
+	SurfaceDropdown:addOption('FRONT').MouseButton1Up:connect(function ()
+		SetSurface('Front');
+	end);
+	SurfaceDropdown:addOption('BACK').MouseButton1Up:connect(function ()
+		SetSurface('Back');
+	end);
+	SurfaceDropdown:addOption('LEFT').MouseButton1Up:connect(function ()
+		SetSurface('Left');
+	end);
+	SurfaceDropdown:addOption('RIGHT').MouseButton1Up:connect(function ()
+		SetSurface('Right');
+	end);
+
+	-- Create the surface type selection dropdown
+	SurfaceTypeDropdown = Core.createDropdown();
+	SurfaceTypeDropdown.Frame.Parent = SurfaceTool.UI.TypeOption;
+	SurfaceTypeDropdown.Frame.Position = UDim2.new(0, 30, 0, 0);
+	SurfaceTypeDropdown.Frame.Size = UDim2.new(0, 87, 0, 25);
+
+	-- Add the surface type options to the dropdown
+	SurfaceTypeDropdown:addOption('STUDS').MouseButton1Up:connect(function ()
+		SetSurfaceType(Enum.SurfaceType.Studs);
+	end);
+	SurfaceTypeDropdown:addOption('INLETS').MouseButton1Up:connect(function ()
+		SetSurfaceType(Enum.SurfaceType.Inlet);
+	end);
+	SurfaceTypeDropdown:addOption('SMOOTH').MouseButton1Up:connect(function ()
+		SetSurfaceType(Enum.SurfaceType.Smooth);
+	end);
+	SurfaceTypeDropdown:addOption('WELD').MouseButton1Up:connect(function ()
+		SetSurfaceType(Enum.SurfaceType.Weld);
+	end);
+	SurfaceTypeDropdown:addOption('GLUE').MouseButton1Up:connect(function ()
+		SetSurfaceType(Enum.SurfaceType.Glue);
+	end);
+	SurfaceTypeDropdown:addOption('UNIVERSAL').MouseButton1Up:connect(function ()
+		SetSurfaceType(Enum.SurfaceType.Universal);
+	end);
+	SurfaceTypeDropdown:addOption('HINGE').MouseButton1Up:connect(function ()
+		SetSurfaceType(Enum.SurfaceType.Hinge);
+	end);
+	SurfaceTypeDropdown:addOption('MOTOR').MouseButton1Up:connect(function ()
+		SetSurfaceType(Enum.SurfaceType.Motor);
+	end);
+	SurfaceTypeDropdown:addOption('NO OUTLINE').MouseButton1Up:connect(function ()
+		SetSurfaceType(Enum.SurfaceType.SmoothNoOutlines);
+	end);
+
+	-- Update the UI every 0.1 seconds
+	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
-Tools.Surface.finishHistoryRecord = function ( self )
+function HideUI()
+	-- Hides the tool UI
 
-	if not self.State.HistoryRecord then
+	-- Make sure there's a UI
+	if not SurfaceTool.UI then
 		return;
 	end;
 
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.terminal_surfaces[Item] = {};
-			if self.State.HistoryRecord.target_surface == '*' then
-				self.State.HistoryRecord.terminal_surfaces[Item].RightSurface = Item.RightSurface;
-				self.State.HistoryRecord.terminal_surfaces[Item].LeftSurface = Item.LeftSurface;
-				self.State.HistoryRecord.terminal_surfaces[Item].FrontSurface = Item.FrontSurface;
-				self.State.HistoryRecord.terminal_surfaces[Item].BackSurface = Item.BackSurface;
-				self.State.HistoryRecord.terminal_surfaces[Item].TopSurface = Item.TopSurface;
-				self.State.HistoryRecord.terminal_surfaces[Item].BottomSurface = Item.BottomSurface;
-			else
-				self.State.HistoryRecord.terminal_surfaces[Item][self.State.HistoryRecord.target_surface.Name .. 'Surface'] = Item[self.State.HistoryRecord.target_surface.Name .. 'Surface'];
-			end;
-		end;
-	end;
+	-- Hide the UI
+	SurfaceTool.UI.Visible = false;
 
-	History:Add( self.State.HistoryRecord );
-	self.State.HistoryRecord = nil;
+	-- Stop updating the UI
+	UIUpdater:Stop();
 
 end;
 
-Tools.Surface.SpecialTypeNames = {
-	SmoothNoOutlines = "NO OUTLINE",
-	Inlet = "INLETS"
-};
+function GetSurfaceTypeDisplayName(SurfaceType)
+	-- Returns a more friendly name for the given `SurfaceType`
 
-Tools.Surface.changeType = function ( self, surface_type )
+	-- For stepping motors, add a space
+	if SurfaceType == Enum.SurfaceType.SteppingMotor then
+		return 'Stepping Motor';
 
-	self:startHistoryRecord();
+	-- For no outlines, simplify name
+	elseif SurfaceType == Enum.SurfaceType.SmoothNoOutlines then
+		return 'No Outlines';
 
-	-- Apply `surface_type` to all items in the selection
-	for _, Item in pairs( Selection.Items ) do
-		if self.Options.side == '*' then
-			Item.FrontSurface = surface_type;
-			Item.BackSurface = surface_type;
-			Item.RightSurface = surface_type;
-			Item.LeftSurface = surface_type;
-			Item.TopSurface = surface_type;
-			Item.BottomSurface = surface_type;
-		else
-			Item[self.Options.side.Name .. "Surface"] = surface_type;
-		end;
-		Item:MakeJoints();
-	end;
-
-	self:finishHistoryRecord();
-
-	self.TypeDropdown:selectOption( self.SpecialTypeNames[surface_type.Name] or surface_type.Name:upper() );
-	if self.TypeDropdown.open then
-		self.TypeDropdown:toggle();
-	end;
-end;
-
-Tools.Surface.changeSurface = function ( self, surface )
-	self.Options.side = surface;
-	self.SideDropdown:selectOption( surface == '*' and 'ALL' or surface.Name:upper() );
-	if self.SideDropdown.open then
-		self.SideDropdown:toggle();
-	end;
-end;
-
-Tools.Surface.updateGUI = function ( self )
-
-	-- Make sure the GUI exists
-	if not self.GUI then
-		return;
-	end;
-
-	if #Selection.Items > 0 then
-		self.TypeDropdown:selectOption( self.State.type and ( self.SpecialTypeNames[self.State.type.Name] or self.State.type.Name:upper() ) or "*" );
+	-- For other surface types, return their normal name
 	else
-		self.TypeDropdown:selectOption( "" );
+		return SurfaceType.Name;
+
 	end;
 
 end;
 
-Tools.Surface.showGUI = function ( self )
+function UpdateUI()
+	-- Updates information on the UI
 
-	-- Initialize the GUI if it's not ready yet
-	if not self.GUI then
-
-		local Container = Tool.Interfaces.BTSurfaceToolGUI:Clone();
-		Container.Parent = UI;
-
-		local SideDropdown = createDropdown();
-		self.SideDropdown = SideDropdown;
-		SideDropdown.Frame.Parent = Container.SideOption;
-		SideDropdown.Frame.Position = UDim2.new( 0, 30, 0, 0 );
-		SideDropdown.Frame.Size = UDim2.new( 0, 72, 0, 25 );
-
-		SideDropdown:addOption('ALL').MouseButton1Up:connect(function ()
-			self:changeSurface('*');
-		end);
-
-		SideDropdown:addOption( "TOP" ).MouseButton1Up:connect( function ()
-			self:changeSurface( Enum.NormalId.Top );
-		end );
-		SideDropdown:addOption( "BOTTOM" ).MouseButton1Up:connect( function ()
-			self:changeSurface( Enum.NormalId.Bottom );
-		end );
-		SideDropdown:addOption( "FRONT" ).MouseButton1Up:connect( function ()
-			self:changeSurface( Enum.NormalId.Front );
-		end );
-		SideDropdown:addOption( "BACK" ).MouseButton1Up:connect( function ()
-			self:changeSurface( Enum.NormalId.Back );
-		end );
-		SideDropdown:addOption( "LEFT" ).MouseButton1Up:connect( function ()
-			self:changeSurface( Enum.NormalId.Left );
-		end );
-		SideDropdown:addOption( "RIGHT" ).MouseButton1Up:connect( function ()
-			self:changeSurface( Enum.NormalId.Right );
-		end );
-
-		local TypeDropdown = createDropdown();
-		self.TypeDropdown = TypeDropdown;
-		TypeDropdown.Frame.Parent = Container.TypeOption;
-		TypeDropdown.Frame.Position = UDim2.new( 0, 30, 0, 0 );
-		TypeDropdown.Frame.Size = UDim2.new( 0, 87, 0, 25 );
-
-		TypeDropdown:addOption( "STUDS" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.SurfaceType.Studs );
-		end );
-		TypeDropdown:addOption( "INLETS" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.SurfaceType.Inlet );
-		end );
-		TypeDropdown:addOption( "SMOOTH" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.SurfaceType.Smooth );
-		end );
-		TypeDropdown:addOption( "WELD" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.SurfaceType.Weld );
-		end );
-		TypeDropdown:addOption( "GLUE" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.SurfaceType.Glue );
-		end );
-		TypeDropdown:addOption( "UNIVERSAL" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.SurfaceType.Universal );
-		end );
-		TypeDropdown:addOption( "HINGE" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.SurfaceType.Hinge );
-		end );
-		TypeDropdown:addOption( "MOTOR" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.SurfaceType.Motor );
-		end );
-		TypeDropdown:addOption( "NO OUTLINE" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.SurfaceType.SmoothNoOutlines );
-		end );
-
-		self.GUI = Container;
-
+	-- Make sure the UI's on
+	if not SurfaceTool.UI then
+		return;
 	end;
 
-	-- Reveal the GUI
-	self.GUI.Visible = true;
+	-- Only show and identify current surface type if selection is not empty
+	if #Selection.Items == 0 then
+		SurfaceTypeDropdown:selectOption('');
+		return;
+	end;
+
+	------------------------------------
+	-- Update the surface type indicator
+	------------------------------------
+
+	-- Collect all different surface types in selection
+	local SurfaceTypeVariations = {};
+	for _, Part in pairs(Selection.Items) do
+
+		-- Search for variations on all surfaces if all surfaces are selected
+		if SurfaceTool.Surface == 'All' then
+			table.insert(SurfaceTypeVariations, Part.TopSurface);
+			table.insert(SurfaceTypeVariations, Part.BottomSurface);
+			table.insert(SurfaceTypeVariations, Part.FrontSurface);
+			table.insert(SurfaceTypeVariations, Part.BackSurface);
+			table.insert(SurfaceTypeVariations, Part.LeftSurface);
+			table.insert(SurfaceTypeVariations, Part.RightSurface);
+
+		-- Search for variations on single selected surface
+		else
+			table.insert(SurfaceTypeVariations, Part[SurfaceTool.Surface .. 'Surface']);
+		end;
+
+	end;
+	
+	-- Identify common surface type in selection
+	local CommonSurfaceType = Support.IdentifyCommonItem(SurfaceTypeVariations);
+
+	-- Update the current surface type in the surface type dropdown
+	SurfaceTypeDropdown:selectOption(CommonSurfaceType and GetSurfaceTypeDisplayName(CommonSurfaceType):upper() or '*');
 
 end;
 
-Tools.Surface.hideGUI = function ( self )
+function SetSurface(Surface)
+	-- Changes the surface option to `Surface`
 
-	-- Hide the GUI if it exists already
-	if self.GUI then
-		self.GUI.Visible = false;
+	-- Set the surface option
+	SurfaceTool.Surface = Surface;
+
+	-- Update the current surface in the surface dropdown
+	SurfaceDropdown:selectOption(Surface:upper());
+
+	-- If the current surface dropdown is open, close it
+	if SurfaceDropdown.open then
+		SurfaceDropdown:toggle();
 	end;
 
 end;
 
-Tools.Surface.Loaded = true;
+function SetSurfaceType(SurfaceType)
+	-- Changes the selection's surface type on the currently selected surface
+
+	-- Make sure a surface has been selected
+	if not SurfaceTool.Surface then
+		return;
+	end;
+
+	-- If the current surface type dropdown is open, close it
+	if SurfaceTypeDropdown.open then
+		SurfaceTypeDropdown:toggle();
+	end;
+
+	-- Track changes
+	TrackChange();
+
+	-- Change the surface of the parts locally
+	for _, Part in pairs(Selection.Items) do
+
+		-- Change all surfaces if all selected
+		if SurfaceTool.Surface == 'All' then
+			Part.TopSurface = SurfaceType;
+			Part.BottomSurface = SurfaceType;
+			Part.FrontSurface = SurfaceType;
+			Part.BackSurface = SurfaceType;
+			Part.LeftSurface = SurfaceType;
+			Part.RightSurface = SurfaceType;
+		
+		-- Change specific selected surface
+		else
+			Part[SurfaceTool.Surface .. 'Surface'] = SurfaceType;
+		end;
+
+	end;
+
+	-- Register changes
+	RegisterChange();
+
+end;
+
+function EnableSurfaceSelection()
+	-- Allows the player to select surfaces by clicking on them
+
+	-- Watch out for clicks on selected parts (use selection system-linked core event)
+	SurfaceTool.Listeners.Button1Up = function ()
+		if Selection:find(Core.Mouse.Target) and Core.Mouse.TargetSurface and not Core.selecting then
+
+			-- Set the surface option to the target surface
+			SetSurface(Core.Mouse.TargetSurface.Name);
+
+		end;
+	end;
+
+end;
+
+function TrackChange()
+
+	-- Start the record
+	HistoryRecord = {
+		Parts = Support.CloneTable(Selection.Items);
+		BeforeSurfaces = {};
+		AfterSurfaces = {};
+
+		Unapply = function (Record)
+			-- Reverts this change
+
+			-- Clear the selection
+			Selection:clear();
+
+			-- Put together the change request
+			local Changes = {};
+			for _, Part in pairs(Record.Parts) do
+				table.insert(Changes, { Part = Part, Surfaces = Record.BeforeSurfaces[Part]	});
+
+				-- Select the part
+				Selection:add(Part);
+			end;
+
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncSurface', Changes);
+
+		end;
+
+		Apply = function (Record)
+			-- Applies this change
+
+			-- Clear the selection
+			Selection:clear();
+
+			-- Put together the change request
+			local Changes = {};
+			for _, Part in pairs(Record.Parts) do
+				table.insert(Changes, { Part = Part, Surfaces = Record.AfterSurfaces[Part] });
+
+				-- Select the part
+				Selection:add(Part);
+			end;
+
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncSurface', Changes);
+
+		end;
+
+	};
+
+	-- Collect the selection's initial state
+	for _, Part in pairs(HistoryRecord.Parts) do
+
+		-- Begin to record surfaces
+		HistoryRecord.BeforeSurfaces[Part] = {};
+		local Surfaces = HistoryRecord.BeforeSurfaces[Part];
+
+		-- Record all surfaces if all selected
+		if SurfaceTool.Surface == 'All' then
+			Surfaces.Top = Part.TopSurface;
+			Surfaces.Bottom = Part.BottomSurface;
+			Surfaces.Front = Part.FrontSurface;
+			Surfaces.Back = Part.BackSurface;
+			Surfaces.Left = Part.LeftSurface;
+			Surfaces.Right = Part.RightSurface;
+		
+		-- Record specific selected surface
+		else
+			Surfaces[SurfaceTool.Surface] = Part[SurfaceTool.Surface .. 'Surface'];
+		end;
+
+	end;
+
+end;
+
+function RegisterChange()
+	-- Finishes creating the history record and registers it
+
+	-- Make sure there's an in-progress history record
+	if not HistoryRecord then
+		return;
+	end;
+
+	-- Collect the selection's final state
+	local Changes = {};
+	for _, Part in pairs(HistoryRecord.Parts) do
+
+		-- Begin to record surfaces
+		HistoryRecord.AfterSurfaces[Part] = {};
+		local Surfaces = HistoryRecord.AfterSurfaces[Part];
+
+		-- Record all surfaces if all selected
+		if SurfaceTool.Surface == 'All' then
+			Surfaces.Top = Part.TopSurface;
+			Surfaces.Bottom = Part.BottomSurface;
+			Surfaces.Front = Part.FrontSurface;
+			Surfaces.Back = Part.BackSurface;
+			Surfaces.Left = Part.LeftSurface;
+			Surfaces.Right = Part.RightSurface;
+		
+		-- Record specific selected surface
+		else
+			Surfaces[SurfaceTool.Surface] = Part[SurfaceTool.Surface .. 'Surface'];
+		end;
+
+		-- Create the change request for this part
+		table.insert(Changes, { Part = Part, Surfaces = Surfaces });
+
+	end;
+
+	-- Send the changes to the server
+	Core.ServerAPI:InvokeServer('SyncSurface', Changes);
+
+	-- Register the record and clear the staging
+	Core.History:Add(HistoryRecord);
+	HistoryRecord = nil;
+
+end;
+
+-- Mark the tool as fully loaded
+Core.Tools.Surface = SurfaceTool;
+SurfaceTool.Loaded = true;

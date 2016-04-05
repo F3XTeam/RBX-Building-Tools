@@ -470,6 +470,45 @@ Actions = {
 
 	end;
 
+	['SyncSurface'] = function (Changes)
+		-- Updates parts server-side given their new surfaces
+
+		-- Grab a list of every part we're attempting to modify
+		local Parts = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				table.insert(Parts, Change.Part);
+			end;
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
+
+		-- Reorganize the changes
+		local ChangeSet = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				ChangeSet[Change.Part] = Change;
+			end;
+		end;
+
+		-- Perform each change
+		for Part, Change in pairs(ChangeSet) do
+
+			-- Apply each surface change
+			for Surface, SurfaceType in pairs(Change.Surfaces) do
+				Part[Surface .. 'Surface'] = SurfaceType;
+			end;
+
+		end;
+
+	end;
+
 };
 
 -- Provide functionality to the API instance
