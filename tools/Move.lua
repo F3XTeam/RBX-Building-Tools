@@ -78,10 +78,18 @@ end;
 function ShowUI()
 	-- Creates and reveals the UI
 
-	-- Only reveal UI if already created
+	-- Reveal UI if already created
 	if MoveTool.UI then
+
+		-- Reveal the UI
 		MoveTool.UI.Visible = true;
+
+		-- Update the UI every 0.1 seconds
+		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+
+		-- Skip UI creation
 		return;
+
 	end;
 
 	-- Create the UI
@@ -132,7 +140,7 @@ function ShowUI()
 	end);
 
 	-- Update the UI every 0.1 seconds
-	Core.ScheduleRecurringTask(UpdateUI, 0.1);
+	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
@@ -146,6 +154,9 @@ function HideUI()
 
 	-- Hide the UI
 	MoveTool.UI.Visible = false;
+
+	-- Stop updating the UI
+	UIUpdater:Stop();
 
 end;
 
