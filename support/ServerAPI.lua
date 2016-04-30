@@ -16,6 +16,7 @@ Support.ImportServices();
 
 -- Keep track of created items in memory to not lose them in garbage collection
 CreatedInstances = {};
+LastParents = {};
 
 -- Determine whether we're in tool or plugin mode
 if Tool:IsA 'Tool' then
@@ -201,7 +202,7 @@ Actions = {
 
 		-- If this is a decoration, make sure we have permission to modify it, and the new parent part
 		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
-			
+
 			-- Make sure we can modify the current parent of the decoration (if any)
 			if Object.Parent and Object.Parent:IsA 'BasePart' then
 				if not Security.IsPartAuthorizedForPlayer(Object.Parent, Player) then
@@ -221,6 +222,101 @@ Actions = {
 		-- If no authorization checks have failed, keep the part in memory & perform the setting
 		CreatedInstances[Object] = Object;
 		Object.Parent = Parent;
+	end;
+
+	['Remove'] = function (Objects)
+		-- Removes the given objects
+
+		-- Get the relevant parts for each object, for permission checking
+		local Parts = {};
+
+		-- Go through the selection
+		for _, Object in pairs(Objects) do
+
+			-- Make sure the object still exists
+			if Object then
+
+				if Object:IsA 'BasePart' then
+					table.insert(Parts, Object);
+
+				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
+					table.insert(Parts, Object.Parent);
+				end;
+
+			end;
+
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
+
+		-- After confirming permissions, perform each removal
+		for _, Object in pairs(Objects) do
+
+			-- Store the part's current parent
+			LastParents[Object] = Object.Parent;
+
+			-- Register the object
+			CreatedInstances[Object] = Object;
+
+			-- Set the object's current parent to `nil`
+			Object.Parent = nil;
+
+		end;
+
+	end;
+
+	['UndoRemove'] = function (Objects)
+		-- Restores the given removed objects to their last parents
+
+		-- Get the relevant parts for each object, for permission checking
+		local Parts = {};
+
+		-- Go through the selection
+		for _, Object in pairs(Objects) do
+
+			-- Make sure the object still exists
+			if Object then
+
+				if Object:IsA 'BasePart' then
+					table.insert(Parts, Object);
+
+				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
+					table.insert(Parts, Object.Parent);
+				end;
+
+			end;
+
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
+
+		-- After confirming permissions, perform each removal
+		for _, Object in pairs(Objects) do
+
+			-- Store the part's current parent
+			local LastParent = LastParents[Object];
+			LastParents[Object] = Object.Parent;
+
+			-- Register the object
+			CreatedInstances[Object] = Object;
+
+			-- Set the object's parent to the last parent
+			Object.Parent = LastParent;
+
+		end;
+
 	end;
 
 	['CreateMesh'] = function (Parent)
@@ -503,6 +599,134 @@ Actions = {
 			-- Apply each surface change
 			for Surface, SurfaceType in pairs(Change.Surfaces) do
 				Part[Surface .. 'Surface'] = SurfaceType;
+			end;
+
+		end;
+
+	end;
+
+	['CreateLights'] = function (Changes)
+		-- Creates lights in the given parts
+
+		-- Grab a list of every part we're attempting to modify
+		local Parts = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				table.insert(Parts, Change.Part);
+			end;
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
+
+		-- Reorganize the changes
+		local ChangeSet = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				ChangeSet[Change.Part] = Change;
+			end;
+		end;
+
+		-- Make a list of allowed light type requests
+		local AllowedLightTypes = { PointLight = true, SurfaceLight = true, SpotLight = true };
+
+		-- Keep track of the newly created lights
+		local Lights = {};
+
+		-- Create each light
+		for Part, Change in pairs(ChangeSet) do
+
+			-- Make sure the requested light type is valid
+			if AllowedLightTypes[Change.LightType] then
+
+				-- Create the light
+				local Light = Instance.new(Change.LightType, Part);
+				table.insert(Lights, Light);
+
+				-- Register the light
+				CreatedInstances[Light] = Light;
+
+			end;
+
+		end;
+
+		-- Return the new lights
+		return Lights;
+
+	end;
+
+	['SyncLighting'] = function (Changes)
+		-- Updates aspects of the given selection's lights
+
+		-- Grab a list of every part we're attempting to modify
+		local Parts = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				table.insert(Parts, Change.Part);
+			end;
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
+
+		-- Reorganize the changes
+		local ChangeSet = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				ChangeSet[Change.Part] = Change;
+			end;
+		end;
+
+		-- Make a list of allowed light type requests
+		local AllowedLightTypes = { PointLight = true, SurfaceLight = true, SpotLight = true };
+
+		-- Keep track of the newly created lights
+		local Lights = {};
+
+		-- Update each part's lights
+		for Part, Change in pairs(ChangeSet) do
+
+			-- Make sure that the light type requested is valid
+			if AllowedLightTypes[Change.LightType] then
+
+				-- Grab the part's light
+				local Light = Support.GetChildOfClass(Part, Change.LightType);
+
+				-- Make sure the light exists
+				if Light then
+
+					-- Make the requested changes
+					if Change.Range ~= nil then
+						Light.Range = Change.Range;
+					end;
+					if Change.Brightness ~= nil then
+						Light.Brightness = Change.Brightness;
+					end;
+					if Change.Color ~= nil then
+						Light.Color = Change.Color;
+					end;
+					if Change.Shadows ~= nil then
+						Light.Shadows = Change.Shadows;
+					end;
+					if Change.Face ~= nil then
+						Light.Face = Change.Face;
+					end;
+					if Change.Angle ~= nil then
+						Light.Angle = Change.Angle;
+					end;
+
+				end;
+
 			end;
 
 		end;

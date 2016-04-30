@@ -15,6 +15,21 @@ function SupportLibrary.FindTableOccurrences(Haystack, Needle)
 	return Positions;
 end;
 
+function SupportLibrary.FindTableOccurrence(Haystack, Needle)
+	-- Returns one occurrence of `Needle` in `Haystack`
+
+	-- Search for the first instance of `Needle` found and return it
+	for Index, Value in pairs(Haystack) do
+		if Value == Needle then
+			return Index;
+		end;
+	end;
+
+	-- If no occurrences exist, return `nil`
+	return nil;
+
+end;
+
 function SupportLibrary.IsInTable(Haystack, Needle)
 	-- Returns whether the given `Needle` can be found within table `Haystack`
 
@@ -237,6 +252,21 @@ function SupportLibrary.IdentifyCommonItem(Items)
 
 	-- Return the common item
 	return CommonItem;
+end;
+
+function SupportLibrary.IdentifyCommonProperty(Items, Property)
+	-- Returns the common `Property` value in the instances given in `Items`
+
+	local PropertyVariations = {};
+
+	-- Capture all the variations of the property value
+	for _, Item in pairs(Items) do
+		table.insert(PropertyVariations, Item[Property]);
+	end;
+
+	-- Return the common property value
+	return SupportLibrary.IdentifyCommonItem(PropertyVariations);
+
 end;
 
 function SupportLibrary.CreateSignal()

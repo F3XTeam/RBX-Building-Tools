@@ -4,1056 +4,769 @@ repeat wait() until (
 	_G.BTCoreEnv[script.Parent.Parent] and
 	_G.BTCoreEnv[script.Parent.Parent].CoreReady
 );
-setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
+Core = _G.BTCoreEnv[script.Parent.Parent];
 
-------------------------------------------
--- Lighting tool
-------------------------------------------
+-- Import relevant references
+Selection = Core.Selection;
+Create = Core.Create;
+Support = Core.Support;
+Security = Core.Security;
+Support.ImportServices();
 
--- Create the tool
-Tools.Lighting = {};
-Tools.Lighting.Name = 'Lighting Tool';
+-- Initialize the tool
+local LightingTool = {
 
--- Define the tool's color
-Tools.Lighting.Color = BrickColor.new( "Really black" );
+	Name = 'Lighting Tool';
+	Color = BrickColor.new 'Really black';
 
--- Keep a container for state data
-Tools.Lighting.State = {};
+	-- Standard platform event interface
+	Listeners = {};
 
--- Keep a container for temporary connections
-Tools.Lighting.Connections = {};
+};
 
--- Keep a container for platform event connections
-Tools.Lighting.Listeners = {};
+-- Container for temporary connections (disconnected automatically)
+local Connections = {};
 
--- Start adding functionality to the tool
-Tools.Lighting.Listeners.Equipped = function ()
+function Equip()
+	-- Enables the tool's equipped functionality
 
-	local self = Tools.Lighting;
-
-	-- Change the color of selection boxes temporarily
-	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = self.Color;
-	updateSelectionBoxColor();
-
-	-- Reveal the GUI
-	self:showGUI();
-
-	-- Update the GUI regularly
-	coroutine.wrap( function ()
-		updater_on = true;
-
-		-- Provide a function to stop the loop
-		self.Updater = function ()
-			updater_on = false;
-		end;
-
-		while wait( 0.1 ) and updater_on do
-
-			-- Make sure the tool's equipped
-			if CurrentTool == self then
-
-				-- Update the GUI if it's visible
-				if self.GUI and self.GUI.Visible then
-					self:updateGUI();
-				end;
-
-			end;
-
-		end;
-
-	end )();
+	-- Start up our interface
+	ShowUI();
+	EnableSurfaceClickSelection();
 
 end;
 
-Tools.Lighting.Listeners.Unequipped = function ()
+function Unequip()
+	-- Disables the tool's equipped functionality
 
-	local self = Tools.Lighting;
+	-- Clear unnecessary resources
+	HideUI();
+	ClearConnections();
 
-	-- Stop the GUI updater
-	if self.Updater then
-		self.Updater();
-		self.Updater = nil;
-	end;
+end;
 
-	-- Hide the GUI
-	self:hideGUI();
+LightingTool.Listeners.Equipped = Equip;
+LightingTool.Listeners.Unequipped = Unequip;
 
-	-- Disconnect temporary connections
-	for connection_index, Connection in pairs( self.Connections ) do
+function ClearConnections()
+	-- Clears out temporary connections
+
+	for ConnectionKey, Connection in pairs(Connections) do
 		Connection:disconnect();
-		self.Connections[connection_index] = nil;
-	end;
-
-	-- Restore the original color of selection boxes
-	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
-
-end;
-
-Tools.Lighting.Listeners.Button2Down = function ()
-
-	local self = Tools.Lighting;
-
-	-- Capture the camera rotation (for later use
-	-- in determining whether a surface was being
-	-- selected or the camera was being rotated
-	-- with the right mouse button)
-	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
-	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
-
-end;
-
-Tools.Lighting.Listeners.Button2Up = function ()
-
-	local self = Tools.Lighting;
-
-	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
-	local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
-
-	-- If a surface is selected, change the side option
-	if Selection:find( Mouse.Target ) and self.State.PreB2DownCameraRotation == CameraRotation then
-		self:changeSide( Mouse.TargetSurface );
+		Connections[ConnectionKey] = nil;
 	end;
 
 end;
 
-Tools.Lighting.updateGUI = function ( self )
+function ShowUI()
+	-- Creates and reveals the UI
 
-	-- Make sure the GUI exists
-	if not self.GUI then
+	-- Reveal UI if already created
+	if LightingTool.UI then
+
+		-- Reveal the UI
+		LightingTool.UI.Visible = true;
+
+		-- Update the UI every 0.1 seconds
+		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+
+		-- Skip UI creation
+		return;
+
+	end;
+
+	-- Create the UI
+	LightingTool.UI = Core.Tool.Interfaces.BTLightingToolGUI:Clone();
+	LightingTool.UI.Parent = Core.UI;
+	LightingTool.UI.Visible = true;
+
+	-- Enable each light type UI
+	EnableLightSettingsUI(LightingTool.UI.PointLight);
+	EnableLightSettingsUI(LightingTool.UI.SpotLight);
+	EnableLightSettingsUI(LightingTool.UI.SurfaceLight);
+
+	-- Update the UI every 0.1 seconds
+	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+
+end;
+
+function EnableSurfaceClickSelection(LightType)
+	-- Allows for the setting of the face for the given light type by clicking
+
+	-- Clear out any existing connection
+	if Connections.SurfaceClickSelection then
+		Connections.SurfaceClickSelection:disconnect();
+		Connections.SurfaceClickSelection = nil;
+	end;
+
+	-- Add the new click connection
+	Connections.SurfaceClickSelection = UserInputService.InputEnded:connect(function (Input, GameProcessedEvent)
+		if not GameProcessedEvent and Input.UserInputType == Enum.UserInputType.MouseButton1 and Selection:find(Core.Mouse.Target) then
+			SetSurface(LightType, Core.Mouse.TargetSurface);
+		end;
+	end);
+
+end;
+
+function EnableLightSettingsUI(LightSettingsUI)
+	-- Sets up the UI for the given light type settings UI
+
+	-- Get the type of light this settings UI is for
+	local LightType = LightSettingsUI.Name;
+
+	-- Option input references
+	local Options = LightSettingsUI.Options;
+	local RangeInput = Options.RangeOption.Input.TextBox;
+	local BrightnessInput = Options.BrightnessOption.Input.TextBox;
+	local ColorPicker = Options.ColorOption.HSVPicker;
+	local ShadowsCheckbox = Options.ShadowsOption.Checkbox;
+
+	-- Add/remove/show button references
+	local AddButton = LightSettingsUI.AddButton;
+	local RemoveButton = LightSettingsUI.RemoveButton;
+	local ShowButton = LightSettingsUI.ArrowButton;
+
+	-- Enable range input
+	RangeInput.FocusLost:connect(function ()
+		SetRange(LightType, tonumber(RangeInput.Text));
+	end);
+
+	-- Enable brightness input
+	BrightnessInput.FocusLost:connect(function ()
+		SetBrightness(LightType, tonumber(BrightnessInput.Text));
+	end);
+
+	-- Enable color input
+	ColorPicker.MouseButton1Click:connect(function ()
+		Core.ColorPicker:start(
+			function (Color) SetColor(LightType, Color) end,
+			Support.IdentifyCommonProperty(GetLights(LightType), 'Color') or Color3.new(1, 1, 1)
+		);
+	end);
+
+	-- Enable shadows input
+	ShadowsCheckbox.MouseButton1Click:connect(function ()
+		ToggleShadows(LightType);
+	end);
+
+	-- Enable light addition button
+	AddButton.MouseButton1Click:connect(function ()
+		AddLights(LightType);
+	end);
+
+	-- Enable light removal button
+	RemoveButton.MouseButton1Click:connect(function ()
+		RemoveLights(LightType);
+	end);
+
+	-- Enable light options UI show button
+	ShowButton.MouseButton1Click:connect(function ()
+		OpenLightOptions(LightType);
+	end);
+
+	-- Enable light type-specific features
+	if LightType == 'SpotLight' or LightType == 'SurfaceLight' then
+
+		-- Create a surface selection dropdown
+		local SurfaceDropdown = Core.createDropdown();
+		SurfaceDropdown.Frame.Parent = Options.SideOption;
+		SurfaceDropdown.Frame.Position = UDim2.new(0, 30, 0, 0);
+		SurfaceDropdown.Frame.Size = UDim2.new(0, 72, 0, 25);
+
+		-- Add the surface options to the dropdown
+		local Surfaces = { 'Top', 'Bottom', 'Front', 'Back', 'Left', 'Right' };
+		for _, Surface in pairs(Surfaces) do
+
+			-- Set the lights' target surface to the selected
+			SurfaceDropdown:addOption(Surface:upper()).MouseButton1Up:connect(function ()
+				SetSurface(LightType, Enum.NormalId[Surface]);
+				SurfaceDropdown:toggle();
+			end);
+
+		end;
+
+		-- Enable angle input
+		local AngleInput = Options.AngleOption.Input.TextBox;
+		AngleInput.FocusLost:connect(function ()
+			SetAngle(LightType, tonumber(AngleInput.Text));
+		end);
+
+	end;
+
+end;
+
+function HideUI()
+	-- Hides the tool UI
+
+	-- Make sure there's a UI
+	if not LightingTool.UI then
 		return;
 	end;
 
-	-- If there are items, display the regular interface
-	if #Selection.Items > 0 then
-		local spotlights = self:getSpotlights();
-		local pointlights = self:getPointLights();
+	-- Hide the UI
+	LightingTool.UI.Visible = false;
 
-		-- Get the properties of the spot/point lights
-		local sl_color_r, sl_color_g, sl_color_b, sl_brightness, sl_range, sl_shadows, sl_angle, sl_side;
-		local pl_color_r, pl_color_g, pl_color_b, pl_brightness, pl_range, pl_shadows;
-		for light_index, Light in pairs( spotlights ) do
+	-- Stop updating the UI
+	UIUpdater:Stop();
 
-			-- Set the initial values for later comparison
-			if light_index == 1 then
-				sl_color_r, sl_color_g, sl_color_b = Light.Color.r, Light.Color.g, Light.Color.b;
-				sl_brightness = Light.Brightness;
-				sl_range = Light.Range;
-				sl_shadows = Light.Shadows;
-				sl_angle = Light.Angle;
-				sl_side = Light.Face;
+end;
 
-			-- Set the values to `nil` if they vary across the selection
-			else
-				if sl_color_r ~= Light.Color.r then
-					sl_color_r = nil;
-				end;
-				if sl_color_g ~= Light.Color.g then
-					sl_color_g = nil;
-				end;
-				if sl_color_b ~= Light.Color.b then
-					sl_color_b = nil;
-				end;
-				if sl_brightness ~= Light.Brightness then
-					sl_brightness = nil;
-				end;
-				if sl_range ~= Light.Range then
-					sl_range = nil;
-				end;
-				if sl_shadows ~= Light.Shadows then
-					sl_shadows = nil;
-				end;
-				if sl_angle ~= Light.Angle then
-					sl_angle = nil;
-				end;
-				if sl_side ~= Light.Face then
-					sl_side = nil;
-				end;
-			end;
+function GetLights(LightType)
+	-- Returns all the lights of the given type in the selection
+
+	local Lights = {};
+
+	-- Get any lights from any selected parts
+	for _, Part in pairs(Selection.Items) do
+		table.insert(Lights, Support.GetChildOfClass(Part, LightType));
+	end;
+
+	-- Return the lights
+	return Lights;
+
+end;
+
+-- List of creatable light types
+local LightTypes = { 'SpotLight', 'PointLight', 'SurfaceLight' };
+
+function OpenLightOptions(LightType)
+	-- Opens the settings UI for the given light type
+
+	-- Get the UI
+	local UI = LightingTool.UI[LightType];
+	local UITemplate = Core.Tool.Interfaces.BTLightingToolGUI[LightType];
+
+	-- Close up all light option UIs
+	CloseLightOptions(LightType);
+
+	-- Calculate how much to expand this options UI by
+	local HeightExpansion = UDim2.new(0, 0, 0, UITemplate.Options.Size.Y.Offset);
+
+	-- Start the options UI size from 0
+	UI.Options.Size = UDim2.new(UI.Options.Size.X.Scale, UI.Options.Size.X.Offset, UI.Options.Size.Y.Scale, 0);
+
+	-- Allow the options UI to be seen
+	UI.ClipsDescendants = false;
+
+	-- Perform the options UI resize animation
+	UI.Options:TweenSize(
+		UITemplate.Options.Size + HeightExpansion,
+		Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true,
+		function ()
+
+			-- Allow visibility of overflowing UIs within the options UI
+			UI.Options.ClipsDescendants = false;
+
+		end
+	);
+
+	-- Expand the main UI to accommodate the expanded options UI
+	LightingTool.UI:TweenSize(
+		Core.Tool.Interfaces.BTLightingToolGUI.Size + HeightExpansion,
+		Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true
+	);
+
+	-- Push any UIs below this one downwards
+	local LightTypeIndex = Support.FindTableOccurrence(LightTypes, LightType);
+	for LightTypeIndex = LightTypeIndex + 1, #LightTypes do
+
+		-- Get the UI
+		local LightType = LightTypes[LightTypeIndex];
+		local UI = LightingTool.UI[LightType];
+
+		-- Perform the position animation
+		UI:TweenPosition(
+			UDim2.new(
+				UI.Position.X.Scale,
+				UI.Position.X.Offset,
+				UI.Position.Y.Scale,
+				30 + 30 * (LightTypeIndex - 1) + HeightExpansion.Y.Offset
+			),
+			Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true
+		);
+
+	end;
+
+	-- Enable surface setting by clicking
+	EnableSurfaceClickSelection(LightType);
+
+end;
+
+function CloseLightOptions(Exception)
+	-- Closes all light options, except the one for the given light type
+
+	-- Go through each light type
+	for LightTypeIndex, LightType in pairs(LightTypes) do
+
+		-- Get the UI for each light type
+		local UI = LightingTool.UI[LightType];
+		local UITemplate = Core.Tool.Interfaces.BTLightingToolGUI[LightType];
+
+		-- Remember the initial size for each options UI
+		local InitialSize = UITemplate.Options.Size;
+
+		-- Move each light type UI to its starting position
+		UI:TweenPosition(
+			UDim2.new(
+				UI.Position.X.Scale,
+				UI.Position.X.Offset,
+				UI.Position.Y.Scale,
+				30 + 30 * (LightTypeIndex - 1)
+			),
+			Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true
+		);
+		
+		-- Make sure to not resize the exempt light type UI
+		if not Exception or Exception and LightType ~= Exception then
+
+			-- Allow the options UI to be resized
+			UI.Options.ClipsDescendants = true;
+
+			-- Perform the resize animation to close up
+			UI.Options:TweenSize(
+				UDim2.new(UI.Options.Size.X.Scale, UI.Options.Size.X.Offset, UI.Options.Size.Y.Scale, 0),
+				Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true,
+				function ()
+
+					-- Hide the option UI
+					UI.ClipsDescendants = true;
+
+					-- Set the options UI's size to its initial size (for reexpansion)
+					UI.Options.Size = InitialSize;
+
+				end
+			);
 
 		end;
 
-		for light_index, Light in pairs( pointlights ) do
+	end;
 
-			-- Set the initial values for later comparison
-			if light_index == 1 then
-				pl_color_r, pl_color_g, pl_color_b = Light.Color.r, Light.Color.g, Light.Color.b;
-				pl_brightness = Light.Brightness;
-				pl_range = Light.Range;
-				pl_shadows = Light.Shadows;
-
-			-- Set the values to `nil` if they vary across the selection
-			else
-				if pl_color_r ~= Light.Color.r then
-					pl_color_r = nil;
-				end;
-				if pl_color_g ~= Light.Color.g then
-					pl_color_g = nil;
-				end;
-				if pl_color_b ~= Light.Color.b then
-					pl_color_b = nil;
-				end;
-				if pl_brightness ~= Light.Brightness then
-					pl_brightness = nil;
-				end;
-				if pl_range ~= Light.Range then
-					pl_range = nil;
-				end;
-				if pl_shadows ~= Light.Shadows then
-					pl_shadows = nil;
-				end;
-			end;
-
-		end;
-
-		self.State.sl_color = ( sl_color_r and sl_color_g and sl_color_b ) and Color3.new( sl_color_r, sl_color_g, sl_color_b ) or nil;
-		self.State.pl_color = ( pl_color_r and pl_color_g and pl_color_b ) and Color3.new( pl_color_r, pl_color_g, pl_color_b ) or nil;
-
-		-- Update the spotlight GUI data
-		if not self.State.sl_color_r_focused then
-			self.GUI.Spotlight.Options.ColorOption.RInput.TextBox.Text = sl_color_r and Support.Round(sl_color_r * 255, 0) or '*';
-		end;
-		if not self.State.sl_color_g_focused then
-			self.GUI.Spotlight.Options.ColorOption.GInput.TextBox.Text = sl_color_g and Support.Round(sl_color_g * 255, 0) or '*';
-		end;
-		if not self.State.sl_color_b_focused then
-			self.GUI.Spotlight.Options.ColorOption.BInput.TextBox.Text = sl_color_b and Support.Round(sl_color_b * 255, 0) or '*';
-		end;
-		if not self.State.sl_brightness_focused then
-			self.GUI.Spotlight.Options.BrightnessOption.Input.TextBox.Text = sl_brightness and Support.Round(sl_brightness, 2) or '*';
-		end;
-		if not self.State.sl_range_focused then
-			self.GUI.Spotlight.Options.RangeOption.Input.TextBox.Text = sl_range and Support.Round(sl_range, 2) or '*';
-		end;
-		if sl_shadows == nil then
-			self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
-			self.GUI.Spotlight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 1;
-			self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = Assets.LightSlantedRectangle;
-			self.GUI.Spotlight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 1;
-		elseif sl_shadows == true then
-			self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = Assets.DarkSlantedRectangle;
-			self.GUI.Spotlight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 0;
-			self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = Assets.LightSlantedRectangle;
-			self.GUI.Spotlight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 1;
-		elseif sl_shadows == false then
-			self.GUI.Spotlight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
-			self.GUI.Spotlight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 1;
-			self.GUI.Spotlight.Options.ShadowsOption.Off.Background.Image = Assets.DarkSlantedRectangle;
-			self.GUI.Spotlight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 0;
-		end;
-		if not self.State.sl_angle_focused then
-			self.GUI.Spotlight.Options.AngleOption.Input.TextBox.Text = sl_angle and Support.Round(sl_angle, 2) or '*';
-		end;
-		self.SideDropdown:selectOption( sl_side and sl_side.Name:upper() or '*' );
-
-		-- Update the point light GUI info
-		if not self.State.pl_color_r_focused then
-			self.GUI.PointLight.Options.ColorOption.RInput.TextBox.Text = pl_color_r and Support.Round(pl_color_r * 255, 0) or '*';
-		end;
-		if not self.State.pl_color_g_focused then
-			self.GUI.PointLight.Options.ColorOption.GInput.TextBox.Text = pl_color_g and Support.Round(pl_color_g * 255, 0) or '*';
-		end;
-		if not self.State.pl_color_b_focused then
-			self.GUI.PointLight.Options.ColorOption.BInput.TextBox.Text = pl_color_b and Support.Round(pl_color_b * 255, 0) or '*';
-		end;
-		if not self.State.pl_brightness_focused then
-			self.GUI.PointLight.Options.BrightnessOption.Input.TextBox.Text = pl_brightness and Support.Round(pl_brightness, 2) or '*';
-		end;
-		if not self.State.pl_range_focused then
-			self.GUI.PointLight.Options.RangeOption.Input.TextBox.Text = pl_range and Support.Round(pl_range, 2) or '*';
-		end;
-		if pl_shadows == nil then
-			self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
-			self.GUI.PointLight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 1;
-			self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = Assets.LightSlantedRectangle;
-			self.GUI.PointLight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 1;
-		elseif pl_shadows == true then
-			self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = Assets.DarkSlantedRectangle;
-			self.GUI.PointLight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 0;
-			self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = Assets.LightSlantedRectangle;
-			self.GUI.PointLight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 1;
-		elseif pl_shadows == false then
-			self.GUI.PointLight.Options.ShadowsOption.On.Background.Image = Assets.LightSlantedRectangle;
-			self.GUI.PointLight.Options.ShadowsOption.On.SelectedIndicator.BackgroundTransparency = 1;
-			self.GUI.PointLight.Options.ShadowsOption.Off.Background.Image = Assets.DarkSlantedRectangle;
-			self.GUI.PointLight.Options.ShadowsOption.Off.SelectedIndicator.BackgroundTransparency = 0;
-		end;
-
-		if self.GUI.SelectNote.Visible then
-			self:closePointLight();
-			self:closeSpotlight();
-		end;
-		self.GUI.Spotlight.Visible = true;
-		self.GUI.PointLight.Visible = true;
-		self.GUI.SelectNote.Visible = false;
-
-		if not self.State.spotlight_open and not self.State.pointlight_open then
-			self.GUI:TweenSize( UDim2.new( 0, 200, 0, 95 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-		end;
-
-		-- If there are no spotlights
-		if #spotlights == 0 then
-			self.GUI.Spotlight.Options.Size = UDim2.new( 1, -3, 0, 0 );
-			self.GUI.Spotlight.AddButton.Visible = true;
-			self.GUI.Spotlight.RemoveButton.Visible = false;
-			if self.State.spotlight_open then
-				self:closeSpotlight();
-			end;
-
-		-- If only some items have spotlights
-		elseif #spotlights ~= #Selection.Items then
-			self.GUI.Spotlight.AddButton.Visible = true;
-			self.GUI.Spotlight.RemoveButton.Position = UDim2.new( 0, 90, 0, 3 );
-			self.GUI.Spotlight.RemoveButton.Visible = true;
-
-		-- If all items have spotlights
-		elseif #spotlights == #Selection.Items then
-			self.GUI.Spotlight.AddButton.Visible = false;
-			self.GUI.Spotlight.RemoveButton.Position = UDim2.new( 0, 127, 0, 3 );
-			self.GUI.Spotlight.RemoveButton.Visible = true;
-			if self.GUI.Spotlight.Size == UDim2.new( 0, 200, 0, 52 ) then
-				self.GUI.Spotlight.Size = UDim2.new( 0, 200, 0, 95 );
-			end;
-		end;
-
-		-- If there are no point lights
-		if #pointlights == 0 then
-			self.GUI.PointLight.Options.Size = UDim2.new( 1, -3, 0, 0 );
-			self.GUI.PointLight.AddButton.Visible = true;
-			self.GUI.PointLight.RemoveButton.Visible = false;
-			if self.State.pointlight_open then
-				self:closePointLight();
-			end;
-
-		-- If only some items have point lights
-		elseif #pointlights ~= #Selection.Items then
-			self.GUI.PointLight.AddButton.Visible = true;
-			self.GUI.PointLight.RemoveButton.Position = UDim2.new( 0, 90, 0, 3 );
-			self.GUI.PointLight.RemoveButton.Visible = true;
-
-		-- If all items have point lights
-		elseif #pointlights == #Selection.Items then
-			self.GUI.PointLight.AddButton.Visible = false;
-			self.GUI.PointLight.RemoveButton.Position = UDim2.new( 0, 127, 0, 3 );
-			self.GUI.PointLight.RemoveButton.Visible = true;
-		end;
-
-	-- If nothing is selected, show the select something note
-	else
-		self.GUI.Spotlight.Visible = false;
-		self.GUI.PointLight.Visible = false;
-		self.GUI.SelectNote.Visible = true;
-		self.GUI.Size = UDim2.new( 0, 200, 0, 52 );
+	-- Contract the main UI if no option UIs are being opened
+	if not Exception then
+		LightingTool.UI:TweenSize(
+			Core.Tool.Interfaces.BTLightingToolGUI.Size,
+			Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true
+		);
 	end;
 
 end;
 
-Tools.Lighting.openSpotlight = function ( self )
-	self.State.spotlight_open = true;
-	self:closePointLight();
-	self.GUI.Spotlight.Options:TweenSize( UDim2.new( 1, -3, 0, 300 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-	self.GUI.Spotlight:TweenPosition( UDim2.new( 0, 10, 0, 30 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-	self.GUI:TweenSize( UDim2.new( 0, 200, 0, 275 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-end;
-
-Tools.Lighting.openPointLight = function ( self )
-	self.State.pointlight_open = true;
-	self:closeSpotlight();
-	self.GUI.PointLight.Options:TweenSize( UDim2.new( 1, -3, 0, 110 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-	self.GUI.PointLight:TweenPosition( UDim2.new( 0, 10, 0, 60 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-	self.GUI:TweenSize( UDim2.new( 0, 200, 0, 200 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-end;
-
-Tools.Lighting.closeSpotlight = function ( self )
-	self.State.spotlight_open = false;
-	self.GUI.Spotlight.Options:TweenSize( UDim2.new( 1, -3, 0, 0 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-	self.GUI.PointLight:TweenPosition( UDim2.new( 0, 10, 0, 60 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-	if not self.State.pointlight_open then
-		self.GUI:TweenSize( UDim2.new( 0, 200, 0, 95 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-	end;
-end;
-
-Tools.Lighting.closePointLight = function ( self )
-	self.State.pointlight_open = false;
-	self.GUI.PointLight:TweenPosition( UDim2.new( 0, 10, 0, self.State.spotlight_open and 240 or 60 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-	self.GUI.PointLight.Options:TweenSize( UDim2.new( 1, -3, 0, 0 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-	if not self.State.spotlight_open then
-		self.GUI:TweenSize( UDim2.new( 0, 200, 0, 95 ), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true );
-	end;
-end;
-
-Tools.Lighting.showGUI = function ( self )
-
-	-- Initialize the GUI if it's not ready yet
-	if not self.GUI then
-		local Container = Tool.Interfaces.BTLightingToolGUI:Clone();
-		Container.Parent = UI;
-
-		Container.Spotlight.ArrowButton.MouseButton1Up:connect( function ()
-			if not self.State.spotlight_open and #self:getSpotlights() > 0 then
-				self:openSpotlight();
-			else
-				self:closeSpotlight();
-			end;
-		end );
-		Container.PointLight.ArrowButton.MouseButton1Up:connect( function ()
-			if not self.State.pointlight_open and #self:getPointLights() > 0 then
-				self:openPointLight();
-			else
-				self:closePointLight();
-			end;
-		end );
-
-		Container.Spotlight.AddButton.MouseButton1Up:connect( function ()
-			self:addLight( 'SpotLight' );
-			self:openSpotlight();
-		end );
-		Container.PointLight.AddButton.MouseButton1Up:connect( function ()
-			self:addLight( 'PointLight' );
-			self:openPointLight();
-		end );
-		Container.Spotlight.RemoveButton.MouseButton1Up:connect( function ()
-			self:removeLight( 'spotlight' );
-			self:closeSpotlight();
-		end );
-		Container.PointLight.RemoveButton.MouseButton1Up:connect( function ()
-			self:removeLight( 'pointlight' );
-			self:closePointLight();
-		end );
-
-		-- Create the spotlight interface's side dropdown
-		local SideDropdown = createDropdown();
-		self.SideDropdown = SideDropdown;
-		SideDropdown.Frame.Parent = Container.Spotlight.Options.SideOption;
-		SideDropdown.Frame.Position = UDim2.new( 0, 35, 0, 0 );
-		SideDropdown.Frame.Size = UDim2.new( 0, 90, 0, 25 );
-
-		SideDropdown:addOption( "TOP" ).MouseButton1Up:connect( function ()
-			self:changeSide( Enum.NormalId.Top );
-		end );
-		SideDropdown:addOption( "BOTTOM" ).MouseButton1Up:connect( function ()
-			self:changeSide( Enum.NormalId.Bottom );
-		end );
-		SideDropdown:addOption( "FRONT" ).MouseButton1Up:connect( function ()
-			self:changeSide( Enum.NormalId.Front );
-		end );
-		SideDropdown:addOption( "BACK" ).MouseButton1Up:connect( function ()
-			self:changeSide( Enum.NormalId.Back );
-		end );
-		SideDropdown:addOption( "LEFT" ).MouseButton1Up:connect( function ()
-			self:changeSide( Enum.NormalId.Left );
-		end );
-		SideDropdown:addOption( "RIGHT" ).MouseButton1Up:connect( function ()
-			self:changeSide( Enum.NormalId.Right );
-		end );
-
-		-- Add functionality to spotlight inputs
-		local SpotlightUI = Container.Spotlight;
-
-		local SLColor = SpotlightUI.Options.ColorOption;
-		SLColor.RInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.sl_color_r_focused = true;
-			SLColor.RInput.TextBox:CaptureFocus();
-		end );
-		SLColor.RInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( SLColor.RInput.TextBox.Text );
-			if potential_new then
-				if potential_new > 255 then
-					potential_new = 255;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeColor( 'spotlight', 'r', potential_new / 255 );
-			end;
-			self.State.sl_color_r_focused = false;
-		end );
-		SLColor.GInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.sl_color_g_focused = true;
-			SLColor.GInput.TextBox:CaptureFocus();
-		end );
-		SLColor.GInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( SLColor.GInput.TextBox.Text );
-			if potential_new then
-				if potential_new > 255 then
-					potential_new = 255;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeColor( 'spotlight', 'g', potential_new / 255 );
-			end;
-			self.State.sl_color_g_focused = false;
-		end );
-		SLColor.BInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.sl_color_b_focused = true;
-			SLColor.BInput.TextBox:CaptureFocus();
-		end );
-		SLColor.BInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( SLColor.BInput.TextBox.Text );
-			if potential_new then
-				if potential_new > 255 then
-					potential_new = 255;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeColor( 'spotlight', 'b', potential_new / 255 );
-			end;
-			self.State.sl_color_b_focused = false;
-		end );
-
-		SLColor.HSVPicker.MouseButton1Up:connect( function ()
-			ColorPicker:start( function ( ... )
-				local args = { ... };
-				-- If a color was picked, change the spotlights' color
-				-- to the selected color
-				if #args == 3 then
-					self:changeColor('spotlight', Support.HSVToRGB(...));
-				end;
-			end, self.State.sl_color );
-		end );
-
-		local SLBrightness = SpotlightUI.Options.BrightnessOption.Input;
-		SLBrightness.TextButton.MouseButton1Down:connect( function ()
-			self.State.sl_brightness_focused = true;
-			SLBrightness.TextBox:CaptureFocus();
-		end );
-		SLBrightness.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( SLBrightness.TextBox.Text );
-			if potential_new then
-				if potential_new > 5 then
-					potential_new = 5;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeBrightness( 'spotlight', potential_new );
-			end;
-			self.State.sl_brightness_focused = false;
-		end );
-
-		local SLAngle = SpotlightUI.Options.AngleOption.Input;
-		SLAngle.TextButton.MouseButton1Down:connect( function ()
-			self.State.sl_angle_focused = true;
-			SLAngle.TextBox:CaptureFocus();
-		end );
-		SLAngle.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( SLAngle.TextBox.Text );
-			if potential_new then
-				self:changeAngle( potential_new );
-			end;
-			self.State.sl_angle_focused = false;
-		end );
-
-		local SLRange = SpotlightUI.Options.RangeOption.Input;
-		SLRange.TextButton.MouseButton1Down:connect( function ()
-			self.State.sl_range_focused = true;
-			SLRange.TextBox:CaptureFocus();
-		end );
-		SLRange.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( SLRange.TextBox.Text );
-			if potential_new then
-				if potential_new > 60 then
-					potential_new = 60;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeRange( 'spotlight', potential_new );
-			end;
-			self.State.sl_range_focused = false;
-		end );
-
-		local SLShadows = SpotlightUI.Options.ShadowsOption;
-		SLShadows.On.Button.MouseButton1Down:connect( function ()
-			self:changeShadows( 'spotlight', true );
-		end );
-		SLShadows.Off.Button.MouseButton1Down:connect( function ()
-			self:changeShadows( 'spotlight', false );
-		end );
-
-		-- Add functionality to point light inputs
-		local PointLightUI = Container.PointLight;
-
-		local PLColor = PointLightUI.Options.ColorOption;
-		PLColor.RInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.pl_color_r_focused = true;
-			PLColor.RInput.TextBox:CaptureFocus();
-		end );
-		PLColor.RInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( PLColor.RInput.TextBox.Text );
-			if potential_new then
-				if potential_new > 255 then
-					potential_new = 255;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeColor( 'pointlight', 'r', potential_new / 255 );
-			end;
-			self.State.pl_color_r_focused = false;
-		end );
-		PLColor.GInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.pl_color_g_focused = true;
-			PLColor.GInput.TextBox:CaptureFocus();
-		end );
-		PLColor.GInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( PLColor.GInput.TextBox.Text );
-			if potential_new then
-				if potential_new > 255 then
-					potential_new = 255;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeColor( 'pointlight', 'g', potential_new / 255 );
-			end;
-			self.State.pl_color_g_focused = false;
-		end );
-		PLColor.BInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.pl_color_b_focused = true;
-			PLColor.BInput.TextBox:CaptureFocus();
-		end );
-		PLColor.BInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( PLColor.BInput.TextBox.Text );
-			if potential_new then
-				if potential_new > 255 then
-					potential_new = 255;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeColor( 'pointlight', 'b', potential_new / 255 );
-			end;
-			self.State.pl_color_b_focused = false;
-		end );
-
-		PLColor.HSVPicker.MouseButton1Up:connect( function ()
-			ColorPicker:start( function ( ... )
-				local args = { ... };
-				-- If a color was picked, change the point lights' color
-				-- to the selected color
-				if #args == 3 then
-					self:changeColor('pointlight', Support.HSVToRGB(...));
-				end;
-			end, self.State.pl_color );
-		end );
-
-		local PLBrightness = PointLightUI.Options.BrightnessOption.Input;
-		PLBrightness.TextButton.MouseButton1Down:connect( function ()
-			self.State.pl_brightness_focused = true;
-			PLBrightness.TextBox:CaptureFocus();
-		end );
-		PLBrightness.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( PLBrightness.TextBox.Text );
-			if potential_new then
-				if potential_new > 5 then
-					potential_new = 5;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeBrightness( 'pointlight', potential_new );
-			end;
-			self.State.pl_brightness_focused = false;
-		end );
-
-		local PLRange = PointLightUI.Options.RangeOption.Input;
-		PLRange.TextButton.MouseButton1Down:connect( function ()
-			self.State.pl_range_focused = true;
-			PLRange.TextBox:CaptureFocus();
-		end );
-		PLRange.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( PLRange.TextBox.Text );
-			if potential_new then
-				if potential_new > 60 then
-					potential_new = 60;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeRange( 'pointlight', potential_new );
-			end;
-			self.State.pl_range_focused = false;
-		end );
-
-		local PLShadows = PointLightUI.Options.ShadowsOption;
-		PLShadows.On.Button.MouseButton1Down:connect( function ()
-			self:changeShadows( 'pointlight', true );
-		end );
-		PLShadows.Off.Button.MouseButton1Down:connect( function ()
-			self:changeShadows( 'pointlight', false );
-		end );
-
-		self.GUI = Container;
-	end;
-
-	-- Reveal the GUI
-	self.GUI.Visible = true;
-
-end;
-
-Tools.Lighting.changeSide = function ( self, side )
-
-	local lights = self:getSpotlights();
-
-	self:startHistoryRecord( lights );
-	for _, Light in pairs( lights ) do
-		Change(Light, {
-			Face = side;
-		});
-	end;
-	self:finishHistoryRecord();
-
-	if self.SideDropdown.open then
-		self.SideDropdown:toggle();
-	end;
-
-end;
-
-Tools.Lighting.changeAngle = function ( self, angle )
-
-	local lights = self:getSpotlights();
-
-	self:startHistoryRecord( lights );
-	for _, Light in pairs( lights ) do
-		Change(Light, {
-			Angle = angle;
-		});
-	end;
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Lighting.getSpotlights = function ( self )
-	-- Returns a list of all the relevant spotlights in the selection items
-
-	local spotlights = {};
-
-	for _, Item in pairs( Selection.Items ) do
-		local Spotlight = Support.GetChildOfClass(Item, 'SpotLight');
-		if Spotlight then
-			table.insert( spotlights, Spotlight );
-		end;
-	end;
-
-	return spotlights;
-
-end;
-
-Tools.Lighting.getPointLights = function ( self )
-	-- Returns a list of all the relevant point lights in the selection items
-
-	local pointlights = {};
-
-	for _, Item in pairs( Selection.Items ) do
-		local PointLight = Support.GetChildOfClass(Item, 'PointLight');
-		if PointLight then
-			table.insert( pointlights, PointLight );
-		end;
-	end;
-
-	return pointlights;
-
-end;
-
-Tools.Lighting.changeColor = function ( self, target, ... )
-
-	local args = { ... };
-	local targets;
-
-	if target == 'spotlight' then
-		targets = self:getSpotlights();
-	elseif target == 'pointlight' then
-		targets = self:getPointLights();
-	end;
-
-	self:startHistoryRecord( targets );
-
-	-- If only one component is being changed at a time
-	if #args == 2 then
-		local component = args[1];
-		local component_value = args[2];
-
-		for _, Light in pairs( targets ) do
-			Change(Light, {
-				Color = Color3.new(
-					component == 'r' and component_value or Light.Color.r,
-					component == 'g' and component_value or Light.Color.g,
-					component == 'b' and component_value or Light.Color.b
-				);
-			});
-		end;
-
-	-- If all 3 components of the color are being changed
-	elseif #args == 3 then
-		local r, g, b = ...;
-
-		for _, Light in pairs( targets ) do
-			Change(Light, {
-				Color = Color3.new( r, g, b );
-			});
-		end;
-	end;
-
-	self:finishHistoryRecord();
-end;
-
-Tools.Lighting.changeBrightness = function ( self, target, new_brightness )
-
-	local targets;
-
-	if target == 'spotlight' then
-		targets = self:getSpotlights();
-	elseif target == 'pointlight' then
-		targets = self:getPointLights();
-	end;
-
-	self:startHistoryRecord( targets );
-
-	for _, Light in pairs( targets ) do
-		Change(Light, {
-			Brightness = new_brightness;
-		});
-	end;
-
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Lighting.changeRange = function ( self, target, new_range )
-
-	local targets;
-
-	if target == 'spotlight' then
-		targets = self:getSpotlights();
-	elseif target == 'pointlight' then
-		targets = self:getPointLights();
-	end;
-
-	self:startHistoryRecord( targets );
-
-	for _, Light in pairs( targets ) do
-		Change(Light, {
-			Range = new_range;
-		});
-	end;
-
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Lighting.changeShadows = function ( self, target, new_shadows )
-
-	local targets;
-
-	if target == 'spotlight' then
-		targets = self:getSpotlights();
-	elseif target == 'pointlight' then
-		targets = self:getPointLights();
-	end;
-
-	self:startHistoryRecord( targets );
-
-	for _, Light in pairs( targets ) do
-		Change(Light, {
-			Shadows = new_shadows;
-		});
-	end;
-
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Lighting.addLight = function ( self, light_type )
-
-	local HistoryRecord = {
-		Apply = function ( self )
-			Selection:clear();
-			for _, Light in pairs( self.lights ) do
-				SetParent(Light, self.light_parents[Light]);
-				Selection:add(Light.Parent);
-			end;
-		end;
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Light in pairs( self.lights ) do
-				Selection:add(Light.Parent);
-				SetParent(Light, nil);
-			end;
-		end;
-	};
-
-	-- Add lights to all the items from the selection that don't already have one
-	local lights = {};
-	local light_parents = {};
-
-	-- Go through each selected part
-	for _, Item in pairs( Selection.Items ) do
-
-		-- Make sure it doesn't already have a light
-		local Light = Support.GetChildOfClass(Item, light_type);
-		if not Light then
-
-			local Light;
-
-			-- Request creation of the light from the server if in filter mode
-			if FilterMode then
-				Light = ServerAPI:InvokeServer('CreateLight', light_type, Item);
-
-			-- Otherwise create it locally/instantly
-			else
-				Light = Instance.new(light_type, Item);
-			end;
-
-			-- Register the new light
-			table.insert( lights, Light );
-			light_parents[Light] = Item;
-
-		end;
-	end;
-
-	HistoryRecord.lights = lights;
-	HistoryRecord.light_parents = light_parents;
-	History:Add( HistoryRecord );
-
-end;
-
-Tools.Lighting.removeLight = function ( self, light_type )
-
-	local HistoryRecord = {
-		Apply = function ( self )
-			Selection:clear();
-			for _, Light in pairs( self.lights ) do
-				Selection:add(Light.Parent);
-				SetParent(Light, nil);
-			end;
-		end;
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Light in pairs( self.lights ) do
-				SetParent(Light, self.light_parents[Light]);
-				Selection:add(Light.Parent);
-			end;
-		end;
-	};
-
-	local lights = {};
-	local light_parents = {};
-
-	-- Remove lights from all the selected items
-	local lights;
-	if light_type == 'spotlight' then
-		lights = self:getSpotlights();
-	elseif light_type == 'pointlight' then
-		lights = self:getPointLights();
-	end;
-
-	for _, Light in pairs( lights ) do
-		light_parents[Light] = Light.Parent;
-		SetParent(Light, nil);
-	end;
-
-	HistoryRecord.lights = lights;
-	HistoryRecord.light_parents = light_parents;
-	History:Add( HistoryRecord );
-
-end;
-
-Tools.Lighting.startHistoryRecord = function ( self, lights )
-
-	if self.State.HistoryRecord then
-		self.State.HistoryRecord = nil;
-	end;
-
-	-- Create a history record
-	self.State.HistoryRecord = {
-		targets = Support.CloneTable(lights);
-		initial_color = {};			terminal_color = {};
-		initial_brightness = {};	terminal_brightness = {};
-		initial_range = {};			terminal_range = {};
-		initial_shadows = {};		terminal_shadows = {};
-		-- Spotlights only
-		initial_side = {};			terminal_side = {};
-		initial_angle = {};			terminal_angle = {};
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Selection:add( Target.Parent );
-					Change(Target, {
-						Color = self.initial_color[Target];
-						Brightness = self.initial_brightness[Target];
-						Range = self.initial_range[Target];
-						Shadows = self.initial_shadows[Target];
-					});
-					if Target:IsA( 'SpotLight' ) then
-						Change(Target, {
-							Face = self.initial_side[Target];
-							Angle = self.initial_angle[Target];
-						});
-					end;
-				end;
-			end;
-		end;
-		Apply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Selection:add( Target.Parent );
-					Change(Target, {
-						Color = self.terminal_color[Target];
-						Brightness = self.terminal_brightness[Target];
-						Range = self.terminal_range[Target];
-						Shadows = self.terminal_shadows[Target];
-					});
-					if Target:IsA( 'SpotLight' ) then
-						Change(Target, {
-							Face = self.terminal_side[Target];
-							Angle = self.terminal_angle[Target];
-						});
-					end;
-				end;
-			end;
-		end;
-	};
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.initial_color[Item] = Item.Color;
-			self.State.HistoryRecord.initial_brightness[Item] = Item.Brightness;
-			self.State.HistoryRecord.initial_range[Item] = Item.Range;
-			self.State.HistoryRecord.initial_shadows[Item] = Item.Shadows;
-			if Item:IsA( 'SpotLight' ) then
-				self.State.HistoryRecord.initial_side[Item] = Item.Face;
-				self.State.HistoryRecord.initial_angle[Item] = Item.Angle;
-			end;
-		end;
-	end;
-
-end;
-
-Tools.Lighting.finishHistoryRecord = function ( self )
-
-	if not self.State.HistoryRecord then
+function UpdateUI()
+	-- Updates information on the UI
+
+	-- Make sure the UI's on
+	if not LightingTool.UI then
 		return;
 	end;
 
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.terminal_color[Item] = Item.Color;
-			self.State.HistoryRecord.terminal_brightness[Item] = Item.Brightness;
-			self.State.HistoryRecord.terminal_range[Item] = Item.Range;
-			self.State.HistoryRecord.terminal_shadows[Item] = Item.Shadows;
-			if Item:IsA( 'SpotLight' ) then
-				self.State.HistoryRecord.terminal_side[Item] = Item.Face;
-				self.State.HistoryRecord.terminal_angle[Item] = Item.Angle;
-			end;
+	-- Go through each light type and update each options UI
+	for _, LightType in pairs(LightTypes) do
+
+		local Lights = GetLights(LightType);
+		local LightSettingsUI = LightingTool.UI[LightType];
+
+		-- Option input references
+		local Options = LightSettingsUI.Options;
+		local RangeInput = Options.RangeOption.Input.TextBox;
+		local BrightnessInput = Options.BrightnessOption.Input.TextBox;
+		local ColorPicker = Options.ColorOption.HSVPicker;
+		local ColorIndicator = Options.ColorOption.Indicator;
+		local ShadowsCheckbox = Options.ShadowsOption.Checkbox;
+
+		-- Add/remove button references
+		local AddButton = LightSettingsUI.AddButton;
+		local RemoveButton = LightSettingsUI.RemoveButton;
+
+		-- Hide option UIs for light types not present in the selection
+		if #Lights == 0 and not LightSettingsUI.ClipsDescendants then
+			CloseLightOptions();
 		end;
+
+		-------------------------------------------
+		-- Show and hide "ADD" and "REMOVE" buttons
+		-------------------------------------------
+
+		-- If no selected parts have lights0
+		if #Lights == 0 then
+
+			-- Show add button only
+			AddButton.Visible = true;
+			AddButton.Position = UDim2.new(1, -AddButton.AbsoluteSize.X - 5, 0, 3);
+			RemoveButton.Visible = false;
+
+		-- If only some selected parts have lights
+		elseif #Lights < #Selection.Items then
+
+			-- Show both add and remove buttons
+			AddButton.Visible = true;
+			AddButton.Position = UDim2.new(1, -AddButton.AbsoluteSize.X - 5, 0, 3);
+			RemoveButton.Visible = true;
+			RemoveButton.Position = UDim2.new(1, -AddButton.AbsoluteSize.X - 5 - RemoveButton.AbsoluteSize.X - 2, 0, 3);
+
+		-- If all selected parts have lights
+		elseif #Lights == #Selection.Items then
+
+			-- Show remove button
+			RemoveButton.Visible = true;
+			RemoveButton.Position = UDim2.new(1, -RemoveButton.AbsoluteSize.X - 5, 0, 3);
+			AddButton.Visible = false;
+
+		end;
+
+		--------------------
+		-- Update each input
+		--------------------
+
+		-- Update the standard inputs
+		UpdateDataInputs {
+			[RangeInput] = Support.IdentifyCommonProperty(Lights, 'Range') or '*';
+			[BrightnessInput] = Support.IdentifyCommonProperty(Lights, 'Brightness') or '*';
+		};
+
+		-- Update type-specific inputs
+		if LightType == 'SpotLight' or LightType == 'SurfaceLight' then
+
+			-- Get the type-specific inputs
+			local AngleInput = Options.AngleOption.Input.TextBox;
+			local SideDropdown = Options.SideOption.Dropdown;
+
+			-- Update the angle input
+			UpdateDataInputs {
+				[AngleInput] = Support.IdentifyCommonProperty(Lights, 'Angle') or '*';
+			};
+
+			-- Update the surface dropdown input
+			local Face = Support.IdentifyCommonProperty(Lights, 'Face');
+			SideDropdown.MainButton.CurrentOption.Text = Face and Face.Name:upper() or '*';
+			
+		end;
+
+		-- Update special color input
+		local Color = Support.IdentifyCommonProperty(Lights, 'Color');
+		if Color then
+			ColorIndicator.BackgroundColor3 = Color;
+			ColorIndicator.Varies.Text = '';
+		else
+			ColorIndicator.BackgroundColor3 = Color3.new(222/255, 222/255, 222/255);
+			ColorIndicator.Varies.Text = '*';
+		end;
+
+		-- Update the special shadows input
+		local ShadowsEnabled = Support.IdentifyCommonProperty(Lights, 'Shadows');
+		if ShadowsEnabled == true then
+			ShadowsCheckbox.Image = Core.Assets.CheckedCheckbox;
+		elseif ShadowsEnabled == false then
+			ShadowsCheckbox.Image = Core.Assets.UncheckedCheckbox;
+		elseif ShadowsEnabled == nil then
+			ShadowsCheckbox.Image = Core.Assets.SemicheckedCheckbox;
+		end;
+
 	end;
-	History:Add( self.State.HistoryRecord );
-	self.State.HistoryRecord = nil;
 
 end;
 
-Tools.Lighting.hideGUI = function ( self )
+function UpdateDataInputs(Data)
+	-- Updates the data in the given TextBoxes when the user isn't typing in them
 
-	-- Hide the GUI if it exists already
-	if self.GUI then
-		self.GUI.Visible = false;
+	-- Go through the inputs and data
+	for Input, UpdatedValue in pairs(Data) do
+
+		-- Makwe sure the user isn't typing into the input
+		if not Input:IsFocused() then
+
+			-- Set the input's value
+			Input.Text = tostring(UpdatedValue);
+
+		end;
+
 	end;
 
 end;
 
-Tools.Lighting.Loaded = true;
+function AddLights(LightType)
+
+	-- Prepare the change request for the server
+	local Changes = {};
+
+	-- Go through the selection
+	for _, Part in pairs(Selection.Items) do
+
+		-- Make sure this part doesn't already have a light
+		if not Support.GetChildOfClass(Part, LightType) then
+
+			-- Queue a light to be created for this part
+			table.insert(Changes, { Part = Part, LightType = LightType });
+
+		end;
+
+	end;
+
+	-- Send the change request to the server
+	local Lights = Core.ServerAPI:InvokeServer('CreateLights', Changes);
+
+	-- Put together the history record
+	local HistoryRecord = {
+		Lights = Lights;
+
+		Unapply = function (HistoryRecord)
+			-- Reverts this change
+
+			-- Remove the lights
+			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Lights);
+
+		end;
+
+		Apply = function (HistoryRecord)
+			-- Reapplies this change
+
+			-- Restore the lights
+			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Lights);
+
+		end;
+
+	};
+
+	-- Register the history record
+	Core.History:Add(HistoryRecord);
+
+	-- Open the options UI for this light type
+	OpenLightOptions(LightType);
+
+end;
+
+function RemoveLights(LightType)
+
+	-- Get all the lights in the selection
+	local Lights = GetLights(LightType);
+
+	-- Create the history record
+	local HistoryRecord = {
+		Lights = Lights;
+
+		Unapply = function (HistoryRecord)
+			-- Reverts this change
+
+			-- Restore the lights
+			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Lights);
+
+		end;
+
+		Apply = function (HistoryRecord)
+			-- Reapplies this change
+
+			-- Remove the lights
+			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Lights);
+
+		end;
+
+	};
+
+	-- Send the removal request
+	Core.ServerAPI:InvokeServer('Remove', Lights);
+
+	-- Register the history record
+	Core.History:Add(HistoryRecord);
+
+end;
+
+function TrackChange()
+
+	-- Start the record
+	HistoryRecord = {
+		Before = {};
+		After = {};
+
+		Unapply = function (Record)
+			-- Reverts this change
+
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncLighting', Record.Before);
+
+		end;
+
+		Apply = function (Record)
+			-- Applies this change
+
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncLighting', Record.After);
+
+		end;
+
+	};
+
+end;
+
+function RegisterChange()
+	-- Finishes creating the history record and registers it
+
+	-- Make sure there's an in-progress history record
+	if not HistoryRecord then
+		return;
+	end;
+
+	-- Send the change to the server
+	Core.ServerAPI:InvokeServer('SyncLighting', HistoryRecord.After);
+
+	-- Register the record and clear the staging
+	Core.History:Add(HistoryRecord);
+	HistoryRecord = nil;
+
+end;
+
+function SetRange(LightType, Range)
+
+	-- Make sure the given range is valid
+	if not Range then
+		return;
+	end;
+
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each light
+	for _, Light in pairs(GetLights(LightType)) do
+
+		-- Store the state of the light before modification
+		table.insert(HistoryRecord.Before, { Part = Light.Parent, LightType = LightType, Range = Light.Range });
+
+		-- Create the change request for this light
+		table.insert(HistoryRecord.After, { Part = Light.Parent, LightType = LightType, Range = Range });
+
+	end;
+
+	-- Register the changes
+	RegisterChange();
+
+end;
+
+function SetBrightness(LightType, Brightness)
+
+	-- Make sure the given brightness is valid
+	if not Brightness then
+		return;
+	end;
+
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each light
+	for _, Light in pairs(GetLights(LightType)) do
+
+		-- Store the state of the light before modification
+		table.insert(HistoryRecord.Before, { Part = Light.Parent, LightType = LightType, Brightness = Light.Brightness });
+
+		-- Create the change request for this light
+		table.insert(HistoryRecord.After, { Part = Light.Parent, LightType = LightType, Brightness = Brightness });
+
+	end;
+
+	-- Register the changes
+	RegisterChange();
+
+end;
+
+function SetColor(LightType, Color)
+
+	-- Make sure the given color is valid
+	if not Color then
+		return;
+	end;
+
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each light
+	for _, Light in pairs(GetLights(LightType)) do
+
+		-- Store the state of the light before modification
+		table.insert(HistoryRecord.Before, { Part = Light.Parent, LightType = LightType, Color = Light.Color });
+
+		-- Create the change request for this light
+		table.insert(HistoryRecord.After, { Part = Light.Parent, LightType = LightType, Color = Color });
+
+	end;
+
+	-- Register the changes
+	RegisterChange();
+
+end;
+
+function ToggleShadows(LightType)
+
+	-- Determine whether to turn shadows on or off
+	local ShadowsEnabled = not Support.IdentifyCommonProperty(GetLights(LightType), 'Shadows');
+
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each light
+	for _, Light in pairs(GetLights(LightType)) do
+
+		-- Store the state of the light before modification
+		table.insert(HistoryRecord.Before, { Part = Light.Parent, LightType = LightType, Shadows = Light.Shadows });
+
+		-- Create the change request for this light
+		table.insert(HistoryRecord.After, { Part = Light.Parent, LightType = LightType, Shadows = ShadowsEnabled });
+
+	end;
+
+	-- Register the changes
+	RegisterChange();
+
+end;
+
+function SetSurface(LightType, Face)
+
+	-- Make sure the given face is valid, and this is an applicable light type
+	if not Face or not (LightType == 'SurfaceLight' or LightType == 'SpotLight') then
+		return;
+	end;
+
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each light
+	for _, Light in pairs(GetLights(LightType)) do
+
+		-- Store the state of the light before modification
+		table.insert(HistoryRecord.Before, { Part = Light.Parent, LightType = LightType, Face = Light.Face });
+
+		-- Create the change request for this light
+		table.insert(HistoryRecord.After, { Part = Light.Parent, LightType = LightType, Face = Face });
+
+	end;
+
+	-- Register the changes
+	RegisterChange();
+
+end;
+
+function SetAngle(LightType, Angle)
+
+	-- Make sure the given angle is valid
+	if not Angle then
+		return;
+	end;
+
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each light
+	for _, Light in pairs(GetLights(LightType)) do
+
+		-- Store the state of the light before modification
+		table.insert(HistoryRecord.Before, { Part = Light.Parent, LightType = LightType, Angle = Light.Angle });
+
+		-- Create the change request for this light
+		table.insert(HistoryRecord.After, { Part = Light.Parent, LightType = LightType, Angle = Angle });
+
+	end;
+
+	-- Register the changes
+	RegisterChange();
+
+end;
+
+-- Mark the tool as fully loaded
+Core.Tools.Lighting = LightingTool;
+LightingTool.Loaded = true;

@@ -337,22 +337,22 @@ function Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions)
 	-- Check authorization for each relevant area
 	for _, Area in pairs(Areas) do
 
-		-- If unauthorized, call a violation
-		if AreaPermissions[Area] == false then
-			return true;
+		-- If authorized, call off any violation
+		if AreaPermissions[Area] then
+			return false;
 
 		-- Determine authorization if not in given permissions cache
 		elseif AreaPermissions[Area] == nil then
 			AreaPermissions[Area] = Security.IsAreaAuthorizedForPlayer(Area, Player);
-			if not AreaPermissions[Area] then
-				return true;
+			if AreaPermissions[Area] then
+				return false;
 			end;
 		end;
 
 	end;
 
-	-- If no area authorization violations occur, return false
-	return false;
+	-- If none of the areas are authorized, call a violation
+	return true;
 end;
 
 function Security.GetSelectionAreas(Selection)

@@ -37,6 +37,9 @@ Assets = {
 	GroupUnlockIcon			= 'http://www.roblox.com/asset/?id=160408836';
 	GroupUpdateOKIcon		= 'http://www.roblox.com/asset/?id=164421681';
 	GroupUpdateIcon			= 'http://www.roblox.com/asset/?id=160402908';
+	CheckedCheckbox			= 'http://www.roblox.com/asset/?id=401518893';
+	UncheckedCheckbox		= 'http://www.roblox.com/asset/?id=401518903';
+	SemicheckedCheckbox		= 'http://www.roblox.com/asset/?id=404298168';
 };
 
 -- The ID of the tool model on ROBLOX
@@ -120,7 +123,6 @@ function equipTool( NewTool )
 
 		-- Recolor the handle
 		if ToolType == 'tool' then
-			Tool.Handle.BrickColor = NewTool.Color;
 			coroutine.wrap(function () ServerAPI:InvokeServer('RecolorHandle', NewTool.Color) end)();
 		end;
 
@@ -222,41 +224,39 @@ end;
 function deleteSelection()
 	-- Deletes the items in the selection
 
-	if #Selection.Items == 0 then
-		return;
-	end;
-
-	local selection_items = Support.CloneTable(Selection.Items);
-
-	-- Create a history record
+	-- Put together the history record
 	local HistoryRecord = {
-		targets = selection_items;
-		parents = {};
-		Apply = function ( self )
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					SetParent(Target, nil);
-				end;
-			end;
-		end;
-		Unapply = function ( self )
+		Parts = Support.CloneTable(Selection.Items);
+
+		Unapply = function (HistoryRecord)
+			-- Reverts this change
+
+			-- Restore the parts
+			ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Parts);
+
+			-- Select the restored parts
 			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					SetParent(Target, self.parents[Target]);
-					MakeJoints(Target);
-					Selection:add(Target);
-				end;
+			for _, Part in pairs(HistoryRecord.Parts) do
+				Selection:add(Part);
 			end;
+
 		end;
+
+		Apply = function (HistoryRecord)
+			-- Applies this change
+
+			-- Remove the parts
+			ServerAPI:InvokeServer('Remove', HistoryRecord.Parts);
+
+		end;
+
 	};
 
-	for _, Item in pairs( selection_items ) do
-		HistoryRecord.parents[Item] = Item.Parent;
-		SetParent(Item, nil);
-	end;
+	-- Perform the removal
+	ServerAPI:InvokeServer('Remove', Selection.Items);
 
-	History:Add( HistoryRecord );
+	-- Register the history record
+	History:Add(HistoryRecord);
 
 end;
 
@@ -1822,29 +1822,34 @@ ColorPicker = {
 
 		-- Update the GUI
 		local start_color = start_color or Color3.new( 1, 0, 0 );
+		ColorPicker.StartColor = start_color;
 		self:_changeColor(Support.RGBToHSV(start_color.r, start_color.g, start_color.b));
 
 		-- Add functionality to the GUI's interactive elements
-		table.insert( self.Connections, self.GUI.HueSaturation.MouseButton1Down:connect( function ( x, y )
-			self.track_mouse = 'hue-saturation';
-			self:_onMouseMove( x, y );
+		table.insert(self.Connections, self.GUI.HueSaturation.InputBegan:connect( function ( InputInfo )
+			if InputInfo.UserInputType == Enum.UserInputType.MouseButton1 then
+				self.track_mouse = 'hue-saturation';
+				self:_onMouseMove(InputInfo.Position.X, InputInfo.Position.Y);
+			end;
 		end ) );
 
-		table.insert( self.Connections, self.GUI.HueSaturation.MouseButton1Up:connect( function ()
-			self.track_mouse = nil;
+		table.insert( self.Connections, UserInputService.InputChanged:connect( function ( InputInfo )
+			if InputInfo.UserInputType == Enum.UserInputType.MouseMovement then
+				self:_onMouseMove(InputInfo.Position.X, InputInfo.Position.Y);
+			end;
 		end ) );
 
-		table.insert( self.Connections, self.GUI.MouseMoved:connect( function ( x, y )
-			self:_onMouseMove( x, y );
+		table.insert( self.Connections, self.GUI.Value.InputBegan:connect( function ( InputInfo )
+			if InputInfo.UserInputType == Enum.UserInputType.MouseButton1 then
+				self.track_mouse = 'value';
+				self:_onMouseMove(InputInfo.Position.X, InputInfo.Position.Y);
+			end;
 		end ) );
 
-		table.insert( self.Connections, self.GUI.Value.MouseButton1Down:connect( function ( x, y )
-			self.track_mouse = 'value';
-			self:_onMouseMove( x, y );
-		end ) );
-
-		table.insert( self.Connections, self.GUI.Value.MouseButton1Up:connect( function ()
-			self.track_mouse = nil;
+		table.insert( self.Connections, UserInputService.InputEnded:connect( function ( InputInfo )
+			if InputInfo.UserInputType == Enum.UserInputType.MouseButton1 then
+				self.track_mouse = nil;
+			end;
 		end ) );
 
 		table.insert( self.Connections, self.GUI.OkButton.MouseButton1Up:connect( function ()
@@ -1997,7 +2002,7 @@ ColorPicker = {
 		end;
 
 		-- Call the callback function that was provided to us
-		self.callback( self.hue, self.saturation, self.value );
+		self.callback(Color3.new(Support.HSVToRGB(self.hue, self.saturation, self.value)));
 		self.callback = nil;
 
 		self.enabled = false;
@@ -2024,7 +2029,7 @@ ColorPicker = {
 		end;
 
 		-- Call the callback function that was provided to us
-		self.callback();
+		self.callback(self.StartColor);
 		self.callback = nil;
 
 		self.enabled = false;
@@ -2714,6 +2719,7 @@ end;
 function equipBT( CurrentMouse )
 
 	Mouse = CurrentMouse;
+	UserInputService.MouseBehavior = Enum.MouseBehavior.Default;
 
 	-- Equip the last tool, or the move tool by default
 	equipTool(LastTool or Tools.Move);
@@ -3022,7 +3028,7 @@ function equipBT( CurrentMouse )
 		end;
 
 		-- If the target when clicking was invalid then clear the selection (unless we're multi-selecting)
-		if not override_selection and not selecting and not isSelectable( Mouse.Target ) then
+		if not override_selection and not selecting and not isSelectable(Mouse.Target) then
 			Selection:clear();
 		end;
 
@@ -3042,12 +3048,16 @@ function equipBT( CurrentMouse )
 				end;
 			end;
 
-		-- If not multi-selecting, replace the selection
-		else
+		-- If not multi-selecting, and clicking on an unselected selectable part, replace the selection
+		elseif not Selection:find(Mouse.Target) then
 			if not override_selection and isSelectable( Mouse.Target ) then
 				Selection:clear();
 				Selection:add( Mouse.Target );
 			end;
+
+		-- If clicking on a selected part, set it as the focused part
+		else
+			Selection:focus(Mouse.Target);
 		end;
 
 		-- Fire tool listeners
