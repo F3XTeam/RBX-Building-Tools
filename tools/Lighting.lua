@@ -386,7 +386,7 @@ function UpdateUI()
 		-- Show and hide "ADD" and "REMOVE" buttons
 		-------------------------------------------
 
-		-- If no selected parts have lights0
+		-- If no selected parts have lights
 		if #Lights == 0 then
 
 			-- Show add button only
