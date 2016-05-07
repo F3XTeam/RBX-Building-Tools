@@ -858,6 +858,115 @@ Actions = {
 
 	end;
 
+	['CreateMeshes'] = function (Changes)
+		-- Creates meshes in the given parts
+
+		-- Grab a list of every part we're attempting to modify
+		local Parts = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				table.insert(Parts, Change.Part);
+			end;
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
+
+		-- Reorganize the changes
+		local ChangeSet = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				ChangeSet[Change.Part] = Change;
+			end;
+		end;
+
+		-- Keep track of the newly created meshes
+		local Meshes = {};
+
+		-- Create each mesh
+		for Part, Change in pairs(ChangeSet) do
+
+			-- Create the mesh
+			local Mesh = Instance.new('SpecialMesh', Part);
+			table.insert(Meshes, Mesh);
+
+			-- Register the mesh
+			CreatedInstances[Mesh] = Mesh;
+
+		end;
+
+		-- Return the new meshes
+		return Meshes;
+
+	end;
+
+	['SyncMesh'] = function (Changes)
+		-- Updates aspects of the given selection's meshes
+
+		-- Grab a list of every part we're attempting to modify
+		local Parts = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				table.insert(Parts, Change.Part);
+			end;
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
+
+		-- Reorganize the changes
+		local ChangeSet = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				ChangeSet[Change.Part] = Change;
+			end;
+		end;
+
+		-- Update each part's meshes
+		for Part, Change in pairs(ChangeSet) do
+
+			-- Grab the part's mesh
+			local Mesh = Support.GetChildOfClass(Part, 'SpecialMesh');
+
+			-- Make sure the mesh exists
+			if Mesh then
+
+				-- Make the requested changes
+				if Change.VertexColor ~= nil then
+					Mesh.VertexColor = Change.VertexColor;
+				end;
+				if Change.MeshType ~= nil then
+					Mesh.MeshType = Change.MeshType;
+				end;
+				if Change.Scale ~= nil then
+					Mesh.Scale = Change.Scale;
+				end;
+				if Change.Offset ~= nil then
+					Mesh.Offset = Change.Offset;
+				end;
+				if Change.MeshId ~= nil then
+					Mesh.MeshId = Change.MeshId;
+				end;
+				if Change.TextureId ~= nil then
+					Mesh.TextureId = Change.TextureId;
+				end;
+
+			end;
+
+		end;
+
+	end;
+
 };
 
 -- Provide functionality to the API instance

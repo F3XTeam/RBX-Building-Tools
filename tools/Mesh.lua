@@ -4,842 +4,773 @@ repeat wait() until (
 	_G.BTCoreEnv[script.Parent.Parent] and
 	_G.BTCoreEnv[script.Parent.Parent].CoreReady
 );
-setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
+Core = _G.BTCoreEnv[script.Parent.Parent];
 
-------------------------------------------
--- Mesh tool
-------------------------------------------
+-- Import relevant references
+Selection = Core.Selection;
+Create = Core.Create;
+Support = Core.Support;
+Security = Core.Security;
+Support.ImportServices();
 
--- Create the tool
-Tools.Mesh = {};
-Tools.Mesh.Name = 'Mesh Tool';
+-- Initialize the tool
+local MeshTool = {
 
--- Define the tool's color
-Tools.Mesh.Color = BrickColor.new( "Bright violet" );
+	Name = 'Mesh Tool';
+	Color = BrickColor.new 'Bright violet';
 
--- Keep a container for state data
-Tools.Mesh.State = {};
+	-- Standard platform event interface
+	Listeners = {};
 
--- Keep a container for temporary connections
-Tools.Mesh.Connections = {};
-
--- Keep a container for platform event connections
-Tools.Mesh.Listeners = {};
-
--- Start adding functionality to the tool
-Tools.Mesh.Listeners.Equipped = function ()
-
-	local self = Tools.Mesh;
-
-	-- Change the color of selection boxes temporarily
-	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = self.Color;
-	updateSelectionBoxColor();
-
-	-- Reveal the GUI
-	self:showGUI();
-
-	-- Update the GUI regularly
-	coroutine.wrap( function ()
-		updater_on = true;
-
-		-- Provide a function to stop the loop
-		self.Updater = function ()
-			updater_on = false;
-		end;
-
-		while wait( 0.1 ) and updater_on do
-
-			-- Make sure the tool's equipped
-			if CurrentTool == self then
-
-				-- Update the GUI if it's visible
-				if self.GUI and self.GUI.Visible then
-					self:updateGUI();
-				end;
-
-			end;
-
-		end;
-
-	end )();
-
-end;
-
-Tools.Mesh.Listeners.Unequipped = function ()
-
-	local self = Tools.Mesh;
-
-	-- Stop the GUI updater
-	if self.Updater then
-		self.Updater();
-		self.Updater = nil;
-	end;
-
-	-- Hide the GUI
-	self:hideGUI();
-
-	-- Disconnect temporary connections
-	for connection_index, Connection in pairs( self.Connections ) do
-		Connection:disconnect();
-		self.Connections[connection_index] = nil;
-	end;
-
-	-- Restore the original color of selection boxes
-	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
-
-end;
-
-Tools.Mesh.TypeDropdownLabels = {
-	[Enum.MeshType.Brick] = "BLOCK";
-	[Enum.MeshType.Cylinder] = "CYLINDER";
-	[Enum.MeshType.FileMesh] = "FILE";
-	[Enum.MeshType.Head] = "HEAD";
-	[Enum.MeshType.Sphere] = "SPHERE";
-	[Enum.MeshType.Torso] = "TRAPEZOID";
-	[Enum.MeshType.Wedge] = "WEDGE";
 };
 
-Tools.Mesh.changeType = function ( self, new_type )
+-- Container for temporary connections (disconnected automatically)
+local Connections = {};
 
-	-- Apply type `new_type` to all the meshes in items from the selection
-	local meshes = {};
-	for _, Item in pairs( Selection.Items ) do
-		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
-		if Mesh then
-			table.insert( meshes, Mesh );
-		end;
-	end;
+function Equip()
+	-- Enables the tool's equipped functionality
 
-	self:startHistoryRecord( meshes );
-	for _, Mesh in pairs( meshes ) do
-		Change(Mesh, {
-			MeshType = new_type;
-		});
-	end;
-	self:finishHistoryRecord();
-
-	if self.TypeDropdown.open then
-		self.TypeDropdown:toggle();
-	end;
-
-	self:finishHistoryRecord();
+	-- Start up our interface
+	ShowUI();
 
 end;
 
-Tools.Mesh.updateGUI = function ( self )
+function Unequip()
+	-- Disables the tool's equipped functionality
 
-	-- Make sure the GUI exists
-	if not self.GUI then
+	-- Clear unnecessary resources
+	HideUI();
+	ClearConnections();
+
+end;
+
+MeshTool.Listeners.Equipped = Equip;
+MeshTool.Listeners.Unequipped = Unequip;
+
+function ClearConnections()
+	-- Clears out temporary connections
+
+	for ConnectionKey, Connection in pairs(Connections) do
+		Connection:disconnect();
+		Connections[ConnectionKey] = nil;
+	end;
+
+end;
+
+function ShowUI()
+	-- Creates and reveals the UI
+
+	-- Reveal UI if already created
+	if MeshTool.UI then
+
+		-- Reveal the UI
+		MeshTool.UI.Visible = true;
+
+		-- Update the UI every 0.1 seconds
+		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+
+		-- Skip UI creation
+		return;
+
+	end;
+
+	-- Create the UI
+	MeshTool.UI = Core.Tool.Interfaces.BTMeshToolGUI:Clone();
+	MeshTool.UI.Parent = Core.UI;
+	MeshTool.UI.Visible = true;
+
+	local AddButton = MeshTool.UI.AddButton;
+	local RemoveButton = MeshTool.UI.RemoveButton;
+
+	local MeshIdInput = MeshTool.UI.MeshIdOption.TextBox;
+	local TextureIdInput = MeshTool.UI.TextureIdOption.TextBox;
+	local VertexColorInput = MeshTool.UI.TintOption.HSVPicker;
+
+	-- Create the mesh type dropdown
+	local TypeDropdown = Core.createDropdown();
+	TypeDropdown.Frame.Parent = MeshTool.UI.TypeOption;
+	TypeDropdown.Frame.Position = UDim2.new(0, 40, 0, 0);
+	TypeDropdown.Frame.Size = UDim2.new(1, -40, 0, 25);
+
+	-- Add the mesh types to the dropdown
+	local Types = {
+		Block = Enum.MeshType.Brick,
+		Cylinder = Enum.MeshType.Cylinder,
+		File = Enum.MeshType.FileMesh,
+		Head = Enum.MeshType.Head,
+		Sphere = Enum.MeshType.Sphere,
+		Trapezoid = Enum.MeshType.Torso,
+		Wedge = Enum.MeshType.Wedge
+	};
+	for TypeLabel, TypeEnum in pairs(Types) do
+
+		-- Set the mesh type to the selected
+		TypeDropdown:addOption(TypeLabel:upper()).MouseButton1Click:connect(function ()
+			SetProperty('MeshType', TypeEnum);
+			TypeDropdown:toggle();
+		end);
+
+	end;
+
+	-- Enable the scale inputs
+	local XScaleInput = MeshTool.UI.ScaleOption.XInput.TextBox;
+	local YScaleInput = MeshTool.UI.ScaleOption.YInput.TextBox;
+	local ZScaleInput = MeshTool.UI.ScaleOption.ZInput.TextBox;
+	XScaleInput.FocusLost:connect(function (EnterPressed)
+		local NewScale = tonumber(XScaleInput.Text);
+		SetAxisScale('X', NewScale);
+	end);
+	YScaleInput.FocusLost:connect(function (EnterPressed)
+		local NewScale = tonumber(YScaleInput.Text);
+		SetAxisScale('Y', NewScale);
+	end);
+	ZScaleInput.FocusLost:connect(function (EnterPressed)
+		local NewScale = tonumber(ZScaleInput.Text);
+		SetAxisScale('Z', NewScale);
+	end);
+
+	-- Enable the offset inputs
+	local XOffsetInput = MeshTool.UI.OffsetOption.XInput.TextBox;
+	local YOffsetInput = MeshTool.UI.OffsetOption.YInput.TextBox;
+	local ZOffsetInput = MeshTool.UI.OffsetOption.ZInput.TextBox;
+	XOffsetInput.FocusLost:connect(function (EnterPressed)
+		local NewOffset = tonumber(XOffsetInput.Text);
+		SetAxisOffset('X', NewOffset);
+	end);
+	YOffsetInput.FocusLost:connect(function (EnterPressed)
+		local NewOffset = tonumber(YOffsetInput.Text);
+		SetAxisOffset('Y', NewOffset);
+	end);
+	ZOffsetInput.FocusLost:connect(function (EnterPressed)
+		local NewOffset = tonumber(ZOffsetInput.Text);
+		SetAxisOffset('Z', NewOffset);
+	end);
+
+	-- Enable the mesh ID input
+	MeshIdInput.FocusLost:connect(function (EnterPressed)
+		SetMeshId(ParseAssetId(MeshIdInput.Text));
+	end);
+
+	-- Enable the texture ID input
+	TextureIdInput.FocusLost:connect(function (EnterPressed)
+		SetTextureId(ParseAssetId(TextureIdInput.Text));
+	end);
+
+	-- Enable the vertex color/tint option
+	VertexColorInput.MouseButton1Click:connect(function ()
+		Core.ColorPicker:start(
+			function (Color) SetProperty('VertexColor', ColorToVector(Color)) end,
+			VectorToColor(Support.IdentifyCommonProperty(GetMeshes(), 'VertexColor')) or Color3.new(1, 1, 1)
+		);
+	end);
+
+	-- Enable the mesh adding button
+	AddButton.Button.MouseButton1Click:connect(function ()
+		AddMeshes();
+	end);
+	RemoveButton.Button.MouseButton1Click:connect(function ()
+		RemoveMeshes();
+	end);
+
+	-- Update the UI every 0.1 seconds
+	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+
+end;
+
+function UpdateUI()
+	-- Updates information on the UI
+
+	-- Make sure the UI's on
+	if not MeshTool.UI then
 		return;
 	end;
 
-	local GUI = self.GUI;
+	-- Get all meshes
+	local Meshes = GetMeshes();
 
-	if #Selection.Items > 0 then
+	-- Identify all common properties
+	local MeshType = Support.IdentifyCommonProperty(Meshes, 'MeshType');
+	local MeshId = Support.IdentifyCommonProperty(Meshes, 'MeshId');
+	local TextureId = Support.IdentifyCommonProperty(Meshes, 'TextureId');
+	local VertexColor = VectorToColor(Support.IdentifyCommonProperty(Meshes, 'VertexColor'));
 
-		local meshes = {};
-		for _, Item in pairs( Selection.Items ) do
-			local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
-			if Mesh then
-				table.insert( meshes, Mesh );
-			end;
+	-- Check if there's a file mesh in the selection
+	local FileMeshInSelection = false;
+	for _, Mesh in pairs(GetMeshes()) do
+		if Mesh.MeshType == Enum.MeshType.FileMesh then
+			FileMeshInSelection = true;
+			break;
+		end;
+	end;
+
+	-- Identify common scales and offsets across axes
+	local XScaleVariations, YScaleVariations, ZScaleVariations = {}, {}, {};
+	local XOffsetVariations, YOffsetVariations, ZOffsetVariations = {}, {}, {};
+	for _, Mesh in pairs(GetMeshes()) do
+		table.insert(XScaleVariations, Mesh.Scale.X);
+		table.insert(YScaleVariations, Mesh.Scale.Y);
+		table.insert(ZScaleVariations, Mesh.Scale.Z);
+		table.insert(XOffsetVariations, Mesh.Offset.X);
+		table.insert(YOffsetVariations, Mesh.Offset.Y);
+		table.insert(ZOffsetVariations, Mesh.Offset.Z);
+	end;
+	local CommonXScale = Support.IdentifyCommonItem(XScaleVariations);
+	local CommonYScale = Support.IdentifyCommonItem(YScaleVariations);
+	local CommonZScale = Support.IdentifyCommonItem(ZScaleVariations);
+	local CommonXOffset = Support.IdentifyCommonItem(XOffsetVariations);
+	local CommonYOffset = Support.IdentifyCommonItem(YOffsetVariations);
+	local CommonZOffset = Support.IdentifyCommonItem(ZOffsetVariations);
+
+	-- Shortcuts to updating UI elements
+	local AddButton = MeshTool.UI.AddButton;
+	local RemoveButton = MeshTool.UI.RemoveButton;
+	local MeshTypeDropdown = MeshTool.UI.TypeOption.Dropdown;
+	local MeshIdInput = MeshTool.UI.MeshIdOption.TextBox;
+	local TextureIdInput = MeshTool.UI.TextureIdOption.TextBox;
+	local VertexColorIndicator = MeshTool.UI.TintOption.Indicator;
+	local XScaleInput = MeshTool.UI.ScaleOption.XInput.TextBox;
+	local YScaleInput = MeshTool.UI.ScaleOption.YInput.TextBox;
+	local ZScaleInput = MeshTool.UI.ScaleOption.ZInput.TextBox;
+	local XOffsetInput = MeshTool.UI.OffsetOption.XInput.TextBox;
+	local YOffsetInput = MeshTool.UI.OffsetOption.YInput.TextBox;
+	local ZOffsetInput = MeshTool.UI.OffsetOption.ZInput.TextBox;
+
+	-- Update the inputs
+	UpdateDataInputs {
+		[MeshIdInput] = MeshId and ParseAssetId(MeshId) or MeshId or '*';
+		[TextureIdInput] = TextureId and ParseAssetId(MeshId) or TextureId or '*';
+		[XScaleInput] = CommonXScale or '*';
+		[YScaleInput] = CommonYScale or '*';
+		[ZScaleInput] = CommonZScale or '*';
+		[XOffsetInput] = CommonXOffset or '*';
+		[YOffsetInput] = CommonYOffset or '*';
+		[ZOffsetInput] = CommonZOffset or '*';
+	};
+	UpdateColorIndicator(VertexColorIndicator, VertexColor);
+
+	local Types = {
+		Block = Enum.MeshType.Brick,
+		Cylinder = Enum.MeshType.Cylinder,
+		File = Enum.MeshType.FileMesh,
+		Head = Enum.MeshType.Head,
+		Sphere = Enum.MeshType.Sphere,
+		Trapezoid = Enum.MeshType.Torso,
+		Wedge = Enum.MeshType.Wedge
+	};
+	local MeshTypeLabel = Support.FindTableOccurrence(Types, MeshType);
+	MeshTypeDropdown.MainButton.CurrentOption.Text = MeshTypeLabel and MeshTypeLabel:upper() or '*';
+
+	AddButton.Visible = false;
+	RemoveButton.Visible = false;
+	MeshTool.UI.TypeOption.Visible = false;
+	MeshIdInput.Parent.Visible = false;
+	TextureIdInput.Parent.Visible = false;
+	VertexColorIndicator.Parent.Visible = false;
+	MeshTool.UI.ScaleOption.Visible = false;
+	MeshTool.UI.OffsetOption.Visible = false;
+
+	-- Update the UI to display options depending on the mesh type
+	local DisplayedItems;
+	if #Meshes == 0 then
+		DisplayedItems = { AddButton };
+
+	-- Each selected part has a mesh, including a file mesh
+	elseif #Meshes == #Selection.Items and FileMeshInSelection then
+		DisplayedItems = { MeshTool.UI.TypeOption, MeshTool.UI.ScaleOption, MeshTool.UI.OffsetOption, MeshIdInput.Parent, TextureIdInput.Parent, VertexColorIndicator.Parent, RemoveButton };
+
+	-- Each selected part has a mesh
+	elseif #Meshes == #Selection.Items and not FileMeshInSelection then
+		DisplayedItems = { MeshTool.UI.TypeOption, MeshTool.UI.ScaleOption, MeshTool.UI.OffsetOption, RemoveButton };
+
+	-- Only some selected parts have meshes, including a file mesh
+	elseif #Meshes ~= #Selection.Items and FileMeshInSelection then
+		DisplayedItems = { AddButton, MeshTool.UI.TypeOption, MeshTool.UI.ScaleOption, MeshTool.UI.OffsetOption, MeshIdInput.Parent, TextureIdInput.Parent, VertexColorIndicator.Parent, RemoveButton };
+
+	-- Only some selected parts have meshes
+	elseif #Meshes ~= #Selection.Items and not FileMeshInSelection then
+		DisplayedItems = { AddButton, MeshTool.UI.TypeOption, MeshTool.UI.ScaleOption, MeshTool.UI.OffsetOption, RemoveButton };
+
+	end;
+
+	-- Display the relevant UI elements
+	DisplayLinearLayout(DisplayedItems, MeshTool.UI, UDim2.new(0, 0, 0, 20), 10);
+
+end;
+
+function HideUI()
+	-- Hides the tool UI
+
+	-- Make sure there's a UI
+	if not MeshTool.UI then
+		return;
+	end;
+
+	-- Hide the UI
+	MeshTool.UI.Visible = false;
+
+	-- Stop updating the UI
+	UIUpdater:Stop();
+
+end;
+
+function GetMeshes()
+	-- Returns all the meshes in the selection
+
+	local Meshes = {};
+
+	-- Get any meshes from any selected parts
+	for _, Part in pairs(Selection.Items) do
+		table.insert(Meshes, Support.GetChildOfClass(Part, 'SpecialMesh'));
+	end;
+
+	-- Return the meshes
+	return Meshes;
+end;
+
+function ParseAssetId(Input)
+	-- Returns the intended asset ID for the given input
+
+	-- Get the ID number from the input
+	local Id = tonumber(Input) or Input:lower():match('%?id=([0-9]+)');
+
+	-- Return the ID
+	return Id;
+end;
+
+function VectorToColor(Vector)
+	-- Returns the Color3 with the values in the given Vector3
+
+	-- Make sure that the given Vector3 is valid
+	if not Vector then return end;
+
+	-- Return the Color3
+	return Color3.new(Vector.X, Vector.Y, Vector.Z);
+end;
+
+function ColorToVector(Color)
+	-- Returns the Vector3 with the values in the given Color3
+
+	-- Make sure that the given Color3 is valid
+	if not Color then return end;
+
+	-- Return the Vector3
+	return Vector3.new(Color.r, Color.g, Color.b);
+end;
+
+function UpdateDataInputs(Data)
+	-- Updates the data in the given TextBoxes when the user isn't typing in them
+
+	-- Go through the inputs and data
+	for Input, UpdatedValue in pairs(Data) do
+
+		-- Makwe sure the user isn't typing into the input
+		if not Input:IsFocused() then
+
+			-- Set the input's value
+			Input.Text = tostring(UpdatedValue);
+
 		end;
 
-		local show_add, show_remove, show_mesh_id;
-		local mesh_type, mesh_scale_x, mesh_scale_y, mesh_scale_z, mesh_id, mesh_texture, mesh_tint_r, mesh_tint_g, mesh_tint_b;
+	end;
 
-		-- If every item has a mesh
-		if #meshes == #Selection.Items then
-			show_add = false;
-			show_remove = true;
+end;
 
-		-- If no item has a mesh
-		elseif #meshes == 0 then
-			show_add = true;
-			show_remove = false;
+function UpdateColorIndicator(Indicator, Color)
+	-- Updates the given color indicator
 
-		-- If some items have a mesh
-		else
-			show_add = true;
-			show_remove = true;
-		end;
+	-- If there is a single color, just display it
+	if Color then
+		Indicator.BackgroundColor3 = Color;
+		Indicator.Varies.Text = '';
 
-		-- If there are meshes
-		if #meshes > 0 then
-			show_type = true;
-			for mesh_index, Mesh in pairs( meshes ) do
-
-				-- Set the start values for later comparison
-				if mesh_index == 1 then
-					mesh_type = Mesh.MeshType;
-					mesh_scale_x, mesh_scale_y, mesh_scale_z = Mesh.Scale.x, Mesh.Scale.y, Mesh.Scale.z;
-					mesh_id = Mesh.MeshId:lower();
-					mesh_texture = Mesh.TextureId:lower();
-					mesh_tint_r, mesh_tint_g, mesh_tint_b = Mesh.VertexColor.x, Mesh.VertexColor.y, Mesh.VertexColor.z;
-
-				-- Set the values to `nil` if they vary across the selection
-				else
-					if mesh_type ~= Mesh.MeshType then
-						mesh_type = nil;
-					end;
-					if mesh_scale_x ~= Mesh.Scale.x then
-						mesh_scale_x = nil;
-					end;
-					if mesh_scale_y ~= Mesh.Scale.y then
-						mesh_scale_y = nil;
-					end;
-					if mesh_scale_z ~= Mesh.Scale.z then
-						mesh_scale_z = nil;
-					end;
-					if mesh_id ~= Mesh.MeshId:lower() then
-						mesh_id = nil;
-					end;
-					if mesh_texture ~= Mesh.TextureId:lower() then
-						mesh_texture = nil;
-					end;
-					if mesh_tint_r ~= Mesh.VertexColor.x then
-						mesh_tint_r = nil;
-					end;
-					if mesh_tint_g ~= Mesh.VertexColor.y then
-						mesh_tint_g = nil;
-					end;
-					if mesh_tint_b ~= Mesh.VertexColor.z then
-						mesh_tint_b = nil;
-					end;
-				end;
-
-				-- If there's a FileMesh around here, note that
-				if Mesh.MeshType == Enum.MeshType.FileMesh then
-					show_mesh_id = true;
-				end;
-
-			end;
-
-			self.State.mesh_tint = ( mesh_tint_r and mesh_tint_g and mesh_tint_b ) and Color3.new( mesh_tint_r, mesh_tint_g, mesh_tint_b ) or nil;
-
-			if show_mesh_id and show_add and show_remove then
-				self.GUI.AddButton.Visible = true;
-				self.GUI.RemoveButton.Visible = true;
-				self.GUI.MeshIDOption.Visible = true;
-				self.GUI.TextureIDOption.Visible = true;
-				self.GUI.ScaleOption.Visible = true;
-				self.GUI.TintOption.Visible = true;
-				self.GUI.TypeOption.Visible = true;
-				self.GUI.TypeOption.Position = UDim2.new( 0, 14, 0, 65 );
-				self.GUI.ScaleOption.Position = UDim2.new( 0, 0, 0, 100 );
-				self.GUI.MeshIDOption.Position = UDim2.new( 0, 14, 0, 135 );
-				self.GUI.TextureIDOption.Position = UDim2.new( 0, 14, 0, 165 );
-				self.GUI.TintOption.Position = UDim2.new( 0, 0, 0, 200 );
-				self.GUI.Size = UDim2.new( 0, 200, 0, 265 );
-			elseif show_mesh_id and not show_add and show_remove then
-				self.GUI.AddButton.Visible = false;
-				self.GUI.RemoveButton.Visible = true;
-				self.GUI.MeshIDOption.Visible = true;
-				self.GUI.TextureIDOption.Visible = true;
-				self.GUI.ScaleOption.Visible = true;
-				self.GUI.TintOption.Visible = true;
-				self.GUI.TypeOption.Visible = true;
-				self.GUI.TypeOption.Position = UDim2.new( 0, 14, 0, 30 );
-				self.GUI.ScaleOption.Position = UDim2.new( 0, 0, 0, 65 );
-				self.GUI.MeshIDOption.Position = UDim2.new( 0, 14, 0, 100 );
-				self.GUI.TextureIDOption.Position = UDim2.new( 0, 14, 0, 130 );
-				self.GUI.TintOption.Position = UDim2.new( 0, 0, 0, 165 );
-				self.GUI.Size = UDim2.new( 0, 200, 0, 230 );
-
-			elseif not show_mesh_id and show_add and show_remove then
-				self.GUI.AddButton.Visible = true;
-				self.GUI.RemoveButton.Visible = true;
-				self.GUI.MeshIDOption.Visible = false;
-				self.GUI.TextureIDOption.Visible = false;
-				self.GUI.ScaleOption.Visible = true;
-				self.GUI.TintOption.Visible = false;
-				self.GUI.TypeOption.Visible = true;
-				self.GUI.TypeOption.Position = UDim2.new( 0, 14, 0, 65 );
-				self.GUI.ScaleOption.Position = UDim2.new( 0, 0, 0, 100 );
-				self.GUI.Size = UDim2.new( 0, 200, 0, 165 );
-			elseif not show_mesh_id and not show_add and show_remove then
-				self.GUI.AddButton.Visible = false;
-				self.GUI.RemoveButton.Visible = true;
-				self.GUI.MeshIDOption.Visible = false;
-				self.GUI.TextureIDOption.Visible = false;
-				self.GUI.ScaleOption.Visible = true;
-				self.GUI.TintOption.Visible = false;
-				self.GUI.TypeOption.Visible = true;
-				self.GUI.TypeOption.Position = UDim2.new( 0, 14, 0, 30 );
-				self.GUI.ScaleOption.Position = UDim2.new( 0, 0, 0, 65 );
-				self.GUI.Size = UDim2.new( 0, 200, 0, 130 );
-			end;
-
-			-- Update the values shown on the GUI
-			if not self.State.mesh_id_focused then
-				self.GUI.MeshIDOption.TextBox.Text = mesh_id and ( mesh_id:match( "%?id=([0-9]+)" ) or "" ) or "*";
-			end;
-			if not self.State.texture_id_focused then
-				self.GUI.TextureIDOption.TextBox.Text = mesh_texture and ( mesh_texture:match( "%?id=([0-9]+)" ) or "" ) or "*";
-			end;
-			self.TypeDropdown:selectOption( mesh_type and self.TypeDropdownLabels[mesh_type] or "*" );
-			if not self.State.scale_x_focused then
-				self.GUI.ScaleOption.XInput.TextBox.Text = mesh_scale_x and Support.Round(mesh_scale_x, 2) or "*";
-			end;
-			if not self.State.scale_y_focused then
-				self.GUI.ScaleOption.YInput.TextBox.Text = mesh_scale_y and Support.Round(mesh_scale_y, 2) or "*";
-			end;
-			if not self.State.scale_z_focused then
-				self.GUI.ScaleOption.ZInput.TextBox.Text = mesh_scale_z and Support.Round(mesh_scale_z, 2) or "*";
-			end;
-			if not self.State.tint_r_focused then
-				self.GUI.TintOption.RInput.TextBox.Text = mesh_tint_r and Support.Round(mesh_tint_r * 255, 0) or "*";
-			end;
-			if not self.State.tint_g_focused then
-				self.GUI.TintOption.GInput.TextBox.Text = mesh_tint_g and Support.Round(mesh_tint_g * 255, 0) or "*";
-			end;
-			if not self.State.tint_b_focused then
-				self.GUI.TintOption.BInput.TextBox.Text = mesh_tint_b and Support.Round(mesh_tint_b * 255, 0) or "*";
-			end;
-
-		-- If there are no meshes
-		else
-			self.GUI.AddButton.Visible = true;
-			self.GUI.RemoveButton.Visible = false;
-			self.GUI.MeshIDOption.Visible = false;
-			self.GUI.TextureIDOption.Visible = false;
-			self.GUI.ScaleOption.Visible = false;
-			self.GUI.TintOption.Visible = false;
-			self.GUI.TypeOption.Visible = false;
-			self.GUI.Size = UDim2.new( 0, 200, 0, 62 );
-		end;
-		self.GUI.SelectNote.Visible = false;
-
-	-- Show a note that says to select something
+	-- If the colors vary, display a * on a gray background
 	else
-		self.GUI.AddButton.Visible = false;
-		self.GUI.RemoveButton.Visible = false;
-		self.GUI.MeshIDOption.Visible = false;
-		self.GUI.TextureIDOption.Visible = false;
-		self.GUI.ScaleOption.Visible = false;
-		self.GUI.TintOption.Visible = false;
-		self.GUI.TypeOption.Visible = false;
-		self.GUI.SelectNote.Visible = true;
-		self.GUI.Size = UDim2.new( 0, 200, 0, 55 );
+		Indicator.BackgroundColor3 = Color3.new(222/255, 222/255, 222/255);
+		Indicator.Varies.Text = '*';
 	end;
 
 end;
 
-Tools.Mesh.showGUI = function ( self )
+function DisplayLinearLayout(Items, Container, StartPosition, Padding)
 
-	-- Initialize the GUI if it's not ready yet
-	if not self.GUI then
-		local Container = Tool.Interfaces.BTMeshToolGUI:Clone();
-		Container.Parent = UI;
+	-- Keep track of the total vertical extents of all items
+	local Sum = 0;
 
-		-- Add functionality to the add/remove buttons
-		Container.AddButton.Button.MouseButton1Up:connect( function ()
-			self:addMesh();
-		end );
-		Container.RemoveButton.Button.MouseButton1Up:connect( function ()
-			self:removeMesh();
-		end );
+	-- Go through each item
+	for ItemIndex, Item in ipairs(Items) do
 
-		-- Add the type dropdown
-		local TypeDropdown = createDropdown();
-		self.TypeDropdown = TypeDropdown;
-		TypeDropdown.Frame.Parent = Container.TypeOption;
-		TypeDropdown.Frame.Position = UDim2.new( 0, 40, 0, 0 );
-		TypeDropdown.Frame.Size = UDim2.new( 1, -40, 0, 25 );
-		TypeDropdown:addOption( "BLOCK" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.MeshType.Brick );
-		end );
-		TypeDropdown:addOption( "CYLINDER" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.MeshType.Cylinder );
-		end );
-		TypeDropdown:addOption( "FILE" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.MeshType.FileMesh );
-		end );
-		TypeDropdown:addOption( "HEAD" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.MeshType.Head );
-		end );
-		TypeDropdown:addOption( "SPHERE" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.MeshType.Sphere );
-		end );
-		TypeDropdown:addOption( "TRAPEZOID" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.MeshType.Torso );
-		end );
-		TypeDropdown:addOption( "WEDGE" ).MouseButton1Up:connect( function ()
-			self:changeType( Enum.MeshType.Wedge );
-		end );
+		-- Make the item visible
+		Item.Visible = true;
 
-		-- Add functionality to the scale inputs
-		Container.ScaleOption.XInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.scale_x_focused = true;
-			Container.ScaleOption.XInput.TextBox:CaptureFocus();
-		end );
-		Container.ScaleOption.XInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.ScaleOption.XInput.TextBox.Text );
-			if potential_new then
-				self:changeScale( 'x', potential_new );
-			end;
-			self.State.scale_x_focused = false;
-		end );
+		-- Position this item underneath the past items
+		Item.Position = StartPosition + UDim2.new(
+			Item.Position.X.Scale,
+			Item.Position.X.Offset,
+			0,
+			Sum + Padding
+		);
 
-		Container.ScaleOption.YInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.scale_y_focused = true;
-			Container.ScaleOption.YInput.TextBox:CaptureFocus();
-		end );
-		Container.ScaleOption.YInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.ScaleOption.YInput.TextBox.Text );
-			if potential_new then
-				self:changeScale( 'y', potential_new );
-			end;
-			self.State.scale_y_focused = false;
-		end );
+		-- Update the sum of item heights
+		Sum = Sum + Padding + Item.AbsoluteSize.Y;
 
-		Container.ScaleOption.ZInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.scale_z_focused = true;
-			Container.ScaleOption.ZInput.TextBox:CaptureFocus();
-		end );
-		Container.ScaleOption.ZInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.ScaleOption.ZInput.TextBox.Text );
-			if potential_new then
-				self:changeScale( 'z', potential_new );
-			end;
-			self.State.scale_z_focused = false;
-		end );
-
-		-- Add functionality to the mesh/texture ID inputs
-		Container.MeshIDOption.TextButton.MouseButton1Down:connect( function ()
-			self.State.mesh_id_focused = true;
-			Container.MeshIDOption.TextBox:CaptureFocus();
-		end );
-		Container.MeshIDOption.TextBox.FocusLost:connect( function ( enter_pressed )
-			local input = Container.MeshIDOption.TextBox.Text;
-			local potential_new = tonumber( input ) or input:lower():match( "%?id=([0-9]+)" );
-			if potential_new then
-				self:changeMesh( potential_new );
-			end;
-			self.State.mesh_id_focused = false;
-		end );
-
-		Container.TextureIDOption.TextButton.MouseButton1Down:connect( function ()
-			self.State.texture_id_focused = true;
-			Container.TextureIDOption.TextBox:CaptureFocus();
-		end );
-		Container.TextureIDOption.TextBox.FocusLost:connect( function ( enter_pressed )
-			local input = Container.TextureIDOption.TextBox.Text;
-			local potential_new = tonumber( input ) or input:lower():match( "%?id=([0-9]+)" );
-			if potential_new then
-				self:changeTexture( potential_new );
-			end;
-			self.State.texture_id_focused = false;
-		end );
-
-		-- Add functionality to the tint inputs
-		Container.TintOption.RInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.tint_r_focused = true;
-			Container.TintOption.RInput.TextBox:CaptureFocus();
-		end );
-		Container.TintOption.RInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.TintOption.RInput.TextBox.Text );
-			if potential_new then
-				if potential_new > 255 then
-					potential_new = 255;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeTint( 'r', potential_new / 255 );
-			end;
-			self.State.tint_r_focused = false;
-		end );
-
-		Container.TintOption.GInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.tint_g_focused = true;
-			Container.TintOption.GInput.TextBox:CaptureFocus();
-		end );
-		Container.TintOption.GInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.TintOption.GInput.TextBox.Text );
-			if potential_new then
-				if potential_new > 255 then
-					potential_new = 255;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeTint( 'g', potential_new / 255 );
-			end;
-			self.State.tint_g_focused = false;
-		end );
-
-		Container.TintOption.BInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.tint_b_focused = true;
-			Container.TintOption.BInput.TextBox:CaptureFocus();
-		end );
-		Container.TintOption.BInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.TintOption.BInput.TextBox.Text );
-			if potential_new then
-				if potential_new > 255 then
-					potential_new = 255;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeTint( 'b', potential_new / 255 );
-			end;
-			self.State.tint_b_focused = false;
-		end );
-
-		Container.TintOption.HSVPicker.MouseButton1Up:connect( function ()
-			ColorPicker:start( function ( ... )
-				local args = { ... };
-				-- If a color was picked, change the spotlights' color
-				-- to the selected color
-				if #args == 3 then
-					local meshes = {};
-					for _, Item in pairs( Selection.Items ) do
-						local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
-						if Mesh then
-							table.insert( meshes, Mesh );
-						end;
-					end;
-					self:startHistoryRecord( meshes );
-					for _, Mesh in pairs( meshes ) do
-						Mesh.VertexColor = Vector3.new(Support.HSVToRGB(...));
-					end;
-					self:finishHistoryRecord();
-				end;
-			end, self.State.mesh_tint );
-		end );
-
-		self.GUI = Container;
 	end;
 
-	-- Reveal the GUI
-	self.GUI.Visible = true;
+	-- Resize the container to fit the new layout
+	Container.Size = UDim2.new(0, 200, 0, 30 + Sum);
 
 end;
 
-Tools.Mesh.addMesh = function ( self )
+function AddMeshes()
 
+	-- Prepare the change request for the server
+	local Changes = {};
+
+	-- Go through the selection
+	for _, Part in pairs(Selection.Items) do
+
+		-- Make sure this part doesn't already have a mesh
+		if not Support.GetChildOfClass(Part, 'SpecialMesh') then
+
+			-- Queue a mesh to be created for this part
+			table.insert(Changes, { Part = Part });
+
+		end;
+
+	end;
+
+	-- Send the change request to the server
+	local Meshes = Core.ServerAPI:InvokeServer('CreateMeshes', Changes);
+
+	-- Put together the history record
 	local HistoryRecord = {
-		Apply = function ( self )
-			Selection:clear();
-			for _, Mesh in pairs( self.meshes ) do
-				SetParent(Mesh, self.mesh_parents[Mesh]);
-				Selection:add(Mesh.Parent);
-			end;
+		Meshes = Meshes;
+
+		Unapply = function (HistoryRecord)
+			-- Reverts this change
+
+			-- Remove the meshes
+			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Meshes);
+
 		end;
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Mesh in pairs( self.meshes ) do
-				Selection:add(Mesh.Parent);
-				SetParent(Mesh, nil);
-			end;
+
+		Apply = function (HistoryRecord)
+			-- Reapplies this change
+
+			-- Restore the meshes
+			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Meshes);
+
 		end;
+
 	};
 
-	-- Add meshes to all the items from the selection that don't already have one
-	local meshes = {};
-	local mesh_parents = {};
-
-	-- Go through each selected part
-	for _, Item in pairs( Selection.Items ) do
-		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
-		if not Mesh then
-
-			local Mesh;
-
-			-- Create the mesh on the server if filter mode is on
-			if FilterMode then
-				Mesh = ServerAPI:InvokeServer('CreateMesh', Item);
-
-			-- Create it locally otherwise
-			else
-				Mesh = Instance.new('SpecialMesh', Item);
-			end;
-
-			-- Set the mesh's default type
-			Change(Mesh, {
-				MeshType = Enum.MeshType.Brick;
-			});
-
-			-- Register the new mesh
-			table.insert( meshes, Mesh );
-			mesh_parents[Mesh] = Item;
-
-		end;
-	end;
-
-	HistoryRecord.meshes = meshes;
-	HistoryRecord.mesh_parents = mesh_parents;
-	History:Add( HistoryRecord );
+	-- Register the history record
+	Core.History:Add(HistoryRecord);
 
 end;
 
-Tools.Mesh.removeMesh = function ( self )
+function RemoveMeshes()
 
+	-- Get all the meshes in the selection
+	local Meshes = GetMeshes();
+
+	-- Create the history record
 	local HistoryRecord = {
-		Apply = function ( self )
-			Selection:clear();
-			for _, Mesh in pairs( self.meshes ) do
-				Selection:add(Mesh.Parent);
-				SetParent(Mesh, nil);
-			end;
+		Meshes = Meshes;
+
+		Unapply = function (HistoryRecord)
+			-- Reverts this change
+
+			-- Restore the meshes
+			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Meshes);
+
 		end;
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Mesh in pairs( self.meshes ) do
-				SetParent(Mesh, self.mesh_parents[Mesh]);
-				Selection:add(Mesh.Parent);
-			end;
+
+		Apply = function (HistoryRecord)
+			-- Reapplies this change
+
+			-- Remove the meses
+			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Meshes);
+
 		end;
+
 	};
 
-	local meshes = {};
-	local mesh_parents = {};
+	-- Send the removal request
+	Core.ServerAPI:InvokeServer('Remove', Meshes);
 
-	-- Remove meshes from all the selected items
-	for _, Item in pairs( Selection.Items ) do
-		local meshes_found = Support.GetChildrenOfClass(Item, "SpecialMesh");
-		for _, Mesh in pairs( meshes_found ) do
-			table.insert( meshes, Mesh );
-			mesh_parents[Mesh] = Mesh.Parent;
-			SetParent(Mesh, nil);
-		end;
-	end;
-
-	HistoryRecord.meshes = meshes;
-	HistoryRecord.mesh_parents = mesh_parents;
-	History:Add( HistoryRecord );
+	-- Register the history record
+	Core.History:Add(HistoryRecord);
 
 end;
 
-Tools.Mesh.startHistoryRecord = function ( self, meshes )
+function SetProperty(Property, Value)
 
-	if self.State.HistoryRecord then
-		self.State.HistoryRecord = nil;
-	end;
-
-	-- Create a history record
-	self.State.HistoryRecord = {
-		targets = Support.CloneTable(meshes);
-		initial_type = {};
-		terminal_type = {};
-		initial_mesh = {};
-		terminal_mesh = {};
-		initial_texture = {};
-		terminal_texture = {};
-		initial_scale = {};
-		terminal_scale = {};
-		initial_tint = {};
-		terminal_tint = {};
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Selection:add( Target.Parent );
-					Change(Target, {
-						MeshType = self.initial_type[Target];
-						MeshId = self.initial_mesh[Target];
-						TextureId = self.initial_texture[Target];
-						Scale = self.initial_scale[Target];
-						VertexColor = self.initial_tint[Target];
-					});
-				end;
-			end;
-		end;
-		Apply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Selection:add( Target.Parent );
-					Change(Target, {
-						MeshType = self.terminal_type[Target];
-						MeshId = self.terminal_mesh[Target];
-						TextureId = self.terminal_texture[Target];
-						Scale = self.terminal_scale[Target];
-						VertexColor = self.terminal_tint[Target];
-					});
-				end;
-			end;
-		end;
-	};
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.initial_type[Item] = Item.MeshType;
-			self.State.HistoryRecord.initial_mesh[Item] = Item.MeshId;
-			self.State.HistoryRecord.initial_texture[Item] = Item.TextureId;
-			self.State.HistoryRecord.initial_scale[Item] = Item.Scale;
-			self.State.HistoryRecord.initial_tint[Item] = Item.VertexColor;
-		end;
-	end;
-
-end;
-
-Tools.Mesh.finishHistoryRecord = function ( self )
-
-	if not self.State.HistoryRecord then
+	-- Make sure the given value is valid
+	if not Value then
 		return;
 	end;
 
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.terminal_type[Item] = Item.MeshType;
-			self.State.HistoryRecord.terminal_mesh[Item] = Item.MeshId;
-			self.State.HistoryRecord.terminal_texture[Item] = Item.TextureId;
-			self.State.HistoryRecord.terminal_scale[Item] = Item.Scale;
-			self.State.HistoryRecord.terminal_tint[Item] = Item.VertexColor;
-		end;
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each mesh
+	for _, Mesh in pairs(GetMeshes()) do
+
+		-- Store the state of the mesh before modification
+		table.insert(HistoryRecord.Before, { Part = Mesh.Parent, [Property] = Mesh[Property] });
+
+		-- Create the change request for this mesh
+		table.insert(HistoryRecord.After, { Part = Mesh.Parent, [Property] = Value });
+
 	end;
-	History:Add( self.State.HistoryRecord );
-	self.State.HistoryRecord = nil;
+
+	-- Register the changes
+	RegisterChange();
 
 end;
 
-Tools.Mesh.changeMesh = function ( self, MeshID )
+function SetAxisScale(Axis, Scale)
+	-- Sets the selection's scale on axis `Axis` to `Scale`
 
-	local meshes = {};
+	-- Start a history record
+	TrackChange();
 
-	for _, Item in pairs( Selection.Items ) do
-		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
-		if Mesh then
-			table.insert( meshes, Mesh );
-		end;
+	-- Go through each mesh
+	for _, Mesh in pairs(GetMeshes()) do
+
+		-- Store the state of the mesh before modification
+		table.insert(HistoryRecord.Before, { Part = Mesh.Parent, Scale = Mesh.Scale });
+
+		-- Put together the changed scale
+		local Scale = Vector3.new(
+			Axis == 'X' and Scale or Mesh.Scale.X,
+			Axis == 'Y' and Scale or Mesh.Scale.Y,
+			Axis == 'Z' and Scale or Mesh.Scale.Z
+		);
+
+		-- Create the change request for this mesh
+		table.insert(HistoryRecord.After, { Part = Mesh.Parent, Scale = Scale });
+
 	end;
 
-	-- Check if the given ID is not a mesh but an item containing a mesh, and extract the mesh data
-	local TextureID, Tint, Scale;
-	if HttpAvailable then
-		local BaseMeshExtractionUrl = 'http://www.f3xteam.com/bt/getFirstMeshData/%s';
-		local ExtractedMeshData = Tool.HttpInterface.GetAsync:InvokeServer( BaseMeshExtractionUrl:format( MeshID ) );
-		if ExtractedMeshData and ExtractedMeshData:len() > 0 then
-			-- Parse the response
-			local ExtractedMeshData = RbxUtility.DecodeJSON( ExtractedMeshData );
-			if ExtractedMeshData and ExtractedMeshData.success then
-				-- Apply whatever data is available from that mesh
-				if ExtractedMeshData.meshID then
-					MeshID = ExtractedMeshData.meshID;
+	-- Register the changes
+	RegisterChange();
+
+end;
+
+function SetAxisOffset(Axis, Offset)
+	-- Sets the selection's offset on axis `Axis` to `Offset`
+
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each mesh
+	for _, Mesh in pairs(GetMeshes()) do
+
+		-- Store the state of the mesh before modification
+		table.insert(HistoryRecord.Before, { Part = Mesh.Parent, Offset = Mesh.Offset });
+
+		-- Put together the changed scale
+		local Offset = Vector3.new(
+			Axis == 'X' and Offset or Mesh.Offset.X,
+			Axis == 'Y' and Offset or Mesh.Offset.Y,
+			Axis == 'Z' and Offset or Mesh.Offset.Z
+		);
+
+		-- Create the change request for this mesh
+		table.insert(HistoryRecord.After, { Part = Mesh.Parent, Offset = Offset });
+
+	end;
+
+	-- Register the changes
+	RegisterChange();
+
+end;
+
+function SetMeshId(AssetId)
+	-- Sets the meshes in the selection's mesh ID to the intended, given mesh asset
+
+	-- Make sure the given asset ID is valid
+	if not AssetId then
+		return;
+	end;
+
+	-- Prepare the change request
+	local Changes = {
+		MeshId = 'http://www.roblox.com/asset/?id=' .. AssetId;
+	};
+
+	-- Only attempt extraction if HttpService is enabled
+	if Core.HttpAvailable then
+
+		-- Attempt a mesh extraction on the given asset
+		local MeshExtractionUrl = ('http://f3xteam.com/bt/getFirstMeshData/%s'):format(AssetId);
+		local ExtractionData = Core.Tool.HttpInterface.GetAsync:InvokeServer(MeshExtractionUrl);
+
+		-- Check if the mesh extraction yielded any data
+		if ExtractionData and ExtractionData:len() > 0 then
+
+			-- Parse the extracted mesh information
+			ExtractionData = HttpService:JSONDecode(ExtractionData);
+			if ExtractionData and ExtractionData.success then
+			
+				-- Apply any mesh ID found
+				local MeshId = ExtractionData.meshID;
+				if MeshId then
+					Changes.MeshId = 'http://www.roblox.com/asset/?id=' .. MeshId;
 				end;
-				if ExtractedMeshData.textureID then
-					TextureID = ExtractedMeshData.textureID;
+
+				-- Apply any texture ID found
+				local TextureId = ExtractionData.textureID;
+				if TextureId then
+					Changes.TextureId = 'http://www.roblox.com/asset/?id=' .. TextureId;
 				end;
-				Tint = Vector3.new( ExtractedMeshData.tint.x, ExtractedMeshData.tint.y, ExtractedMeshData.tint.z );
-				Scale = Vector3.new( ExtractedMeshData.scale.x, ExtractedMeshData.scale.y, ExtractedMeshData.scale.z );
+
+				-- Apply any vertex color found
+				local VertexColor = ExtractionData.tint;
+				if VertexColor then
+					Changes.VertexColor = Vector3.new(VertexColor.x, VertexColor.y, VertexColor.z);
+				end;
+
+				-- Apply any scale found
+				local Scale = ExtractionData.scale;
+				if Scale then
+					Changes.Scale = Vector3.new(Scale.x, Scale.y, Scale.z);
+				end;
+
 			end;
+
 		end;
+
 	end;
 
-	self:startHistoryRecord( meshes );
-	for _, Mesh in pairs( meshes ) do
-		if MeshID then
-			Change(Mesh, {
-				MeshId = "http://www.roblox.com/asset/?id=" .. MeshID;
-			});
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each mesh
+	for _, Mesh in pairs(GetMeshes()) do
+
+		-- Create the history change requests for this mesh
+		local Before, After = { Part = Mesh.Parent }, { Part = Mesh.Parent };
+
+		-- Gather change information to finish up the history change requests
+		for Property, Value in pairs(Changes) do
+			Before[Property] = Mesh[Property];
+			After[Property] = Value;
 		end;
-		if TextureID then
-			Change(Mesh, {
-				TextureId = "http://www.roblox.com/asset/?id=" .. TextureID;
-			});
-		end;
-		if Tint then
-			Change(Mesh, {
-				VertexColor = Tint;
-			});
-		end;
-		if Scale then
-			Change(Mesh, {
-				Scale = Scale;
-			});
-		end;
+
+		-- Store the state of the mesh before modification
+		table.insert(HistoryRecord.Before, Before);
+
+		-- Create the change request for this mesh
+		table.insert(HistoryRecord.After, After);
+
 	end;
-	self:finishHistoryRecord();
+
+	-- Register the changes
+	RegisterChange();
 
 end;
 
-Tools.Mesh.changeTexture = function ( self, texture_id )
+function SetTextureId(AssetId)
+	-- Sets the meshes in the selection's texture ID to the intended, given image asset
 
-	local meshes = {};
+	-- Make sure the given asset ID is valid
+	if not AssetId then
+		return;
+	end;
 
-	for _, Item in pairs( Selection.Items ) do
-		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
-		if Mesh then
-			table.insert( meshes, Mesh );
+	-- Prepare the change request
+	local Changes = {
+		TextureId = 'http://www.roblox.com/asset/?id=' .. AssetId;
+	};
+
+	-- Only attempt extraction if HttpService is enabled
+	if Core.HttpAvailable then
+
+		-- Attempt an image extraction on the given asset
+		local ImageExtractionUrl = ('http://f3xteam.com/bt/getDecalImageID/%s'):format(AssetId);
+		local ExtractionData = Core.Tool.HttpInterface.GetAsync:InvokeServer(ImageExtractionUrl);
+
+		-- Check if the image extraction yielded any data
+		if ExtractionData and ExtractionData:len() > 0 then
+			Changes.TextureId = 'http://www.roblox.com/asset/?id=' .. ExtractionData;
 		end;
+
 	end;
 
-	-- Check if the given ID is actually a decal and get the right image ID from it
-	if HttpAvailable then
-		local BaseImageExtractionUrl = 'http://www.f3xteam.com/bt/getDecalImageID/%s';
-		local ExtractedImageID = Tool.HttpInterface.GetAsync:InvokeServer( BaseImageExtractionUrl:format( texture_id ) );
-		if ExtractedImageID and ExtractedImageID:len() > 0 then
-			texture_id = ExtractedImageID;
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each mesh
+	for _, Mesh in pairs(GetMeshes()) do
+
+		-- Create the history change requests for this mesh
+		local Before, After = { Part = Mesh.Parent }, { Part = Mesh.Parent };
+
+		-- Gather change information to finish up the history change requests
+		for Property, Value in pairs(Changes) do
+			Before[Property] = Mesh[Property];
+			After[Property] = Value;
 		end;
+
+		-- Store the state of the mesh before modification
+		table.insert(HistoryRecord.Before, Before);
+
+		-- Create the change request for this mesh
+		table.insert(HistoryRecord.After, After);
+
 	end;
 
-	self:startHistoryRecord( meshes );
-	for _, Mesh in pairs( meshes ) do
-		Change(Mesh, {
-			TextureId = "http://www.roblox.com/asset/?id=" .. texture_id;
-		});
-	end;
-	self:finishHistoryRecord();
+	-- Register the changes
+	RegisterChange();
 
 end;
 
-Tools.Mesh.changeScale = function ( self, component, new_value )
+function TrackChange()
 
-	local meshes = {};
+	-- Start the record
+	HistoryRecord = {
+		Before = {};
+		After = {};
 
-	for _, Item in pairs( Selection.Items ) do
-		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
-		if Mesh then
-			table.insert( meshes, Mesh );
+		Unapply = function (Record)
+			-- Reverts this change
+
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncMesh', Record.Before);
+
 		end;
-	end;
 
-	self:startHistoryRecord( meshes );
-	for _, Mesh in pairs( meshes ) do
-		Change(Mesh, {
-			Scale = Vector3.new(
-				component == 'x' and new_value or Mesh.Scale.x,
-				component == 'y' and new_value or Mesh.Scale.y,
-				component == 'z' and new_value or Mesh.Scale.z
-			);
-		});
-	end;
-	self:finishHistoryRecord();
+		Apply = function (Record)
+			-- Applies this change
 
-end;
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncMesh', Record.After);
 
-Tools.Mesh.changeTint = function ( self, component, new_value )
-
-	local meshes = {};
-
-	for _, Item in pairs( Selection.Items ) do
-		local Mesh = Support.GetChildOfClass(Item, "SpecialMesh");
-		if Mesh then
-			table.insert( meshes, Mesh );
 		end;
-	end;
 
-	self:startHistoryRecord( meshes );
-	for _, Mesh in pairs( meshes ) do
-		Change(Mesh, {
-			VertexColor = Vector3.new(
-				component == 'r' and new_value or Mesh.VertexColor.x,
-				component == 'g' and new_value or Mesh.VertexColor.y,
-				component == 'b' and new_value or Mesh.VertexColor.z
-			);
-		});
-	end;
-	self:finishHistoryRecord();
+	};
 
 end;
 
-Tools.Mesh.hideGUI = function ( self )
+function RegisterChange()
+	-- Finishes creating the history record and registers it
 
-	-- Hide the GUI if it exists already
-	if self.GUI then
-		self.GUI.Visible = false;
+	-- Make sure there's an in-progress history record
+	if not HistoryRecord then
+		return;
 	end;
+
+	-- Send the change to the server
+	Core.ServerAPI:InvokeServer('SyncMesh', HistoryRecord.After);
+
+	-- Register the record and clear the staging
+	Core.History:Add(HistoryRecord);
+	HistoryRecord = nil;
 
 end;
 
-Tools.Mesh.Loaded = true;
+-- Mark the tool as fully loaded
+Core.Tools.Mesh = MeshTool;
+MeshTool.Loaded = true;
