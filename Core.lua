@@ -1077,9 +1077,6 @@ end;
 function ToggleSwitch(CurrentButtonName, SwitchContainer)
 	-- Toggles between the buttons in a switch
 
-	-- Get the current button
-	local CurrentButton = SwitchContainer[CurrentButtonName];
-
 	-- Reset all buttons
 	for _, Button in pairs(SwitchContainer:GetChildren()) do
 
@@ -1094,9 +1091,17 @@ function ToggleSwitch(CurrentButtonName, SwitchContainer)
 
 	end;
 
-	-- Set the current button's appearance to enabled
-	CurrentButton.SelectedIndicator.BackgroundTransparency = 0;
-	CurrentButton.Background.Image = Assets.DarkSlantedRectangle;
+	-- Make sure there's a new current button
+	if CurrentButtonName then
+
+		-- Get the current button
+		local CurrentButton = SwitchContainer[CurrentButtonName];
+
+		-- Set the current button's appearance to enabled
+		CurrentButton.SelectedIndicator.BackgroundTransparency = 0;
+		CurrentButton.Background.Image = Assets.DarkSlantedRectangle;
+
+	end;
 
 end;
 

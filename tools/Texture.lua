@@ -4,882 +4,619 @@ repeat wait() until (
 	_G.BTCoreEnv[script.Parent.Parent] and
 	_G.BTCoreEnv[script.Parent.Parent].CoreReady
 );
-setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
+Core = _G.BTCoreEnv[script.Parent.Parent];
 
-------------------------------------------
--- Texture tool
-------------------------------------------
+-- Import relevant references
+Selection = Core.Selection;
+Create = Core.Create;
+Support = Core.Support;
+Security = Core.Security;
+Support.ImportServices();
 
--- Create the tool
-Tools.Texture = {};
-Tools.Texture.Name = 'Texture Tool';
+-- Initialize the tool
+local TextureTool = {
 
--- Define the tool's color
-Tools.Texture.Color = BrickColor.new( "Bright violet" );
+	Name = 'Texture Tool';
+	Color = BrickColor.new 'Bright violet';
 
--- Keep a container for state data
-Tools.Texture.Options = {
-	side = Enum.NormalId.Front;
-	mode = "decal";
+	-- Default options
+	Type = 'Decal';
+	Face = Enum.NormalId.Front;
+
+	-- Standard platform event interface
+	Listeners = {};
+
 };
-Tools.Texture.State = {};
 
--- Keep a container for temporary connections
-Tools.Texture.Connections = {};
+-- Container for temporary connections (disconnected automatically)
+local Connections = {};
 
--- Keep a container for platform event connections
-Tools.Texture.Listeners = {};
+function Equip()
+	-- Enables the tool's equipped functionality
 
--- Start adding functionality to the tool
-Tools.Texture.Listeners.Equipped = function ()
+	-- Start up our interface
+	ShowUI();
+	EnableSurfaceClickSelection();
 
-	local self = Tools.Texture;
-
-	-- Change the color of selection boxes temporarily
-	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = self.Color;
-	updateSelectionBoxColor();
-
-	-- Reveal the GUI
-	self:showGUI();
-
-	-- Prepare the GUI
-	self:changeSide( self.Options.side );
-	self:changeMode( self.Options.mode );
-
-	-- Update the GUI regularly
-	coroutine.wrap( function ()
-		updater_on = true;
-
-		-- Provide a function to stop the loop
-		self.Updater = function ()
-			updater_on = false;
-		end;
-
-		while wait( 0.1 ) and updater_on do
-
-			-- Make sure the tool's equipped
-			if CurrentTool == self then
-
-				-- Update the GUI if it's visible
-				if self.GUI and self.GUI.Visible then
-					self:updateGUI();
-				end;
-
-			end;
-
-		end;
-
-	end )();
+	-- Set our current texture type and face
+	SetTextureType(TextureTool.Type);
+	SetFace(TextureTool.Face);
 
 end;
 
-Tools.Texture.Listeners.Unequipped = function ()
+function Unequip()
+	-- Disables the tool's equipped functionality
 
-	local self = Tools.Texture;
+	-- Clear unnecessary resources
+	HideUI();
+	ClearConnections();
 
-	-- Stop the GUI updater
-	if self.Updater then
-		self.Updater();
-		self.Updater = nil;
-	end;
+end;
 
-	-- Hide the GUI
-	self:hideGUI();
+TextureTool.Listeners.Equipped = Equip;
+TextureTool.Listeners.Unequipped = Unequip;
 
-	-- Disconnect temporary connections
-	for connection_index, Connection in pairs( self.Connections ) do
+function ClearConnections()
+	-- Clears out temporary connections
+
+	for ConnectionKey, Connection in pairs(Connections) do
 		Connection:disconnect();
-		self.Connections[connection_index] = nil;
-	end;
-
-	-- Restore the original color of selection boxes
-	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
-
-end;
-
-Tools.Texture.Listeners.Button2Down = function ()
-
-	local self = Tools.Texture;
-
-	-- Capture the camera rotation (for later use
-	-- in determining whether a surface was being
-	-- selected or the camera was being rotated
-	-- with the right mouse button)
-	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
-	self.State.PreB2DownCameraRotation = Vector3.new( cr_x, cr_y, cr_z );
-
-end;
-
-Tools.Texture.Listeners.Button2Up = function ()
-
-	local self = Tools.Texture;
-
-	local cr_x, cr_y, cr_z = Workspace.CurrentCamera.CoordinateFrame:toEulerAnglesXYZ();
-	local CameraRotation = Vector3.new( cr_x, cr_y, cr_z );
-
-	-- If a surface is selected, change the side option
-	if Selection:find( Mouse.Target ) and self.State.PreB2DownCameraRotation == CameraRotation then
-		self:changeSide( Mouse.TargetSurface );
+		Connections[ConnectionKey] = nil;
 	end;
 
 end;
 
-Tools.Texture.startHistoryRecord = function ( self, textures )
+function ShowUI()
+	-- Creates and reveals the UI
 
-	if self.State.HistoryRecord then
-		self.State.HistoryRecord = nil;
+	-- Reveal UI if already created
+	if UI then
+
+		-- Reveal the UI
+		UI.Visible = true;
+
+		-- Update the UI every 0.1 seconds
+		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+
+		-- Skip UI creation
+		return;
+
 	end;
 
-	-- Create a history record
-	self.State.HistoryRecord = {
-		targets = Support.CloneTable(textures);
-		initial_texture = {};
-		terminal_texture = {};
-		initial_transparency = {};
-		terminal_transparency = {};
-		initial_repeat = {};
-		terminal_repeat = {};
-		initial_side = {};
-		terminal_side = {};
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Selection:add( Target.Parent );
-					Target.Texture = self.initial_texture[Target];
-					Target.Transparency = self.initial_transparency[Target];
-					Target.Face = self.initial_side[Target];
-					if Target:IsA( "Texture" ) then
-						Target.StudsPerTileU = self.initial_repeat[Target].x;
-						Target.StudsPerTileV = self.initial_repeat[Target].y;
-					end;
-				end;
-			end;
+	-- Create the UI
+	UI = Core.Tool.Interfaces.BTTextureToolGUI:Clone();
+	UI.Parent = Core.UI;
+	UI.Visible = true;
+
+	-- References to UI elements
+	local AddButton = UI.AddButton;
+	local RemoveButton = UI.RemoveButton;
+	local DecalModeButton = UI.ModeOption.Decal.Button;
+	local TextureModeButton = UI.ModeOption.Texture.Button;
+	local ImageIdInput = UI.ImageIDOption.TextBox;
+	local TransparencyInput = UI.TransparencyOption.Input.TextBox;
+	local RepeatXInput = UI.RepeatOption.XInput.TextBox;
+	local RepeatYInput = UI.RepeatOption.YInput.TextBox;
+
+	-- Enable the texture type switch
+	DecalModeButton.MouseButton1Click:connect(function ()
+		SetTextureType 'Decal';
+	end);
+	TextureModeButton.MouseButton1Click:connect(function ()
+		SetTextureType 'Texture';
+	end);
+
+	-- Create the face selection dropdown
+	local FaceDropdown = Core.createDropdown();
+	FaceDropdown.Frame.Parent = UI.SideOption;
+	FaceDropdown.Frame.Position = UDim2.new(0, 30, 0, 0);
+	FaceDropdown.Frame.Size = UDim2.new(1, -45, 0, 25);
+
+	-- Add the face options to the dropdown
+	local Faces = { 'Top', 'Bottom', 'Front', 'Back', 'Left', 'Right' };
+	for _, Face in pairs(Faces) do
+
+		-- Set the face option to the selected
+		FaceDropdown:addOption(Face:upper()).MouseButton1Up:connect(function ()
+			SetFace(Enum.NormalId[Face]);
+			FaceDropdown:toggle();
+		end);
+
+	end;
+
+	-- Enable the image ID input
+	ImageIdInput.FocusLost:connect(function (EnterPressed)
+		SetTextureId(TextureTool.Type, TextureTool.Face, ParseAssetId(ImageIdInput.Text));
+	end);
+
+	-- Enable other inputs
+	SyncInputToProperty('Transparency', TransparencyInput);
+	SyncInputToProperty('StudsPerTileU', RepeatXInput);
+	SyncInputToProperty('StudsPerTileV', RepeatYInput);
+
+	-- Enable the texture adding button
+	AddButton.Button.MouseButton1Click:connect(function ()
+		AddTextures(TextureTool.Type, TextureTool.Face);
+	end);
+	RemoveButton.Button.MouseButton1Click:connect(function ()
+		RemoveTextures(TextureTool.Type, TextureTool.Face);
+	end);
+
+	-- Update the UI every 0.1 seconds
+	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+
+end;
+
+function SyncInputToProperty(Property, Input)
+	-- Enables `Input` to change the given property
+
+	-- Enable inputs
+	Input.FocusLost:connect(function ()
+		SetProperty(TextureTool.Type, TextureTool.Face, Property, tonumber(Input.Text));
+	end);
+
+end;
+
+function EnableSurfaceClickSelection()
+	-- Allows for the setting of the current face by clicking
+
+	-- Clear out any existing connection
+	if Connections.SurfaceClickSelection then
+		Connections.SurfaceClickSelection:disconnect();
+		Connections.SurfaceClickSelection = nil;
+	end;
+
+	-- Add the new click connection
+	Connections.SurfaceClickSelection = UserInputService.InputEnded:connect(function (Input, GameProcessedEvent)
+		if not GameProcessedEvent and Input.UserInputType == Enum.UserInputType.MouseButton1 and Selection:find(Core.Mouse.Target) then
+			SetFace(Core.Mouse.TargetSurface);
 		end;
-		Apply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Selection:add( Target.Parent );
-					Target.Texture = self.terminal_texture[Target];
-					Target.Transparency = self.terminal_transparency[Target];
-					Target.Face = self.terminal_side[Target];
-					if Target:IsA( "Texture" ) then
-						Target.StudsPerTileU = self.terminal_repeat[Target].x;
-						Target.StudsPerTileV = self.terminal_repeat[Target].y;
-					end;
-				end;
-			end;
-		end;
-	};
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.initial_texture[Item] = Item.Texture;
-			self.State.HistoryRecord.initial_transparency[Item] = Item.Transparency;
-			self.State.HistoryRecord.initial_side[Item] = Item.Face;
-			if Item:IsA( "Texture" ) then
-				self.State.HistoryRecord.initial_repeat[Item] = Vector2.new( Item.StudsPerTileU, Item.StudsPerTileV );
-			end;
-		end;
-	end;
+	end);
 
 end;
 
-Tools.Texture.finishHistoryRecord = function ( self )
+function HideUI()
+	-- Hides the tool UI
 
-	if not self.State.HistoryRecord then
+	-- Make sure there's a UI
+	if not UI then
 		return;
 	end;
 
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.terminal_texture[Item] = Item.Texture;
-			self.State.HistoryRecord.terminal_transparency[Item] = Item.Transparency;
-			self.State.HistoryRecord.terminal_side[Item] = Item.Face;
-			if Item:IsA( "Texture" ) then
-				self.State.HistoryRecord.terminal_repeat[Item] = Vector2.new( Item.StudsPerTileU, Item.StudsPerTileV );
-			end;
-		end;
-	end;
-	History:Add( self.State.HistoryRecord );
-	self.State.HistoryRecord = nil;
+	-- Hide the UI
+	UI.Visible = false;
+
+	-- Stop updating the UI
+	UIUpdater:Stop();
 
 end;
 
-Tools.Texture.changeMode = function ( self, new_mode )
+function GetTextures(TextureType, Face)
+	-- Returns all the textures in the selection
 
-	-- Set the option
-	self.Options.mode = new_mode;
+	local Textures = {};
 
-	-- Make sure the GUI exists
-	if not self.GUI then
+	-- Get any textures from any selected parts
+	for _, Part in pairs(Selection.Items) do
+		for _, Child in pairs(Part:GetChildren()) do
+
+			-- If this child is texture we're looking for, collect it
+			if Child.ClassName == TextureType and Child.Face == Face then
+				table.insert(Textures, Child);
+			end;
+
+		end;
+	end;
+
+	-- Return the found textures
+	return Textures;
+
+end;
+
+-- List of creatable textures
+local TextureTypes = { 'Decal', 'Texture' };
+
+-- List of UI layouts
+local Layouts = {
+	EmptySelection = { 'SelectNote' };
+	NoTextures = { 'ModeOption', 'SideOption', 'AddButton' };
+	SomeDecals = { 'ModeOption', 'SideOption', 'ImageIDOption', 'TransparencyOption', 'AddButton', 'RemoveButton' };
+	AllDecals = { 'ModeOption', 'SideOption', 'ImageIDOption', 'TransparencyOption', 'RemoveButton' };
+	SomeTextures = { 'ModeOption', 'SideOption', 'ImageIDOption', 'TransparencyOption', 'RepeatOption', 'AddButton', 'RemoveButton' };
+	AllTextures = { 'ModeOption', 'SideOption', 'ImageIDOption', 'TransparencyOption', 'RepeatOption', 'RemoveButton' };
+};
+
+-- List of UI elements
+local UIElements = { 'SelectNote', 'ModeOption', 'SideOption', 'ImageIDOption', 'TransparencyOption', 'RepeatOption', 'AddButton', 'RemoveButton' };
+
+-- Current UI layout
+local CurrentLayout;
+
+function ChangeLayout(Layout)
+	-- Sets the UI to the given layout
+
+	-- Make sure the new layout isn't already set
+	if CurrentLayout == Layout then
 		return;
 	end;
 
-	-- Update the GUI
-	if new_mode == "decal" then
-		self.GUI.ModeOption.Decal.SelectedIndicator.Transparency = 0;
-		self.GUI.ModeOption.Texture.SelectedIndicator.Transparency = 1;
-		self.GUI.ModeOption.Decal.Background.Image = Assets.DarkSlantedRectangle;
-		self.GUI.ModeOption.Texture.Background.Image = Assets.LightSlantedRectangle;
-		self.GUI.AddButton.Button.Text = "ADD DECAL";
-		self.GUI.RemoveButton.Button.Text = "REMOVE DECAL";
-	elseif new_mode == "texture" then
-		self.GUI.ModeOption.Decal.SelectedIndicator.Transparency = 1;
-		self.GUI.ModeOption.Texture.SelectedIndicator.Transparency = 0;
-		self.GUI.ModeOption.Decal.Background.Image = Assets.LightSlantedRectangle;
-		self.GUI.ModeOption.Texture.Background.Image = Assets.DarkSlantedRectangle;
-		self.GUI.AddButton.Button.Text = "ADD TEXTURE";
-		self.GUI.RemoveButton.Button.Text = "REMOVE TEXTURE";
+	-- Set this as the current layout
+	CurrentLayout = Layout;
+
+	-- Reset the UI
+	for _, ElementName in pairs(UIElements) do
+		local Element = UI[ElementName];
+		Element.Visible = false;
 	end;
+
+	-- Keep track of the total vertical extents of all items
+	local Sum = 0;
+
+	-- Go through each layout element
+	for ItemIndex, ItemName in ipairs(Layout) do
+
+		local Item = UI[ItemName];
+
+		-- Make the item visible
+		Item.Visible = true;
+
+		-- Position this item underneath the past items
+		Item.Position = UDim2.new(0, 0, 0, 20) + UDim2.new(
+			Item.Position.X.Scale,
+			Item.Position.X.Offset,
+			0,
+			Sum + 10
+		);
+
+		-- Update the sum of item heights
+		Sum = Sum + 10 + Item.AbsoluteSize.Y;
+
+	end;
+
+	-- Resize the container to fit the new layout
+	UI.Size = UDim2.new(0, 200, 0, 30 + Sum);
 
 end;
 
-Tools.Texture.changeSide = function ( self, new_side )
+function UpdateUI()
+	-- Updates information on the UI
 
-	-- Set the option
-	self.Options.side = new_side;
-
-	-- Update the GUI
-	if self.SideDropdown then
-		self.SideDropdown:selectOption( new_side.Name:upper() );
-		if self.SideDropdown.open then
-			self.SideDropdown:toggle();
-		end;
-	end;
-
-end;
-
-Tools.Texture.changeTexture = function ( self, new_texture )
-
-	local textures = {};
-
-	-- Apply the new texture to any items w/ textures in the selection
-	-- that are on the side in the options
-	for _, Item in pairs( Selection.Items ) do
-		local textures_found = Support.GetChildrenOfClass(Item, "Texture");
-		for _, Texture in pairs( textures_found ) do
-			if Texture.Face == self.Options.side then
-				table.insert( textures, Texture );
-			end;
-		end;
-	end;
-
-	-- Check if the given ID is actually a decal and get the right image ID from it
-	if HttpAvailable then
-		local BaseImageExtractionUrl = 'http://www.f3xteam.com/bt/getDecalImageID/%s';
-		local ExtractedImageID = Tool.HttpInterface.GetAsync:InvokeServer( BaseImageExtractionUrl:format( new_texture ) );
-		if ExtractedImageID and ExtractedImageID:len() > 0 then
-			new_texture = ExtractedImageID;
-		end;
-	end;
-
-	self:startHistoryRecord( textures );
-	for _, Texture in pairs( textures ) do
-		Texture.Texture = "http://www.roblox.com/asset/?id=" .. new_texture;
-	end;
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Texture.changeDecal = function ( self, new_decal )
-
-	local decals = {};
-
-	-- Apply the new decal to any items w/ decals in the selection
-	-- that are on the side in the options
-	for _, Item in pairs( Selection.Items ) do
-		local decals_found = Support.GetChildrenOfClass(Item, "Decal");
-		for _, Decal in pairs( decals_found ) do
-			if Decal.Face == self.Options.side then
-				table.insert( decals, Decal );
-			end;
-		end;
-	end;
-
-	-- Check if the given ID is actually a decal and get the right image ID from it
-	if HttpAvailable then
-		local BaseImageExtractionUrl = 'http://www.f3xteam.com/bt/getDecalImageID/%s';
-		local ExtractedImageID = Tool.HttpInterface.GetAsync:InvokeServer( BaseImageExtractionUrl:format( new_decal ) );
-		if ExtractedImageID and ExtractedImageID:len() > 0 then
-			new_decal = ExtractedImageID;
-		end;
-	end;
-
-	self:startHistoryRecord( decals );
-	for _, Decal in pairs( decals ) do
-		Decal.Texture = "http://www.roblox.com/asset/?id=" .. new_decal;
-	end;
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Texture.changeTransparency = function ( self, new_transparency )
-
-	local textures = {};
-
-	-- Apply the new transparency to any items w/
-	-- decals/textures in the selectionthat are on
-	-- the side in the options
-	for _, Item in pairs( Selection.Items ) do
-
-		if self.Options.mode == "texture" then
-			local textures_found = Support.GetChildrenOfClass(Item, "Texture");
-			for _, Texture in pairs( textures_found ) do
-				if Texture.Face == self.Options.side then
-					table.insert( textures, Texture );
-				end;
-			end;
-
-		elseif self.Options.mode == "decal" then
-			local decals_found = Support.GetChildrenOfClass(Item, "Decal");
-			for _, Decal in pairs( decals_found ) do
-				if Decal.Face == self.Options.side then
-					table.insert( textures, Decal );
-				end;
-			end;
-		end;
-
-	end;
-
-	self:startHistoryRecord( textures );
-	for _, Texture in pairs( textures ) do
-		Texture.Transparency = new_transparency;
-	end;
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Texture.changeFrequency = function ( self, direction, new_frequency )
-
-	local textures = {};
-
-	-- Apply the new frequency to any items w/ textures
-	-- in the selection that are on the side in the options
-	for _, Item in pairs( Selection.Items ) do
-		local textures_found = Support.GetChildrenOfClass(Item, "Texture");
-		for _, Texture in pairs( textures_found ) do
-			if Texture.Face == self.Options.side then
-				table.insert( textures, Texture );
-			end;
-		end;
-	end;
-
-	self:startHistoryRecord( textures );
-	for _, Texture in pairs( textures ) do
-		-- Apply the new frequency to the right direction
-		if direction == "x" then
-			Texture.StudsPerTileU = new_frequency;
-		elseif direction == "y" then
-			Texture.StudsPerTileV = new_frequency;
-		end;
-	end;
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Texture.addTexture = function ( self )
-
-	local HistoryRecord = {
-		Apply = function ( self )
-			Selection:clear();
-			for _, Texture in pairs( self.textures ) do
-				Texture.Parent = self.texture_parents[Texture];
-				Selection:add( Texture.Parent );
-			end;
-		end;
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Texture in pairs( self.textures ) do
-				Selection:add( Texture.Parent );
-				Texture.Parent = nil;
-			end;
-		end;
-	};
-
-	local textures = {};
-	local texture_parents = {};
-
-	for _, Item in pairs( Selection.Items ) do
-
-		-- Check if the item has a texture already
-		local textures_found = Support.GetChildrenOfClass(Item, "Texture");
-		local has_texture = false;
-		for _, Texture in pairs( textures_found ) do
-			if Texture.Face == self.Options.side then
-				has_texture = true;
-				break;
-			end;
-		end;
-
-		-- Only add a texture if it doesn't already exist
-		if not has_texture then
-			local Texture = RbxUtility.Create "Texture" {
-				Parent = Item;
-				Face = self.Options.side;
-			};
-			table.insert( textures, Texture );
-			texture_parents[Texture] = Item;
-		end;
-
-	end;
-
-	HistoryRecord.textures = textures;
-	HistoryRecord.texture_parents = texture_parents;
-	History:Add( HistoryRecord );
-
-end;
-
-Tools.Texture.addDecal = function ( self )
-
-	local HistoryRecord = {
-		Apply = function ( self )
-			Selection:clear();
-			for _, Decal in pairs( self.decals ) do
-				Decal.Parent = self.decal_parents[Decal];
-				Selection:add( Decal.Parent );
-			end;
-		end;
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Decal in pairs( self.decals ) do
-				Selection:add( Decal.Parent );
-				Decal.Parent = nil;
-			end;
-		end;
-	};
-
-	local decals = {};
-	local decal_parents = {};
-
-	for _, Item in pairs( Selection.Items ) do
-
-		-- Check if the item has a decal already
-		local decals_found = Support.GetChildrenOfClass(Item, "Decal");
-		local has_decal = false;
-		for _, Decal in pairs( decals_found ) do
-			if Decal.Face == self.Options.side then
-				has_decal = true;
-				break;
-			end;
-		end;
-
-		-- Only add a texture if it doesn't already exist
-		if not has_decal then
-			local Decal = RbxUtility.Create "Decal" {
-				Parent = Item;
-				Face = self.Options.side;
-			};
-			table.insert( decals, Decal );
-			decal_parents[Decal] = Item;
-		end;
-
-	end;
-
-	HistoryRecord.decals = decals;
-	HistoryRecord.decal_parents = decal_parents;
-	History:Add( HistoryRecord );
-
-end;
-
-Tools.Texture.removeTexture = function ( self )
-
-	local HistoryRecord = {
-		textures = {};
-		texture_parents = {};
-		Apply = function ( self )
-			Selection:clear();
-			for _, Texture in pairs( self.textures ) do
-				Selection:add( Texture.Parent );
-				Texture.Parent = nil;
-			end;
-		end;
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Texture in pairs( self.textures ) do
-				Texture.Parent = self.texture_parents[Texture];
-				Selection:add( Texture.Parent );
-			end;
-		end;
-	};
-
-	-- Remove any textures on the selected side
-	for _, Item in pairs( Selection.Items ) do
-		local textures = Support.GetChildrenOfClass(Item, "Texture");
-		for _, Texture in pairs( textures ) do
-			if Texture.Face == self.Options.side then
-				table.insert( HistoryRecord.textures, Texture );
-				HistoryRecord.texture_parents[Texture] = Texture.Parent;
-				Texture.Parent = nil;
-			end;
-		end;
-	end;
-
-	History:Add( HistoryRecord );
-
-end;
-
-Tools.Texture.removeDecal = function ( self )
-
-	local HistoryRecord = {
-		decals = {};
-		decal_parents = {};
-		Apply = function ( self )
-			Selection:clear();
-			for _, Decal in pairs( self.decals ) do
-				Selection:add( Decal.Parent );
-				Decal.Parent = nil;
-			end;
-		end;
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Decal in pairs( self.decals ) do
-				Decal.Parent = self.decal_parents[Decal];
-				Selection:add( Decal.Parent );
-			end;
-		end;
-	};
-
-	-- Remove any decals on the selected side
-	for _, Item in pairs( Selection.Items ) do
-		local decals = Support.GetChildrenOfClass(Item, "Decal");
-		for _, Decal in pairs( decals ) do
-			if Decal.Face == self.Options.side then
-				table.insert( HistoryRecord.decals, Decal );
-				HistoryRecord.decal_parents[Decal] = Decal.Parent;
-				Decal.Parent = nil;
-			end;
-		end;
-	end;
-
-	History:Add( HistoryRecord );
-
-end;
-
-Tools.Texture.updateGUI = function ( self )
-
-	-- Make sure the GUI exists
-	if not self.GUI then
+	-- Make sure the UI's on
+	if not UI then
 		return;
 	end;
 
-	local GUI = self.GUI;
+	-- Get the textures in the selection
+	local Textures = GetTextures(TextureTool.Type, TextureTool.Face);
 
-	-- If there are no items selected, just minimize
-	-- non-tool-option controls
+	-- References to UI elements
+	local ImageIdInput = UI.ImageIDOption.TextBox;
+	local TransparencyInput = UI.TransparencyOption.Input.TextBox;
+
+	-----------------------
+	-- Update the UI layout
+	-----------------------
+
+	-- Get the plural version of the current texture type
+	local PluralTextureType = TextureTool.Type .. 's';
+
+	-- Figure out the necessary UI layout
 	if #Selection.Items == 0 then
-		self.GUI.AddButton.Visible = false;
-		self.GUI.RemoveButton.Visible = false;
-		self.GUI.ImageIDOption.Visible = false;
-		self.GUI.TransparencyOption.Visible = false;
-		self.GUI.RepeatOption.Visible = false;
-		self.GUI.Size = UDim2.new( 0, 200, 0, 100 );
+		ChangeLayout(Layouts.EmptySelection);
+		return;
 
-	else
-		if self.Options.mode == "texture" then
+	-- When the selection has no textures
+	elseif #Textures == 0 then
+		ChangeLayout(Layouts.NoTextures);
+		return;
 
-			-- Get the applicable textures
-			local textures = {};
-			for _, Item in pairs( Selection.Items ) do
-				local textures_found = Support.GetChildrenOfClass(Item, "Texture");
-				for _, Texture in pairs( textures_found ) do
-					if Texture.Face == self.Options.side then
-						table.insert( textures, Texture );
-						break;
-					end;
-				end;
-			end;
+	-- When only some selected items have textures
+	elseif #Selection.Items ~= #Textures then
+		ChangeLayout(Layouts['Some' .. PluralTextureType]);
 
-			-- If there are no textures
-			if #textures == 0 then
-				self.GUI.AddButton.Visible = true;
-				self.GUI.RemoveButton.Visible = false;
-				self.GUI.ImageIDOption.Visible = false;
-				self.GUI.TransparencyOption.Visible = false;
-				self.GUI.RepeatOption.Visible = false;
-				self.GUI.Size = UDim2.new( 0, 200, 0, 130 );
+	-- When all selected items have textures
+	elseif #Selection.Items == #Textures then
+		ChangeLayout(Layouts['All' .. PluralTextureType]);
+	end;
 
-			-- If only some parts have textures
-			elseif #textures ~= #Selection.Items then
-				self.GUI.AddButton.Visible = true;
-				self.GUI.RemoveButton.Visible = true;
-				self.GUI.ImageIDOption.Visible = true;
-				self.GUI.TransparencyOption.Visible = true;
-				self.GUI.RepeatOption.Visible = true;
-				self.GUI.ImageIDOption.Position = UDim2.new( 0, 14, 0, 135 );
-				self.GUI.TransparencyOption.Position = UDim2.new( 0, 14, 0, 170 );
-				self.GUI.RepeatOption.Position = UDim2.new( 0, 0, 0, 205 );
-				self.GUI.Size = UDim2.new( 0, 200, 0, 280 );
+	------------------------
+	-- Update UI information
+	------------------------
 
-			-- If every item has a texture
-			elseif #textures == #Selection.Items then
-				self.GUI.AddButton.Visible = false;
-				self.GUI.RemoveButton.Visible = true;
-				self.GUI.ImageIDOption.Visible = true;
-				self.GUI.TransparencyOption.Visible = true;
-				self.GUI.RepeatOption.Visible = true;
-				self.GUI.ImageIDOption.Position = UDim2.new( 0, 14, 0, 100 );
-				self.GUI.TransparencyOption.Position = UDim2.new( 0, 14, 0, 135 );
-				self.GUI.RepeatOption.Position = UDim2.new( 0, 0, 0, 170 );
-				self.GUI.Size = UDim2.new( 0, 200, 0, 245 );
-			end;
+	-- Get the common properties
+	local ImageId = Support.IdentifyCommonProperty(Textures, 'Texture');
+	local Transparency = Support.IdentifyCommonProperty(Textures, 'Transparency');
 
-			-- Get the values to display on the GUI
-			local texture_id, texture_transparency, texture_repeat_x, texture_repeat_y;
-			for texture_index, Texture in pairs( textures ) do
+	-- Update the common inputs
+	UpdateDataInputs {
+		[ImageIdInput] = ImageId and ParseAssetId(ImageId) or ImageId or '*';
+		[TransparencyInput] = Transparency and Support.Round(Transparency, 2) or '*';
+	};
 
-				-- Set the start values for later comparison
-				if texture_index == 1 then
-					texture_id = Texture.Texture:lower();
-					texture_transparency = Texture.Transparency;
-					texture_repeat_x = Texture.StudsPerTileU;
-					texture_repeat_y = Texture.StudsPerTileV;
+	-- Update texture-specific information on UI
+	if TextureTool.Type == 'Texture' then
 
-				-- Set the values to `nil` if they vary across the selection
-				else
-					if texture_id ~= Texture.Texture:lower() then
-						texture_id = nil;
-					end;
-					if texture_transparency ~= Texture.Transparency then
-						texture_transparency = nil;
-					end;
-					if texture_repeat_x ~= Texture.StudsPerTileU then
-						texture_repeat_x = nil;
-					end;
-					if texture_repeat_y ~= Texture.StudsPerTileV then
-						texture_repeat_y = nil;
-					end;
-				end;
+		-- Get texture-specific UI elements
+		local RepeatXInput = UI.RepeatOption.XInput.TextBox;
+		local RepeatYInput = UI.RepeatOption.YInput.TextBox;
 
-			end;
+		-- Get texture-specific common properties
+		local RepeatX = Support.IdentifyCommonProperty(Textures, 'StudsPerTileU');
+		local RepeatY = Support.IdentifyCommonProperty(Textures, 'StudsPerTileV');
 
-			-- Update the GUI's values
-			if not self.State.image_id_focused then
-				self.GUI.ImageIDOption.TextBox.Text = texture_id and ( texture_id:match( "%?id=([0-9]+)" ) or "" ) or "*";
-			end;
-			if not self.State.transparency_focused then
-				self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = texture_transparency and Support.Round(texture_transparency, 2) or "*";
-			end;
-			if not self.State.rep_x_focused then
-				self.GUI.RepeatOption.XInput.TextBox.Text = texture_repeat_x and Support.Round(texture_repeat_x, 2) or "*";
-			end;
-			if not self.State.rep_y_focused then
-				self.GUI.RepeatOption.YInput.TextBox.Text = texture_repeat_y and Support.Round(texture_repeat_y, 2) or "*";
-			end;
+		-- Update inputs
+		UpdateDataInputs {
+			[RepeatXInput] = RepeatX and Support.Round(RepeatX, 2) or '*';
+			[RepeatYInput] = RepeatY and Support.Round(RepeatY, 2) or '*';
+		};
 
-		elseif self.Options.mode == "decal" then
+	end;
 
-			-- Get the applicable decals
-			local decals = {};
-			for _, Item in pairs( Selection.Items ) do
-				local decals_found = Support.GetChildrenOfClass(Item, "Decal");
-				for _, Decal in pairs( decals_found ) do
-					if Decal.Face == self.Options.side then
-						table.insert( decals, Decal );
-						break;
-					end;
-				end;
-			end;
+end;
 
-			-- If there are no decals
-			if #decals == 0 then
-				self.GUI.AddButton.Visible = true;
-				self.GUI.RemoveButton.Visible = false;
-				self.GUI.ImageIDOption.Visible = false;
-				self.GUI.TransparencyOption.Visible = false;
-				self.GUI.RepeatOption.Visible = false;
-				self.GUI.Size = UDim2.new( 0, 200, 0, 130 );
+function UpdateDataInputs(Data)
+	-- Updates the data in the given TextBoxes when the user isn't typing in them
 
-			-- If only some parts have decals
-			elseif #decals ~= #Selection.Items then
-				self.GUI.AddButton.Visible = true;
-				self.GUI.RemoveButton.Visible = true;
-				self.GUI.ImageIDOption.Visible = true;
-				self.GUI.TransparencyOption.Visible = true;
-				self.GUI.RepeatOption.Visible = false;
-				self.GUI.ImageIDOption.Position = UDim2.new( 0, 14, 0, 135 );
-				self.GUI.TransparencyOption.Position = UDim2.new( 0, 14, 0, 170 );
-				self.GUI.Size = UDim2.new( 0, 200, 0, 245 );
+	-- Go through the inputs and data
+	for Input, UpdatedValue in pairs(Data) do
 
-			-- If every item has a decal
-			elseif #decals == #Selection.Items then
-				self.GUI.AddButton.Visible = false;
-				self.GUI.RemoveButton.Visible = true;
-				self.GUI.ImageIDOption.Visible = true;
-				self.GUI.TransparencyOption.Visible = true;
-				self.GUI.RepeatOption.Visible = false;
-				self.GUI.ImageIDOption.Position = UDim2.new( 0, 14, 0, 100 );
-				self.GUI.TransparencyOption.Position = UDim2.new( 0, 14, 0, 135 );
-				self.GUI.Size = UDim2.new( 0, 200, 0, 205 );
-			end;
+		-- Makwe sure the user isn't typing into the input
+		if not Input:IsFocused() then
 
-			-- Get the values to display on the GUI
-			local decal_id, decal_transparency;
-			for decal_index, Decal in pairs( decals ) do
-
-				-- Set the start values for later comparison
-				if decal_index == 1 then
-					decal_id = Decal.Texture:lower();
-					decal_transparency = Decal.Transparency;
-
-				-- Set the values to `nil` if they vary across the selection
-				else
-					if decal_id ~= Decal.Texture:lower() then
-						decal_id = nil;
-					end;
-					if decal_transparency ~= Decal.Transparency then
-						decal_transparency = nil;
-					end;
-				end;
-
-			end;
-
-			-- Update the GUI's values
-			if not self.State.image_id_focused then
-				self.GUI.ImageIDOption.TextBox.Text = decal_id and ( decal_id:match( "%?id=([0-9]+)" ) or "" ) or "*";
-			end;
-			if not self.State.transparency_focused then
-				self.GUI.TransparencyOption.TransparencyInput.TextBox.Text = decal_transparency and Support.Round(decal_transparency, 2) or "*";
-			end;
+			-- Set the input's value
+			Input.Text = tostring(UpdatedValue);
 
 		end;
+
 	end;
 
 end;
 
-Tools.Texture.showGUI = function ( self )
+function ParseAssetId(Input)
+	-- Returns the intended asset ID for the given input
 
-	-- Initialize the GUI if it's not ready yet
-	if not self.GUI then
-		local Container = Tool.Interfaces.BTTextureToolGUI:Clone();
-		Container.Parent = UI;
+	-- Get the ID number from the input
+	local Id = tonumber(Input) or Input:lower():match('%?id=([0-9]+)');
 
-		-- Add functionality to the add/remove buttons
-		Container.AddButton.Button.MouseButton1Up:connect( function ()
-			if self.Options.mode == "decal" then
-				self:addDecal();
-			elseif self.Options.mode == "texture" then
-				self:addTexture();
-			end;
-		end );
-		Container.RemoveButton.Button.MouseButton1Up:connect( function ()
-			if self.Options.mode == "decal" then
-				self:removeDecal();
-			elseif self.Options.mode == "texture" then
-				self:removeTexture();
-			end;
-		end );
+	-- Return the ID
+	return Id;
+end;
 
-		-- Add functionality to the mode selectors
-		Container.ModeOption.Decal.Button.MouseButton1Down:connect( function ()
-			self:changeMode( "decal" );
-		end );
-		Container.ModeOption.Texture.Button.MouseButton1Down:connect( function ()
-			self:changeMode( "texture" );
-		end );
+function SetFace(Face)
 
-		-- Add the side dropdown
-		local SideDropdown = createDropdown();
-		self.SideDropdown = SideDropdown;
-		SideDropdown.Frame.Parent = Container.SideOption;
-		SideDropdown.Frame.Position = UDim2.new( 0, 35, 0, 0 );
-		SideDropdown.Frame.Size = UDim2.new( 1, -50, 0, 25 );
-		SideDropdown:addOption( "TOP" ).MouseButton1Up:connect( function ()
-			self:changeSide( Enum.NormalId.Top );
-		end );
-		SideDropdown:addOption( "BOTTOM" ).MouseButton1Up:connect( function ()
-			self:changeSide( Enum.NormalId.Bottom );
-		end );
-		SideDropdown:addOption( "FRONT" ).MouseButton1Up:connect( function ()
-			self:changeSide( Enum.NormalId.Front );
-		end );
-		SideDropdown:addOption( "BACK" ).MouseButton1Up:connect( function ()
-			self:changeSide( Enum.NormalId.Back );
-		end );
-		SideDropdown:addOption( "LEFT" ).MouseButton1Up:connect( function ()
-			self:changeSide( Enum.NormalId.Left );
-		end );
-		SideDropdown:addOption( "RIGHT" ).MouseButton1Up:connect( function ()
-			self:changeSide( Enum.NormalId.Right );
-		end );
+	-- Update the tool option
+	TextureTool.Face = Face;
 
-		-- Add functionality to the repeat inputs
-		Container.RepeatOption.XInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.rep_x_focused = true;
-			Container.RepeatOption.XInput.TextBox:CaptureFocus();
-		end );
-		Container.RepeatOption.XInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.RepeatOption.XInput.TextBox.Text );
-			if potential_new then
-				self:changeFrequency( 'x', potential_new );
-			end;
-			self.State.rep_x_focused = false;
-		end );
-
-		Container.RepeatOption.YInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.rep_y_focused = true;
-			Container.RepeatOption.YInput.TextBox:CaptureFocus();
-		end );
-		Container.RepeatOption.YInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.RepeatOption.YInput.TextBox.Text );
-			if potential_new then
-				self:changeFrequency( 'y', potential_new );
-			end;
-			self.State.rep_y_focused = false;
-		end );
-
-		-- Add functionality to the decal/texture ID inputs
-		Container.ImageIDOption.TextButton.MouseButton1Down:connect( function ()
-			self.State.image_id_focused = true;
-			Container.ImageIDOption.TextBox:CaptureFocus();
-		end );
-		Container.ImageIDOption.TextBox.FocusLost:connect( function ( enter_pressed )
-			local input = Container.ImageIDOption.TextBox.Text;
-			local potential_new = tonumber( input ) or input:lower():match( "%?id=([0-9]+)" );
-			if potential_new then
-				if self.Options.mode == "decal" then
-					self:changeDecal( potential_new );
-				elseif self.Options.mode == "texture" then
-					self:changeTexture( potential_new );
-				end;
-			end;
-			self.State.image_id_focused = false;
-		end );
-
-		Container.TransparencyOption.TransparencyInput.TextButton.MouseButton1Down:connect( function ()
-			self.State.transparency_focused = true;
-			Container.TransparencyOption.TransparencyInput.TextBox:CaptureFocus();
-		end );
-		Container.TransparencyOption.TransparencyInput.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.TransparencyOption.TransparencyInput.TextBox.Text );
-			if potential_new then
-				if potential_new > 1 then
-					potential_new = 1;
-				elseif potential_new < 0 then
-					potential_new = 0;
-				end;
-				self:changeTransparency( potential_new );
-			end;
-			self.State.transparency_focused = false;
-		end );
-
-		self.GUI = Container;
-	end;
-
-	-- Reveal the GUI
-	self.GUI.Visible = true;
+	-- Update the UI
+	UI.SideOption.Dropdown.MainButton.CurrentOption.Text = Face and Face.Name:upper() or '*';
 
 end;
 
-Tools.Texture.hideGUI = function ( self )
+function SetTextureType(TextureType)
 
-	-- Hide the GUI if it exists already
-	if self.GUI then
-		self.GUI.Visible = false;
-	end;
+	-- Update the tool option
+	TextureTool.Type = TextureType;
+
+	-- Update the UI
+	Core.ToggleSwitch(TextureType, UI.ModeOption);
+	UI.AddButton.Button.Text = 'ADD ' .. TextureType:upper();
+	UI.RemoveButton.Button.Text = 'REMOVE ' .. TextureType:upper();
 
 end;
 
-Tools.Texture.Loaded = true;
+function SetProperty(TextureType, Face, Property, Value)
+
+	-- Make sure the given value is valid
+	if not Value then
+		return;
+	end;
+
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each texture
+	for _, Texture in pairs(GetTextures(TextureType, Face)) do
+
+		-- Store the state of the texture before modification
+		table.insert(HistoryRecord.Before, { Part = Texture.Parent, TextureType = TextureType, Face = Face, [Property] = Texture[Property] });
+
+		-- Create the change request for this texture
+		table.insert(HistoryRecord.After, { Part = Texture.Parent, TextureType = TextureType, Face = Face, [Property] = Value });
+
+	end;
+
+	-- Register the changes
+	RegisterChange();
+
+end;
+
+function SetTextureId(TextureType, Face, AssetId)
+	-- Sets the textures in the selection to the intended, given image asset
+
+	-- Make sure the given asset ID is valid
+	if not AssetId then
+		return;
+	end;
+
+	-- Prepare the change request
+	local Changes = {
+		Texture = 'http://www.roblox.com/asset/?id=' .. AssetId;
+	};
+
+	-- Only attempt extraction if HttpService is enabled
+	if Core.HttpAvailable then
+
+		-- Attempt an image extraction on the given asset
+		local ImageExtractionUrl = ('http://f3xteam.com/bt/getDecalImageID/%s'):format(AssetId);
+		local ExtractionData = Core.Tool.HttpInterface.GetAsync:InvokeServer(ImageExtractionUrl);
+
+		-- Check if the image extraction yielded any data
+		if ExtractionData and ExtractionData:len() > 0 then
+			Changes.Texture = 'http://www.roblox.com/asset/?id=' .. ExtractionData;
+		end;
+
+	end;
+
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each texture
+	for _, Texture in pairs(GetTextures(TextureType, Face)) do
+
+		-- Create the history change requests for this texture
+		local Before, After = { Part = Texture.Parent, TextureType = TextureType, Face = Face }, { Part = Texture.Parent, TextureType = TextureType, Face = Face };
+
+		-- Gather change information to finish up the history change requests
+		for Property, Value in pairs(Changes) do
+			Before[Property] = Texture[Property];
+			After[Property] = Value;
+		end;
+
+		-- Store the state of the texture before modification
+		table.insert(HistoryRecord.Before, Before);
+
+		-- Create the change request for this texture
+		table.insert(HistoryRecord.After, After);
+
+	end;
+
+	-- Register the changes
+	RegisterChange();
+
+end;
+
+function AddTextures(TextureType, Face)
+
+	-- Prepare the change request for the server
+	local Changes = {};
+
+	-- Go through the selection
+	for _, Part in pairs(Selection.Items) do
+
+		-- Make sure this part doesn't already have a texture of the same type
+		local HasTextures;
+		for _, Child in pairs(Part:GetChildren()) do
+			if Child.ClassName == TextureType and Child.Face == Face then
+				HasTextures = true;
+			end;
+		end;
+
+		-- Queue a texture to be created for this part, if not already existent
+		if not HasTextures then
+			table.insert(Changes, { Part = Part, TextureType = TextureType, Face = Face });
+		end;
+
+	end;
+
+	-- Send the change request to the server
+	local Textures = Core.ServerAPI:InvokeServer('CreateTextures', Changes);
+
+	-- Put together the history record
+	local HistoryRecord = {
+		Textures = Textures;
+
+		Unapply = function (HistoryRecord)
+			-- Reverts this change
+
+			-- Remove the textures
+			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Textures);
+
+		end;
+
+		Apply = function (HistoryRecord)
+			-- Reapplies this change
+
+			-- Restore the textures
+			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Textures);
+
+		end;
+
+	};
+
+	-- Register the history record
+	Core.History:Add(HistoryRecord);
+
+end;
+
+function RemoveTextures(TextureType, Face)
+
+	-- Get all the textures in the selection
+	local Textures = GetTextures(TextureType, Face);
+
+	-- Create the history record
+	local HistoryRecord = {
+		Textures = Textures;
+
+		Unapply = function (HistoryRecord)
+			-- Reverts this change
+
+			-- Restore the textures
+			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Textures);
+
+		end;
+
+		Apply = function (HistoryRecord)
+			-- Reapplies this change
+
+			-- Remove the textures
+			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Textures);
+
+		end;
+
+	};
+
+	-- Send the removal request
+	Core.ServerAPI:InvokeServer('Remove', Textures);
+
+	-- Register the history record
+	Core.History:Add(HistoryRecord);
+
+end;
+
+function TrackChange()
+
+	-- Start the record
+	HistoryRecord = {
+		Before = {};
+		After = {};
+
+		Unapply = function (Record)
+			-- Reverts this change
+
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncTexture', Record.Before);
+
+		end;
+
+		Apply = function (Record)
+			-- Applies this change
+
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncTexture', Record.After);
+
+		end;
+
+	};
+
+end;
+
+function RegisterChange()
+	-- Finishes creating the history record and registers it
+
+	-- Make sure there's an in-progress history record
+	if not HistoryRecord then
+		return;
+	end;
+
+	-- Send the change to the server
+	Core.ServerAPI:InvokeServer('SyncTexture', HistoryRecord.After);
+
+	-- Register the record and clear the staging
+	Core.History:Add(HistoryRecord);
+	HistoryRecord = nil;
+
+end;
+
+-- Mark the tool as fully loaded
+Core.Tools.Texture = TextureTool;
+TextureTool.Loaded = true;

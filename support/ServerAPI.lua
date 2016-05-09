@@ -967,6 +967,125 @@ Actions = {
 
 	end;
 
+	['CreateTextures'] = function (Changes)
+		-- Creates textures in the given parts
+
+		-- Grab a list of every part we're attempting to modify
+		local Parts = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				table.insert(Parts, Change.Part);
+			end;
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
+
+		-- Reorganize the changes
+		local ChangeSet = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				ChangeSet[Change.Part] = Change;
+			end;
+		end;
+
+		-- Make a list of allowed texture type requests
+		local AllowedTextureTypes = { Texture = true, Decal = true };
+
+		-- Keep track of the newly created textures
+		local Textures = {};
+
+		-- Create each texture
+		for Part, Change in pairs(ChangeSet) do
+
+			-- Make sure the requested light type is valid
+			if AllowedTextureTypes[Change.TextureType] then
+
+				-- Create the texture
+				local Texture = Instance.new(Change.TextureType, Part);
+				Texture.Face = Change.Face;
+				table.insert(Textures, Texture);
+
+				-- Register the texture
+				CreatedInstances[Texture] = Texture;
+
+			end;
+
+		end;
+
+		-- Return the new textures
+		return Textures;
+
+	end;
+
+	['SyncTexture'] = function (Changes)
+		-- Updates aspects of the given selection's textures
+
+		-- Grab a list of every part we're attempting to modify
+		local Parts = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				table.insert(Parts, Change.Part);
+			end;
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
+
+		-- Reorganize the changes
+		local ChangeSet = {};
+		for _, Change in pairs(Changes) do
+			if Change.Part then
+				ChangeSet[Change.Part] = Change;
+			end;
+		end;
+
+		-- Make a list of allowed texture type requests
+		local AllowedTextureTypes = { Texture = true, Decal = true };
+
+		-- Update each part's textures
+		for Part, Change in pairs(ChangeSet) do
+
+			-- Make sure that the texture type requested is valid
+			if AllowedTextureTypes[Change.TextureType] then
+
+				-- Get the right textures within the part
+				for _, Texture in pairs(Part:GetChildren()) do
+					if Texture.ClassName == Change.TextureType and Texture.Face == Change.Face then
+
+						-- Perform the changes
+						if Change.Texture ~= nil then
+							Texture.Texture = Change.Texture;
+						end;
+						if Change.Transparency ~= nil then
+							Texture.Transparency = Change.Transparency;
+						end;
+						if Change.StudsPerTileU ~= nil then
+							Texture.StudsPerTileU = Change.StudsPerTileU;
+						end;
+						if Change.StudsPerTileV ~= nil then
+							Texture.StudsPerTileV = Change.StudsPerTileV;
+						end;
+
+					end;
+				end;
+
+			end;
+
+		end;
+
+	end;
+
 };
 
 -- Provide functionality to the API instance
