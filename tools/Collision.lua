@@ -4,296 +4,252 @@ repeat wait() until (
 	_G.BTCoreEnv[script.Parent.Parent] and
 	_G.BTCoreEnv[script.Parent.Parent].CoreReady
 );
-setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
+Core = _G.BTCoreEnv[script.Parent.Parent];
 
-------------------------------------------
--- Collision tool
-------------------------------------------
+-- Import relevant references
+Selection = Core.Selection;
+Create = Core.Create;
+Support = Core.Support;
+Security = Core.Security;
+Support.ImportServices();
 
--- Create the tool
-Tools.Collision = {};
-Tools.Collision.Name = 'Collision Tool';
+-- Initialize the tool
+local CollisionTool = {
 
--- Create structures to hold data that the tool needs
-Tools.Collision.Connections = {};
+	Name = 'Collision Tool';
+	Color = BrickColor.new 'Really black';
 
-Tools.Collision.State = {
-	["colliding"] = nil;
+	-- Standard platform event interface
+	Listeners = {};
+
 };
 
-Tools.Collision.Listeners = {};
+-- Container for temporary connections (disconnected automatically)
+local Connections = {};
 
--- Define the color of the tool
-Tools.Collision.Color = BrickColor.new( "Really black" );
+function Equip()
+	-- Enables the tool's equipped functionality
 
--- Start adding functionality to the tool
-Tools.Collision.Listeners.Equipped = function ()
-
-	local self = Tools.Collision;
-
-	-- Change the color of selection boxes temporarily
-	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = self.Color;
-	updateSelectionBoxColor();
-
-	-- Reveal the GUI
-	self:showGUI();
-
-	-- Update the GUI regularly
-	coroutine.wrap( function ()
-		updater_on = true;
-
-		-- Provide a function to stop the loop
-		self.Updater = function ()
-			updater_on = false;
-		end;
-
-		while wait( 0.1 ) and updater_on do
-
-			-- Make sure the tool's equipped
-			if CurrentTool == self then
-
-				-- Update the collision status of every item in the selection
-				local colliding = nil;
-				for item_index, Item in pairs( Selection.Items ) do
-
-					-- Set the first values for the first item
-					if item_index == 1 then
-						colliding = Item.CanCollide;
-
-					-- Otherwise, compare them and set them to `nil` if they're not identical
-					else
-						if colliding ~= Item.CanCollide then
-							colliding = nil;
-						end;
-					end;
-
-				end;
-
-				self.State.colliding = colliding;
-
-				-- Update the GUI if it's visible
-				if self.GUI and self.GUI.Visible then
-					self:updateGUI();
-				end;
-
-			end;
-
-		end;
-
-	end )();
-
-	-- Listen for the Enter button to be pressed to toggle collision
-	self.Connections.EnterButtonListener = Mouse.KeyDown:connect( function ( key )
-
-		local key = key:lower();
-		local key_code = key:byte();
-
-		-- If the Enter button is pressed
-		if key_code == 13 then
-
-			if self.State.colliding == true then
-				self:disable();
-
-			elseif self.State.colliding == false then
-				self:enable();
-
-			elseif self.State.colliding == nil then
-				self:enable();
-
-			end;
-
-		end;
-
-	end );
+	-- Start up our interface
+	ShowUI();
+	BindShortcutKeys();
 
 end;
 
-Tools.Collision.startHistoryRecord = function ( self )
+function Unequip()
+	-- Disables the tool's equipped functionality
 
-	if self.State.HistoryRecord then
-		self.State.HistoryRecord = nil;
-	end;
-
-	-- Create a history record
-	self.State.HistoryRecord = {
-		targets = Support.CloneTable(Selection.Items);
-		initial_collide = {};
-		terminal_collide = {};
-		initial_cframe = {};
-		terminal_cframe = {};
-		Unapply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Change(Target, {
-						CanCollide = self.initial_collide[Target];
-						CFrame = self.initial_cframe[Target];
-					});
-					MakeJoints(Target);
-					Selection:add(Target);
-				end;
-			end;
-		end;
-		Apply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Change(Target, {
-						CanCollide = self.terminal_collide[Target];
-						CFrame = self.terminal_cframe[Target];
-					});
-					MakeJoints(Target);
-					Selection:add(Target);
-				end;
-			end;
-		end;
-	};
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.initial_collide[Item] = Item.CanCollide;
-			self.State.HistoryRecord.initial_cframe[Item] = Item.CFrame;
-		end;
-	end;
+	-- Clear unnecessary resources
+	HideUI();
+	ClearConnections();
 
 end;
 
-Tools.Collision.finishHistoryRecord = function ( self )
+CollisionTool.Listeners.Equipped = Equip;
+CollisionTool.Listeners.Unequipped = Unequip;
 
-	if not self.State.HistoryRecord then
-		return;
-	end;
+function ClearConnections()
+	-- Clears out temporary connections
 
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.terminal_collide[Item] = Item.CanCollide;
-			self.State.HistoryRecord.terminal_cframe[Item] = Item.CFrame;
-		end;
-	end;
-	History:Add( self.State.HistoryRecord );
-	self.State.HistoryRecord = nil;
-
-end;
-
-Tools.Collision.enable = function ( self )
-
-	self:startHistoryRecord();
-
-	-- Enable collision for all the items in the selection
-	for _, Item in pairs( Selection.Items ) do
-		Change(Item, {
-			CanCollide = true;
-		});
-		MakeJoints(Item);
-	end;
-
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Collision.disable = function ( self )
-
-	self:startHistoryRecord();
-
-	-- Disable collision for all the items in the selection
-	for _, Item in pairs( Selection.Items ) do
-		Change(Item, {
-			CanCollide = false;
-		});
-		MakeJoints(Item);
-	end;
-
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Collision.showGUI = function ( self )
-
-	-- Initialize the GUI if it's not ready yet
-	if not self.GUI then
-
-		local Container = Tool.Interfaces.BTCollisionToolGUI:Clone();
-		Container.Parent = UI;
-
-		Container.Status.On.Button.MouseButton1Down:connect( function ()
-			self:enable();
-		end );
-
-		Container.Status.Off.Button.MouseButton1Down:connect( function ()
-			self:disable();
-		end );
-
-		self.GUI = Container;
-	end;
-
-	-- Reveal the GUI
-	self.GUI.Visible = true;
-
-end;
-
-Tools.Collision.updateGUI = function ( self )
-
-	-- Make sure the GUI exists
-	if not self.GUI then
-		return;
-	end;
-
-	local GUI = self.GUI;
-
-	if self.State.colliding == nil then
-		GUI.Status.On.Background.Image = Assets.LightSlantedRectangle;
-		GUI.Status.On.SelectedIndicator.BackgroundTransparency = 1;
-		GUI.Status.Off.Background.Image = Assets.LightSlantedRectangle;
-		GUI.Status.Off.SelectedIndicator.BackgroundTransparency = 1;
-
-	elseif self.State.colliding == true then
-		GUI.Status.On.Background.Image = Assets.DarkSlantedRectangle;
-		GUI.Status.On.SelectedIndicator.BackgroundTransparency = 0;
-		GUI.Status.Off.Background.Image = Assets.LightSlantedRectangle;
-		GUI.Status.Off.SelectedIndicator.BackgroundTransparency = 1;
-
-	elseif self.State.colliding == false then
-		GUI.Status.On.Background.Image = Assets.LightSlantedRectangle;
-		GUI.Status.On.SelectedIndicator.BackgroundTransparency = 1;
-		GUI.Status.Off.Background.Image = Assets.DarkSlantedRectangle;
-		GUI.Status.Off.SelectedIndicator.BackgroundTransparency = 0;
-
-	end;
-
-end;
-
-Tools.Collision.hideGUI = function ( self )
-
-	-- Hide the GUI if it exists
-	if self.GUI then
-		self.GUI.Visible = false;
-	end;
-
-end;
-
-Tools.Collision.Listeners.Unequipped = function ()
-
-	local self = Tools.Collision;
-
-	-- Stop the update loop
-	if self.Updater then
-		self.Updater();
-		self.Updater = nil;
-	end;
-
-	-- Hide the GUI
-	self:hideGUI();
-
-	-- Clear out any temporary connections
-	for connection_index, Connection in pairs( self.Connections ) do
+	for ConnectionKey, Connection in pairs(Connections) do
 		Connection:disconnect();
-		self.Connections[connection_index] = nil;
+		Connections[ConnectionKey] = nil;
 	end;
-
-	-- Restore the original color of the selection boxes
-	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
 
 end;
 
-Tools.Collision.Loaded = true;
+function ShowUI()
+	-- Creates and reveals the UI
+
+	-- Reveal UI if already created
+	if UI then
+
+		-- Reveal the UI
+		UI.Visible = true;
+
+		-- Update the UI every 0.1 seconds
+		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+
+		-- Skip UI creation
+		return;
+
+	end;
+
+	-- Create the UI
+	UI = Core.Tool.Interfaces.BTCollisionToolGUI:Clone();
+	UI.Parent = Core.UI;
+	UI.Visible = true;
+
+	-- References to UI elements
+	local OnButton = UI.Status.On.Button;
+	local OffButton = UI.Status.Off.Button;
+
+	-- Enable the collision status switch
+	OnButton.MouseButton1Click:connect(function ()
+		SetProperty('CanCollide', true);
+	end);
+	OffButton.MouseButton1Click:connect(function ()
+		SetProperty('CanCollide', false);
+	end);
+
+	-- Update the UI every 0.1 seconds
+	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+
+end;
+
+function UpdateUI()
+	-- Updates information on the UI
+
+	-- Make sure the UI's on
+	if not UI then
+		return;
+	end;
+
+	-- Check the common collision status of selection
+	local Collision = Support.IdentifyCommonProperty(Selection.Items, 'CanCollide');
+
+	-- Update the collision option switch
+	if Collision == true then
+		Core.ToggleSwitch('On', UI.Status);
+
+	-- If the selection has collision disabled
+	elseif Collision == false then
+		Core.ToggleSwitch('Off', UI.Status);
+
+	-- If the collision status varies, don't select a current switch
+	elseif Collision == nil then
+		Core.ToggleSwitch(nil, UI.Status);
+	end;
+
+end;
+
+function HideUI()
+	-- Hides the tool UI
+
+	-- Make sure there's a UI
+	if not UI then
+		return;
+	end;
+
+	-- Hide the UI
+	UI.Visible = false;
+
+	-- Stop updating the UI
+	UIUpdater:Stop();
+
+end;
+
+function SetProperty(Property, Value)
+
+	-- Make sure the given value is valid
+	if Value == nil then
+		return;
+	end;
+
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each part
+	for _, Part in pairs(Selection.Items) do
+
+		-- Store the state of the part before modification
+		table.insert(HistoryRecord.Before, { Part = Part, [Property] = Part[Property] });
+
+		-- Create the change request for this part
+		table.insert(HistoryRecord.After, { Part = Part, [Property] = Value });
+
+	end;
+
+	-- Register the changes
+	RegisterChange();
+
+end;
+
+function BindShortcutKeys()
+	-- Enables useful shortcut keys for this tool
+
+	-- Track user input while this tool is equipped
+	table.insert(Connections, UserInputService.InputBegan:connect(function (InputInfo, GameProcessedEvent)
+
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
+			return;
+		end;
+
+		-- Make sure this input is a key press
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
+		end;
+
+		-- Make sure it wasn't pressed while typing
+		if UserInputService:GetFocusedTextBox() then
+			return;
+		end;
+
+		-- Check if the enter key was pressed
+		if InputInfo.KeyCode == Enum.KeyCode.Return or InputInfo.KeyCode == Enum.KeyCode.KeypadEnter then
+
+			-- Toggle the selection's collision status
+			ToggleCollision();
+
+		end;
+
+	end));
+
+end;
+
+function ToggleCollision()
+	-- Toggles the collision status of the selection
+
+	-- Change the collision status to the opposite of the common collision status
+	SetProperty('CanCollide', not Support.IdentifyCommonProperty(Selection.Items, 'CanCollide'));
+
+end;
+
+function TrackChange()
+
+	-- Start the record
+	HistoryRecord = {
+		Before = {};
+		After = {};
+
+		Unapply = function (Record)
+			-- Reverts this change
+
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncCollision', Record.Before);
+
+		end;
+
+		Apply = function (Record)
+			-- Applies this change
+
+			-- Send the change request
+			Core.ServerAPI:InvokeServer('SyncCollision', Record.After);
+
+		end;
+
+	};
+
+end;
+
+function RegisterChange()
+	-- Finishes creating the history record and registers it
+
+	-- Make sure there's an in-progress history record
+	if not HistoryRecord then
+		return;
+	end;
+
+	-- Send the change to the server
+	Core.ServerAPI:InvokeServer('SyncCollision', HistoryRecord.After);
+
+	-- Register the record and clear the staging
+	Core.History:Add(HistoryRecord);
+	HistoryRecord = nil;
+
+end;
+
+-- Mark the tool as fully loaded
+Core.Tools.Collision = CollisionTool;
+CollisionTool.Loaded = true;
