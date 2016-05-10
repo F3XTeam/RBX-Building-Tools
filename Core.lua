@@ -1621,7 +1621,6 @@ SelectEdge = {
 				Locked = true;
 				CanCollide = false;
 				Transparency = 1;
-				FormFactor = Enum.FormFactor.Custom;
 				Size = Vector3.new( 0.2, 0.2, 0.2 );
 				CFrame = ClosestEdge;
 			};

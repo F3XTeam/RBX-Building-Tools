@@ -446,11 +446,6 @@ Actions = {
 			Part.Velocity = Vector3.new();
 			Part.RotVelocity = Vector3.new();
 
-			-- Ensure the part has a "Custom" form factor to resize properly
-			if Part:IsA 'FormFactorPart' then
-				Part.FormFactor = Enum.FormFactor.Custom;
-			end;
-
 			-- Set the part's size and CFrame
 			Part.Size = Change.Size;
 			Part.CFrame = Change.CFrame;

@@ -662,11 +662,6 @@ function PreparePartsForResizing()
 		Part:BreakJoints();
 		Part.Velocity = Vector3.new();
 		Part.RotVelocity = Vector3.new();
-
-		-- Ensure the part has a "Custom" form factor to resize properly
-		if Part:IsA 'FormFactorPart' then
-			Part.FormFactor = Enum.FormFactor.Custom;
-		end;
 	end;
 
 	return InitialState;

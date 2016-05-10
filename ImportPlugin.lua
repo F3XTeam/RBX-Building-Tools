@@ -370,10 +370,6 @@ function import( creation_id )
 			end;
 			objects[part_id] = Part;
 
-			if ( pcall( function () local test = Part.FormFactor; end ) ) then
-				Part.FormFactor = "Custom";
-			end;
-
 			Part.Size = Vector3.new( unpack( part_data[2] ) );
 			Part.CFrame = CFrame.new( unpack( part_data[3] ) );
 			Part.BrickColor = BrickColor.new( part_data[4] );
