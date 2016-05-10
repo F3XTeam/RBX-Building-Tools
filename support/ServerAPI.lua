@@ -33,17 +33,37 @@ Actions = {
 		Tool.Handle.BrickColor = NewColor;
 	end;
 
-	['Clone'] = function (Items)
-		-- Clones the given items
+	['Clone'] = function (Parts)
+		-- Clones the given parts
+
+		-- Make sure the given items are all parts
+		for _, Part in pairs(Parts) do
+			if not Part:IsA 'BasePart' then
+				return;
+			end;
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
 
 		local Clones = {};
 
-		-- Copy the items
-		for _, Item in pairs(Items) do
-			local Clone = Item:Clone();
+		-- Clone the parts
+		for _, Part in pairs(Parts) do
+
+			-- Create the clone
+			local Clone = Part:Clone();
 			Clone.Parent = Workspace;
+
+			-- Register the clone
 			table.insert(Clones, Clone);
-			CreatedInstances[Item] = Item;
+			CreatedInstances[Part] = Part;
+
 		end;
 
 		-- Return the clones
@@ -75,165 +95,6 @@ Actions = {
 
 		-- Return the part
 		return NewPart;
-	end;
-
-	['Change'] = function (Object, Changes)
-		-- Performs the requested changes to `Object`'s properties
-
-		local Part;
-
-		-- Figure out the part this change applies to
-		if Object:IsA 'BasePart' then
-			Part = Object;
-		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
-			Part = Object.Parent;
-		end;
-
-		-- Only perform changes to authorized parts
-		if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
-
-			-- Apply changes
-			-- TODO: Restrict certain properties
-			for Property, Value in pairs(Changes) do
-				Object[Property] = Value;
-			end;
-
-		end;
-
-	end;
-
-	['CreateDecorations'] = function (Type, Parent)
-		-- Creates a new decoration of type `Type` for part `Parent`
-
-		-- Only perform changes to authorized parts
-		if not Security.IsPartAuthorizedForPlayer(Parent, Player) then
-			return;
-		end;
-
-		local Decoration;
-
-		-- Create and parent the decoration
-		if Type == 'Smoke' then
-			Decoration = Instance.new('Smoke', Parent);
-
-		elseif Type == 'Fire' then
-			Decoration = Instance.new('Fire', Parent);
-
-		elseif Type == 'Sparkles' then
-			Decoration = Instance.new('Sparkles', Parent);
-		end;
-
-		-- Register the decoration
-		CreatedInstances[Decoration] = Decoration;
-
-		-- Return the decoration
-		return Decoration;
-	end;
-
-	['CreateDecoration'] = function (Type, Parent)
-		-- Creates a new decoration of type `Type` for part `Parent`
-
-		-- Only perform changes to authorized parts
-		if not Security.IsPartAuthorizedForPlayer(Parent, Player) then
-			return;
-		end;
-
-		local Decoration;
-
-		-- Create and parent the decoration
-		if Type == 'Smoke' then
-			Decoration = Instance.new('Smoke', Parent);
-
-		elseif Type == 'Fire' then
-			Decoration = Instance.new('Fire', Parent);
-
-		elseif Type == 'Sparkles' then
-			Decoration = Instance.new('Sparkles', Parent);
-		end;
-
-		-- Register the decoration
-		CreatedInstances[Decoration] = Decoration;
-
-		-- Return the decoration
-		return Decoration;
-	end;
-
-	['CreateLight'] = function (Type, Parent)
-		-- Creates a new light of type `Type` for part `Parent`
-
-		-- Only perform changes to authorized parts
-		if not Security.IsPartAuthorizedForPlayer(Parent, Player) then
-			return;
-		end;
-
-		local Light;
-
-		-- Create and parent the light
-		if Type == 'SpotLight' then
-			Light = Instance.new('SpotLight', Parent);
-
-		elseif Type == 'PointLight' then
-			Light = Instance.new('PointLight', Parent);
-		end;
-
-		-- Register the light
-		CreatedInstances[Light] = Light;
-
-		-- Return the light
-		return Light;
-	end;
-
-	['MakeJoints'] = function (Part)
-		-- Calls the Part's MakeJoints method
-
-		-- Only perform changes to authorized parts
-		if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
-			Part:MakeJoints();
-		end;
-
-	end;
-
-	['BreakJoints'] = function (Part)
-		-- Calls the Part's BreakJoints method
-
-		-- Only perform changes to authorized parts
-		if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
-			Part:BreakJoints();
-		end;
-
-	end;
-
-	['SetParent'] = function (Object, Parent)
-		-- Sets `Object`'s parent to `Parent`
-
-		-- If this is a part, make sure we have permission to modify it
-		if Object:IsA 'BasePart' then
-			if not Security.IsPartAuthorizedForPlayer(Object, Player) then
-				return;
-			end;
-
-		-- If this is a decoration, make sure we have permission to modify it, and the new parent part
-		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
-
-			-- Make sure we can modify the current parent of the decoration (if any)
-			if Object.Parent and Object.Parent:IsA 'BasePart' then
-				if not Security.IsPartAuthorizedForPlayer(Object.Parent, Player) then
-					return;
-				end;
-			end;
-
-			-- Make sure we can modify the target parent part
-			if Parent and Parent:IsA 'BasePart' then
-				if not Security.IsPartAuthorizedForPlayer(Parent, Player) then
-					return;
-				end;
-			end;
-
-		end;
-
-		-- If no authorization checks have failed, keep the part in memory & perform the setting
-		CreatedInstances[Object] = Object;
-		Object.Parent = Parent;
 	end;
 
 	['Remove'] = function (Objects)
@@ -329,24 +190,6 @@ Actions = {
 
 		end;
 
-	end;
-
-	['CreateMesh'] = function (Parent)
-		-- Creates a new SpecialMesh inside `Parent`
-
-		-- Only perform changes to authorized parts
-		if not Security.IsPartAuthorizedForPlayer(Parent, Player) then
-			return;
-		end;
-
-		-- Create and parent the mesh
-		local Mesh = Instance.new('SpecialMesh', Parent);
-
-		-- Register the light
-		CreatedInstances[Mesh] = Mesh;
-
-		-- Return the mesh
-		return Mesh;
 	end;
 
 	['SyncMove'] = function (Changes)

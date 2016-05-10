@@ -147,81 +147,83 @@ function equipTool( NewTool )
 	end;
 end;
 
-function cloneSelection()
-	-- Clones the items in the selection
+function CloneSelection()
+	-- Clones the selected parts
 
 	-- Make sure that there are items in the selection
-	if #Selection.Items > 0 then
+	if #Selection.Items == 0 then
+		return;
+	end;
 
-		local item_copies = {};
+	-- Send the cloning request to the server
+	local Clones = ServerAPI:InvokeServer('Clone', Selection.Items);
 
-		-- Send the request for cloning these parts if filter mode is on
-		if FilterMode then
-			item_copies = ServerAPI:InvokeServer('Clone', Selection.Items);
+	-- Put together the history record
+	local HistoryRecord = {
+		Clones = Clones;
 
-		-- Otherwise, make the copies directly locally
-		else 
-			for _, Item in pairs( Selection.Items ) do
-				local ItemCopy = Item:Clone();
-				ItemCopy.Parent = Workspace;
-				table.insert( item_copies, ItemCopy );
-			end;
+		Unapply = function (HistoryRecord)
+			-- Reverts this change
+
+			-- Remove the clones
+			ServerAPI:InvokeServer('Remove', HistoryRecord.Clones);
+
 		end;
 
-		-- Replace the selection with the copied items
-		Selection:clear();
-		for _, Item in pairs( item_copies ) do
-			Selection:add( Item );
+		Apply = function (HistoryRecord)
+			-- Reapplies this change
+
+			-- Restore the lights
+			ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Clones);
+
 		end;
 
-		local HistoryRecord = {
-			copies = item_copies;
-			Unapply = function ( self )
-				for _, Copy in pairs( self.copies ) do
-					if Copy then
-						SetParent(Copy, nil);
-					end;
-				end;
-			end;
-			Apply = function ( self )
-				Selection:clear();
-				for _, Copy in pairs( self.copies ) do
-					if Copy then
-						SetParent(Copy, Workspace);
-						MakeJoints(Copy);
-						Selection:add(Copy);
-					end;
-				end;
-			end;
-		};
-		History:Add( HistoryRecord );
+	};
 
-		-- Play a confirmation sound
-		local Sound = RbxUtility.Create "Sound" {
-			Name = "BTActionCompletionSound";
-			Pitch = 1.5;
-			SoundId = Assets.ActionCompletionSound;
-			Volume = 1;
-			Parent = Player or SoundService;
-		};
-		Sound:Play();
-		Sound:Destroy();
+	-- Register the history record
+	History:Add(HistoryRecord);
 
-		-- Highlight the outlines of the new parts
-		coroutine.wrap( function ()
-			for transparency = 1, 0.5, -0.1 do
-				for Item, SelectionBox in pairs( SelectionBoxes ) do
-					SelectionBox.Transparency = transparency;
-				end;
-				wait( 0.1 );
-			end;
-		end )();
+	-- Select the clones
+	Selection:clear();
+	for _, Clone in pairs(Clones) do
+		Selection:add(Clone);
+	end;
+
+	-- Play a confirmation sound
+	local Sound = Create 'Sound' {
+		Name = 'BTActionCompletionSound';
+		Pitch = 1.5;
+		SoundId = Assets.ActionCompletionSound;
+		Volume = 1;
+		Parent = Player or SoundService;
+	};
+	Sound:Play();
+	Sound:Destroy();
+
+	-- Flash the outlines of the new parts
+	coroutine.wrap(FlashSelectionOutlines)();
+
+end;
+
+function FlashSelectionOutlines()
+	-- Flashes the outlines of the selected parts
+
+	-- Fade in from complete to normal transparency
+	for Transparency = 1, 0.5, -0.1 do
+
+		-- Update each outline
+		for _, Outline in pairs(SelectionBoxes) do
+			Outline.Transparency = Transparency;
+		end;
+
+		-- Fade over time
+		wait(0.1);
 
 	end;
 
 end;
 
-function deleteSelection()
+function DeleteSelection()
 	-- Deletes the items in the selection
 
 	-- Put together the history record
@@ -373,113 +375,6 @@ function isSelectable( Object )
 
 	-- If it passes all checks, return true
 	return true;
-end;
-
-function Change(Object, Changes)
-	-- Performs a local and server-side change on `Object`
-
-	local Part;
-	if Object:IsA 'BasePart' then
-		Part = Object;
-	elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
-		Part = Object.Parent;
-	end;
-
-	-- Only perform changes to authorized parts
-	if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
-
-		-- If in filter mode, only send changes to server
-		if FilterMode then
-			ServerAPI:InvokeServer('Change', Object, Changes);
-
-		-- If filter mode is disabled, apply changes locally and instantly
-		elseif not FilterMode then
-			for Property, Value in pairs(Changes) do
-				Object[Property] = Value;
-			end;
-		end;
-
-	end;
-
-end;
-
-function SetParent(Object, Parent)
-	-- Sets `Object`'s parent to `Parent`
-
-	-- If in filter mode, request parenting from the server
-	if FilterMode then
-		ServerAPI:InvokeServer('SetParent', Object, Parent);
-
-	-- Otherwise, set parent directly
-	else
-
-		-- If this is a part, make sure we have permission to modify it
-		if Object:IsA 'BasePart' then
-			if not Security.IsPartAuthorizedForPlayer(Object, Player) then
-				return;
-			end;
-
-		-- If this is a decoration, make sure we have permission to modify it, and the new parent part
-		elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
-			
-			-- Make sure we can modify the current parent of the decoration (if any)
-			if Object.Parent and Object.Parent:IsA 'BasePart' then
-				if not Security.IsPartAuthorizedForPlayer(Object.Parent, Player) then
-					return;
-				end;
-			end;
-
-			-- Make sure we can modify the target parent part
-			if Parent and Parent:IsA 'BasePart' then
-				if not Security.IsPartAuthorizedForPlayer(Parent, Player) then
-					return;
-				end;
-			end;
-
-		end;
-
-		-- If no authorization checks have failed, perform the setting
-		Object.Parent = Parent;
-
-	end;
-end;
-
-function MakeJoints(Part)
-	-- Performs a server-side call to Part:MakeJoints()
-
-	-- Only perform changes to authorized parts
-	if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
-
-		-- If in filter mode, request changes from the server
-		if FilterMode then
-			ServerAPI:InvokeServer('MakeJoints', Part);
-
-		-- If in local mode (filtering disabled), apply changes locally and directly
-		elseif not FilterMode then
-			Part:MakeJoints();
-		end;
-
-	end;
-
-end;
-
-function BreakJoints(Part)
-	-- Performs a server-side call to Part:BreakJoints()
-
-	-- Only perform changes to authorized parts
-	if Part:IsA 'BasePart' and Security.IsPartAuthorizedForPlayer(Part, Player) then
-
-		-- If in filter mode, request changes from the server
-		if FilterMode then
-			ServerAPI:InvokeServer('BreakJoints', Part);
-
-		-- If in local mode (filtering disabled), apply changes locally and directly
-		elseif not FilterMode then
-			Part:BreakJoints();
-		end;
-
-	end;
-
 end;
 
 function IsVersionOutdated()
@@ -2276,12 +2171,8 @@ end );
 Dock.SelectionButtons.RedoButton.MouseButton1Up:connect( function ()
 	History:Redo();
 end );
-Dock.SelectionButtons.DeleteButton.MouseButton1Up:connect( function ()
-	deleteSelection();
-end );
-Dock.SelectionButtons.CloneButton.MouseButton1Up:connect( function ()
-	cloneSelection();
-end );
+Dock.SelectionButtons.DeleteButton.MouseButton1Up:connect(DeleteSelection);
+Dock.SelectionButtons.CloneButton.MouseButton1Up:connect(CloneSelection);
 Dock.SelectionButtons.ExportButton.MouseButton1Up:connect( function ()
 	IE:export();
 end );
@@ -2773,13 +2664,13 @@ function equipBT( CurrentMouse )
 
 		-- Provide the abiltiy to delete via the shift + X key combination
 		if InputInfo.KeyCode == Enum.KeyCode.X and (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
-			deleteSelection();
+			DeleteSelection();
 			return;
 		end;
 
 		-- Provide the ability to clone via the shift + C key combination
 		if InputInfo.KeyCode == Enum.KeyCode.C and (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
-			cloneSelection();
+			CloneSelection();
 			return;
 		end;
 
