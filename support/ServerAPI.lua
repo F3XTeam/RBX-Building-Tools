@@ -112,7 +112,7 @@ Actions = {
 				if Object:IsA 'BasePart' then
 					table.insert(Parts, Object);
 
-				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
+				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Light' then
 					table.insert(Parts, Object.Parent);
 				end;
 
@@ -153,13 +153,13 @@ Actions = {
 		-- Go through the selection
 		for _, Object in pairs(Objects) do
 
-			-- Make sure the object still exists
-			if Object then
+			-- Make sure the object still exists, and that its last parent is registered
+			if Object and LastParents[Object] then
 
 				if Object:IsA 'BasePart' then
 					table.insert(Parts, Object);
 
-				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Weld' or Object:IsA 'Light' then
+				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Light' then
 					table.insert(Parts, Object.Parent);
 				end;
 
@@ -1042,6 +1042,151 @@ Actions = {
 			if Change.Reflectance ~= nil then
 				Part.Reflectance = Change.Reflectance;
 			end;
+		end;
+
+	end;
+
+	['CreateWelds'] = function (Parts, TargetPart)
+		-- Creates welds for the given parts to the target part
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+			return;
+		end;
+
+		local Welds = {};
+
+		-- Create the welds
+		for _, Part in pairs(Parts) do
+
+			-- Make sure we're not welding this part to itself
+			if Part ~= TargetPart then
+
+				-- Calculate the offset of the part from the target part
+				local Offset = Part.CFrame:toObjectSpace(TargetPart.CFrame);
+
+				-- Create the weld
+				local Weld = Instance.new('Weld', Game.JointsService);
+				Weld.Name = 'BTWeld';
+				Weld.Part0 = TargetPart;
+				Weld.Part1 = Part;
+				Weld.C1 = Offset;
+				Weld.Archivable = true;
+
+				-- Register the weld
+				CreatedInstances[Weld] = Weld;
+				table.insert(Welds, Weld);
+
+			end;
+
+		end;
+
+		-- Return the welds created
+		return Welds;
+	end;
+
+	['RemoveWelds'] = function (Welds)
+		-- Removes the given welds
+
+		local Parts = {};
+
+		-- Go through each weld
+		for _, Weld in pairs(Welds) do
+
+			-- Make sure each given weld is valid
+			if Weld.ClassName ~= 'Weld' then
+				return;
+			end;
+
+			-- Collect the relevant parts for this weld
+			table.insert(Parts, Weld.Part0);
+			table.insert(Parts, Weld.Part1);
+
+		end;
+
+		local WeldsRemoved = 0;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Go through each weld
+		for _, Weld in pairs(Welds) do
+
+			-- Check the permissions on each weld-related part
+			local Part0Unauthorized = Security.ArePartsViolatingAreas({ Weld.Part0 }, Player, AreaPermissions);
+			local Part1Unauthorized = Security.ArePartsViolatingAreas({ Weld.Part1 }, Player, AreaPermissions);
+
+			-- If at least one of the involved parts is authorized, remove the weld
+			if not Part0Unauthorized or not Part1Unauthorized then
+
+				-- Register the weld
+				CreatedInstances[Weld] = Weld;
+				LastParents[Weld] = Weld.Parent;
+				WeldsRemoved = WeldsRemoved + 1;
+
+				-- Remove the weld
+				Weld.Parent = nil;
+
+			end;
+
+		end;
+
+		-- Return the number of welds removed
+		return WeldsRemoved;
+	end;
+
+	['UndoRemovedWelds'] = function (Welds)
+		-- Restores the given removed welds
+
+		local Parts = {};
+
+		-- Go through each weld
+		for _, Weld in pairs(Welds) do
+
+			-- Make sure each given weld is valid
+			if Weld.ClassName ~= 'Weld' then
+				return;
+			end;
+
+			-- Make sure each weld has its old parent registered
+			if not LastParents[Weld] then
+				return;
+			end;
+
+			-- Collect the relevant parts for this weld
+			table.insert(Parts, Weld.Part0);
+			table.insert(Parts, Weld.Part1);
+
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Go through each weld
+		for _, Weld in pairs(Welds) do
+
+			-- Check the permissions on each weld-related part
+			local Part0Unauthorized = Security.ArePartsViolatingAreas({ Weld.Part0 }, Player, AreaPermissions);
+			local Part1Unauthorized = Security.ArePartsViolatingAreas({ Weld.Part0 }, Player, AreaPermissions);
+
+			-- If at least one of the involved parts is authorized, restore the weld
+			if not Part0Unauthorized or not Part1Unauthorized then
+
+				-- Store the part's current parent
+				local LastParent = LastParents[Weld];
+				LastParents[Weld] = Weld.Parent;
+
+				-- Register the weld
+				CreatedInstances[Weld] = Weld;
+
+				-- Set the weld's parent to the last parent
+				Weld.Parent = LastParent;
+
+			end;
+
 		end;
 
 	end;
