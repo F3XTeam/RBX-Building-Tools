@@ -55,11 +55,23 @@ Actions = {
 
 		-- Create the part
 		local NewPart = Support.CreatePart(PartType);
-		NewPart.Parent = Workspace;
-		CreatedInstances[NewPart] = NewPart;
 
 		-- Position the part
 		NewPart.CFrame = Position;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas({ NewPart }), Player);
+
+		-- Make sure the player is allowed to create parts in the area
+		if Security.ArePartsViolatingAreas({ NewPart }, Player, AreaPermissions) then
+			return;
+		end;
+
+		-- Parent the part
+		NewPart.Parent = Workspace;
+
+		-- Register the part
+		CreatedInstances[NewPart] = NewPart;
 
 		-- Return the part
 		return NewPart;

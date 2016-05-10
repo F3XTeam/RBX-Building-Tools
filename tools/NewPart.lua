@@ -4,164 +4,204 @@ repeat wait() until (
 	_G.BTCoreEnv[script.Parent.Parent] and
 	_G.BTCoreEnv[script.Parent.Parent].CoreReady
 );
-setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
+Core = _G.BTCoreEnv[script.Parent.Parent];
 
-------------------------------------------
--- New part tool
-------------------------------------------
+-- Import relevant references
+Selection = Core.Selection;
+Create = Core.Create;
+Support = Core.Support;
+Security = Core.Security;
+Support.ImportServices();
 
--- Create the tool
-Tools.NewPart = {};
-Tools.NewPart.Name = 'New Part Tool';
+-- Initialize the tool
+local NewPartTool = {
 
--- Define the tool's color
-Tools.NewPart.Color = BrickColor.new( "Really black" );
+	Name = 'New Part Tool';
+	Color = BrickColor.new 'Really black';
 
--- Keep a container for temporary connections
-Tools.NewPart.Connections = {};
+	-- Default options
+	Type = 'Normal';
 
--- Keep a container for state data
-Tools.NewPart.State = {
-	["Part"] = nil;
+	-- Standard platform event interface
+	Listeners = {};
+
 };
 
--- Maintain a container for options
-Tools.NewPart.Options = {
-	["type"] = "Normal"
-};
+-- Container for temporary connections (disconnected automatically)
+local Connections = {};
 
--- Keep a container for platform event connections
-Tools.NewPart.Listeners = {};
+function Equip()
+	-- Enables the tool's equipped functionality
 
--- Start adding functionality to the tool
-Tools.NewPart.Listeners.Equipped = function ()
+	-- Start up our interface
+	ShowUI();
+	EnableClickCreation();
 
-	local self = Tools.NewPart;
-
-	-- Change the color of selection boxes temporarily
-	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = self.Color;
-	updateSelectionBoxColor();
-
-	-- Reveal the GUI
-	self:showGUI();
-
-	-- Restore the type option
-	self:changeType( self.Options.type );
+	-- Set our current type
+	SetType(NewPartTool.Type);
 
 end;
 
-Tools.NewPart.Listeners.Unequipped = function ()
+function Unequip()
+	-- Disables the tool's equipped functionality
 
-	local self = Tools.NewPart;
+	-- Clear unnecessary resources
+	HideUI();
+	ClearConnections();
 
-	-- Hide the GUI
-	self:hideGUI();
+end;
 
-	-- Disconnect temporary connections
-	for connection_index, Connection in pairs( self.Connections ) do
+NewPartTool.Listeners.Equipped = Equip;
+NewPartTool.Listeners.Unequipped = Unequip;
+
+function ClearConnections()
+	-- Clears out temporary connections
+
+	for ConnectionKey, Connection in pairs(Connections) do
 		Connection:disconnect();
-		self.Connections[connection_index] = nil;
+		Connections[ConnectionKey] = nil;
 	end;
-
-	-- Restore the original color of selection boxes
-	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
 
 end;
 
-Tools.NewPart.Listeners.Button1Down = function ()
+function ShowUI()
+	-- Creates and reveals the UI
 
-	local self = Tools.NewPart;
+	-- Reveal UI if already created
+	if UI then
 
-	local NewPart;
+		-- Reveal the UI
+		UI.Visible = true;
 
-	-- If in filter mode, request from the server the creation of a new part of type `Options.type`
-	if FilterMode then
-		NewPart = ServerAPI:InvokeServer('CreatePart', self.Options.type, CFrame.new(Mouse.Hit.p));
+		-- Skip UI creation
+		return;
 
-	-- Otherwise, create the part locally instantly
-	else
-		NewPart = Support.CreatePart(self.Options.type);
-		NewPart.Parent = Workspace;
-		NewPart.CFrame = CFrame.new(Mouse.Hit.p);
 	end;
 
-	-- Select the new part
-	Selection:clear();
-	Selection:add( NewPart );
+	-- Create the UI
+	UI = Core.Tool.Interfaces.BTNewPartToolGUI:Clone();
+	UI.Parent = Core.UI;
+	UI.Visible = true;
 
+	-- Creatable part types
+	local Types = { 'Normal', 'Truss', 'Wedge', 'Corner', 'Cylinder', 'Ball', 'Seat', 'Vehicle Seat', 'Spawn' };
+
+	-- Create the type selection dropdown
+	TypeDropdown = Core.createDropdown();
+	TypeDropdown.Frame.Parent = UI.TypeOption;
+	TypeDropdown.Frame.Position = UDim2.new(0, 70, 0, 0);
+	TypeDropdown.Frame.Size = UDim2.new(0, 140, 0, 25);
+
+	-- Add the part type options to the dropdown
+	for _, Type in pairs(Types) do
+
+		-- Capitalize the part type label
+		TypeLabel = Type:upper();
+
+		-- Enable the option button
+		TypeDropdown:addOption(TypeLabel).MouseButton1Click:connect(function ()
+			SetType(Type);
+			TypeDropdown:toggle();
+		end);
+
+	end;
+
+end;
+
+function HideUI()
+	-- Hides the tool UI
+
+	-- Make sure there's a UI
+	if not UI then
+		return;
+	end;
+
+	-- Hide the UI
+	UI.Visible = false;
+
+end;
+
+function SetType(Type)
+
+	-- Update the tool option
+	NewPartTool.Type = Type;
+
+	-- Update the UI
+	TypeDropdown:selectOption(Type:upper());
+
+end;
+
+function EnableClickCreation()
+	-- Allows the user to click anywhere and create a new part
+
+	-- Listen for clicks
+	Connections.ClickCreationListener = UserInputService.InputBegan:connect(function (Input, GameProcessedEvent)
+
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
+			return;
+		end;
+
+		-- Make sure this was button 1 being released
+		if Input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+			return;
+		end;
+
+		-- Create the part
+		CreatePart(NewPartTool.Type);
+
+	end);
+
+end;
+
+function CreatePart(Type)
+
+	-- Send the creation request to the server
+	local Part = Core.ServerAPI:InvokeServer('CreatePart', Type, CFrame.new(Core.Mouse.Hit.p));
+
+	-- Make sure the part creation succeeds
+	if not Part then
+		return;
+	end;
+
+	-- Put together the history record
 	local HistoryRecord = {
-		target = NewPart;
-		Apply = function ( self )
-			Selection:clear();
-			if self.target then
-				SetParent(self.target, Workspace);
-				Selection:add(self.target);
-			end;
+		Part = Part;
+
+		Unapply = function (HistoryRecord)
+			-- Reverts this change
+
+			-- Remove the decorations
+			Core.ServerAPI:InvokeServer('Remove', { HistoryRecord.Part });
+
 		end;
-		Unapply = function ( self )
-			if self.target then
-				SetParent(self.target, nil);
-			end;
+
+		Apply = function (HistoryRecord)
+			-- Reapplies this change
+
+			-- Restore the decorations
+			Core.ServerAPI:InvokeServer('UndoRemove', { HistoryRecord.Part });
+
 		end;
+
 	};
-	History:Add( HistoryRecord );
 
-	-- Switch to the move tool and simulate clicking so
-	-- that the user could easily position their new part
-	equipTool(Tools.Move);
-	Tools.Move.SetUpDragging(NewPart);
+	-- Register the history record
+	Core.History:Add(HistoryRecord);
 
-end;
+	-- Select the part
+	Selection:clear();
+	Selection:add(Part);
 
-Tools.NewPart.changeType = function ( self, new_type )
-	self.Options.type = new_type;
-	self.TypeDropdown:selectOption( new_type:upper() );
-	if self.TypeDropdown.open then
-		self.TypeDropdown:toggle();
-	end;
-end;
+	-- Switch to the move tool
+	Core.equipTool(Core.Tools.Move);
 
-Tools.NewPart.showGUI = function ( self )
-
-	-- Initialize the GUI if it's not ready yet
-	if not self.GUI then
-
-		local Container = Tool.Interfaces.BTNewPartToolGUI:Clone();
-		Container.Parent = UI;
-
-		local TypeDropdown = createDropdown();
-		self.TypeDropdown = TypeDropdown;
-		TypeDropdown.Frame.Parent = Container.TypeOption;
-		TypeDropdown.Frame.Position = UDim2.new( 0, 70, 0, 0 );
-		TypeDropdown.Frame.Size = UDim2.new( 0, 140, 0, 25 );
-
-
-		local Types = { 'Normal', 'Truss', 'Wedge', 'Corner', 'Cylinder', 'Ball', 'Seat', 'Vehicle Seat', 'Spawn' };
-
-		-- Add dropdown options for every type
-		for _, Type in pairs(Types) do
-			TypeDropdown:addOption(Type:upper()).MouseButton1Up:connect(function ()
-				self:changeType(Type);
-			end);
-		end;
-
-		self.GUI = Container;
-	end;
-
-	-- Reveal the GUI
-	self.GUI.Visible = true;
+	-- Enable dragging to allow easy positioning of the created part
+	Core.Tools.Move.SetUpDragging(Part);
 
 end;
 
-Tools.NewPart.hideGUI = function ( self )
 
-	-- Hide the GUI if it exists already
-	if self.GUI then
-		self.GUI.Visible = false;
-	end;
-
-end;
-
-Tools.NewPart.Loaded = true;
+-- Mark the tool as fully loaded
+Core.Tools.NewPart = NewPartTool;
+NewPartTool.Loaded = true;
