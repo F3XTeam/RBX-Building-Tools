@@ -448,6 +448,30 @@ end;
 				ResizeTool.UI.IncrementOption.Increment.TextBox:CaptureFocus();
 			end;
 
+		-- Nudge up if the 8 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadEight then
+			NudgeSelectionByFace(Enum.NormalId.Top);
+
+		-- Nudge down if the 2 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadTwo then
+			NudgeSelectionByFace(Enum.NormalId.Bottom);
+
+		-- Nudge forward if the 9 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadNine then
+			NudgeSelectionByFace(Enum.NormalId.Front);
+
+		-- Nudge backward if the 1 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadOne then
+			NudgeSelectionByFace(Enum.NormalId.Back);
+
+		-- Nudge left if the 4 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadFour then
+			NudgeSelectionByFace(Enum.NormalId.Left);
+
+		-- Nudge right if the 6 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadSix then
+			NudgeSelectionByFace(Enum.NormalId.Right);
+
 		end;
 
 	end));
