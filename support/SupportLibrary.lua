@@ -417,4 +417,19 @@ function SupportLibrary.ImportServices()
 	CallingEnvironment.ChangeHistoryService = Game:GetService 'ChangeHistoryService';
 end;
 
+function SupportLibrary.GetListMembers(List, MemberName)
+	-- Gets the given member for each object in the given list table
+
+	local Members = {};
+
+	-- Collect the member values for each item in the list
+	for _, Item in pairs(List) do
+		table.insert(Members, Item[MemberName]);
+	end;
+
+	-- Return the members
+	return Members;
+
+end;
+
 return SupportLibrary;

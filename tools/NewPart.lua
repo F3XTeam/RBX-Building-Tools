@@ -171,7 +171,7 @@ function CreatePart(Type)
 		Unapply = function (HistoryRecord)
 			-- Reverts this change
 
-			-- Remove the decorations
+			-- Remove the part
 			Core.ServerAPI:InvokeServer('Remove', { HistoryRecord.Part });
 
 		end;
@@ -179,7 +179,7 @@ function CreatePart(Type)
 		Apply = function (HistoryRecord)
 			-- Reapplies this change
 
-			-- Restore the decorations
+			-- Restore the part
 			Core.ServerAPI:InvokeServer('UndoRemove', { HistoryRecord.Part });
 
 		end;
@@ -190,8 +190,7 @@ function CreatePart(Type)
 	Core.History:Add(HistoryRecord);
 
 	-- Select the part
-	Selection:clear();
-	Selection:add(Part);
+	Selection.Replace({ Part });
 
 	-- Switch to the move tool
 	Core.equipTool(Core.Tools.Move);

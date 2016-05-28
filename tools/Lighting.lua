@@ -101,7 +101,7 @@ function EnableSurfaceClickSelection(LightType)
 
 	-- Add the new click connection
 	Connections.SurfaceClickSelection = UserInputService.InputEnded:connect(function (Input, GameProcessedEvent)
-		if not GameProcessedEvent and Input.UserInputType == Enum.UserInputType.MouseButton1 and Selection:find(Core.Mouse.Target) then
+		if not GameProcessedEvent and Input.UserInputType == Enum.UserInputType.MouseButton1 and Selection.Find(Core.Mouse.Target) then
 			SetSurface(LightType, Core.Mouse.TargetSurface);
 		end;
 	end);
@@ -511,6 +511,9 @@ function AddLights(LightType)
 		Unapply = function (HistoryRecord)
 			-- Reverts this change
 
+			-- Select changed parts
+			Selection.Replace(Support.GetListMembers(HistoryRecord.Lights, 'Parent'));
+
 			-- Remove the lights
 			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Lights);
 
@@ -521,6 +524,9 @@ function AddLights(LightType)
 
 			-- Restore the lights
 			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Lights);
+
+			-- Select changed parts
+			Selection.Replace(Support.GetListMembers(HistoryRecord.Lights, 'Parent'));
 
 		end;
 
@@ -549,10 +555,16 @@ function RemoveLights(LightType)
 			-- Restore the lights
 			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Lights);
 
+			-- Select changed parts
+			Selection.Replace(Support.GetListMembers(HistoryRecord.Lights, 'Parent'));
+
 		end;
 
 		Apply = function (HistoryRecord)
 			-- Reapplies this change
+
+			-- Select changed parts
+			Selection.Replace(Support.GetListMembers(HistoryRecord.Lights, 'Parent'));
 
 			-- Remove the lights
 			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Lights);
@@ -579,6 +591,9 @@ function TrackChange()
 		Unapply = function (Record)
 			-- Reverts this change
 
+			-- Select the changed parts
+			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
+
 			-- Send the change request
 			Core.ServerAPI:InvokeServer('SyncLighting', Record.Before);
 
@@ -586,6 +601,9 @@ function TrackChange()
 
 		Apply = function (Record)
 			-- Applies this change
+
+			-- Select the changed parts
+			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
 
 			-- Send the change request
 			Core.ServerAPI:InvokeServer('SyncLighting', Record.After);

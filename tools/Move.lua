@@ -231,11 +231,11 @@ function SetAxes(AxisMode)
 
 	-- For local mode, use focused part handles
 	elseif AxisMode == 'Local' then
-		AttachHandles(Selection.Last, true); 
+		AttachHandles(Selection.Focus, true); 
 
 	-- For last mode, use focused part handles
 	elseif AxisMode == 'Last' then
-		AttachHandles(Selection.Last, true);
+		AttachHandles(Selection.Focus, true);
 	end;
 
 end;
@@ -257,8 +257,8 @@ function AttachHandles(Part, Autofocus)
 	
 	-- Enable autofocus if requested and not already on
 	if Autofocus and not Connections.AutofocusHandle then
-		Connections.AutofocusHandle = Selection.Changed:connect(function ()
-			Handles.Adornee = Selection.Last;
+		Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
+			Handles.Adornee = Selection.Focus;
 		end);
 
 	-- Disable autofocus if not requested and on
@@ -347,7 +347,7 @@ function AttachHandles(Part, Autofocus)
 		Distance = GetIncrementMultiple(Distance, MoveTool.Increment);
 
 		-- Move the parts along the selected axes by the calculated distance
-		MovePartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Last, Selection.Items, InitialState);
+		MovePartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Focus, Selection.Items, InitialState);
 
 		-- Update the "distance moved" indicator
 		if MoveTool.UI then
@@ -356,8 +356,8 @@ function AttachHandles(Part, Autofocus)
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
-			Selection.Last.CFrame = InitialState[Selection.Last].CFrame;
-			TranslatePartsRelativeToPart(Selection.Last, InitialState, Selection.Items);
+			Selection.Focus.CFrame = InitialState[Selection.Focus].CFrame;
+			TranslatePartsRelativeToPart(Selection.Focus, InitialState, Selection.Items);
 		end;
 
 	end);
@@ -605,7 +605,7 @@ function NudgeSelectionByFace(Face)
 	local InitialState = PreparePartsForDragging();
 
 	-- Perform the movement
-	MovePartsAlongAxesByFace(Face, MoveTool.Increment, MoveTool.Axes, Selection.Last, Selection.Items, InitialState);
+	MovePartsAlongAxesByFace(Face, MoveTool.Increment, MoveTool.Axes, Selection.Focus, Selection.Items, InitialState);
 
 	-- Cache up permissions for all private areas
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
@@ -640,16 +640,13 @@ function TrackChange()
 		Unapply = function (Record)
 			-- Reverts this change
 
-			-- Clear the selection
-			Selection:clear();
+			-- Select the changed parts
+			Selection.Replace(Record.Parts);
 
 			-- Put together the change request
 			local Changes = {};
 			for _, Part in pairs(Record.Parts) do
 				table.insert(Changes, { Part = Part, CFrame = Record.BeforeCFrame[Part] });
-
-				-- Select the part
-				Selection:add(Part);
 			end;
 
 			-- Send the change request
@@ -660,16 +657,13 @@ function TrackChange()
 		Apply = function (Record)
 			-- Applies this change
 
-			-- Clear the selection
-			Selection:clear();
+			-- Select the changed parts
+			Selection.Replace(Record.Parts);
 
 			-- Put together the change request
 			local Changes = {};
 			for _, Part in pairs(Record.Parts) do
 				table.insert(Changes, { Part = Part, CFrame = Record.AfterCFrame[Part] });
-
-				-- Select the part
-				Selection:add(Part);
 			end;
 
 			-- Send the change request
@@ -727,9 +721,8 @@ function EnableDragging()
 		end;
 
 		-- Select the target if it's not selected
-		if not Selection:find(Core.Mouse.Target) then
-			Selection:clear();
-			Selection:add(Core.Mouse.Target);
+		if not Selection.Find(Core.Mouse.Target) then
+			Selection.Replace({ Core.Mouse.Target });
 		end;
 
 		-- Prepare for dragging

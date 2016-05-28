@@ -168,7 +168,7 @@ function EnableSurfaceClickSelection()
 
 	-- Add the new click connection
 	Connections.SurfaceClickSelection = UserInputService.InputEnded:connect(function (Input, GameProcessedEvent)
-		if not GameProcessedEvent and Input.UserInputType == Enum.UserInputType.MouseButton1 and Selection:find(Core.Mouse.Target) then
+		if not GameProcessedEvent and Input.UserInputType == Enum.UserInputType.MouseButton1 and Selection.Find(Core.Mouse.Target) then
 			SetFace(Core.Mouse.TargetSurface);
 		end;
 	end);
@@ -518,6 +518,9 @@ function AddTextures(TextureType, Face)
 		Unapply = function (HistoryRecord)
 			-- Reverts this change
 
+			-- Select changed parts
+			Selection.Replace(Support.GetListMembers(HistoryRecord.Textures, 'Parent'));
+
 			-- Remove the textures
 			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Textures);
 
@@ -528,6 +531,9 @@ function AddTextures(TextureType, Face)
 
 			-- Restore the textures
 			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Textures);
+
+			-- Select changed parts
+			Selection.Replace(Support.GetListMembers(HistoryRecord.Textures, 'Parent'));
 
 		end;
 
@@ -553,10 +559,16 @@ function RemoveTextures(TextureType, Face)
 			-- Restore the textures
 			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Textures);
 
+			-- Select changed parts
+			Selection.Replace(Support.GetListMembers(HistoryRecord.Textures, 'Parent'));
+
 		end;
 
 		Apply = function (HistoryRecord)
 			-- Reapplies this change
+
+			-- Select changed parts
+			Selection.Replace(Support.GetListMembers(HistoryRecord.Textures, 'Parent'));
 
 			-- Remove the textures
 			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Textures);
@@ -583,6 +595,9 @@ function TrackChange()
 		Unapply = function (Record)
 			-- Reverts this change
 
+			-- Select the changed parts
+			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
+
 			-- Send the change request
 			Core.ServerAPI:InvokeServer('SyncTexture', Record.Before);
 
@@ -590,6 +605,9 @@ function TrackChange()
 
 		Apply = function (Record)
 			-- Applies this change
+
+			-- Select the changed parts
+			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
 
 			-- Send the change request
 			Core.ServerAPI:InvokeServer('SyncTexture', Record.After);

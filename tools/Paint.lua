@@ -265,7 +265,7 @@ function EnableClickPainting()
 
 	-- Watch out for clicks on selected parts (use selection system-linked core event)
 	PaintTool.Listeners.Button1Up = function ()
-		if Selection:find(Core.Mouse.Target) and not Core.selecting then
+		if Selection.Find(Core.Mouse.Target) and not Core.selecting then
 
 			-- Paint the selected parts
 			PaintParts();
@@ -287,16 +287,13 @@ function TrackChange()
 		Unapply = function (Record)
 			-- Reverts this change
 
-			-- Clear the selection
-			Selection:clear();
+			-- Select the changed parts
+			Selection.Replace(Record.Parts);
 
 			-- Put together the change request
 			local Changes = {};
 			for _, Part in pairs(Record.Parts) do
 				table.insert(Changes, { Part = Part, Color = Record.BeforeColor[Part], UnionColoring = Record.BeforeUnionColoring[Part] });
-
-				-- Select the part
-				Selection:add(Part);
 			end;
 
 			-- Send the change request
@@ -307,16 +304,13 @@ function TrackChange()
 		Apply = function (Record)
 			-- Applies this change
 
-			-- Clear the selection
-			Selection:clear();
+			-- Select the changed parts
+			Selection.Replace(Record.Parts);
 
 			-- Put together the change request
 			local Changes = {};
 			for _, Part in pairs(Record.Parts) do
 				table.insert(Changes, { Part = Part, Color = Record.AfterColor[Part], UnionColoring = true });
-
-				-- Select the part
-				Selection:add(Part);
 			end;
 
 			-- Send the change request

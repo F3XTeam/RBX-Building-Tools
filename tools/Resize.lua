@@ -238,13 +238,13 @@ function ShowHandles()
 	-- Creates and automatically attaches handles to the currently focused part
 
 	-- Autofocus handles on latest focused part
-	Connections.AutofocusHandle = Selection.Changed:connect(function ()
-		Handles.Adornee = Selection.Last;
+	Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
+		Handles.Adornee = Selection.Focus;
 	end);
 
 	-- If handles already exist, only show them
 	if Handles then
-		Handles.Adornee = Selection.Last;
+		Handles.Adornee = Selection.Focus;
 		Handles.Visible = true;
 		return;
 	end;
@@ -254,7 +254,7 @@ function ShowHandles()
 		Name = 'BTResizingHandles';
 		Color = ResizeTool.Color;
 		Parent = Core.GUIContainer;
-		Adornee = Selection.Last;
+		Adornee = Selection.Focus;
 	};
 
 	--------------------------------------------------------
@@ -601,16 +601,13 @@ function TrackChange()
 		Unapply = function (Record)
 			-- Reverts this change
 
-			-- Clear the selection
-			Selection:clear();
+			-- Select the changed parts
+			Selection.Replace(Record.Parts);
 
 			-- Put together the change request
 			local Changes = {};
 			for _, Part in pairs(Record.Parts) do
 				table.insert(Changes, { Part = Part, Size = Record.BeforeSize[Part], CFrame = Record.BeforeCFrame[Part] });
-
-				-- Select the part
-				Selection:add(Part);
 			end;
 
 			-- Send the change request
@@ -621,16 +618,13 @@ function TrackChange()
 		Apply = function (Record)
 			-- Applies this change
 
-			-- Clear the selection
-			Selection:clear();
+			-- Select the changed parts
+			Selection.Replace(Record.Parts);
 
 			-- Put together the change request
 			local Changes = {};
 			for _, Part in pairs(Record.Parts) do
 				table.insert(Changes, { Part = Part, Size = Record.AfterSize[Part], CFrame = Record.AfterCFrame[Part] });
-
-				-- Select the part
-				Selection:add(Part);
 			end;
 
 			-- Send the change request

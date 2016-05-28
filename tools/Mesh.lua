@@ -448,6 +448,9 @@ function AddMeshes()
 		Unapply = function (HistoryRecord)
 			-- Reverts this change
 
+			-- Select changed parts
+			Selection.Replace(Support.GetListMembers(HistoryRecord.Meshes, 'Parent'));
+
 			-- Remove the meshes
 			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Meshes);
 
@@ -458,6 +461,9 @@ function AddMeshes()
 
 			-- Restore the meshes
 			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Meshes);
+
+			-- Select changed parts
+			Selection.Replace(Support.GetListMembers(HistoryRecord.Meshes, 'Parent'));
 
 		end;
 
@@ -483,12 +489,18 @@ function RemoveMeshes()
 			-- Restore the meshes
 			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Meshes);
 
+			-- Select changed parts
+			Selection.Replace(Support.GetListMembers(HistoryRecord.Meshes, 'Parent'));
+
 		end;
 
 		Apply = function (HistoryRecord)
 			-- Reapplies this change
 
-			-- Remove the meses
+			-- Select changed parts
+			Selection.Replace(Support.GetListMembers(HistoryRecord.Meshes, 'Parent'));
+
+			-- Remove the meshes
 			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Meshes);
 
 		end;
@@ -737,6 +749,9 @@ function TrackChange()
 		Unapply = function (Record)
 			-- Reverts this change
 
+			-- Select the changed parts
+			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
+
 			-- Send the change request
 			Core.ServerAPI:InvokeServer('SyncMesh', Record.Before);
 
@@ -744,6 +759,9 @@ function TrackChange()
 
 		Apply = function (Record)
 			-- Applies this change
+
+			-- Select the changed parts
+			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
 
 			-- Send the change request
 			Core.ServerAPI:InvokeServer('SyncMesh', Record.After);

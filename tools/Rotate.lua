@@ -225,11 +225,11 @@ function SetPivot(PivotMode)
 
 	-- For local mode, use focused part handles
 	elseif PivotMode == 'Local' then
-		AttachHandles(Selection.Last, true); 
+		AttachHandles(Selection.Focus, true); 
 
 	-- For last mode, use focused part handles
 	elseif PivotMode == 'Last' then
-		AttachHandles(Selection.Last, true);
+		AttachHandles(Selection.Focus, true);
 	end;
 
 end;
@@ -241,8 +241,8 @@ function AttachHandles(Part, Autofocus)
 	
 	-- Enable autofocus if requested and not already on
 	if Autofocus and not Connections.AutofocusHandle then
-		Connections.AutofocusHandle = Selection.Changed:connect(function ()
-			Handles.Adornee = Selection.Last;
+		Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
+			Handles.Adornee = Selection.Focus;
 		end);
 
 	-- Disable autofocus if not requested and on
@@ -297,7 +297,7 @@ function AttachHandles(Part, Autofocus)
 
 		-- Set the pivot point to the center of the focused part if in Last mode
 		elseif RotateTool.Pivot == 'Last' then
-			PivotPoint = InitialState[Selection.Last].CFrame;
+			PivotPoint = InitialState[Selection.Focus].CFrame;
 		end;
 
 		------------------------------------------------------
@@ -520,16 +520,13 @@ function TrackChange()
 		Unapply = function (Record)
 			-- Reverts this change
 
-			-- Clear the selection
-			Selection:clear();
+			-- Select the changed parts
+			Selection.Replace(Record.Parts);
 
 			-- Put together the change request
 			local Changes = {};
 			for _, Part in pairs(Record.Parts) do
 				table.insert(Changes, { Part = Part, CFrame = Record.BeforeCFrame[Part] });
-
-				-- Select the part
-				Selection:add(Part);
 			end;
 
 			-- Send the change request
@@ -540,16 +537,13 @@ function TrackChange()
 		Apply = function (Record)
 			-- Applies this change
 
-			-- Clear the selection
-			Selection:clear();
+			-- Select the changed parts
+			Selection.Replace(Record.Parts);
 
 			-- Put together the change request
 			local Changes = {};
 			for _, Part in pairs(Record.Parts) do
 				table.insert(Changes, { Part = Part, CFrame = Record.AfterCFrame[Part] });
-
-				-- Select the part
-				Selection:add(Part);
 			end;
 
 			-- Send the change request

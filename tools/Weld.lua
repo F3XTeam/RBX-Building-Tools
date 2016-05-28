@@ -99,7 +99,7 @@ function CreateWelds()
 	-- Creates welds for every selected part to the focused part
 
 	-- Send the change request to the server API
-	local Welds = Core.ServerAPI:InvokeServer('CreateWelds', Selection.Items, Selection.Last);
+	local Welds = Core.ServerAPI:InvokeServer('CreateWelds', Selection.Items, Selection.Focus);
 
 	-- Update the UI with the number of welds created
 	UI.Changes.Text.Text = ('created %s weld%s'):format(#Welds, #Welds == 1 and '' or 's');

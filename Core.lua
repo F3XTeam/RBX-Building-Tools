@@ -184,10 +184,7 @@ function CloneSelection()
 	History:Add(HistoryRecord);
 
 	-- Select the clones
-	Selection:clear();
-	for _, Clone in pairs(Clones) do
-		Selection:add(Clone);
-	end;
+	Selection.Replace(Clones);
 
 	-- Play a confirmation sound
 	local Sound = Create 'Sound' {
@@ -237,10 +234,7 @@ function DeleteSelection()
 			ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Parts);
 
 			-- Select the restored parts
-			Selection:clear();
-			for _, Part in pairs(HistoryRecord.Parts) do
-				Selection:add(Part);
-			end;
+			Selection.Replace(HistoryRecord.Parts);
 
 		end;
 
@@ -276,7 +270,7 @@ function prismSelect()
 	local workspace_parts = {};
 	local workspace_children = Support.GetAllDescendants(Workspace);
 	for _, Child in pairs( workspace_children ) do
-		if Child:IsA( 'BasePart' ) and not Selection:find( Child ) then
+		if Child:IsA( 'BasePart' ) and not Selection.Find( Child ) then
 			table.insert( workspace_parts, Child );
 		end;
 	end;
@@ -310,7 +304,7 @@ function prismSelect()
 	-- Select the parts that passed any area checks
 	for _, Item in pairs( workspace_parts ) do
 		if checks[Item] > 0 then
-			Selection:add( Item );
+			Selection.Add({ Item });
 		end;
 	end;
 
@@ -320,19 +314,19 @@ function prismSelect()
 		selection_part_parents = selection_item_parents;
 		new_selection = Support.CloneTable(Selection.Items);
 		Apply = function ( self )
-			Selection:clear();
+			Selection.Clear();
 			for _, Item in pairs( self.selection_parts ) do
 				Item.Parent = nil;
 			end;
 			for _, Item in pairs( self.new_selection ) do
-				Selection:add( Item );
+				Selection.Add({ Item });
 			end;
 		end;
 		Unapply = function ( self )
-			Selection:clear();
+			Selection.Clear();
 			for _, Item in pairs( self.selection_parts ) do
 				Item.Parent = self.selection_part_parents[Item];
-				Selection:add( Item );
+				Selection.Add({ Item });
 			end;
 		end;
 	} );
@@ -573,135 +567,216 @@ function updateSelectionBoxColor()
 	end;
 end;
 
-Selection = {
+-- Selection system
+Selection = {};
+Selection.Items = {};
 
-	["Items"] = {};
+-- Events to listen to selection changes
+Selection.ItemsAdded = RbxUtility.CreateSignal();
+Selection.ItemsRemoved = RbxUtility.CreateSignal();
+Selection.FocusChanged = RbxUtility.CreateSignal();
+Selection.Cleared = RbxUtility.CreateSignal();
+Selection.Changed = RbxUtility.CreateSignal();
 
-	-- Provide events to listen to changes in the selection
-	["Changed"] = RbxUtility.CreateSignal();
-	["ItemAdded"] = RbxUtility.CreateSignal();
-	["ItemRemoved"] = RbxUtility.CreateSignal();
-	["Cleared"] = RbxUtility.CreateSignal();
+function Selection.Find(Needle)
+	-- Return `Needle`'s index in the selection, or `nil` if not found
 
-	-- Provide a method to get an item's index in the selection
-	["find"] = function ( self, Needle )
+	-- Go through each selected item
+	for Index, Item in pairs(Selection.Items) do
 
-		-- Look through all the selected items and return the matching item's index
-		for item_index, Item in pairs( self.Items ) do
-			if Item == Needle then
-				return item_index;
-			end;
+		-- Return the index if a match is found
+		if Item == Needle then
+			return Index;
 		end;
-
-		-- Otherwise, return `nil`
 
 	end;
 
-	-- Provide a method to add items to the selection
-	["add"] = function ( self, NewPart )
+	-- Return `nil` if no match is found
+	return nil;
+end;
 
-		-- Make sure `NewPart` is selectable
-		if not isSelectable( NewPart ) then
-			return false;
+function Selection.Add(Items)
+	-- Adds the given items to the selection
+
+	local SelectableItems = {};
+
+	-- Go through and validate each given item
+	for _, Item in pairs(Items) do
+
+		-- Make sure each item is valid and not already selected
+		if isSelectable(Item) and not Selection.Find(Item) then
+
+			-- Queue each part to be added into the selection
+			table.insert(SelectableItems, Item);
+
 		end;
 
-		-- Make sure `NewPart` isn't already in the selection
-		if #Support.FindTableOccurrences(self.Items, NewPart) > 0 then
-			return false;
-		end;
+	end;
 
-		-- Insert it into the selection
-		table.insert( self.Items, NewPart );
+	-- Go through the valid new selection items
+	for _, Item in pairs(SelectableItems) do
 
-		-- Add its SelectionBox if we're in tool mode
-		if ToolType == 'tool' then
-			SelectionBoxes[NewPart] = Instance.new( "SelectionBox", UI );
-			SelectionBoxes[NewPart].Name = "BTSelectionBox";
-			SelectionBoxes[NewPart].Color = SelectionBoxColor;
-			SelectionBoxes[NewPart].Adornee = NewPart;
-			SelectionBoxes[NewPart].LineThickness = 0.025;
-			SelectionBoxes[NewPart].Transparency = 0.5;
-		end;
+		-- Add each valid item to the selection
+		table.insert(Selection.Items, Item);
 
-		-- Remove any target selection box focus
-		if NewPart == TargetBox.Adornee then
+		-- Add a selection box
+		CreateSelectionBox(Item);
+
+		-- Deselect items that are destroyed
+		SelectionExistenceListeners[Item] = Item.AncestryChanged:connect(function (Object, ObjectParent)
+			if ObjectParent == nil then
+				Selection.Remove({ Item });
+			end;
+		end);
+
+		-- Hide any target box since the item is selected
+		if Item == TargetBox.Adornee then
 			TargetBox.Adornee = nil;
 		end;
 
-		-- Make sure to remove the item from the selection when it's deleted
-		SelectionExistenceListeners[NewPart] = NewPart.AncestryChanged:connect( function ( Object, NewParent )
-			if NewParent == nil then
-				Selection:remove( NewPart );
-			end;
-		end );
+	end;
 
-		-- Provide a reference to the last item added to the selection (i.e. NewPart)
-		self:focus( NewPart );
+	-- Fire relevant events
+	Selection.ItemsAdded:fire(SelectableItems);
+	Selection.Changed:fire();
 
-		-- Fire events
-		self.ItemAdded:fire( NewPart );
-		self.Changed:fire();
+end;
+
+function Selection.Remove(Items)
+	-- Removes the given items from the selection
+
+	local DeselectableItems = {};
+
+	-- Go through and validate each given item
+	for _, Item in pairs(Items) do
+
+		-- Make sure each item is actually selected
+		if Selection.Find(Item) then
+			table.insert(DeselectableItems, Item);
+		end;
 
 	end;
 
-	-- Provide a method to remove items from the selection
-	["remove"] = function ( self, Item, Clearing )
+	-- Go through the valid deselectable items
+	for _, Item in pairs(DeselectableItems) do
 
-		-- Make sure selection item `Item` exists
-		if not self:find( Item ) then
-			return false;
-		end;
+		-- Clear item's selection box
+		RemoveSelectionBox(Item);
 
-		-- Remove `Item`'s SelectionBox
-		local SelectionBox = SelectionBoxes[Item];
-		if SelectionBox then
-			SelectionBox:Destroy();
-		end;
-		SelectionBoxes[Item] = nil;
+		-- Remove item from selection
+		table.remove(Selection.Items, Selection.Find(Item));
 
-		-- Delete the item from the selection
-		table.remove( self.Items, self:find( Item ) );
-
-		-- If it was logged as the last item, change it
-		if self.Last == Item then
-			self:focus( ( #self.Items > 0 ) and self.Items[#self.Items] or nil );
-		end;
-
-		-- Delete the existence listeners of the item
+		-- Stop tracking item's parent
 		SelectionExistenceListeners[Item]:disconnect();
 		SelectionExistenceListeners[Item] = nil;
 
-		-- Fire events
-		self.ItemRemoved:fire( Item, Clearing );
-		self.Changed:fire();
-
 	end;
 
-	-- Provide a method to clear the selection
-	["clear"] = function ( self )
+	-- Fire relevant events
+	Selection.ItemsRemoved:fire(DeselectableItems);
+	Selection.Changed:fire();
 
-		-- Go through all the items in the selection and call `self.remove` on them
-		for _, Item in pairs(Support.CloneTable(self.Items)) do
-			self:remove( Item, true );
-		end;
+end;
 
-		-- Fire events
-		self.Cleared:fire();
+function Selection.Clear()
+	-- Clears all items from selection
 
+	-- Remove all selected items
+	Selection.Remove(Selection.Items);
+
+	-- Fire relevant events
+	Selection.Cleared:fire();
+
+end;
+
+function Selection.Replace(Items)
+	-- Replaces the current selection with the given new items
+
+	-- Clear current selection
+	Selection.Clear();
+
+	-- Select new items
+	Selection.Add(Items);
+
+end;
+
+function Selection.SetFocus(Item)
+	-- Selects `Item` as the focused selection item
+
+	-- Make sure the item is selected or is `nil`
+	if not Selection.Find(Item) and Item ~= nil then
+		return;
 	end;
 
-	-- Provide a method to change the focus of the selection
-	["focus"] = function ( self, NewFocus )
+	-- Set the item as the focus
+	Selection.Focus = Item;
 
-		-- Change the focus
-		self.Last = NewFocus;
+	-- Fire relevant events
+	Selection.FocusChanged:fire(Item);
 
-		-- Fire events
-		self.Changed:fire();
+end;
 
-	end;	
+function FocusOnLastSelectedPart()
+	-- Sets the last part of the selection as the focus
 
-};
+	-- If selection is empty, clear the focus
+	if #Selection.Items == 0 then
+		Selection.SetFocus(nil);
+
+	-- Otherwise, focus on the last part in the selection
+	else
+		Selection.SetFocus(Selection.Items[#Selection.Items]);
+	end;
+
+end;
+
+-- Listen for changes to the selection and keep the focus updated
+Selection.Changed:connect(FocusOnLastSelectedPart);
+
+function CreateSelectionBox(Item)
+	-- Creates a SelectionBox for the given item
+
+	-- Only create selection boxes if in tool mode
+	if ToolType ~= 'tool' then
+		return;
+	end;
+
+	-- Avoid duplicate selection boxes
+	if SelectionBoxes[Item] then
+		return;
+	end;
+
+	-- Create the selection box
+	local SelectionBox = Create 'SelectionBox' {
+		Name = 'BTSelectionBox';
+		Parent = UI;
+		Color = SelectionBoxColor;
+		Adornee = Item;
+		LineThickness = 0.025;
+		Transparency = 0.5;
+	};
+
+	-- Register the selection box
+	SelectionBoxes[Item] = SelectionBox;
+
+end;
+
+function RemoveSelectionBox(Item)
+	-- Removes the given item's selection box
+
+	-- Get the item's selection box
+	local SelectionBox = SelectionBoxes[Item];
+
+	-- Remove the selection box if found
+	if SelectionBox then
+		SelectionBox:Destroy();
+	end;
+
+	-- Deregister the selection box
+	SelectionBoxes[Item] = nil;
+
+end;
+
 
 ------------------------------------------
 -- WARNING: MICROOPTIMIZED CODE
@@ -1168,9 +1243,6 @@ function RemoveStaticPart(Part)
 		StaticPartMonitors[Part] = nil;
 	end;
 
-	-- Recalculate static extents without this removed part
-	RecalculateStaticExtents = true;
-
 end;
 
 function StartAggregatingStaticParts()
@@ -1184,37 +1256,30 @@ function StartAggregatingStaticParts()
 	end;
 
 	-- Add newly selected anchored parts
-	table.insert(StaticPartAggregators, Selection.ItemAdded:connect(function (Part)
-		if Part.Anchored then
-			AddStaticPart(Part);
+	table.insert(StaticPartAggregators, Selection.ItemsAdded:connect(function (Parts)
+
+		-- Go through each selected part
+		for _, Part in pairs(Parts) do
+
+			-- Only add anchored, static parts
+			if Part.Anchored then
+				AddStaticPart(Part);
+			end;
+
 		end;
+
 	end));
 
 	-- Remove deselected parts
-	table.insert(StaticPartAggregators, Selection.ItemRemoved:connect(function (Part, Clearing)
+	table.insert(StaticPartAggregators, Selection.ItemsRemoved:connect(function (Parts)
 
-		-- Make sure it isn't being removed in a full clearance
-		if Clearing then
-			return;
+		-- Remove the items
+		for _, Part in pairs(Parts) do
+			RemoveStaticPart(Part);
 		end;
 
-		-- Remove the item
-		RemoveStaticPart(Part);
-
-	end));
-
-	-- Manually clear the static part and monitor list when a clearance occurs to prevent recalculation
-	table.insert(StaticPartAggregators, Selection.Cleared:connect(function ()
-
-		-- Remove all monitors
-		for MonitorKey, Monitor in pairs(StaticPartMonitors) do
-			Monitor:disconnect();
-			StaticPartMonitors[MonitorKey] = nil;
-		end;
-
-		-- Clear all static part information
-		StaticParts = {};
-		StaticExtents = nil;
+		-- Recalculate static extents without the removed parts
+		RecalculateStaticExtents = true;
 
 	end));
 
@@ -1363,7 +1428,7 @@ Select2D = {
 
 					-- If the part is within the selection area, select it
 					if left_check and right_check and top_check and bottom_check then
-						Selection:add( Object );
+						Selection.Add({ Object });
 					end;
 				end;
 
@@ -1448,7 +1513,7 @@ SelectEdge = {
 		self.Connections.MoveListener = Mouse.Move:connect( function ()
 
 			-- Make sure the target can be selected
-			if not Selection:find( Mouse.Target ) then
+			if not Selection.Find( Mouse.Target ) then
 				return;
 			end;
 
@@ -2291,11 +2356,9 @@ Groups = {
 
 			Select = function ( Group, Multiselecting )
 				if not Multiselecting then
-					Selection:clear();
+					Selection.Clear();
 				end;
-				for _, Item in pairs( Group.Items ) do
-					Selection:add( Item );
-				end;
+				Selection.Add(Group.Items);
 			end;
 		};
 		table.insert( Groups.Data, Group );
@@ -2634,9 +2697,8 @@ function equipBT( CurrentMouse )
 
 	-- Update the internal selection if this is a plugin
 	if ToolType == 'plugin' then
-		for _, Item in pairs( SelectionService:Get() ) do
-			Selection:add( Item );
-		end;
+		local StudioSelection = SelectionService:Get();
+		Selection.Replace(StudioSelection);
 	end;
 
 	-- Show the dock
@@ -2699,7 +2761,7 @@ function equipBT( CurrentMouse )
 
 		-- Clear the selection if shift + r is pressed
 		if InputInfo.KeyCode == Enum.KeyCode.R and (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
-			Selection:clear();
+			Selection.Clear();
 			return;
 		end;
 
@@ -2713,7 +2775,7 @@ function equipBT( CurrentMouse )
 		if InputInfo.KeyCode == Enum.KeyCode.LeftBracket then
 
 			-- Make sure we have a part that's focused
-			local FocusedPart = Selection.Last;
+			local FocusedPart = Selection.Focus;
 			if not FocusedPart then
 				return;
 			end;
@@ -2727,17 +2789,15 @@ function equipBT( CurrentMouse )
 			-- Clear the selection (or not), depending on whether
 			-- it's part of a multiselection
 			if not (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
-				Selection:clear();
+				Selection.Clear();
 			end;
 
 			-- Select all the parts within the parent of the focused part
 			local SearchField = Support.GetAllDescendants(FocusedPart.Parent);
-			for _, Item in pairs(SearchField) do
-				Selection:add(Item);
-			end;
+			Selection.Add(SearchField);
 
 			-- Select the part itself
-			Selection:add(FocusedPart);
+			Selection.Add({ FocusedPart });
 
 			return;
 		end;
@@ -2881,7 +2941,7 @@ function equipBT( CurrentMouse )
 				if isSelectable(Mouse.Target) then
 
 					-- Show that the target is selectable if it is
-					if not Selection:find(Mouse.Target) then
+					if not Selection.Find(Mouse.Target) then
 						TargetBox.Transparency = 0.5;
 
 					-- If already selected, only fire the SelectedTargetChanged event
@@ -2924,35 +2984,32 @@ function equipBT( CurrentMouse )
 
 		-- If the target when clicking was invalid then clear the selection (unless we're multi-selecting)
 		if not override_selection and not selecting and not isSelectable(Mouse.Target) then
-			Selection:clear();
+			Selection.Clear();
 		end;
 
 		-- If multi-selecting, add to/remove from the selection
 		if not override_selection and selecting then
 
 			-- If the item isn't already selected, add it to the selection
-			if not Selection:find( Mouse.Target ) then
-				if isSelectable( Mouse.Target ) then
-					Selection:add( Mouse.Target );
-				end;
+			if not Selection.Find( Mouse.Target ) then
+				Selection.Add({ Mouse.Target });
 
 			-- If the item _is_ already selected, remove it from the selection
 			else
-				if ( Mouse.X == click_x and Mouse.Y == click_y ) and Selection:find( Mouse.Target ) then
-					Selection:remove( Mouse.Target );
+				if ( Mouse.X == click_x and Mouse.Y == click_y ) then
+					Selection.Remove({ Mouse.Target });
 				end;
 			end;
 
 		-- If not multi-selecting, and clicking on an unselected selectable part, replace the selection
-		elseif not Selection:find(Mouse.Target) then
+		elseif not Selection.Find(Mouse.Target) then
 			if not override_selection and isSelectable( Mouse.Target ) then
-				Selection:clear();
-				Selection:add( Mouse.Target );
+				Selection.Replace({ Mouse.Target });
 			end;
 
 		-- If clicking on a selected part, set it as the focused part
 		else
-			Selection:focus(Mouse.Target);
+			Selection.SetFocus(Mouse.Target);
 		end;
 
 		-- Fire tool listeners
@@ -3092,13 +3149,8 @@ end;
 -- make the tool select the parts in a given model
 (Tool:WaitForChild 'SelectModel').OnClientInvoke = function (Model)
 
-	-- Clear the existing selection
-	Selection:clear();
-
-	-- Select all the parts within `Model` (filtered by Selection:add)
+	-- Select all the parts within `Model` (filtered by Selection.Add)
 	local Descendants = Support.GetAllDescendants(Model);
-	for _, Descendant in pairs(Descendants) do
-		Selection:add(Descendant);
-	end;
+	Selection.Replace(Descendants);
 
 end;

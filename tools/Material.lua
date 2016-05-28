@@ -316,6 +316,9 @@ function TrackChange()
 		Unapply = function (Record)
 			-- Reverts this change
 
+			-- Select the changed parts
+			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
+
 			-- Send the change request
 			Core.ServerAPI:InvokeServer('SyncMaterial', Record.Before);
 
@@ -323,6 +326,9 @@ function TrackChange()
 
 		Apply = function (Record)
 			-- Applies this change
+
+			-- Select the changed parts
+			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
 
 			-- Send the change request
 			Core.ServerAPI:InvokeServer('SyncMaterial', Record.After);
