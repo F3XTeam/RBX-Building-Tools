@@ -585,7 +585,7 @@ function Selection.Find(Needle)
 	return nil;
 end;
 
-function Selection.Add(Items)
+function Selection.Add(Items, RegisterHistory)
 	-- Adds the given items to the selection
 
 	local SelectableItems = {};
@@ -602,6 +602,8 @@ function Selection.Add(Items)
 		end;
 
 	end;
+
+	local OldSelection = Support.CloneTable(Selection.Items);
 
 	-- Go through the valid new selection items
 	for _, Item in pairs(SelectableItems) do
@@ -626,13 +628,18 @@ function Selection.Add(Items)
 
 	end;
 
+	-- Create a history record for this selection change, if requested
+	if RegisterHistory and #SelectableItems > 0 then
+		TrackSelectionChange(OldSelection);
+	end;
+
 	-- Fire relevant events
 	Selection.ItemsAdded:fire(SelectableItems);
 	Selection.Changed:fire();
 
 end;
 
-function Selection.Remove(Items)
+function Selection.Remove(Items, RegisterHistory)
 	-- Removes the given items from the selection
 
 	local DeselectableItems = {};
@@ -646,6 +653,8 @@ function Selection.Remove(Items)
 		end;
 
 	end;
+
+	local OldSelection = Support.CloneTable(Selection.Items);
 
 	-- Go through the valid deselectable items
 	for _, Item in pairs(DeselectableItems) do
@@ -662,31 +671,36 @@ function Selection.Remove(Items)
 
 	end;
 
+	-- Create a history record for this selection change, if requested
+	if RegisterHistory and #DeselectableItems > 0 then
+		TrackSelectionChange(OldSelection);
+	end;
+
 	-- Fire relevant events
 	Selection.ItemsRemoved:fire(DeselectableItems);
 	Selection.Changed:fire();
 
 end;
 
-function Selection.Clear()
+function Selection.Clear(RegisterHistory)
 	-- Clears all items from selection
 
 	-- Remove all selected items
-	Selection.Remove(Selection.Items);
+	Selection.Remove(Selection.Items, RegisterHistory);
 
 	-- Fire relevant events
 	Selection.Cleared:fire();
 
 end;
 
-function Selection.Replace(Items)
+function Selection.Replace(Items, RegisterHistory)
 	-- Replaces the current selection with the given new items
 
 	-- Clear current selection
-	Selection.Clear();
+	Selection.Clear(RegisterHistory);
 
 	-- Select new items
-	Selection.Add(Items);
+	Selection.Add(Items, RegisterHistory);
 
 end;
 
@@ -767,6 +781,33 @@ function RemoveSelectionBox(Item)
 
 end;
 
+function TrackSelectionChange(OldSelection)
+	-- Registers a history record for a change in the selection
+
+	-- Add the history record
+	History:Add({
+
+		Before = OldSelection;
+		After = Support.CloneTable(Selection.Items);
+
+		Unapply = function (HistoryRecord)
+			-- Reverts this change
+
+			-- Restore the old selection
+			Selection.Replace(HistoryRecord.Before);
+
+		end;
+
+		Apply = function (HistoryRecord)
+			-- Reapplies this change
+
+			-- Restore the new selection
+			Selection.Replace(HistoryRecord.After);
+
+		end;
+	});
+
+end;
 
 ------------------------------------------
 -- WARNING: MICROOPTIMIZED CODE
@@ -1403,6 +1444,8 @@ Select2D = {
 			return;
 		end;
 
+		local SelectableParts = {};
+
 		for _, Object in pairs(Support.GetAllDescendants(Workspace)) do
 
 			-- Make sure we can select this part
@@ -1418,13 +1461,16 @@ Select2D = {
 
 					-- If the part is within the selection area, select it
 					if left_check and right_check and top_check and bottom_check then
-						Selection.Add({ Object });
+						table.insert(SelectableParts, Object);
 					end;
 				end;
 
 			end;
 
 		end;
+
+		-- Select all parts within the rectangle
+		Selection.Add(SelectableParts, true);
 
 	end;
 
@@ -2751,7 +2797,7 @@ function equipBT( CurrentMouse )
 
 		-- Clear the selection if shift + r is pressed
 		if InputInfo.KeyCode == Enum.KeyCode.R and (ActiveKeys[Enum.KeyCode.LeftShift] or ActiveKeys[Enum.KeyCode.RightShift]) then
-			Selection.Clear();
+			Selection.Clear(true);
 			return;
 		end;
 
@@ -2974,7 +3020,7 @@ function equipBT( CurrentMouse )
 
 		-- If the target when clicking was invalid then clear the selection (unless we're multi-selecting)
 		if not override_selection and not selecting and not isSelectable(Mouse.Target) then
-			Selection.Clear();
+			Selection.Clear(true);
 		end;
 
 		-- If multi-selecting, add to/remove from the selection
@@ -2982,19 +3028,19 @@ function equipBT( CurrentMouse )
 
 			-- If the item isn't already selected, add it to the selection
 			if not Selection.Find( Mouse.Target ) then
-				Selection.Add({ Mouse.Target });
+				Selection.Add({ Mouse.Target }, true);
 
 			-- If the item _is_ already selected, remove it from the selection
 			else
 				if ( Mouse.X == click_x and Mouse.Y == click_y ) then
-					Selection.Remove({ Mouse.Target });
+					Selection.Remove({ Mouse.Target }, true);
 				end;
 			end;
 
 		-- If not multi-selecting, and clicking on an unselected selectable part, replace the selection
 		elseif not Selection.Find(Mouse.Target) then
 			if not override_selection and isSelectable( Mouse.Target ) then
-				Selection.Replace({ Mouse.Target });
+				Selection.Replace({ Mouse.Target }, true);
 			end;
 
 		-- If clicking on a selected part, set it as the focused part
@@ -3141,6 +3187,6 @@ end;
 
 	-- Select all the parts within `Model` (filtered by Selection.Add)
 	local Descendants = Support.GetAllDescendants(Model);
-	Selection.Replace(Descendants);
+	Selection.Replace(Descendants, true);
 
 end;

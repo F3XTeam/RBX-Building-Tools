@@ -722,7 +722,7 @@ function EnableDragging()
 
 		-- Select the target if it's not selected
 		if not Selection.Find(Core.Mouse.Target) then
-			Selection.Replace({ Core.Mouse.Target });
+			Selection.Replace({ Core.Mouse.Target }, true);
 		end;
 
 		-- Prepare for dragging
