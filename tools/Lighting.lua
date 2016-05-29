@@ -502,7 +502,7 @@ function AddLights(LightType)
 	end;
 
 	-- Send the change request to the server
-	local Lights = Core.ServerAPI:InvokeServer('CreateLights', Changes);
+	local Lights = Core.SyncAPI:Invoke('CreateLights', Changes);
 
 	-- Put together the history record
 	local HistoryRecord = {
@@ -515,7 +515,7 @@ function AddLights(LightType)
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Lights, 'Parent'));
 
 			-- Remove the lights
-			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Lights);
+			Core.SyncAPI:Invoke('Remove', HistoryRecord.Lights);
 
 		end;
 
@@ -523,7 +523,7 @@ function AddLights(LightType)
 			-- Reapplies this change
 
 			-- Restore the lights
-			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Lights);
+			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Lights);
 
 			-- Select changed parts
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Lights, 'Parent'));
@@ -553,7 +553,7 @@ function RemoveLights(LightType)
 			-- Reverts this change
 
 			-- Restore the lights
-			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Lights);
+			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Lights);
 
 			-- Select changed parts
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Lights, 'Parent'));
@@ -567,14 +567,14 @@ function RemoveLights(LightType)
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Lights, 'Parent'));
 
 			-- Remove the lights
-			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Lights);
+			Core.SyncAPI:Invoke('Remove', HistoryRecord.Lights);
 
 		end;
 
 	};
 
 	-- Send the removal request
-	Core.ServerAPI:InvokeServer('Remove', Lights);
+	Core.SyncAPI:Invoke('Remove', Lights);
 
 	-- Register the history record
 	Core.History:Add(HistoryRecord);
@@ -595,7 +595,7 @@ function TrackChange()
 			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncLighting', Record.Before);
+			Core.SyncAPI:Invoke('SyncLighting', Record.Before);
 
 		end;
 
@@ -606,7 +606,7 @@ function TrackChange()
 			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncLighting', Record.After);
+			Core.SyncAPI:Invoke('SyncLighting', Record.After);
 
 		end;
 
@@ -623,7 +623,7 @@ function RegisterChange()
 	end;
 
 	-- Send the change to the server
-	Core.ServerAPI:InvokeServer('SyncLighting', HistoryRecord.After);
+	Core.SyncAPI:Invoke('SyncLighting', HistoryRecord.After);
 
 	-- Register the record and clear the staging
 	Core.History:Add(HistoryRecord);

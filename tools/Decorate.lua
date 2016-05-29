@@ -281,7 +281,7 @@ function TrackChange()
 			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncDecorate', Record.Before);
+			Core.SyncAPI:Invoke('SyncDecorate', Record.Before);
 
 		end;
 
@@ -292,7 +292,7 @@ function TrackChange()
 			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncDecorate', Record.After);
+			Core.SyncAPI:Invoke('SyncDecorate', Record.After);
 
 		end;
 
@@ -309,7 +309,7 @@ function RegisterChange()
 	end;
 
 	-- Send the change to the server
-	Core.ServerAPI:InvokeServer('SyncDecorate', HistoryRecord.After);
+	Core.SyncAPI:Invoke('SyncDecorate', HistoryRecord.After);
 
 	-- Register the record and clear the staging
 	Core.History:Add(HistoryRecord);
@@ -554,7 +554,7 @@ function AddDecorations(DecorationType)
 	end;
 
 	-- Send the change request to the server
-	local Decorations = Core.ServerAPI:InvokeServer('CreateDecorations', Changes);
+	local Decorations = Core.SyncAPI:Invoke('CreateDecorations', Changes);
 
 	-- Put together the history record
 	local HistoryRecord = {
@@ -567,7 +567,7 @@ function AddDecorations(DecorationType)
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Decorations, 'Parent'));
 
 			-- Remove the decorations
-			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Decorations);
+			Core.SyncAPI:Invoke('Remove', HistoryRecord.Decorations);
 
 		end;
 
@@ -575,7 +575,7 @@ function AddDecorations(DecorationType)
 			-- Reapplies this change
 
 			-- Restore the decorations
-			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Decorations);
+			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Decorations);
 
 			-- Select changed parts
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Decorations, 'Parent'));
@@ -605,7 +605,7 @@ function RemoveDecorations(DecorationType)
 			-- Reverts this change
 
 			-- Restore the decorations
-			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Decorations);
+			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Decorations);
 
 			-- Select changed parts
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Decorations, 'Parent'));
@@ -619,14 +619,14 @@ function RemoveDecorations(DecorationType)
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Decorations, 'Parent'));
 
 			-- Remove the decorations
-			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Decorations);
+			Core.SyncAPI:Invoke('Remove', HistoryRecord.Decorations);
 
 		end;
 
 	};
 
 	-- Send the removal request
-	Core.ServerAPI:InvokeServer('Remove', Decorations);
+	Core.SyncAPI:Invoke('Remove', Decorations);
 
 	-- Register the history record
 	Core.History:Add(HistoryRecord);

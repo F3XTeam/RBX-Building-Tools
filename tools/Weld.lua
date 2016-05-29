@@ -99,7 +99,7 @@ function CreateWelds()
 	-- Creates welds for every selected part to the focused part
 
 	-- Send the change request to the server API
-	local Welds = Core.ServerAPI:InvokeServer('CreateWelds', Selection.Items, Selection.Focus);
+	local Welds = Core.SyncAPI:Invoke('CreateWelds', Selection.Items, Selection.Focus);
 
 	-- Update the UI with the number of welds created
 	UI.Changes.Text.Text = ('created %s weld%s'):format(#Welds, #Welds == 1 and '' or 's');
@@ -123,7 +123,7 @@ function CreateWelds()
 			-- Reverts this change
 
 			-- Remove the welds
-			Core.ServerAPI:InvokeServer('RemoveWelds', HistoryRecord.Welds);
+			Core.SyncAPI:Invoke('RemoveWelds', HistoryRecord.Welds);
 
 		end;
 
@@ -131,7 +131,7 @@ function CreateWelds()
 			-- Reapplies this change
 
 			-- Restore the welds
-			Core.ServerAPI:InvokeServer('UndoRemovedWelds', HistoryRecord.Welds);
+			Core.SyncAPI:Invoke('UndoRemovedWelds', HistoryRecord.Welds);
 
 		end;
 
@@ -163,7 +163,7 @@ function BreakWelds()
 	end;
 
 	-- Send the change request to the server API
-	local WeldsRemoved = Core.ServerAPI:InvokeServer('RemoveWelds', Welds);
+	local WeldsRemoved = Core.SyncAPI:Invoke('RemoveWelds', Welds);
 
 	-- Update the UI with the number of welds removed
 	UI.Changes.Text.Text = ('removed %s weld%s'):format(WeldsRemoved, WeldsRemoved == 1 and '' or 's');
@@ -176,7 +176,7 @@ function BreakWelds()
 			-- Reverts this change
 
 			-- Restore the welds
-			Core.ServerAPI:InvokeServer('UndoRemovedWelds', HistoryRecord.Welds);
+			Core.SyncAPI:Invoke('UndoRemovedWelds', HistoryRecord.Welds);
 
 		end;
 
@@ -184,7 +184,7 @@ function BreakWelds()
 			-- Reapplies this change
 
 			-- Remove the welds
-			Core.ServerAPI:InvokeServer('RemoveWelds', HistoryRecord.Welds);
+			Core.SyncAPI:Invoke('RemoveWelds', HistoryRecord.Welds);
 
 		end;
 

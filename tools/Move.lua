@@ -650,7 +650,7 @@ function TrackChange()
 			end;
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncMove', Changes);
+			Core.SyncAPI:Invoke('SyncMove', Changes);
 
 		end;
 
@@ -667,7 +667,7 @@ function TrackChange()
 			end;
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncMove', Changes);
+			Core.SyncAPI:Invoke('SyncMove', Changes);
 
 		end;
 
@@ -696,7 +696,7 @@ function RegisterChange()
 	end;
 
 	-- Send the change to the server
-	Core.ServerAPI:InvokeServer('SyncMove', Changes);
+	Core.SyncAPI:Invoke('SyncMove', Changes);
 
 	-- Register the record and clear the staging
 	Core.History:Add(HistoryRecord);

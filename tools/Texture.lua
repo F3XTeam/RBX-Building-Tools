@@ -509,7 +509,7 @@ function AddTextures(TextureType, Face)
 	end;
 
 	-- Send the change request to the server
-	local Textures = Core.ServerAPI:InvokeServer('CreateTextures', Changes);
+	local Textures = Core.SyncAPI:Invoke('CreateTextures', Changes);
 
 	-- Put together the history record
 	local HistoryRecord = {
@@ -522,7 +522,7 @@ function AddTextures(TextureType, Face)
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Textures, 'Parent'));
 
 			-- Remove the textures
-			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Textures);
+			Core.SyncAPI:Invoke('Remove', HistoryRecord.Textures);
 
 		end;
 
@@ -530,7 +530,7 @@ function AddTextures(TextureType, Face)
 			-- Reapplies this change
 
 			-- Restore the textures
-			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Textures);
+			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Textures);
 
 			-- Select changed parts
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Textures, 'Parent'));
@@ -557,7 +557,7 @@ function RemoveTextures(TextureType, Face)
 			-- Reverts this change
 
 			-- Restore the textures
-			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Textures);
+			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Textures);
 
 			-- Select changed parts
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Textures, 'Parent'));
@@ -571,14 +571,14 @@ function RemoveTextures(TextureType, Face)
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Textures, 'Parent'));
 
 			-- Remove the textures
-			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Textures);
+			Core.SyncAPI:Invoke('Remove', HistoryRecord.Textures);
 
 		end;
 
 	};
 
 	-- Send the removal request
-	Core.ServerAPI:InvokeServer('Remove', Textures);
+	Core.SyncAPI:Invoke('Remove', Textures);
 
 	-- Register the history record
 	Core.History:Add(HistoryRecord);
@@ -599,7 +599,7 @@ function TrackChange()
 			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncTexture', Record.Before);
+			Core.SyncAPI:Invoke('SyncTexture', Record.Before);
 
 		end;
 
@@ -610,7 +610,7 @@ function TrackChange()
 			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncTexture', Record.After);
+			Core.SyncAPI:Invoke('SyncTexture', Record.After);
 
 		end;
 
@@ -627,7 +627,7 @@ function RegisterChange()
 	end;
 
 	-- Send the change to the server
-	Core.ServerAPI:InvokeServer('SyncTexture', HistoryRecord.After);
+	Core.SyncAPI:Invoke('SyncTexture', HistoryRecord.After);
 
 	-- Register the record and clear the staging
 	Core.History:Add(HistoryRecord);

@@ -13,7 +13,7 @@ RbxUtility = LoadLibrary 'RbxUtility';
 Create = RbxUtility.Create;
 
 -- Load other BT systems
-ServerAPI = Tool:WaitForChild 'ServerAPI';
+SyncAPI = Tool:WaitForChild 'SyncAPI';
 Security = require(Tool:WaitForChild 'SecurityModule');
 
 -- Reference external assets
@@ -78,16 +78,6 @@ Gloo = _G.gloo;
 -- Wait for other components to load
 Tool:WaitForChild 'HttpInterface';
 Tool:WaitForChild 'Interfaces';
-Tool:WaitForChild 'FilterModeAllowed';
-
--- Determine whether filter mode is enabled
-FilterMode = (Workspace.FilteringEnabled and Game:FindFirstChild 'NetworkClient' and Tool.FilterModeAllowed.Value) and true or false;
-
--- Keep track of possible future changes in filter mode
-Tool.FilterModeAllowed.Changed:connect(function ()
-	FilterMode = (Workspace.FilteringEnabled and Game:FindFirstChild 'NetworkClient' and Tool.FilterModeAllowed.Value) and true or false;
-end);
-
 
 ------------------------------------------
 -- Prepare the UI
@@ -123,7 +113,7 @@ function equipTool( NewTool )
 
 		-- Recolor the handle
 		if ToolType == 'tool' then
-			coroutine.wrap(function () ServerAPI:InvokeServer('RecolorHandle', NewTool.Color) end)();
+			coroutine.wrap(function () SyncAPI:Invoke('RecolorHandle', NewTool.Color) end)();
 		end;
 
 		-- Highlight the right button on the dock
@@ -156,7 +146,7 @@ function CloneSelection()
 	end;
 
 	-- Send the cloning request to the server
-	local Clones = ServerAPI:InvokeServer('Clone', Selection.Items);
+	local Clones = SyncAPI:Invoke('Clone', Selection.Items);
 
 	-- Put together the history record
 	local HistoryRecord = {
@@ -166,7 +156,7 @@ function CloneSelection()
 			-- Reverts this change
 
 			-- Remove the clones
-			ServerAPI:InvokeServer('Remove', HistoryRecord.Clones);
+			SyncAPI:Invoke('Remove', HistoryRecord.Clones);
 
 		end;
 
@@ -174,7 +164,7 @@ function CloneSelection()
 			-- Reapplies this change
 
 			-- Restore the lights
-			ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Clones);
+			SyncAPI:Invoke('UndoRemove', HistoryRecord.Clones);
 
 		end;
 
@@ -231,7 +221,7 @@ function DeleteSelection()
 			-- Reverts this change
 
 			-- Restore the parts
-			ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Parts);
+			SyncAPI:Invoke('UndoRemove', HistoryRecord.Parts);
 
 			-- Select the restored parts
 			Selection.Replace(HistoryRecord.Parts);
@@ -242,14 +232,14 @@ function DeleteSelection()
 			-- Applies this change
 
 			-- Remove the parts
-			ServerAPI:InvokeServer('Remove', HistoryRecord.Parts);
+			SyncAPI:Invoke('Remove', HistoryRecord.Parts);
 
 		end;
 
 	};
 
 	-- Perform the removal
-	ServerAPI:InvokeServer('Remove', Selection.Items);
+	SyncAPI:Invoke('Remove', Selection.Items);
 
 	-- Register the history record
 	History:Add(HistoryRecord);

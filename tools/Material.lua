@@ -320,7 +320,7 @@ function TrackChange()
 			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncMaterial', Record.Before);
+			Core.SyncAPI:Invoke('SyncMaterial', Record.Before);
 
 		end;
 
@@ -331,7 +331,7 @@ function TrackChange()
 			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncMaterial', Record.After);
+			Core.SyncAPI:Invoke('SyncMaterial', Record.After);
 
 		end;
 
@@ -348,7 +348,7 @@ function RegisterChange()
 	end;
 
 	-- Send the change to the server
-	Core.ServerAPI:InvokeServer('SyncMaterial', HistoryRecord.After);
+	Core.SyncAPI:Invoke('SyncMaterial', HistoryRecord.After);
 
 	-- Register the record and clear the staging
 	Core.History:Add(HistoryRecord);

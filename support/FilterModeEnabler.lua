@@ -1,0 +1,1 @@
+script.Parent.Value = Workspace.FilteringEnabled;

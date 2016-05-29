@@ -220,7 +220,7 @@ function TrackChange()
 			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncCollision', Record.Before);
+			Core.SyncAPI:Invoke('SyncCollision', Record.Before);
 
 		end;
 
@@ -231,7 +231,7 @@ function TrackChange()
 			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncCollision', Record.After);
+			Core.SyncAPI:Invoke('SyncCollision', Record.After);
 
 		end;
 
@@ -248,7 +248,7 @@ function RegisterChange()
 	end;
 
 	-- Send the change to the server
-	Core.ServerAPI:InvokeServer('SyncCollision', HistoryRecord.After);
+	Core.SyncAPI:Invoke('SyncCollision', HistoryRecord.After);
 
 	-- Register the record and clear the staging
 	Core.History:Add(HistoryRecord);

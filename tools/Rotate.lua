@@ -530,7 +530,7 @@ function TrackChange()
 			end;
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncRotate', Changes);
+			Core.SyncAPI:Invoke('SyncRotate', Changes);
 
 		end;
 
@@ -547,7 +547,7 @@ function TrackChange()
 			end;
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncRotate', Changes);
+			Core.SyncAPI:Invoke('SyncRotate', Changes);
 
 		end;
 
@@ -576,7 +576,7 @@ function RegisterChange()
 	end;
 
 	-- Send the change to the server
-	Core.ServerAPI:InvokeServer('SyncRotate', Changes);
+	Core.SyncAPI:Invoke('SyncRotate', Changes);
 
 	-- Register the record and clear the staging
 	Core.History:Add(HistoryRecord);

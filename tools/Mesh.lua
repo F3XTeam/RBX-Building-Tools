@@ -439,7 +439,7 @@ function AddMeshes()
 	end;
 
 	-- Send the change request to the server
-	local Meshes = Core.ServerAPI:InvokeServer('CreateMeshes', Changes);
+	local Meshes = Core.SyncAPI:Invoke('CreateMeshes', Changes);
 
 	-- Put together the history record
 	local HistoryRecord = {
@@ -452,7 +452,7 @@ function AddMeshes()
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Meshes, 'Parent'));
 
 			-- Remove the meshes
-			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Meshes);
+			Core.SyncAPI:Invoke('Remove', HistoryRecord.Meshes);
 
 		end;
 
@@ -460,7 +460,7 @@ function AddMeshes()
 			-- Reapplies this change
 
 			-- Restore the meshes
-			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Meshes);
+			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Meshes);
 
 			-- Select changed parts
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Meshes, 'Parent'));
@@ -487,7 +487,7 @@ function RemoveMeshes()
 			-- Reverts this change
 
 			-- Restore the meshes
-			Core.ServerAPI:InvokeServer('UndoRemove', HistoryRecord.Meshes);
+			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Meshes);
 
 			-- Select changed parts
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Meshes, 'Parent'));
@@ -501,14 +501,14 @@ function RemoveMeshes()
 			Selection.Replace(Support.GetListMembers(HistoryRecord.Meshes, 'Parent'));
 
 			-- Remove the meshes
-			Core.ServerAPI:InvokeServer('Remove', HistoryRecord.Meshes);
+			Core.SyncAPI:Invoke('Remove', HistoryRecord.Meshes);
 
 		end;
 
 	};
 
 	-- Send the removal request
-	Core.ServerAPI:InvokeServer('Remove', Meshes);
+	Core.SyncAPI:Invoke('Remove', Meshes);
 
 	-- Register the history record
 	Core.History:Add(HistoryRecord);
@@ -753,7 +753,7 @@ function TrackChange()
 			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncMesh', Record.Before);
+			Core.SyncAPI:Invoke('SyncMesh', Record.Before);
 
 		end;
 
@@ -764,7 +764,7 @@ function TrackChange()
 			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
 
 			-- Send the change request
-			Core.ServerAPI:InvokeServer('SyncMesh', Record.After);
+			Core.SyncAPI:Invoke('SyncMesh', Record.After);
 
 		end;
 
@@ -781,7 +781,7 @@ function RegisterChange()
 	end;
 
 	-- Send the change to the server
-	Core.ServerAPI:InvokeServer('SyncMesh', HistoryRecord.After);
+	Core.SyncAPI:Invoke('SyncMesh', HistoryRecord.After);
 
 	-- Register the record and clear the staging
 	Core.History:Add(HistoryRecord);

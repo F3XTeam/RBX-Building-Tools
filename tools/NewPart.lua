@@ -157,7 +157,7 @@ end;
 function CreatePart(Type)
 
 	-- Send the creation request to the server
-	local Part = Core.ServerAPI:InvokeServer('CreatePart', Type, CFrame.new(Core.Mouse.Hit.p));
+	local Part = Core.SyncAPI:Invoke('CreatePart', Type, CFrame.new(Core.Mouse.Hit.p));
 
 	-- Make sure the part creation succeeds
 	if not Part then
@@ -172,7 +172,7 @@ function CreatePart(Type)
 			-- Reverts this change
 
 			-- Remove the part
-			Core.ServerAPI:InvokeServer('Remove', { HistoryRecord.Part });
+			Core.SyncAPI:Invoke('Remove', { HistoryRecord.Part });
 
 		end;
 
@@ -180,7 +180,7 @@ function CreatePart(Type)
 			-- Reapplies this change
 
 			-- Restore the part
-			Core.ServerAPI:InvokeServer('UndoRemove', { HistoryRecord.Part });
+			Core.SyncAPI:Invoke('UndoRemove', { HistoryRecord.Part });
 
 		end;
 

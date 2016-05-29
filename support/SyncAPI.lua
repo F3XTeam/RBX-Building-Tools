@@ -1,6 +1,6 @@
 -- References
-ServerAPI = script.Parent;
-Tool = ServerAPI.Parent;
+SyncAPI = script.Parent;
+Tool = SyncAPI.Parent;
 Player = nil;
 
 -- Libraries
@@ -1193,19 +1193,23 @@ Actions = {
 
 };
 
--- Provide functionality to the API instance
-ServerAPI.OnServerInvoke = function (Client, ActionName, ...)
+-- Provide an interface into the module
+return {
 
-	-- Make sure the action exists
-	local Action = Actions[ActionName];
-	if not Action then
-		return;
+	PerformAction = function (Client, ActionName, ...)
+
+		-- Make sure the action exists
+		local Action = Actions[ActionName];
+		if not Action then
+			return;
+		end;
+
+		-- Update the Player pointer
+		Player = Client;
+
+		-- Execute valid actions
+		return Action(...);
+
 	end;
 
-	-- Update the Player pointer
-	Player = Client;
-
-	-- Execute valid actions
-	return Action(...);
-
-end;
+};
