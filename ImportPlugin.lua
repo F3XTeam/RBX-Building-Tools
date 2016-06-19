@@ -413,6 +413,14 @@ function import( creation_id )
 				WeldScript.Name = 'BTWelder';
 				WeldScript.Source = [[-- This script creates the welds between parts imported by the Building Tools by F3X plugin.
 
+local BeforeAnchored = {};
+for _, Part in pairs(script.Parent:GetChildren()) do
+	if Part:IsA 'BasePart' then
+		BeforeAnchored[Part] = Part.Anchored;
+		Part.Anchored = true;
+	end;
+end;
+
 local create = LoadLibrary( 'RbxUtility' ).Create;
 function _getAllDescendants( Parent )
 	-- Recursively gets all the descendants of  `Parent` and returns them
@@ -435,7 +443,7 @@ function _getAllDescendants( Parent )
 
 end;
 function findExportedPart( part_id )
-	for _, Object in pairs( _getAllDescendants( Game:GetService( 'Workspace' ) ) ) do
+	for _, Object in pairs( _getAllDescendants( script.Parent ) ) do
 		if Object:IsA( 'StringValue' ) then
 			if Object.Name == 'BTID' and Object.Value == part_id then
 				return Object.Parent;
@@ -466,6 +474,12 @@ end;
 end )();
 	]];
 				end;
+
+				WeldScript.Source = WeldScript.Source .. [[
+
+for Part, Anchored in pairs(BeforeAnchored) do
+	Part.Anchored = Anchored;
+end;]];
 				WeldScript.Parent = Container;
 			end;
 		end;
