@@ -1,10 +1,5 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -19,15 +14,12 @@ local WeldTool = {
 	Name = 'Weld Tool';
 	Color = BrickColor.new 'Really black';
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function WeldTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
@@ -35,7 +27,7 @@ function Equip()
 
 end;
 
-function Unequip()
+function WeldTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
@@ -43,9 +35,6 @@ function Unequip()
 	ClearConnections();
 
 end;
-
-WeldTool.Listeners.Equipped = Equip;
-WeldTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
@@ -105,15 +94,7 @@ function CreateWelds()
 	UI.Changes.Text.Text = ('created %s weld%s'):format(#Welds, #Welds == 1 and '' or 's');
 
 	-- Play a confirmation sound
-	local Sound = Create 'Sound' {
-		Name = 'BTActionCompletionSound';
-		Pitch = 1.5;
-		SoundId = Core.Assets.ActionCompletionSound;
-		Volume = 1;
-		Parent = Player or SoundService;
-	};
-	Sound:Play();
-	Sound:Destroy();
+	Core.PlayConfirmationSound();
 
 	-- Put together the history record
 	local HistoryRecord = {
@@ -138,7 +119,7 @@ function CreateWelds()
 	};
 
 	-- Register the history record
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 
 end;
 
@@ -191,10 +172,9 @@ function BreakWelds()
 	};
 
 	-- Register the history record
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 
 end;
 
--- Mark the tool as fully loaded
-Core.Tools.Weld = WeldTool;
-WeldTool.Loaded = true;
+-- Return the tool
+return WeldTool;

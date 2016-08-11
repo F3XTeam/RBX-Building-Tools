@@ -44,24 +44,55 @@ function SupportLibrary.IsInTable(Haystack, Needle)
 	return false;
 end;
 
-function SupportLibrary.Round(Number, Places)
-	-- Returns `Number` rounded to the number of decimal `Places`
-	-- (from lua-users)
+function SupportLibrary.DoTablesMatch(A, B)
+	-- Returns whether the values of tables A and B are the same
 
-	local Multiplied = 10 ^ (Places or 0);
+	-- Check B table differences
+	for Index in pairs(A) do
+		if A[Index] ~= B[Index] then
+			return false;
+		end;
+	end;
 
-	return math.floor(Number * Multiplied + 0.5) / Multiplied;
+	-- Check A table differences
+	for Index in pairs(B) do
+		if B[Index] ~= A[Index] then
+			return false;
+		end;
+	end;
+
+	-- Return true if no differences
+	return true;
 end;
 
-function SupportLibrary.CloneTable(Source)
-	-- Returns a deep copy of table `source`
+function SupportLibrary.Round(Number, Places)
+	-- Returns `Number` rounded to the given number of decimal places (from lua-users)
 
-	-- Get a copy of `source`'s metatable, since the hacky method
-	-- we're using to copy the table doesn't include its metatable
-	local SourceMetatable = getmetatable(Source);
+	-- Ensure that `Number` is a number
+	if type(Number) ~= 'number' then
+		return;
+	end;
 
-	-- Return a copy of `source` including its metatable
-	return setmetatable({ unpack(Source) }, SourceMetatable);
+	-- Round the number
+	local Multiplier = 10 ^ (Places or 0);
+	local RoundedNumber = math.floor(Number * Multiplier + 0.5) / Multiplier;
+
+	-- Return the rounded number
+	return RoundedNumber;
+end;
+
+function SupportLibrary.CloneTable(Table)
+	-- Returns a copy of `Table`
+
+	local ClonedTable = {};
+
+	-- Copy all values into `ClonedTable`
+	for Key, Value in pairs(Table) do
+		ClonedTable[Key] = Value;
+	end;
+
+	-- Return the clone
+	return ClonedTable;
 end;
 
 function SupportLibrary.GetAllDescendants(Parent)
@@ -82,6 +113,24 @@ function SupportLibrary.GetAllDescendants(Parent)
 	end;
 
 	return Descendants;
+end;
+
+function SupportLibrary.GetDescendantCount(Parent)
+	-- Recursively gets a count of all the descendants of `Parent` and returns them
+
+	local Count = 0;
+
+	for _, Child in pairs(Parent:GetChildren()) do
+
+		-- Count the direct descendants of `Parent`
+		Count = Count + 1;
+
+		-- Count and add the descendants of each child
+		Count = Count + SupportLibrary.GetDescendantCount(Child);
+
+	end;
+
+	return Count;
 end;
 
 function SupportLibrary.CloneParts(Parts)
@@ -415,6 +464,11 @@ function SupportLibrary.ImportServices()
 	CallingEnvironment.CoreGui = Game:GetService 'CoreGui';
 	CallingEnvironment.HttpService = Game:GetService 'HttpService';
 	CallingEnvironment.ChangeHistoryService = Game:GetService 'ChangeHistoryService';
+	CallingEnvironment.ReplicatedStorage = Game:GetService 'ReplicatedStorage';
+	CallingEnvironment.GroupService = Game:GetService 'GroupService';
+	CallingEnvironment.ServerScriptService = Game:GetService 'ServerScriptService';
+	CallingEnvironment.StarterGui = Game:GetService 'StarterGui';
+	CallingEnvironment.RunService = Game:GetService 'RunService';
 end;
 
 function SupportLibrary.GetListMembers(List, MemberName)
@@ -429,6 +483,273 @@ function SupportLibrary.GetListMembers(List, MemberName)
 
 	-- Return the members
 	return Members;
+
+end;
+
+function SupportLibrary.AddUserInputListener(InputState, InputType, CatchAll, Callback)
+	-- Connects to the given user input event and takes care of standard boilerplate code
+
+	-- Turn the given `InputType` string into a proper enum
+	local InputType = Enum.UserInputType[InputType];
+
+	-- Create a UserInputService listener based on the given `InputState`
+	return Game:GetService('UserInputService')['Input' .. InputState]:connect(function (Input, GameProcessedEvent)
+
+		-- Make sure this input was not captured by the client (unless `CatchAll` is enabled)
+		if GameProcessedEvent and not CatchAll then
+			return;
+		end;
+
+		-- Make sure this is the right input type
+		if Input.UserInputType ~= InputType then
+			return;
+		end;
+
+		-- Make sure any key input did not occur while typing into a UI
+		if InputType == Enum.UserInputType.Keyboard and Game:GetService('UserInputService'):GetFocusedTextBox() then
+			return;
+		end;
+
+		-- Call back upon passing all conditions
+		Callback(Input);
+
+	end);
+
+end;
+
+function SupportLibrary.AddGuiInputListener(Gui, InputState, InputType, CatchAll, Callback)
+	-- Connects to the given GUI user input event and takes care of standard boilerplate code
+
+	-- Turn the given `InputType` string into a proper enum
+	local InputType = Enum.UserInputType[InputType];
+
+	-- Create a UserInputService listener based on the given `InputState`
+	return Gui['Input' .. InputState]:connect(function (Input, GameProcessedEvent)
+
+		-- Make sure this input was not captured by the client (unless `CatchAll` is enabled)
+		if GameProcessedEvent and not CatchAll then
+			return;
+		end;
+
+		-- Make sure this is the right input type
+		if Input.UserInputType ~= InputType then
+			return;
+		end;
+
+		-- Call back upon passing all conditions
+		Callback(Input);
+
+	end);
+
+end;
+
+function SupportLibrary.AreKeysPressed(...)
+	-- Returns whether the given keys are pressed
+
+	local RequestedKeysPressed = 0;
+
+	-- Get currently pressed keys
+	local PressedKeys = SupportLibrary.GetListMembers(Game:GetService('UserInputService'):GetKeysPressed(), 'KeyCode');
+
+	-- Go through each requested key
+	for _, Key in pairs({ ... }) do
+
+		-- Count requested keys that are pressed
+		if SupportLibrary.IsInTable(PressedKeys, Key) then
+			RequestedKeysPressed = RequestedKeysPressed + 1;
+		end;
+
+	end;
+
+	-- Return whether all the requested keys are pressed or not
+	return RequestedKeysPressed == #{...};
+
+end;
+
+function SupportLibrary.ConcatTable(DestinationTable, SourceTable)
+	-- Inserts all values of SourceTable into DestinationTable
+
+	-- Add each value from `SourceTable` into `DestinationTable`
+	for _, Value in pairs(SourceTable) do
+		table.insert(DestinationTable, Value);
+	end;
+
+	-- Return the destination table
+	return DestinationTable;
+end;
+
+function SupportLibrary.ClearTable(Table)
+	-- Clears out every value in `Table`
+
+	-- Clear each index
+	for Index in pairs(Table) do
+		Table[Index] = nil;
+	end;
+
+	-- Return the given table
+	return Table;
+end;
+
+function SupportLibrary.Values(Table)
+	-- Returns all the values in the given table
+
+	local Values = {};
+
+	-- Go through each key and get each value
+	for _, Value in pairs(Table) do
+		table.insert(Values, Value);
+	end;
+
+	-- Return the values
+	return Values;
+end;
+
+function SupportLibrary.Keys(Table)
+	-- Returns all the keys in the given table
+
+	local Keys = {};
+
+	-- Go through each key and get each value
+	for Key in pairs(Table) do
+		table.insert(Keys, Key);
+	end;
+
+	-- Return the values
+	return Keys;
+end;
+
+function SupportLibrary.Call(Function, ...)
+	-- Returns a callback to `Function` with the given arguments
+	local Args = { ... };
+	return function (...)
+		Function(unpack(
+			SupportLibrary.ConcatTable(SupportLibrary.CloneTable(Args), { ... })
+		));
+	end;
+end;
+
+function SupportLibrary.Trim(String)
+	-- Returns a trimmed version of `String` (adapted from code from lua-users)
+	return (String:gsub("^%s*(.-)%s*$", "%1"));
+end
+
+function SupportLibrary.ChainCall(...)
+	-- Returns function that passes arguments through given functions and returns the final result
+
+	-- Get the given chain of functions
+	local Chain = { ... };
+
+	-- Return the chaining function
+	return function (...)
+
+		-- Get arguments
+		local Arguments = { ... };
+
+		-- Go through each function and store the returned data to reuse in the next function's arguments 
+		for _, Function in ipairs(Chain) do
+			Arguments = { Function(unpack(Arguments)) };
+		end;
+
+		-- Return the final returned data
+		return unpack(Arguments);
+
+	end;
+
+end;
+
+function SupportLibrary.CountKeys(Table)
+	-- Returns the number of keys in `Table`
+
+	local Count = 0;
+
+	-- Count each key
+	for _ in pairs(Table) do
+		Count = Count + 1;
+	end;
+
+	-- Return the count
+	return Count;
+
+end;
+
+function SupportLibrary.Slice(Table, Start, End)
+	-- Returns values from `Start` to `End` in `Table`
+
+	local Slice = {};
+
+	-- Go through the given indices
+	for Index = Start, End do
+		table.insert(Slice, Table[Index]);
+	end;
+
+	-- Return the slice
+	return Slice;
+
+end;
+
+function SupportLibrary.FlipTable(Table)
+	-- Returns a table with keys and values in `Table` swapped
+
+	local FlippedTable = {};
+
+	-- Flip each key and value
+	for Key, Value in pairs(Table) do
+		FlippedTable[Value] = Key;
+	end;
+
+	-- Return the flipped table
+	return FlippedTable;
+
+end;
+
+function SupportLibrary.ScheduleRecurringTask(TaskFunction, Interval)
+	-- Repeats `Task` every `Interval` seconds until stopped
+
+	local Task = {};
+
+	coroutine.wrap(function ()
+
+		-- Create a task object
+		Task = {
+
+			-- A switch determining if it's running or not
+			Running = true;
+
+			-- A function to stop this task
+			Stop = function (Task)
+				Task.Running = false;
+			end;
+
+			-- References to the task function and set interval
+			TaskFunction = TaskFunction;
+			Interval = Interval;
+
+		};
+
+		-- Repeat the task
+		while wait(Task.Interval) and Task.Running do
+			Task.TaskFunction();
+		end;
+
+	end)();
+
+	-- Return the task object
+	return Task;
+
+end;
+
+function SupportLibrary.Clamp(Number, Minimum, Maximum)
+	-- Returns the given number, clamped according to the provided min/max
+
+	-- Clamp the number
+	if Minimum and Number < Minimum then
+		Number = Minimum;
+	elseif Maximum and Number > Maximum then
+		Number = Maximum;
+	end;
+
+	-- Return the clamped number
+	return Number;
 
 end;
 

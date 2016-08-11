@@ -1,17 +1,13 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
+SnapTracking = require(Tool.SnappingModule);
+BoundingBox = require(Tool.BoundingBoxModule);
 
 -- Import relevant references
 Selection = Core.Selection;
 Create = Core.Create;
 Support = Core.Support;
 Security = Core.Security;
-SnapTracking = Core.SnapTracking;
 Support.ImportServices();
 
 -- Initialize the tool
@@ -24,15 +20,12 @@ local MoveTool = {
 	Increment = 1;
 	Axes = 'Global';
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function MoveTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Set our current axis mode
@@ -45,7 +38,7 @@ function Equip()
 
 end;
 
-function Unequip()
+function MoveTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- If dragging, finish dragging
@@ -57,13 +50,10 @@ function Unequip()
 	HideUI();
 	HideHandles();
 	ClearConnections();
-	Core.ClearBoundingBox();
+	BoundingBox.ClearBoundingBox();
 	SnapTracking.StopTracking();
 
 end;
-
-MoveTool.Listeners.Equipped = Equip;
-MoveTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
@@ -85,7 +75,7 @@ function ShowUI()
 		MoveTool.UI.Visible = true;
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 		-- Skip UI creation
 		return;
@@ -113,7 +103,7 @@ function ShowUI()
 	local IncrementInput = MoveTool.UI.IncrementOption.Increment.TextBox;
 	IncrementInput.FocusLost:connect(function (EnterPressed)
 		MoveTool.Increment = tonumber(IncrementInput.Text) or MoveTool.Increment;
-		IncrementInput.Text = MoveTool.Increment;
+		IncrementInput.Text = Support.Round(MoveTool.Increment, 3);
 	end);
 
 	-- Add functionality to the position inputs
@@ -140,7 +130,7 @@ function ShowUI()
 	end);
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
@@ -223,11 +213,11 @@ function SetAxes(AxisMode)
 	end;
 
 	-- Disable any unnecessary bounding boxes
-	Core.ClearBoundingBox();
+	BoundingBox.ClearBoundingBox();
 
 	-- For global mode, use bounding box handles
 	if AxisMode == 'Global' then
-		Core.StartBoundingBox(AttachHandles);
+		BoundingBox.StartBoundingBox(AttachHandles);
 
 	-- For local mode, use focused part handles
 	elseif AxisMode == 'Local' then
@@ -271,6 +261,7 @@ function AttachHandles(Part, Autofocus)
 	if Handles then
 		Handles.Adornee = Part;
 		Handles.Visible = true;
+		Handles.Parent = Part and Core.UIContainer or nil;
 		return;
 	end;
 
@@ -278,7 +269,7 @@ function AttachHandles(Part, Autofocus)
 	Handles = Create 'Handles' {
 		Name = 'BTMovementHandles';
 		Color = MoveTool.Color;
-		Parent = Core.GUIContainer;
+		Parent = Core.UIContainer;
 		Adornee = Part;
 	};
 
@@ -292,7 +283,10 @@ function AttachHandles(Part, Autofocus)
 	Handles.MouseButton1Down:connect(function ()
 
 		-- Prevent selection
-		Core.override_selection = true;
+		Core.Targeting.CancelSelecting();
+
+		-- Indicate dragging via handles
+		HandleDragging = true;
 
 		-- Stop parts from moving, and capture the initial state of the parts
 		InitialState = PreparePartsForDragging();
@@ -301,7 +295,7 @@ function AttachHandles(Part, Autofocus)
 		TrackChange();
 
 		-- Cache area permissions information
-		if Core.ToolType == 'tool' then
+		if Core.Mode == 'Tool' then
 			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 		end;
 
@@ -316,8 +310,8 @@ function AttachHandles(Part, Autofocus)
 				return;
 			end;
 
-			-- Prevent selection
-			Core.override_selection = true;
+			-- Disable dragging
+			HandleDragging = false;
 
 			-- Clear this connection to prevent it from firing again
 			Connections.HandleRelease:disconnect();
@@ -325,7 +319,6 @@ function AttachHandles(Part, Autofocus)
 
 			-- Make joints, restore original anchor and collision states
 			for _, Part in pairs(Selection.Items) do
-				Part.CanCollide = InitialState[Part].CanCollide;
 				Part:MakeJoints();
 				Part.Anchored = InitialState[Part].Anchored;
 			end;
@@ -343,6 +336,11 @@ function AttachHandles(Part, Autofocus)
 
 	Handles.MouseDrag:connect(function (Face, Distance)
 
+		-- Only drag if handle is enabled
+		if not HandleDragging then
+			return;
+		end;
+
 		-- Calculate the increment-aligned drag distance
 		Distance = GetIncrementMultiple(Distance, MoveTool.Increment);
 
@@ -355,7 +353,7 @@ function AttachHandles(Part, Autofocus)
 		end;
 
 		-- Make sure we're not entering any unauthorized private areas
-		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 			Selection.Focus.CFrame = InitialState[Selection.Focus].CFrame;
 			TranslatePartsRelativeToPart(Selection.Focus, InitialState, Selection.Items);
 		end;
@@ -374,6 +372,7 @@ function HideHandles()
 
 	-- Hide the handles
 	Handles.Visible = false;
+	Handles.Parent = nil;
 
 	-- Disable handle autofocus if enabled
 	if Connections.AutofocusHandle then
@@ -462,7 +461,7 @@ function BindShortcutKeys()
 			end;
 
 		-- Check if the R key was pressed down, and it wasn't Shift R
-		elseif InputInfo.KeyCode == Enum.KeyCode.R and not (Core.ActiveKeys[Enum.KeyCode.LeftShift] or Core.ActiveKeys[Enum.KeyCode.RightShift]) then
+		elseif InputInfo.KeyCode == Enum.KeyCode.R and not (Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift)) then
 
 			-- Start tracking snap points nearest to the mouse
 			StartSnapping();
@@ -543,13 +542,6 @@ function StartSnapping()
 
 	end);
 
-	-- When beginning to drag, allow the base point to be chosen from any parts' snap points
-	Connections.SnapTargetUpdate = Core.TargetChanged:connect(function (NewTarget)
-		if not Dragging then
-			SnapTracking.SetTrackingTarget(NewTarget);
-		end;
-	end);
-
 end;
 
 function SetAxisPosition(Axis, Position)
@@ -577,7 +569,7 @@ function SetAxisPosition(Axis, Position)
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
 	-- Revert changes if player is not authorized to move parts to target destination
-	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 		for Part, PartState in pairs(InitialState) do
 			Part.CFrame = PartState.CFrame;
 		end;
@@ -585,7 +577,6 @@ function SetAxisPosition(Axis, Position)
 
 	-- Restore the parts' original states
 	for Part, PartState in pairs(InitialState) do
-		Part.CanCollide = InitialState[Part].CanCollide;
 		Part:MakeJoints();
 		Part.Anchored = InitialState[Part].Anchored;
 	end;
@@ -611,7 +602,7 @@ function NudgeSelectionByFace(Face)
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
 	-- Revert changes if player is not authorized to move parts to target destination
-	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 		for Part, PartState in pairs(InitialState) do
 			Part.CFrame = PartState.CFrame;
 		end;
@@ -619,7 +610,6 @@ function NudgeSelectionByFace(Face)
 
 	-- Restore the parts' original states
 	for Part, PartState in pairs(InitialState) do
-		Part.CanCollide = InitialState[Part].CanCollide;
 		Part:MakeJoints();
 		Part.Anchored = InitialState[Part].Anchored;
 	end;
@@ -699,7 +689,7 @@ function RegisterChange()
 	Core.SyncAPI:Invoke('SyncMove', Changes);
 
 	-- Register the record and clear the staging
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 	HistoryRecord = nil;
 
 end;
@@ -711,12 +701,12 @@ function EnableDragging()
 	Connections.DragStart = Core.Mouse.Button1Down:connect(function ()
 
 		-- Make sure target is draggable
-		if not Core.isSelectable(Core.Mouse.Target) then
+		if not Core.IsSelectable(Core.Mouse.Target) then
 			return;
 		end;
 
 		-- Make sure this click was not to select
-		if Core.selecting then
+		if Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift) then
 			return;
 		end;
 
@@ -725,8 +715,40 @@ function EnableDragging()
 			Selection.Replace({ Core.Mouse.Target }, true);
 		end;
 
-		-- Prepare for dragging
-		SetUpDragging(Core.Mouse.Target, SnapTracking.Enabled and SnappedPoint or nil);
+		-- Mark where dragging began
+		DragStart = Vector2.new(Core.Mouse.X, Core.Mouse.Y);
+		DragStartTarget = Core.Mouse.Target;
+
+		-- Watch for potential dragging
+		Connections.WatchForDrag = Core.Mouse.Move:connect(function ()
+
+			-- Trigger dragging if the mouse is moved over 2 pixels
+			if DragStart and (Vector2.new(Core.Mouse.X, Core.Mouse.Y) - DragStart).magnitude >= 2 then
+
+				-- Prepare for dragging
+				SetUpDragging(DragStartTarget, SnapTracking.Enabled and SnappedPoint or nil);
+
+				-- Disable watching for potential dragging
+				Connections.WatchForDrag:disconnect();
+
+			end;
+
+		end);
+
+	end);
+
+	-- Clear dragging-start watchers once mouse is released
+	Connections.DragEnd = Support.AddUserInputListener('Ended', 'MouseButton1', true, function ()
+
+		-- Clear dragging-start data
+		DragStart = nil;
+		DragStartTarget = nil;
+
+		-- Disconnect dragging-start listeners
+		if Connections.WatchForDrag then
+			Connections.WatchForDrag:disconnect();
+			Connections.WatchForDrag = nil;
+		end;
 
 	end);
 
@@ -745,9 +767,6 @@ UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
 		return;
 	end;
 
-	-- Prevent selection
-	Core.override_selection = true;
-
 	-- Finish dragging
 	FinishDragging();
 
@@ -760,7 +779,7 @@ function SetUpDragging(BasePart, BasePoint)
 	-- Sets up and initiates dragging based on the given base part
 
 	-- Prevent selection while dragging
-	Core.override_selection = true;
+	Core.Targeting.CancelSelecting();
 
 	-- Prepare parts, and start dragging
 	InitialState = PreparePartsForDragging();
@@ -777,9 +796,8 @@ function PreparePartsForDragging()
 
 	-- Stop parts from moving, and capture the initial state of the parts
 	for _, Part in pairs(Selection.Items) do
-		InitialState[Part] = { Anchored = Part.Anchored, CFrame = Part.CFrame, CanCollide = Part.CanCollide };
+		InitialState[Part] = { Anchored = Part.Anchored, CFrame = Part.CFrame };
 		Part.Anchored = true;
-		Part.CanCollide = false;
 		Part:BreakJoints();
 		Part.Velocity = Vector3.new();
 		Part.RotVelocity = Vector3.new();
@@ -798,11 +816,11 @@ function StartDragging(BasePart, InitialState, BasePoint)
 	TrackChange();
 
 	-- Disable bounding box calculation
-	Core.ClearBoundingBox();
+	BoundingBox.ClearBoundingBox();
 
 	-- Cache area permissions information
 	local AreaPermissions;
-	if Core.ToolType == 'tool' then
+	if Core.Mode == 'Tool' then
 		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 	end;
 
@@ -828,7 +846,7 @@ function StartDragging(BasePart, InitialState, BasePoint)
 	end;
 
 	-- Prepare snapping in case it is enabled, and make sure to override its default target selection
-	SnapTracking.CustomMouseTracking = true;
+	SnapTracking.TargetBlacklist = Selection.Items;
 	Connections.DragSnapping = PointSnapped:connect(function (SnappedPoint)
 
 		-- Align the selection's base point to the snapped point
@@ -836,7 +854,7 @@ function StartDragging(BasePart, InitialState, BasePoint)
 		TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
 
 		-- Make sure we're not entering any unauthorized private areas
-		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 			BasePart.CFrame = InitialState[BasePart].CFrame;
 			TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
 		end;
@@ -871,27 +889,9 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	-- Move the selection towards any snapped points
 	------------------------------------------------
 
-	-- If snapping is enabled, update the current snap point and drag to it instead
+	-- If snapping is enabled, skip regular dragging
 	if SnapTracking.Enabled then
-
-		-- Use the raycasted target point as the mouse point for snap point tracking
-		SnapTracking.MousePoint = TargetPoint;
-
-		-- Update the tracking target for snap tracking, only if it's an unlocked part
-		if Target and Target.Parent and not Target.Locked then
-			SnapTracking.SetTrackingTarget(Target);
-
-		-- If new target is not an unlocked part, clear the tracking target
-		else
-			SnapTracking.SetTrackingTarget(nil);
-		end;
-
-		-- Update snap point tracking, and the UI
-		SnapTracking.Update();
-
-		-- Skip dragging the selection to the mouse (regular dragging)
 		return;
-
 	end;
 
 	------------------------------------------------------
@@ -933,7 +933,7 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	----------------------------------------
 
 	-- Make sure we're not entering any unauthorized private areas
-	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 		BasePart.CFrame = InitialState[BasePart].CFrame;
 		TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
 	end;
@@ -1055,13 +1055,11 @@ function FinishDragging()
 
 	-- Stop, clean up snapping point tracking
 	SnapTracking.StopTracking();
-	SnapTracking.CustomMouseTracking = false;
 	Connections.DragSnapping:disconnect();
 	Connections.DragSnapping = nil;
 
 	-- Restore the original state of each part
 	for _, Part in pairs(Selection.Items) do
-		Part.CanCollide = InitialState[Part].CanCollide;
 		Part:MakeJoints();
 		Part.Anchored = InitialState[Part].Anchored;
 	end;
@@ -1071,6 +1069,5 @@ function FinishDragging()
 
 end;
 
--- Mark the tool as fully loaded
-Core.Tools.Move = MoveTool;
-MoveTool.Loaded = true;
+-- Return the tool
+return MoveTool;

@@ -1,6 +1,6 @@
 local SyncAPI = script.Parent;
 local Tool = SyncAPI.Parent;
-local FilterModeEnabled = (Tool:WaitForChild 'FilterModeEnabled').Value;
+local FilterModeEnabled = (Tool:WaitForChild 'FilterMode').Value;
 local ServerEndpoint = SyncAPI:WaitForChild 'ServerEndpoint';
 
 -- Start a local sync module when working locally

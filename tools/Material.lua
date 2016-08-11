@@ -1,10 +1,5 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -19,15 +14,12 @@ local MaterialTool = {
 	Name = 'Material Tool';
 	Color = BrickColor.new 'Bright violet';
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function MaterialTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
@@ -35,7 +27,7 @@ function Equip()
 
 end;
 
-function Unequip()
+function MaterialTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
@@ -43,9 +35,6 @@ function Unequip()
 	ClearConnections();
 
 end;
-
-MaterialTool.Listeners.Equipped = Equip;
-MaterialTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
@@ -91,7 +80,7 @@ function ShowUI()
 		UI.Visible = true;
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 		-- Skip UI creation
 		return;
@@ -107,32 +96,21 @@ function ShowUI()
 	local TransparencyInput = UI.TransparencyOption.Input.TextBox;
 	local ReflectanceInput = UI.ReflectanceOption.Input.TextBox;
 
+	-- Sort the material list
+	local MaterialList = Support.Values(Materials);
+	table.sort(MaterialList);
+
 	-- Create the material selection dropdown
-	MaterialDropdown = Core.createDropdown();
-	MaterialDropdown.Frame.Parent = UI.MaterialOption;
-	MaterialDropdown.Frame.Position = UDim2.new(0, 50, 0, 0);
-	MaterialDropdown.Frame.Size = UDim2.new(0, 130, 0, 25);
-
-	-- Add the material options to the dropdown
-	for MaterialEnum, MaterialLabel in pairs(Materials) do
-
-		-- Capitalize the material's label
-		MaterialLabel = MaterialLabel:upper();
-
-		-- Enable the option button
-		MaterialDropdown:addOption(MaterialLabel).MouseButton1Click:connect(function ()
-			SetProperty('Material', MaterialEnum);
-			MaterialDropdown:toggle();
-		end);
-
-	end;
+	MaterialDropdown = Core.Cheer(UI.MaterialOption.Dropdown).Start(MaterialList, '', function (Material)
+		SetProperty('Material', Support.FindTableOccurrence(Materials, Material));
+	end);
 
 	-- Enable the transparency and reflectance inputs
 	SyncInputToProperty('Transparency', TransparencyInput);
 	SyncInputToProperty('Reflectance', ReflectanceInput);
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
@@ -296,7 +274,7 @@ function UpdateUI()
 	local Reflectance = Support.IdentifyCommonProperty(Selection.Items, 'Reflectance');
 
 	-- Update the material dropdown
-	MaterialDropdown:selectOption(Material and Materials[Material]:upper() or '*');
+	MaterialDropdown.SetOption(Material and Materials[Material] or '*');
 
 	-- Update inputs
 	UpdateDataInputs {
@@ -351,11 +329,10 @@ function RegisterChange()
 	Core.SyncAPI:Invoke('SyncMaterial', HistoryRecord.After);
 
 	-- Register the record and clear the staging
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 	HistoryRecord = nil;
 
 end;
 
--- Mark the tool as fully loaded
-Core.Tools.Material = MaterialTool;
-MaterialTool.Loaded = true;
+-- Return the tool
+return MaterialTool;

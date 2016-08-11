@@ -1,17 +1,12 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
+SnapTracking = require(Tool.SnappingModule);
 
 -- Import relevant references
 Selection = Core.Selection;
 Create = Core.Create;
 Support = Core.Support;
 Security = Core.Security;
-SnapTracking = Core.SnapTracking;
 Support.ImportServices();
 
 -- Initialize the tool
@@ -24,15 +19,12 @@ local ResizeTool = {
 	Increment = 1;
 	Directions = 'Normal';
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function ResizeTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
@@ -42,7 +34,7 @@ function Equip()
 
 end;
 
-function Unequip()
+function ResizeTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
@@ -52,9 +44,6 @@ function Unequip()
 	SnapTracking.StopTracking();
 
 end;
-
-ResizeTool.Listeners.Equipped = Equip;
-ResizeTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
@@ -76,7 +65,7 @@ function ShowUI()
 		ResizeTool.UI.Visible = true;
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 		-- Skip UI creation
 		return;
@@ -101,7 +90,7 @@ function ShowUI()
 	local IncrementInput = ResizeTool.UI.IncrementOption.Increment.TextBox;
 	IncrementInput.FocusLost:connect(function (EnterPressed)
 		ResizeTool.Increment = tonumber(IncrementInput.Text) or ResizeTool.Increment;
-		IncrementInput.Text = ResizeTool.Increment;
+		IncrementInput.Text = Support.Round(ResizeTool.Increment, 3);
 	end);
 
 	-- Add functionality to the size inputs
@@ -128,7 +117,7 @@ function ShowUI()
 	end);
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
@@ -246,6 +235,7 @@ function ShowHandles()
 	if Handles then
 		Handles.Adornee = Selection.Focus;
 		Handles.Visible = true;
+		Handles.Parent = Core.UIContainer;
 		return;
 	end;
 
@@ -253,7 +243,7 @@ function ShowHandles()
 	Handles = Create 'Handles' {
 		Name = 'BTResizingHandles';
 		Color = ResizeTool.Color;
-		Parent = Core.GUIContainer;
+		Parent = Core.UIContainer;
 		Adornee = Selection.Focus;
 	};
 
@@ -267,7 +257,10 @@ function ShowHandles()
 	Handles.MouseButton1Down:connect(function ()
 
 		-- Prevent selection
-		Core.override_selection = true;
+		Core.Targeting.CancelSelecting();
+
+		-- Indicate resizing via handles
+		HandleResizing = true;
 
 		-- Stop parts from moving, and capture the initial state of the parts
 		InitialState = PreparePartsForResizing();
@@ -291,8 +284,11 @@ function ShowHandles()
 				return;
 			end;
 
+			-- Disable resizing
+			HandleResizing = false;
+
 			-- Prevent selection
-			Core.override_selection = true;
+			Core.Targeting.CancelSelecting();
 
 			-- Clear this connection to prevent it from firing again
 			Connections.HandleRelease:disconnect();
@@ -300,7 +296,6 @@ function ShowHandles()
 
 			-- Make joints, restore original anchor and collision states
 			for _, Part in pairs(Selection.Items) do
-				Part.CanCollide = InitialState[Part].CanCollide;
 				Part:MakeJoints();
 				Part.Anchored = InitialState[Part].Anchored;
 			end;
@@ -317,6 +312,11 @@ function ShowHandles()
 	------------------------------------------
 
 	Handles.MouseDrag:connect(function (Face, Distance)
+
+		-- Only resize if handle is enabled
+		if not HandleResizing then
+			return;
+		end;
 
 		-- Calculate the increment-aligned drag distance
 		Distance = GetIncrementMultiple(Distance, ResizeTool.Increment);
@@ -335,7 +335,7 @@ function ShowHandles()
 		end;
 
 		-- Make sure we're not entering any unauthorized private areas
-		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 			for Part, PartState in pairs(InitialState) do
 				Part.Size = PartState.Size;
 				Part.CFrame = PartState.CFrame;
@@ -356,6 +356,7 @@ function HideHandles()
 
 	-- Hide the handles
 	Handles.Visible = false;
+	Handles.Parent = nil;
 
 	-- Clear unnecessary resources
 	Connections.AutofocusHandle:disconnect();
@@ -408,7 +409,7 @@ function ResizePartsByFace(Face, Distance, Directions, InitialState)
 	return true;
 end;
 
- function BindShortcutKeys()
+function BindShortcutKeys()
 	-- Enables useful shortcut keys for this tool
 
 	-- Track user input while this tool is equipped
@@ -472,6 +473,10 @@ end;
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadSix then
 			NudgeSelectionByFace(Enum.NormalId.Right);
 
+		-- Start snapping when the R key is pressed down (and it's not Shift R)
+		elseif InputInfo.KeyCode == Enum.KeyCode.R and not (Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift)) then
+			StartSnapping();
+
 		end;
 
 	end));
@@ -492,6 +497,12 @@ end;
 		-- Make sure it wasn't pressed while typing
 		if UserInputService:GetFocusedTextBox() then
 			return;
+		end;
+
+		-- Finish snapping when the R key is released (and it's not Shift R)
+		if InputInfo.KeyCode == Enum.KeyCode.R and not (Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift)) then
+			FinishSnapping();
+
 		end;
 
 	end));
@@ -526,7 +537,7 @@ function SetAxisSize(Axis, Size)
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
 	-- Revert changes if player is not authorized to resize parts towards the end destination
-	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 		for Part, PartState in pairs(InitialState) do
 			Part.Size = PartState.Size;
 			Part.CFrame = PartState.CFrame;
@@ -535,7 +546,6 @@ function SetAxisSize(Axis, Size)
 
 	-- Restore the parts' original states
 	for Part, PartState in pairs(InitialState) do
-		Part.CanCollide = InitialState[Part].CanCollide;
 		Part:MakeJoints();
 		Part.Anchored = InitialState[Part].Anchored;
 	end;
@@ -569,7 +579,7 @@ function NudgeSelectionByFace(Face)
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
 	-- Revert changes if player is not authorized to resize parts towards the end destination
-	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 		for Part, PartState in pairs(InitialState) do
 			Part.Size = PartState.Size;
 			Part.CFrame = PartState.CFrame;
@@ -578,7 +588,6 @@ function NudgeSelectionByFace(Face)
 
 	-- Restore the parts' original states
 	for Part, PartState in pairs(InitialState) do
-		Part.CanCollide = InitialState[Part].CanCollide;
 		Part:MakeJoints();
 		Part.Anchored = InitialState[Part].Anchored;
 	end;
@@ -662,7 +671,7 @@ function RegisterChange()
 	Core.SyncAPI:Invoke('SyncResize', Changes);
 
 	-- Register the record and clear the staging
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 	HistoryRecord = nil;
 
 end;
@@ -674,9 +683,8 @@ function PreparePartsForResizing()
 
 	-- Stop parts from moving, and capture the initial state of the parts
 	for _, Part in pairs(Selection.Items) do
-		InitialState[Part] = { Anchored = Part.Anchored, Size = Part.Size, CFrame = Part.CFrame, CanCollide = Part.CanCollide };
+		InitialState[Part] = { Anchored = Part.Anchored, Size = Part.Size, CFrame = Part.CFrame };
 		Part.Anchored = true;
-		Part.CanCollide = false;
 		Part:BreakJoints();
 		Part.Velocity = Vector3.new();
 		Part.RotVelocity = Vector3.new();
@@ -708,6 +716,198 @@ function GetIncrementMultiple(Number, Increment)
 	return Number;
 end;
 
--- Mark the tool as fully loaded
-Core.Tools.Resize = ResizeTool;
-ResizeTool.Loaded = true;
+-- Event that fires when a new point is snapped
+PointSnapped = Core.RbxUtility.CreateSignal();
+
+function StartSnapping()
+
+	-- Make sure snapping isn't already enabled
+	if SnapTracking.Enabled then
+		return;
+	end;
+
+	-- Only enable corner snapping
+	SnapTracking.TrackEdgeMidpoints = false;
+	SnapTracking.TrackFaceCentroids = false;
+	SnapTracking.TargetFilter = Selection.Find;
+
+	-- Trigger the PointSnapped event when a new point is snapped
+	SnapTracking.StartTracking(function (NewPoint)
+		if NewPoint and NewPoint.p ~= SnappedPoint then
+			SnappedPoint = NewPoint.p;
+			PointSnapped:fire(NewPoint.p);
+		end;
+	end);
+
+	-- Listen for when the user starts dragging while in snap mode
+	Connections.SnapDragStart = Support.AddUserInputListener('Began', 'MouseButton1', false, function (Input)
+
+		SnappingStage = 'Direction';
+		SnappingStartAim = Vector2.new(Input.Position.X, Input.Position.Y);
+		SnappingStartPoint = SnappedPoint;
+		SnappingStartTarget = SnapTracking.Target;
+		SnappingStartDirections = GetFaceOffsetsFromCorner(SnappingStartTarget, SnappingStartPoint);
+		SnappingStartSelectionState = PreparePartsForResizing();
+
+		TrackChange();
+
+		-- Listen for when the user drags
+		Connections.SnapDrag = Support.AddUserInputListener('Changed', 'MouseMovement', false, function (Input)
+
+			-- Update the latest aim
+			SnappingEndAim = Vector2.new(Input.Position.X, Input.Position.Y);
+
+			-- Use the mouse position to figure out the resize direction (until after 20px)
+			if SnappingStage == 'Direction' then
+
+				-- Check the length
+				local Length = (SnappingEndAim - SnappingStartAim).magnitude;
+				if Length < 20 then
+					return;
+				end;
+
+				local DragSlope = (SnappingEndAim.Y - SnappingStartAim.Y) / (SnappingEndAim.X - SnappingStartAim.X);
+
+				-- Go through corner offsets representing the possible directions
+				local Directions = {};
+				for _, Direction in pairs(SnappingStartDirections) do
+
+					-- Map the corner & corner offset to screen points
+					local ScreenSnappedPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappingStartPoint);
+					local ScreenOffsetPoint = Workspace.CurrentCamera:WorldToScreenPoint(Direction.Offset);
+
+					-- Get the slope representing the direction (based on the mapped screen points)
+					local DirectionSlope = (ScreenOffsetPoint.Y - ScreenSnappedPoint.Y) / (ScreenOffsetPoint.X - ScreenSnappedPoint.X);
+
+					-- Calculate the similarity between the drag & direction slopes
+					local SlopeDelta = math.abs(math.abs(DragSlope) - math.abs(DirectionSlope));
+					table.insert(Directions, { Face = Direction.Face, SlopeDelta = SlopeDelta, Offset = Direction.Offset });
+
+				end;
+
+				-- Get the direction slope closest to the mouse's
+				table.sort(Directions, function (A, B)
+					return A.SlopeDelta < B.SlopeDelta;
+				end);
+
+				-- Select the resizing direction that was closest to the mouse drag
+				SnappingDirection = Directions[1].Face;
+				SnappingDirectionOffset = Directions[1].Offset;
+
+				-- Move to the destination-picking stage of snapping
+				SnappingStage = 'Destination';
+
+				SnapTracking.TargetFilter = function (Target) return not Target.Locked; end;
+				SnapTracking.TargetBlacklist = Selection.Items;
+
+			-- Resize in the selected direction up to the targeted destination
+			elseif SnappingStage == 'Destination' then
+
+			end;
+
+		end);
+
+		-- Listen for when a new point is snapped
+		Connections.Snap = PointSnapped:connect(function (SnappedPoint)
+
+			if SnappingStage == 'Destination' then
+				local Direction = (SnappingDirectionOffset - SnappingStartPoint).unit;
+				local Distance = (SnappedPoint - SnappingStartPoint):Dot(Direction);
+
+				-- Resize the parts on the selected faces by the calculated distance
+				local Success, Adjustment = ResizePartsByFace(SnappingDirection, Distance, 'Normal', SnappingStartSelectionState);
+
+				-- If the resizing did not succeed, resize according to the suggested adjustment
+				if not Success then
+					ResizePartsByFace(SnappingDirection, Adjustment, 'Normal', SnappingStartSelectionState);
+				end;
+
+			end;
+
+		end);
+
+		Connections.SnapDragEnd = Support.AddUserInputListener('Ended', 'MouseButton1', false, function (Input)
+			-- Restore the parts' original states
+			for Part, PartState in pairs(SnappingStartSelectionState) do
+				Part:MakeJoints();
+				Part.Anchored = PartState.Anchored;
+			end;
+			RegisterChange();
+		end);
+
+	end);
+
+end;
+
+function FinishSnapping()
+
+	-- Make sure snapping is enabled
+	if not SnapTracking.Enabled then
+		return;
+	end;
+
+	-- Stop snap point tracking
+	SnapTracking.StopTracking();
+
+	Connections.SnapDragStart:disconnect();
+	Connections.SnapDragStart = nil;
+
+	if Connections.Snap then
+
+		Connections.Snap:disconnect();
+		Connections.Snap = nil;
+
+		Connections.SnapDrag:disconnect();
+		Connections.SnapDrag = nil;
+
+	end;
+
+end;
+
+
+function GetFaceOffsetsFromCorner(Part, Point)
+	-- Returns offsets of the given corner point in the direction of its intersecting faces
+
+	local Offsets = {};
+
+	-- Go through each face the corner intersects
+	local Faces = GetFacesFromCorner(Part, Point);
+	for _, Face in pairs(Faces) do
+
+		-- Calculate the offset from the corner in the direction of the face
+		local Offset = CFrame.new(Point) * CFrame.Angles(Part.CFrame:toEulerAnglesXYZ()) * Vector3.FromNormalId(Face);
+		table.insert(Offsets, { Face = Face, Offset = Offset });
+
+	end;
+
+	-- Return the list of offsets
+	return Offsets;
+end;
+
+function GetFacesFromCorner(Part, Point)
+	-- Returns the 3 faces that the given corner point intersects
+
+	local Faces = {};
+
+	-- Get all the face centers of the part
+	for _, FaceEnum in pairs(Enum.NormalId:GetEnumItems()) do
+		local Face = Part.CFrame * (Part.Size / 2 * Vector3.FromNormalId(FaceEnum));
+
+		-- Get the face's proximity to the point
+		local Proximity = (Point - Face).magnitude;
+
+		-- Keep track of the proximity to the point
+		table.insert(Faces, { Proximity = Proximity, Face = FaceEnum });
+	end;
+
+	-- Find the closest faces to the point
+	table.sort(Faces, function (A, B)
+		return A.Proximity < B.Proximity;
+	end);
+
+	-- Return the 3 closest faces
+	return { Faces[1].Face, Faces[2].Face, Faces[3].Face };
+end;
+
+-- Return the tool
+return ResizeTool;

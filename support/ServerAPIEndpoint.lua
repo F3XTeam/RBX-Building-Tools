@@ -1,7 +1,7 @@
 local ServerEndpoint = script.Parent;
 local SyncAPI = ServerEndpoint.Parent;
 local Tool = SyncAPI.Parent;
-local FilterModeEnabled = (Tool:WaitForChild 'FilterModeEnabled').Value;
+local FilterModeEnabled = (Tool:WaitForChild 'FilterMode').Value;
 
 -- Enable this endpoint if filter mode is enabled
 if FilterModeEnabled then

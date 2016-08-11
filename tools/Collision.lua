@@ -1,10 +1,5 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -19,15 +14,12 @@ local CollisionTool = {
 	Name = 'Collision Tool';
 	Color = BrickColor.new 'Really black';
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function CollisionTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
@@ -36,7 +28,7 @@ function Equip()
 
 end;
 
-function Unequip()
+function CollisionTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
@@ -44,9 +36,6 @@ function Unequip()
 	ClearConnections();
 
 end;
-
-CollisionTool.Listeners.Equipped = Equip;
-CollisionTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
@@ -68,7 +57,7 @@ function ShowUI()
 		UI.Visible = true;
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 		-- Skip UI creation
 		return;
@@ -93,7 +82,7 @@ function ShowUI()
 	end);
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
@@ -251,11 +240,10 @@ function RegisterChange()
 	Core.SyncAPI:Invoke('SyncCollision', HistoryRecord.After);
 
 	-- Register the record and clear the staging
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 	HistoryRecord = nil;
 
 end;
 
--- Mark the tool as fully loaded
-Core.Tools.Collision = CollisionTool;
-CollisionTool.Loaded = true;
+-- Return the tool
+return CollisionTool;

@@ -47,7 +47,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
 			return;
 		end;
 
@@ -83,7 +83,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas({ NewPart }), Player);
 
 		-- Make sure the player is allowed to create parts in the area
-		if Security.ArePartsViolatingAreas({ NewPart }, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas({ NewPart }, Player, false, AreaPermissions) then
 			return;
 		end;
 
@@ -124,7 +124,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -171,7 +171,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
 			return;
 		end;
 
@@ -207,7 +207,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -235,7 +235,7 @@ Actions = {
 		end;
 
 		-- Make sure the player is authorized to move parts into this area
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
 
 			-- Revert changes if unauthorized destination
 			for Part, Change in pairs(ChangeSet) do
@@ -267,7 +267,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -296,7 +296,7 @@ Actions = {
 		end;
 
 		-- Make sure the player is authorized to move parts into this area
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
 
 			-- Revert changes if unauthorized destination
 			for Part, Change in pairs(ChangeSet) do
@@ -329,7 +329,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -357,7 +357,7 @@ Actions = {
 		end;
 
 		-- Make sure the player is authorized to move parts into this area
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
 
 			-- Revert changes if unauthorized destination
 			for Part, Change in pairs(ChangeSet) do
@@ -389,7 +389,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -431,7 +431,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -470,7 +470,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -525,7 +525,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -595,7 +595,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -650,7 +650,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -723,7 +723,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -770,7 +770,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -832,7 +832,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -888,7 +888,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -951,7 +951,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -985,7 +985,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -1019,7 +1019,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -1053,7 +1053,7 @@ Actions = {
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
 		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, AreaPermissions) then
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
 			return;
 		end;
 
@@ -1116,8 +1116,8 @@ Actions = {
 		for _, Weld in pairs(Welds) do
 
 			-- Check the permissions on each weld-related part
-			local Part0Unauthorized = Security.ArePartsViolatingAreas({ Weld.Part0 }, Player, AreaPermissions);
-			local Part1Unauthorized = Security.ArePartsViolatingAreas({ Weld.Part1 }, Player, AreaPermissions);
+			local Part0Unauthorized = Security.ArePartsViolatingAreas({ Weld.Part0 }, Player, true, AreaPermissions);
+			local Part1Unauthorized = Security.ArePartsViolatingAreas({ Weld.Part1 }, Player, true, AreaPermissions);
 
 			-- If at least one of the involved parts is authorized, remove the weld
 			if not Part0Unauthorized or not Part1Unauthorized then
@@ -1169,8 +1169,8 @@ Actions = {
 		for _, Weld in pairs(Welds) do
 
 			-- Check the permissions on each weld-related part
-			local Part0Unauthorized = Security.ArePartsViolatingAreas({ Weld.Part0 }, Player, AreaPermissions);
-			local Part1Unauthorized = Security.ArePartsViolatingAreas({ Weld.Part0 }, Player, AreaPermissions);
+			local Part0Unauthorized = Security.ArePartsViolatingAreas({ Weld.Part0 }, Player, false, AreaPermissions);
+			local Part1Unauthorized = Security.ArePartsViolatingAreas({ Weld.Part0 }, Player, false, AreaPermissions);
 
 			-- If at least one of the involved parts is authorized, restore the weld
 			if not Part0Unauthorized or not Part1Unauthorized then

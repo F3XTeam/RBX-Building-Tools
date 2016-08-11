@@ -1,17 +1,13 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
+SnapTracking = require(Tool.SnappingModule);
+BoundingBox = require(Tool.BoundingBoxModule);
 
 -- Import relevant references
 Selection = Core.Selection;
 Create = Core.Create;
 Support = Core.Support;
 Security = Core.Security;
-SnapTracking = Core.SnapTracking;
 Support.ImportServices();
 
 -- Initialize the tool
@@ -24,15 +20,12 @@ local RotateTool = {
 	Increment = 15;
 	Pivot = 'Center';
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function RotateTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Set our current pivot mode
@@ -44,25 +37,35 @@ function Equip()
 
 end;
 
-function Unequip()
+function RotateTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
 	HideUI();
 	HideHandles();
 	ClearConnections();
-	Core.ClearBoundingBox();
+	BoundingBox.ClearBoundingBox();
 	SnapTracking.StopTracking();
 
 end;
-
-RotateTool.Listeners.Equipped = Equip;
-RotateTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
+		Connection:disconnect();
+		Connections[ConnectionKey] = nil;
+	end;
+
+end;
+
+function ClearConnection(ConnectionKey)
+	-- Clears the given specific connection
+
+	local Connection = Connections[ConnectionKey];
+
+	-- Disconnect the connection if it exists
+	if Connections[ConnectionKey] then
 		Connection:disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
@@ -79,7 +82,7 @@ function ShowUI()
 		RotateTool.UI.Visible = true;
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 		-- Skip UI creation
 		return;
@@ -107,7 +110,7 @@ function ShowUI()
 	local IncrementInput = RotateTool.UI.IncrementOption.Increment.TextBox;
 	IncrementInput.FocusLost:connect(function (EnterPressed)
 		RotateTool.Increment = tonumber(IncrementInput.Text) or RotateTool.Increment;
-		IncrementInput.Text = RotateTool.Increment;
+		IncrementInput.Text = Support.Round(RotateTool.Increment, 3);
 	end);
 
 	-- Add functionality to the rotation inputs
@@ -134,7 +137,7 @@ function ShowUI()
 	end);
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
@@ -217,11 +220,11 @@ function SetPivot(PivotMode)
 	end;
 
 	-- Disable any unnecessary bounding boxes
-	Core.ClearBoundingBox();
+	BoundingBox.ClearBoundingBox();
 
 	-- For center mode, use bounding box handles
 	if PivotMode == 'Center' then
-		Core.StartBoundingBox(AttachHandles);
+		BoundingBox.StartBoundingBox(AttachHandles);
 
 	-- For local mode, use focused part handles
 	elseif PivotMode == 'Local' then
@@ -255,6 +258,7 @@ function AttachHandles(Part, Autofocus)
 	if Handles then
 		Handles.Adornee = Part;
 		Handles.Visible = true;
+		Handles.Parent = Part and Core.UIContainer or nil;
 		return;
 	end;
 
@@ -262,7 +266,7 @@ function AttachHandles(Part, Autofocus)
 	Handles = Create 'ArcHandles' {
 		Name = 'BTRotationHandles';
 		Color = RotateTool.Color;
-		Parent = Core.GUIContainer;
+		Parent = Core.UIContainer;
 		Adornee = Part;
 	};
 
@@ -272,12 +276,14 @@ function AttachHandles(Part, Autofocus)
 
 	local InitialState = {};
 	local AreaPermissions;
-	local PivotPoint;
 
 	Handles.MouseButton1Down:connect(function ()
 
 		-- Prevent selection
-		Core.override_selection = true;
+		Core.Targeting.CancelSelecting();
+
+		-- Indicate rotating via handle
+		HandleRotating = true;
 
 		-- Stop parts from moving, and capture the initial state of the parts
 		InitialState = PreparePartsForRotating();
@@ -292,11 +298,11 @@ function AttachHandles(Part, Autofocus)
 
 		-- Set the pivot point to the center of the selection if in Center mode
 		if RotateTool.Pivot == 'Center' then
-			local BoundingBoxSize, BoundingBoxCFrame = Core.CalculateExtents(Selection.Items, StaticExtents);
+			local BoundingBoxSize, BoundingBoxCFrame = BoundingBox.CalculateExtents(Selection.Items);
 			PivotPoint = BoundingBoxCFrame;
 
 		-- Set the pivot point to the center of the focused part if in Last mode
-		elseif RotateTool.Pivot == 'Last' then
+		elseif RotateTool.Pivot == 'Last' and not CustomPivotPoint then
 			PivotPoint = InitialState[Selection.Focus].CFrame;
 		end;
 
@@ -312,7 +318,10 @@ function AttachHandles(Part, Autofocus)
 			end;
 
 			-- Prevent selection
-			Core.override_selection = true;
+			Core.Targeting.CancelSelecting();
+
+			-- Disable rotating
+			HandleRotating = false;
 
 			-- Clear this connection to prevent it from firing again
 			Connections.HandleRelease:disconnect();
@@ -320,7 +329,6 @@ function AttachHandles(Part, Autofocus)
 
 			-- Make joints, restore original anchor and collision states
 			for _, Part in pairs(Selection.Items) do
-				Part.CanCollide = InitialState[Part].CanCollide;
 				Part:MakeJoints();
 				Part.Anchored = InitialState[Part].Anchored;
 			end;
@@ -338,6 +346,11 @@ function AttachHandles(Part, Autofocus)
 
 	Handles.MouseDrag:connect(function (Axis, Rotation)
 
+		-- Only rotate if handle is enabled
+		if not HandleRotating then
+			return;
+		end;
+
 		-- Turn the rotation amount into degrees
 		Rotation = math.deg(Rotation);
 
@@ -353,7 +366,7 @@ function AttachHandles(Part, Autofocus)
 		end;
 
 		-- Make sure we're not entering any unauthorized private areas
-		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 			for Part, PartState in pairs(InitialState) do
 				Part.CFrame = PartState.CFrame;
 			end;
@@ -373,6 +386,7 @@ function HideHandles()
 
 	-- Hide the handles
 	Handles.Visible = false;
+	Handles.Parent = nil;
 
 	-- Disable handle autofocus if enabled
 	if Connections.AutofocusHandle then
@@ -456,9 +470,93 @@ function BindShortcutKeys()
 				RotateTool.UI.IncrementOption.Increment.TextBox:CaptureFocus();
 			end;
 
+		-- Nudge around X axis if the 8 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadEight then
+			NudgeSelectionByAxis(Enum.Axis.X, 1);
+
+		-- Nudge around X axis if the 2 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadTwo then
+			NudgeSelectionByAxis(Enum.Axis.X, -1);
+
+		-- Nudge around Z axis if the 9 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadNine then
+			NudgeSelectionByAxis(Enum.Axis.Z, 1);
+
+		-- Nudge around Z axis if the 1 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadOne then
+			NudgeSelectionByAxis(Enum.Axis.Z, -1);
+
+		-- Nudge around Y axis if the 4 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadFour then
+			NudgeSelectionByAxis(Enum.Axis.Y, -1);
+
+		-- Nudge around Y axis if the 6 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadSix then
+			NudgeSelectionByAxis(Enum.Axis.Y, 1);
+
+		-- Start snapping when the R key is pressed down (and it's not Shift R)
+		elseif InputInfo.KeyCode == Enum.KeyCode.R and not (Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift)) then
+			StartSnapping();
+
 		end;
 
 	end));
+
+end;
+
+function StartSnapping()
+
+	-- Make sure snapping isn't already enabled
+	if SnapTracking.Enabled then
+		return;
+	end;
+
+	-- Listen for snapped points
+	SnapTracking.StartTracking(function (NewPoint)
+		SnappedPoint = NewPoint;
+	end);
+
+	-- Select the snapped pivot point upon clicking
+	Connections.SelectSnappedPivot = Core.Mouse.Button1Down:connect(function ()
+
+		-- Disable unintentional selection
+		Core.Targeting.CancelSelecting();
+
+		-- Ensure there is a snap point
+		if not SnappedPoint then
+			return;
+		end;
+
+		-- Disable snapping
+		SnapTracking.StopTracking();
+
+		-- Attach the handles to a part at the snapped point
+		local Part = Create 'Part' {
+			CFrame = SnappedPoint,
+			Size = Vector3.new(5, 1, 5)
+		};
+		SetPivot 'Last';
+		AttachHandles(Part, true);
+
+		-- Maintain the part in memory to prevent garbage collection
+		GCBypass = { Part };
+
+		-- Set the pivot point
+		PivotPoint = SnappedPoint;
+		CustomPivotPoint = true;
+
+		-- Disconnect snapped pivot point selection listener
+		ClearConnection 'SelectSnappedPivot';
+
+		-- Disable custom pivot point mode when the handles attach elsewhere
+		Connections.DisableCustomPivotPoint = Handles.Changed:connect(function (Property)
+			if Property == 'Adornee' then
+				CustomPivotPoint = false;
+				ClearConnection 'DisableCustomPivotPoint';
+			end;
+		end);
+
+	end);
 
 end;
 
@@ -490,7 +588,7 @@ function SetAxisAngle(Axis, Angle)
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
 	-- Revert changes if player is not authorized to move parts to target destination
-	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, AreaPermissions) then
+	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 		for Part, PartState in pairs(InitialState) do
 			Part.CFrame = PartState.CFrame;
 		end;
@@ -498,7 +596,6 @@ function SetAxisAngle(Axis, Angle)
 
 	-- Restore the parts' original states
 	for Part, PartState in pairs(InitialState) do
-		Part.CanCollide = InitialState[Part].CanCollide;
 		Part:MakeJoints();
 		Part.Anchored = InitialState[Part].Anchored;
 	end;
@@ -508,6 +605,48 @@ function SetAxisAngle(Axis, Angle)
 
 end;
 
+function NudgeSelectionByAxis(Axis, Direction)
+	-- Nudges the rotation of the selection in the direction of the given axis
+
+	-- Track the change
+	TrackChange();
+
+	-- Stop parts from moving, and capture the initial state of the parts
+	local InitialState = PreparePartsForRotating();
+
+	-- Set the pivot point to the center of the selection if in Center mode
+	if RotateTool.Pivot == 'Center' then
+		local BoundingBoxSize, BoundingBoxCFrame = BoundingBox.CalculateExtents(Selection.Items);
+		PivotPoint = BoundingBoxCFrame;
+
+	-- Set the pivot point to the center of the focused part if in Last mode
+	elseif RotateTool.Pivot == 'Last' and not CustomPivotPoint then
+		PivotPoint = InitialState[Selection.Focus].CFrame;
+	end;
+
+	-- Perform the rotation
+	RotatePartsAroundPivot(RotateTool.Pivot, PivotPoint, Axis, RotateTool.Increment * (Direction or 1), Selection.Items, InitialState);
+
+	-- Cache area permissions information
+	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+
+	-- Make sure we're not entering any unauthorized private areas
+	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+		for Part, PartState in pairs(InitialState) do
+			Part.CFrame = PartState.CFrame;
+		end;
+	end;
+
+	-- Make joints, restore original anchor and collision states
+	for _, Part in pairs(Selection.Items) do
+		Part:MakeJoints();
+		Part.Anchored = InitialState[Part].Anchored;
+	end;
+
+	-- Register the change
+	RegisterChange();
+
+end;
 
 function TrackChange()
 
@@ -579,7 +718,7 @@ function RegisterChange()
 	Core.SyncAPI:Invoke('SyncRotate', Changes);
 
 	-- Register the record and clear the staging
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 	HistoryRecord = nil;
 
 end;
@@ -591,9 +730,8 @@ function PreparePartsForRotating()
 
 	-- Stop parts from moving, and capture the initial state of the parts
 	for _, Part in pairs(Selection.Items) do
-		InitialState[Part] = { Anchored = Part.Anchored, CFrame = Part.CFrame, CanCollide = Part.CanCollide };
+		InitialState[Part] = { Anchored = Part.Anchored, CFrame = Part.CFrame };
 		Part.Anchored = true;
-		Part.CanCollide = false;
 		Part:BreakJoints();
 		Part.Velocity = Vector3.new();
 		Part.RotVelocity = Vector3.new();
@@ -625,6 +763,5 @@ function GetIncrementMultiple(Number, Increment)
 	return Number;
 end;
 
--- Mark the tool as fully loaded
-Core.Tools.Rotate = RotateTool;
-RotateTool.Loaded = true;
+-- Return the tool
+return RotateTool;

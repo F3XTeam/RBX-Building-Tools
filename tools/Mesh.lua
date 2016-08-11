@@ -1,10 +1,5 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -19,15 +14,12 @@ local MeshTool = {
 	Name = 'Mesh Tool';
 	Color = BrickColor.new 'Bright violet';
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function MeshTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
@@ -35,7 +27,7 @@ function Equip()
 
 end;
 
-function Unequip()
+function MeshTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
@@ -43,9 +35,6 @@ function Unequip()
 	ClearConnections();
 
 end;
-
-MeshTool.Listeners.Equipped = Equip;
-MeshTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
@@ -67,7 +56,7 @@ function ShowUI()
 		MeshTool.UI.Visible = true;
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 		-- Skip UI creation
 		return;
@@ -86,14 +75,7 @@ function ShowUI()
 	local TextureIdInput = MeshTool.UI.TextureIdOption.TextBox;
 	local VertexColorInput = MeshTool.UI.TintOption.HSVPicker;
 
-	-- Create the mesh type dropdown
-	local TypeDropdown = Core.createDropdown();
-	TypeDropdown.Frame.Parent = MeshTool.UI.TypeOption;
-	TypeDropdown.Frame.Position = UDim2.new(0, 40, 0, 0);
-	TypeDropdown.Frame.Size = UDim2.new(1, -40, 0, 25);
-
-	-- Add the mesh types to the dropdown
-	local Types = {
+	MeshTypes = {
 		Block = Enum.MeshType.Brick,
 		Cylinder = Enum.MeshType.Cylinder,
 		File = Enum.MeshType.FileMesh,
@@ -102,15 +84,15 @@ function ShowUI()
 		Trapezoid = Enum.MeshType.Torso,
 		Wedge = Enum.MeshType.Wedge
 	};
-	for TypeLabel, TypeEnum in pairs(Types) do
 
-		-- Set the mesh type to the selected
-		TypeDropdown:addOption(TypeLabel:upper()).MouseButton1Click:connect(function ()
-			SetProperty('MeshType', TypeEnum);
-			TypeDropdown:toggle();
-		end);
+	-- Sort the mesh types
+	SortedMeshTypes = Support.Keys(MeshTypes);
+	table.sort(SortedMeshTypes);
 
-	end;
+	-- Create the mesh type dropdown
+	TypeDropdown = Core.Cheer(MeshTool.UI.TypeOption.Dropdown).Start(SortedMeshTypes, '', function (Type)
+		SetProperty('MeshType', MeshTypes[Type]);
+	end);
 
 	-- Enable the scale inputs
 	local XScaleInput = MeshTool.UI.ScaleOption.XInput.TextBox;
@@ -158,9 +140,9 @@ function ShowUI()
 
 	-- Enable the vertex color/tint option
 	VertexColorInput.MouseButton1Click:connect(function ()
-		Core.ColorPicker:start(
-			function (Color) SetProperty('VertexColor', ColorToVector(Color)) end,
-			VectorToColor(Support.IdentifyCommonProperty(GetMeshes(), 'VertexColor')) or Color3.new(1, 1, 1)
+		Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
+			VectorToColor(Support.IdentifyCommonProperty(GetMeshes(), 'VertexColor')) or Color3.new(1, 1, 1),
+			function (Color) SetProperty('VertexColor', ColorToVector(Color)) end
 		);
 	end);
 
@@ -173,7 +155,7 @@ function ShowUI()
 	end);
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
@@ -207,12 +189,12 @@ function UpdateUI()
 	local XScaleVariations, YScaleVariations, ZScaleVariations = {}, {}, {};
 	local XOffsetVariations, YOffsetVariations, ZOffsetVariations = {}, {}, {};
 	for _, Mesh in pairs(GetMeshes()) do
-		table.insert(XScaleVariations, Mesh.Scale.X);
-		table.insert(YScaleVariations, Mesh.Scale.Y);
-		table.insert(ZScaleVariations, Mesh.Scale.Z);
-		table.insert(XOffsetVariations, Mesh.Offset.X);
-		table.insert(YOffsetVariations, Mesh.Offset.Y);
-		table.insert(ZOffsetVariations, Mesh.Offset.Z);
+		table.insert(XScaleVariations, Support.Round(Mesh.Scale.X, 3));
+		table.insert(YScaleVariations, Support.Round(Mesh.Scale.Y, 3));
+		table.insert(ZScaleVariations, Support.Round(Mesh.Scale.Z, 3));
+		table.insert(XOffsetVariations, Support.Round(Mesh.Offset.X, 3));
+		table.insert(YOffsetVariations, Support.Round(Mesh.Offset.Y, 3));
+		table.insert(ZOffsetVariations, Support.Round(Mesh.Offset.Z, 3));
 	end;
 	local CommonXScale = Support.IdentifyCommonItem(XScaleVariations);
 	local CommonYScale = Support.IdentifyCommonItem(YScaleVariations);
@@ -238,7 +220,7 @@ function UpdateUI()
 	-- Update the inputs
 	UpdateDataInputs {
 		[MeshIdInput] = MeshId and ParseAssetId(MeshId) or MeshId or '*';
-		[TextureIdInput] = TextureId and ParseAssetId(MeshId) or TextureId or '*';
+		[TextureIdInput] = TextureId and ParseAssetId(TextureId) or TextureId or '*';
 		[XScaleInput] = CommonXScale or '*';
 		[YScaleInput] = CommonYScale or '*';
 		[ZScaleInput] = CommonZScale or '*';
@@ -248,17 +230,8 @@ function UpdateUI()
 	};
 	UpdateColorIndicator(VertexColorIndicator, VertexColor);
 
-	local Types = {
-		Block = Enum.MeshType.Brick,
-		Cylinder = Enum.MeshType.Cylinder,
-		File = Enum.MeshType.FileMesh,
-		Head = Enum.MeshType.Head,
-		Sphere = Enum.MeshType.Sphere,
-		Trapezoid = Enum.MeshType.Torso,
-		Wedge = Enum.MeshType.Wedge
-	};
-	local MeshTypeLabel = Support.FindTableOccurrence(Types, MeshType);
-	MeshTypeDropdown.MainButton.CurrentOption.Text = MeshTypeLabel and MeshTypeLabel:upper() or '*';
+	local MeshTypeLabel = Support.FindTableOccurrence(MeshTypes, MeshType);
+	TypeDropdown.SetOption(MeshTypeLabel and MeshTypeLabel or '*');
 
 	AddButton.Visible = false;
 	RemoveButton.Visible = false;
@@ -470,7 +443,7 @@ function AddMeshes()
 	};
 
 	-- Register the history record
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 
 end;
 
@@ -511,7 +484,7 @@ function RemoveMeshes()
 	Core.SyncAPI:Invoke('Remove', Meshes);
 
 	-- Register the history record
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 
 end;
 
@@ -784,11 +757,10 @@ function RegisterChange()
 	Core.SyncAPI:Invoke('SyncMesh', HistoryRecord.After);
 
 	-- Register the record and clear the staging
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 	HistoryRecord = nil;
 
 end;
 
--- Mark the tool as fully loaded
-Core.Tools.Mesh = MeshTool;
-MeshTool.Loaded = true;
+-- Return the tool
+return MeshTool;

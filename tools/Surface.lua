@@ -1,10 +1,5 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -22,15 +17,12 @@ local SurfaceTool = {
 	-- Default options
 	Surface = 'All';
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function SurfaceTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
@@ -42,7 +34,7 @@ function Equip()
 
 end;
 
-function Unequip()
+function SurfaceTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
@@ -50,9 +42,6 @@ function Unequip()
 	ClearConnections();
 
 end;
-
-SurfaceTool.Listeners.Equipped = Equip;
-SurfaceTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
@@ -74,7 +63,7 @@ function ShowUI()
 		SurfaceTool.UI.Visible = true;
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 		-- Skip UI creation
 		return;
@@ -87,71 +76,28 @@ function ShowUI()
 	SurfaceTool.UI.Visible = true;
 
 	-- Create the surface selection dropdown
-	SurfaceDropdown = Core.createDropdown();
-	SurfaceDropdown.Frame.Parent = SurfaceTool.UI.SideOption;
-	SurfaceDropdown.Frame.Position = UDim2.new(0, 30, 0, 0);
-	SurfaceDropdown.Frame.Size = UDim2.new(0, 72, 0, 25);
+	SurfaceDropdown = Core.Cheer(SurfaceTool.UI.SideOption.Dropdown).Start({ 'All', 'Top', 'Bottom', 'Front', 'Back', 'Left', 'Right' }, 'All', SetSurface);
 
-	-- Add the surface options to the dropdown
-	SurfaceDropdown:addOption('ALL').MouseButton1Up:connect(function ()
-		SetSurface('All');
-	end);
-	SurfaceDropdown:addOption('TOP').MouseButton1Up:connect(function ()
-		SetSurface('Top');
-	end);
-	SurfaceDropdown:addOption('BOTTOM').MouseButton1Up:connect(function ()
-		SetSurface('Bottom');
-	end);
-	SurfaceDropdown:addOption('FRONT').MouseButton1Up:connect(function ()
-		SetSurface('Front');
-	end);
-	SurfaceDropdown:addOption('BACK').MouseButton1Up:connect(function ()
-		SetSurface('Back');
-	end);
-	SurfaceDropdown:addOption('LEFT').MouseButton1Up:connect(function ()
-		SetSurface('Left');
-	end);
-	SurfaceDropdown:addOption('RIGHT').MouseButton1Up:connect(function ()
-		SetSurface('Right');
-	end);
+	-- Map type label names to actual type names
+	local SurfaceTypes = {
+		['Studs'] = 'Studs',
+		['Inlets'] = 'Inlet',
+		['Smooth'] = 'Smooth',
+		['Weld'] = 'Weld',
+		['Glue'] = 'Glue',
+		['Universal'] = 'Universal',
+		['Hinge'] = 'Hinge',
+		['Motor'] = 'Motor',
+		['No Outline'] = 'SmoothNoOutlines'
+	};
 
 	-- Create the surface type selection dropdown
-	SurfaceTypeDropdown = Core.createDropdown();
-	SurfaceTypeDropdown.Frame.Parent = SurfaceTool.UI.TypeOption;
-	SurfaceTypeDropdown.Frame.Position = UDim2.new(0, 30, 0, 0);
-	SurfaceTypeDropdown.Frame.Size = UDim2.new(0, 87, 0, 25);
-
-	-- Add the surface type options to the dropdown
-	SurfaceTypeDropdown:addOption('STUDS').MouseButton1Up:connect(function ()
-		SetSurfaceType(Enum.SurfaceType.Studs);
-	end);
-	SurfaceTypeDropdown:addOption('INLETS').MouseButton1Up:connect(function ()
-		SetSurfaceType(Enum.SurfaceType.Inlet);
-	end);
-	SurfaceTypeDropdown:addOption('SMOOTH').MouseButton1Up:connect(function ()
-		SetSurfaceType(Enum.SurfaceType.Smooth);
-	end);
-	SurfaceTypeDropdown:addOption('WELD').MouseButton1Up:connect(function ()
-		SetSurfaceType(Enum.SurfaceType.Weld);
-	end);
-	SurfaceTypeDropdown:addOption('GLUE').MouseButton1Up:connect(function ()
-		SetSurfaceType(Enum.SurfaceType.Glue);
-	end);
-	SurfaceTypeDropdown:addOption('UNIVERSAL').MouseButton1Up:connect(function ()
-		SetSurfaceType(Enum.SurfaceType.Universal);
-	end);
-	SurfaceTypeDropdown:addOption('HINGE').MouseButton1Up:connect(function ()
-		SetSurfaceType(Enum.SurfaceType.Hinge);
-	end);
-	SurfaceTypeDropdown:addOption('MOTOR').MouseButton1Up:connect(function ()
-		SetSurfaceType(Enum.SurfaceType.Motor);
-	end);
-	SurfaceTypeDropdown:addOption('NO OUTLINE').MouseButton1Up:connect(function ()
-		SetSurfaceType(Enum.SurfaceType.SmoothNoOutlines);
+	SurfaceTypeDropdown = Core.Cheer(SurfaceTool.UI.TypeOption.Dropdown).Start({ 'Studs', 'Inlets', 'Smooth', 'Weld', 'Glue', 'Universal', 'Hinge', 'Motor', 'No Outline' }, '', function (Option)
+		SetSurfaceType(Enum.SurfaceType[SurfaceTypes[Option]]);
 	end);
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
@@ -180,7 +126,7 @@ function GetSurfaceTypeDisplayName(SurfaceType)
 
 	-- For no outlines, simplify name
 	elseif SurfaceType == Enum.SurfaceType.SmoothNoOutlines then
-		return 'No Outlines';
+		return 'No Outline';
 
 	-- For other surface types, return their normal name
 	else
@@ -200,7 +146,7 @@ function UpdateUI()
 
 	-- Only show and identify current surface type if selection is not empty
 	if #Selection.Items == 0 then
-		SurfaceTypeDropdown:selectOption('');
+		SurfaceTypeDropdown.SetOption('');
 		return;
 	end;
 
@@ -232,7 +178,7 @@ function UpdateUI()
 	local CommonSurfaceType = Support.IdentifyCommonItem(SurfaceTypeVariations);
 
 	-- Update the current surface type in the surface type dropdown
-	SurfaceTypeDropdown:selectOption(CommonSurfaceType and GetSurfaceTypeDisplayName(CommonSurfaceType):upper() or '*');
+	SurfaceTypeDropdown.SetOption(CommonSurfaceType and GetSurfaceTypeDisplayName(CommonSurfaceType) or '*');
 
 end;
 
@@ -243,12 +189,7 @@ function SetSurface(Surface)
 	SurfaceTool.Surface = Surface;
 
 	-- Update the current surface in the surface dropdown
-	SurfaceDropdown:selectOption(Surface:upper());
-
-	-- If the current surface dropdown is open, close it
-	if SurfaceDropdown.open then
-		SurfaceDropdown:toggle();
-	end;
+	SurfaceDropdown.SetOption(Surface);
 
 end;
 
@@ -258,11 +199,6 @@ function SetSurfaceType(SurfaceType)
 	-- Make sure a surface has been selected
 	if not SurfaceTool.Surface then
 		return;
-	end;
-
-	-- If the current surface type dropdown is open, close it
-	if SurfaceTypeDropdown.open then
-		SurfaceTypeDropdown:toggle();
 	end;
 
 	-- Track changes
@@ -295,15 +231,15 @@ end;
 function EnableSurfaceSelection()
 	-- Allows the player to select surfaces by clicking on them
 
-	-- Watch out for clicks on selected parts (use selection system-linked core event)
-	SurfaceTool.Listeners.Button1Up = function ()
-		if Selection.Find(Core.Mouse.Target) and Core.Mouse.TargetSurface and not Core.selecting then
+	-- Watch out for clicks on selected parts
+	Connections.SurfaceSelection = Selection.FocusChanged:connect(function (Part)
+		if Selection.Find(Core.Mouse.Target) then
 
 			-- Set the surface option to the target surface
 			SetSurface(Core.Mouse.TargetSurface.Name);
 
 		end;
-	end;
+	end);
 
 end;
 
@@ -415,11 +351,10 @@ function RegisterChange()
 	Core.SyncAPI:Invoke('SyncSurface', Changes);
 
 	-- Register the record and clear the staging
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 	HistoryRecord = nil;
 
 end;
 
--- Mark the tool as fully loaded
-Core.Tools.Surface = SurfaceTool;
-SurfaceTool.Loaded = true;
+-- Return the tool
+return SurfaceTool;

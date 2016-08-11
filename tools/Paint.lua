@@ -1,10 +1,5 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -22,15 +17,12 @@ local PaintTool = {
 	-- Default options
 	BrickColor = nil;
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function PaintTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
@@ -40,7 +32,7 @@ function Equip()
 
 end;
 
-function Unequip()
+function PaintTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
@@ -48,9 +40,6 @@ function Unequip()
 	ClearConnections();
 
 end;
-
-PaintTool.Listeners.Equipped = Equip;
-PaintTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
@@ -75,7 +64,7 @@ function ShowUI()
 		PaintTool.UI.Visible = true;
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 		-- Skip UI creation
 		return;
@@ -126,7 +115,7 @@ function ShowUI()
 	PaintTool.UI.LastColor.MouseButton1Click:connect(PaintParts);
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
@@ -247,7 +236,7 @@ function BindShortcutKeys()
 		end;
 
 		-- Check if the R key was pressed
-		if InputInfo.KeyCode == Enum.KeyCode.R and not (Core.ActiveKeys[Enum.KeyCode.LeftShift] or Core.ActiveKeys[Enum.KeyCode.RightShift]) then
+		if InputInfo.KeyCode == Enum.KeyCode.R and not (Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift)) then
 
 			-- Set the current color to that of the current mouse target (if any)
 			if Core.Mouse.Target then
@@ -263,15 +252,15 @@ end;
 function EnableClickPainting()
 	-- Allows the player to paint parts by clicking on them
 
-	-- Watch out for clicks on selected parts (use selection system-linked core event)
-	PaintTool.Listeners.Button1Up = function ()
-		if Selection.Find(Core.Mouse.Target) and not Core.selecting then
+	-- Watch out for clicks on selected parts
+	Connections.ClickPainting = Selection.FocusChanged:connect(function (Part)
+		if Selection.Find(Core.Mouse.Target) then
 
 			-- Paint the selected parts
 			PaintParts();
 
 		end;
-	end;
+	end);
 
 end;
 
@@ -351,11 +340,10 @@ function RegisterChange()
 	Core.SyncAPI:Invoke('SyncColor', Changes);
 
 	-- Register the record and clear the staging
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 	HistoryRecord = nil;
 
 end;
 
--- Mark the tool as fully loaded
-Core.Tools.Paint = PaintTool;
-PaintTool.Loaded = true;
+-- Return the tool
+return PaintTool;

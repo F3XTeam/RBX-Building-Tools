@@ -1,10 +1,5 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -19,15 +14,12 @@ local DecorateTool = {
 	Name = 'Decorate Tool';
 	Color = BrickColor.new 'Really black';
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function DecorateTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
@@ -35,7 +27,7 @@ function Equip()
 
 end;
 
-function Unequip()
+function DecorateTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
@@ -43,9 +35,6 @@ function Unequip()
 	ClearConnections();
 
 end;
-
-DecorateTool.Listeners.Equipped = Equip;
-DecorateTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
@@ -67,7 +56,7 @@ function ShowUI()
 		DecorateTool.UI.Visible = true;
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 		-- Skip UI creation
 		return;
@@ -85,7 +74,7 @@ function ShowUI()
 	EnableOptionsUI(DecorateTool.UI.Sparkles);
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
@@ -164,9 +153,9 @@ function UpdateUI()
 
 			-- Update the inputs
 			UpdateDataInputs {
-				[SizeInput] = Support.IdentifyCommonProperty(Decorations, 'Size') or '*';
-				[VelocityInput] = Support.IdentifyCommonProperty(Decorations, 'RiseVelocity') or '*';
-				[OpacityInput] = Support.IdentifyCommonProperty(Decorations, 'Opacity') or '*';
+				[SizeInput] = Support.Round(Support.IdentifyCommonProperty(Decorations, 'Size'), 2) or '*';
+				[VelocityInput] = Support.Round(Support.IdentifyCommonProperty(Decorations, 'RiseVelocity'), 2) or '*';
+				[OpacityInput] = Support.Round(Support.IdentifyCommonProperty(Decorations, 'Opacity'), 2) or '*';
 			};
 			UpdateColorIndicator(ColorIndicator, Support.IdentifyCommonProperty(Decorations, 'Color'));
 
@@ -183,8 +172,8 @@ function UpdateUI()
 			UpdateColorIndicator(ColorIndicator, Support.IdentifyCommonProperty(Decorations, 'Color'));
 			UpdateColorIndicator(SecondaryColorIndicator, Support.IdentifyCommonProperty(Decorations, 'SecondaryColor'));
 			UpdateDataInputs {
-				[HeatInput] = Support.IdentifyCommonProperty(Decorations, 'Heat') or '*';
-				[SizeInput] = Support.IdentifyCommonProperty(Decorations, 'Size') or '*';
+				[HeatInput] = Support.Round(Support.IdentifyCommonProperty(Decorations, 'Heat'), 2) or '*';
+				[SizeInput] = Support.Round(Support.IdentifyCommonProperty(Decorations, 'Size'), 2) or '*';
 			};
 
 		-- Update sparkle inputs
@@ -255,7 +244,7 @@ function UpdateDataInputs(Data)
 	-- Go through the inputs and data
 	for Input, UpdatedValue in pairs(Data) do
 
-		-- Makwe sure the user isn't typing into the input
+		-- Make sure the user isn't typing into the input
 		if not Input:IsFocused() then
 
 			-- Set the input's value
@@ -312,7 +301,7 @@ function RegisterChange()
 	Core.SyncAPI:Invoke('SyncDecorate', HistoryRecord.After);
 
 	-- Register the record and clear the staging
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 	HistoryRecord = nil;
 
 end;
@@ -493,9 +482,9 @@ function SyncInputToProperty(Property, DecorationType, InputType, Input)
 	-- Enable inputs
 	if InputType == 'Color' then
 		Input.MouseButton1Click:connect(function ()
-			Core.ColorPicker:start(
-				function (Color) SetProperty(DecorationType, Property, Color) end,
-				Support.IdentifyCommonProperty(GetDecorations(DecorationType), Property) or Color3.new(0, 0, 1)
+			Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
+				Support.IdentifyCommonProperty(GetDecorations(DecorationType), Property) or Color3.new(0, 0, 1),
+				function (Color) SetProperty(DecorationType, Property, Color) end
 			);
 		end);
 
@@ -585,7 +574,7 @@ function AddDecorations(DecorationType)
 	};
 
 	-- Register the history record
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 
 	-- Open the options UI for this decoration type
 	OpenOptions(DecorationType);
@@ -629,10 +618,9 @@ function RemoveDecorations(DecorationType)
 	Core.SyncAPI:Invoke('Remove', Decorations);
 
 	-- Register the history record
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 
 end;
 
--- Mark the tool as fully loaded
-Core.Tools.Decorate = DecorateTool;
-DecorateTool.Loaded = true;
+-- Return the tool
+return DecorateTool;

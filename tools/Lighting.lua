@@ -1,10 +1,5 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -19,15 +14,12 @@ local LightingTool = {
 	Name = 'Lighting Tool';
 	Color = BrickColor.new 'Really black';
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function LightingTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
@@ -36,7 +28,7 @@ function Equip()
 
 end;
 
-function Unequip()
+function LightingTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
@@ -44,9 +36,6 @@ function Unequip()
 	ClearConnections();
 
 end;
-
-LightingTool.Listeners.Equipped = Equip;
-LightingTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
@@ -68,7 +57,7 @@ function ShowUI()
 		LightingTool.UI.Visible = true;
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 		-- Skip UI creation
 		return;
@@ -86,7 +75,7 @@ function ShowUI()
 	EnableLightSettingsUI(LightingTool.UI.SurfaceLight);
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
@@ -138,9 +127,9 @@ function EnableLightSettingsUI(LightSettingsUI)
 
 	-- Enable color input
 	ColorPicker.MouseButton1Click:connect(function ()
-		Core.ColorPicker:start(
-			function (Color) SetColor(LightType, Color) end,
-			Support.IdentifyCommonProperty(GetLights(LightType), 'Color') or Color3.new(1, 1, 1)
+		Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
+			Support.IdentifyCommonProperty(GetLights(LightType), 'Color') or Color3.new(1, 1, 1),
+			function (Color) SetColor(LightType, Color) end
 		);
 	end);
 
@@ -166,24 +155,12 @@ function EnableLightSettingsUI(LightSettingsUI)
 
 	-- Enable light type-specific features
 	if LightType == 'SpotLight' or LightType == 'SurfaceLight' then
-
+		
 		-- Create a surface selection dropdown
-		local SurfaceDropdown = Core.createDropdown();
-		SurfaceDropdown.Frame.Parent = Options.SideOption;
-		SurfaceDropdown.Frame.Position = UDim2.new(0, 30, 0, 0);
-		SurfaceDropdown.Frame.Size = UDim2.new(0, 72, 0, 25);
-
-		-- Add the surface options to the dropdown
-		local Surfaces = { 'Top', 'Bottom', 'Front', 'Back', 'Left', 'Right' };
-		for _, Surface in pairs(Surfaces) do
-
-			-- Set the lights' target surface to the selected
-			SurfaceDropdown:addOption(Surface:upper()).MouseButton1Up:connect(function ()
-				SetSurface(LightType, Enum.NormalId[Surface]);
-				SurfaceDropdown:toggle();
-			end);
-
-		end;
+		Surfaces = { 'Top', 'Bottom', 'Front', 'Back', 'Left', 'Right' };
+		local SurfaceDropdown = Core.Cheer(Options.SideOption.Dropdown).Start(Surfaces, '', function (Surface)
+			SetSurface(LightType, Enum.NormalId[Surface]);
+		end);
 
 		-- Enable angle input
 		local AngleInput = Options.AngleOption.Input.TextBox;
@@ -419,8 +396,8 @@ function UpdateUI()
 
 		-- Update the standard inputs
 		UpdateDataInputs {
-			[RangeInput] = Support.IdentifyCommonProperty(Lights, 'Range') or '*';
-			[BrightnessInput] = Support.IdentifyCommonProperty(Lights, 'Brightness') or '*';
+			[RangeInput] = Support.Round(Support.IdentifyCommonProperty(Lights, 'Range'), 2) or '*';
+			[BrightnessInput] = Support.Round(Support.IdentifyCommonProperty(Lights, 'Brightness'), 2) or '*';
 		};
 
 		-- Update type-specific inputs
@@ -428,16 +405,16 @@ function UpdateUI()
 
 			-- Get the type-specific inputs
 			local AngleInput = Options.AngleOption.Input.TextBox;
-			local SideDropdown = Options.SideOption.Dropdown;
+			local SideDropdown = Core.Cheer(Options.SideOption.Dropdown);
 
 			-- Update the angle input
 			UpdateDataInputs {
-				[AngleInput] = Support.IdentifyCommonProperty(Lights, 'Angle') or '*';
+				[AngleInput] = Support.Round(Support.IdentifyCommonProperty(Lights, 'Angle'), 2) or '*';
 			};
 
 			-- Update the surface dropdown input
 			local Face = Support.IdentifyCommonProperty(Lights, 'Face');
-			SideDropdown.MainButton.CurrentOption.Text = Face and Face.Name:upper() or '*';
+			SideDropdown.SetOption(Face and Face.Name or '*');
 			
 		end;
 
@@ -533,7 +510,7 @@ function AddLights(LightType)
 	};
 
 	-- Register the history record
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 
 	-- Open the options UI for this light type
 	OpenLightOptions(LightType);
@@ -577,7 +554,7 @@ function RemoveLights(LightType)
 	Core.SyncAPI:Invoke('Remove', Lights);
 
 	-- Register the history record
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 
 end;
 
@@ -626,7 +603,7 @@ function RegisterChange()
 	Core.SyncAPI:Invoke('SyncLighting', HistoryRecord.After);
 
 	-- Register the record and clear the staging
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 	HistoryRecord = nil;
 
 end;
@@ -785,6 +762,5 @@ function SetAngle(LightType, Angle)
 
 end;
 
--- Mark the tool as fully loaded
-Core.Tools.Lighting = LightingTool;
-LightingTool.Loaded = true;
+-- Return the tool
+return LightingTool;

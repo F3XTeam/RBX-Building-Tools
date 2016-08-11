@@ -1,10 +1,5 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -22,15 +17,12 @@ local NewPartTool = {
 	-- Default options
 	Type = 'Normal';
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function NewPartTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
@@ -42,7 +34,7 @@ function Equip()
 
 end;
 
-function Unequip()
+function NewPartTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
@@ -50,9 +42,6 @@ function Unequip()
 	ClearConnections();
 
 end;
-
-NewPartTool.Listeners.Equipped = Equip;
-NewPartTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
@@ -84,27 +73,12 @@ function ShowUI()
 	UI.Visible = true;
 
 	-- Creatable part types
-	local Types = { 'Normal', 'Truss', 'Wedge', 'Corner', 'Cylinder', 'Ball', 'Seat', 'Vehicle Seat', 'Spawn' };
+	Types = { 'Normal', 'Truss', 'Wedge', 'Corner', 'Cylinder', 'Ball', 'Seat', 'Vehicle Seat', 'Spawn' };
 
 	-- Create the type selection dropdown
-	TypeDropdown = Core.createDropdown();
-	TypeDropdown.Frame.Parent = UI.TypeOption;
-	TypeDropdown.Frame.Position = UDim2.new(0, 70, 0, 0);
-	TypeDropdown.Frame.Size = UDim2.new(0, 140, 0, 25);
-
-	-- Add the part type options to the dropdown
-	for _, Type in pairs(Types) do
-
-		-- Capitalize the part type label
-		TypeLabel = Type:upper();
-
-		-- Enable the option button
-		TypeDropdown:addOption(TypeLabel).MouseButton1Click:connect(function ()
-			SetType(Type);
-			TypeDropdown:toggle();
-		end);
-
-	end;
+	TypeDropdown = Core.Cheer(UI.TypeOption.Dropdown).Start(Types, '', function (Type)
+		SetType(Type);
+	end);
 
 end;
 
@@ -127,7 +101,7 @@ function SetType(Type)
 	NewPartTool.Type = Type;
 
 	-- Update the UI
-	TypeDropdown:selectOption(Type:upper());
+	TypeDropdown.SetOption(Type);
 
 end;
 
@@ -187,20 +161,19 @@ function CreatePart(Type)
 	};
 
 	-- Register the history record
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 
 	-- Select the part
 	Selection.Replace({ Part });
 
 	-- Switch to the move tool
-	Core.equipTool(Core.Tools.Move);
+	local MoveTool = require(Core.Tool.Tools.MoveTool);
+	Core.EquipTool(MoveTool);
 
 	-- Enable dragging to allow easy positioning of the created part
-	Core.Tools.Move.SetUpDragging(Part);
+	MoveTool.SetUpDragging(Part);
 
 end;
 
-
--- Mark the tool as fully loaded
-Core.Tools.NewPart = NewPartTool;
-NewPartTool.Loaded = true;
+-- Return the tool
+return NewPartTool;

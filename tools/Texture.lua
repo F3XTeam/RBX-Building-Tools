@@ -1,10 +1,5 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-Core = _G.BTCoreEnv[script.Parent.Parent];
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -23,15 +18,12 @@ local TextureTool = {
 	Type = 'Decal';
 	Face = Enum.NormalId.Front;
 
-	-- Standard platform event interface
-	Listeners = {};
-
 };
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function Equip()
+function TextureTool.Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
@@ -44,7 +36,7 @@ function Equip()
 
 end;
 
-function Unequip()
+function TextureTool.Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
@@ -52,9 +44,6 @@ function Unequip()
 	ClearConnections();
 
 end;
-
-TextureTool.Listeners.Equipped = Equip;
-TextureTool.Listeners.Unequipped = Unequip;
 
 function ClearConnections()
 	-- Clears out temporary connections
@@ -76,7 +65,7 @@ function ShowUI()
 		UI.Visible = true;
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 		-- Skip UI creation
 		return;
@@ -107,22 +96,10 @@ function ShowUI()
 	end);
 
 	-- Create the face selection dropdown
-	local FaceDropdown = Core.createDropdown();
-	FaceDropdown.Frame.Parent = UI.SideOption;
-	FaceDropdown.Frame.Position = UDim2.new(0, 30, 0, 0);
-	FaceDropdown.Frame.Size = UDim2.new(1, -45, 0, 25);
-
-	-- Add the face options to the dropdown
 	local Faces = { 'Top', 'Bottom', 'Front', 'Back', 'Left', 'Right' };
-	for _, Face in pairs(Faces) do
-
-		-- Set the face option to the selected
-		FaceDropdown:addOption(Face:upper()).MouseButton1Up:connect(function ()
-			SetFace(Enum.NormalId[Face]);
-			FaceDropdown:toggle();
-		end);
-
-	end;
+	FaceDropdown = Core.Cheer(UI.SideOption.Dropdown).Start(Faces, '', function (Face)
+		SetFace(Enum.NormalId[Face]);
+	end);
 
 	-- Enable the image ID input
 	ImageIdInput.FocusLost:connect(function (EnterPressed)
@@ -143,7 +120,7 @@ function ShowUI()
 	end);
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Core.ScheduleRecurringTask(UpdateUI, 0.1);
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
 
 end;
 
@@ -330,7 +307,7 @@ function UpdateUI()
 	-- Update the common inputs
 	UpdateDataInputs {
 		[ImageIdInput] = ImageId and ParseAssetId(ImageId) or ImageId or '*';
-		[TransparencyInput] = Transparency and Support.Round(Transparency, 2) or '*';
+		[TransparencyInput] = Transparency and Support.Round(Transparency, 3) or '*';
 	};
 
 	-- Update texture-specific information on UI
@@ -346,8 +323,8 @@ function UpdateUI()
 
 		-- Update inputs
 		UpdateDataInputs {
-			[RepeatXInput] = RepeatX and Support.Round(RepeatX, 2) or '*';
-			[RepeatYInput] = RepeatY and Support.Round(RepeatY, 2) or '*';
+			[RepeatXInput] = RepeatX and Support.Round(RepeatX, 3) or '*';
+			[RepeatYInput] = RepeatY and Support.Round(RepeatY, 3) or '*';
 		};
 
 	end;
@@ -388,7 +365,7 @@ function SetFace(Face)
 	TextureTool.Face = Face;
 
 	-- Update the UI
-	UI.SideOption.Dropdown.MainButton.CurrentOption.Text = Face and Face.Name:upper() or '*';
+	FaceDropdown.SetOption(Face and Face.Name or '*');
 
 end;
 
@@ -540,7 +517,7 @@ function AddTextures(TextureType, Face)
 	};
 
 	-- Register the history record
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 
 end;
 
@@ -581,7 +558,7 @@ function RemoveTextures(TextureType, Face)
 	Core.SyncAPI:Invoke('Remove', Textures);
 
 	-- Register the history record
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 
 end;
 
@@ -630,11 +607,10 @@ function RegisterChange()
 	Core.SyncAPI:Invoke('SyncTexture', HistoryRecord.After);
 
 	-- Register the record and clear the staging
-	Core.History:Add(HistoryRecord);
+	Core.History.Add(HistoryRecord);
 	HistoryRecord = nil;
 
 end;
 
--- Mark the tool as fully loaded
-Core.Tools.Texture = TextureTool;
-TextureTool.Loaded = true;
+-- Return the tool
+return TextureTool;
