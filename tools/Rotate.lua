@@ -292,7 +292,7 @@ function AttachHandles(Part, Autofocus)
 		TrackChange();
 
 		-- Cache area permissions information
-		if Core.ToolType == 'tool' then
+		if Core.Mode == 'Tool' then
 			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 		end;
 
@@ -366,7 +366,7 @@ function AttachHandles(Part, Autofocus)
 		end;
 
 		-- Make sure we're not entering any unauthorized private areas
-		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 			for Part, PartState in pairs(InitialState) do
 				Part.CFrame = PartState.CFrame;
 			end;
@@ -588,7 +588,7 @@ function SetAxisAngle(Axis, Angle)
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
 	-- Revert changes if player is not authorized to move parts to target destination
-	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 		for Part, PartState in pairs(InitialState) do
 			Part.CFrame = PartState.CFrame;
 		end;
@@ -631,7 +631,7 @@ function NudgeSelectionByAxis(Axis, Direction)
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
 	-- Make sure we're not entering any unauthorized private areas
-	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 		for Part, PartState in pairs(InitialState) do
 			Part.CFrame = PartState.CFrame;
 		end;

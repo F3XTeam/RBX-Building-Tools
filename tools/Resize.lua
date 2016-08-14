@@ -269,7 +269,7 @@ function ShowHandles()
 		TrackChange();
 
 		-- Cache area permissions information
-		if Core.ToolType == 'tool' then
+		if Core.Mode == 'Tool' then
 			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 		end;
 
@@ -335,7 +335,7 @@ function ShowHandles()
 		end;
 
 		-- Make sure we're not entering any unauthorized private areas
-		if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 			for Part, PartState in pairs(InitialState) do
 				Part.Size = PartState.Size;
 				Part.CFrame = PartState.CFrame;
@@ -537,7 +537,7 @@ function SetAxisSize(Axis, Size)
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
 	-- Revert changes if player is not authorized to resize parts towards the end destination
-	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 		for Part, PartState in pairs(InitialState) do
 			Part.Size = PartState.Size;
 			Part.CFrame = PartState.CFrame;
@@ -579,7 +579,7 @@ function NudgeSelectionByFace(Face)
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
 	-- Revert changes if player is not authorized to resize parts towards the end destination
-	if Core.ToolType == 'tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 		for Part, PartState in pairs(InitialState) do
 			Part.Size = PartState.Size;
 			Part.CFrame = PartState.CFrame;

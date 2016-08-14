@@ -197,8 +197,8 @@ function Security.ArePartsViolatingAreas(Parts, Player, ExemptPartial, AreaPermi
 	-- Make sure there is a permissions cache
 	AreaPermissions = AreaPermissions or {};
 
-	-- Check with areas the parts are in
-	local Areas = Security.GetSelectionAreas(Parts);
+	-- Check which areas the parts are in
+	local Areas, AreaMap = Security.GetSelectionAreas(Parts, not ExemptPartial and not Security.AllowPublicBuilding);
 
 	-- Check authorization for each relevant area
 	for _, Area in pairs(Areas) do
@@ -223,19 +223,49 @@ function Security.ArePartsViolatingAreas(Parts, Player, ExemptPartial, AreaPermi
 	-- If not in a private area, determine violation based on public building policy
 	if #Areas == 0 then
 		return not Security.AllowPublicBuilding;
+
+	-- If in authorized areas, determine violation based on public building policy compliance
+	elseif AreaMap and not Security.AllowPublicBuilding then
+
+		-- Check area residence of each part's corner
+		local PartCornerCompliance = {};
+		for AreaRegion, Parts in pairs(AreaMap) do
+			for _, Part in pairs(Parts) do
+				PartCornerCompliance[Part] = PartCornerCompliance[Part] or 0;
+
+				-- Track the number of corners that `Part` has in this region
+				for _, Corner in pairs(Support.GetPartCorners(Part)) do
+					if AreaRegion:CastPoint(Corner.p) then
+						PartCornerCompliance[Part] = PartCornerCompliance[Part] + 1;
+					end;
+				end;
+
+			end;
+		end;
+
+		-- Ensure all corners of the part are contained within areas
+		for _, CornersContained in pairs(PartCornerCompliance) do
+			if CornersContained ~= 8 then
+				return true;
+			end;
+		end;
+
 	end;
 
 	-- If no violations occur, indicate no violations
 	return false;
 end;
 
-function Security.GetSelectionAreas(Selection)
+function Security.GetSelectionAreas(Selection, ReturnMap)
 	-- Returns a list of areas that the selection of parts is in
 
 	-- Make sure areas are enabled
 	if not Security.AreAreasEnabled() then
 		return {};
 	end;
+
+	-- Start a map if requested
+	local Map = ReturnMap and {} or nil;
 
 	-- Check each area to find out if any of the parts are within
 	local Areas = {};
@@ -251,12 +281,17 @@ function Security.GetSelectionAreas(Selection)
 		-- If parts are in this area, remember the area
 		if #ContainedParts > 0 then
 			table.insert(Areas, Area);
+
+			-- Map out the parts for each area region
+			if Map then
+				Map[Region] = ContainedParts;
+			end;
 		end;
 
 	end;
 
 	-- Return the areas where any of the given parts exist
-	return Areas;
+	return Areas, Map;
 end;
 
 function Security.GetPermissions(Areas, Player)
