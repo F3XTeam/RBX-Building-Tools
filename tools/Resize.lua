@@ -55,6 +55,19 @@ function ClearConnections()
 
 end;
 
+function ClearConnection(ConnectionKey)
+	-- Clears the given specific connection
+
+	local Connection = Connections[ConnectionKey];
+
+	-- Disconnect the connection if it exists
+	if Connection then
+		Connection:disconnect();
+		Connections[ConnectionKey] = nil;
+	end;
+
+end;
+
 function ShowUI()
 	-- Creates and reveals the UI
 
@@ -742,13 +755,16 @@ function StartSnapping()
 	-- Listen for when the user starts dragging while in snap mode
 	Connections.SnapDragStart = Support.AddUserInputListener('Began', 'MouseButton1', false, function (Input)
 
+		-- Initialize snapping state
 		SnappingStage = 'Direction';
 		SnappingStartAim = Vector2.new(Input.Position.X, Input.Position.Y);
 		SnappingStartPoint = SnappedPoint;
 		SnappingStartTarget = SnapTracking.Target;
 		SnappingStartDirections = GetFaceOffsetsFromCorner(SnappingStartTarget, SnappingStartPoint);
 		SnappingStartSelectionState = PreparePartsForResizing();
+		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
+		-- Track changes for history
 		TrackChange();
 
 		-- Listen for when the user drags
@@ -822,17 +838,30 @@ function StartSnapping()
 					ResizePartsByFace(SnappingDirection, Adjustment, 'Normal', SnappingStartSelectionState);
 				end;
 
+				-- Make sure we're not entering any unauthorized private areas
+				if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+					for Part, PartState in pairs(SnappingStartSelectionState) do
+						Part.Size = PartState.Size;
+						Part.CFrame = PartState.CFrame;
+					end;
+				end;
+
 			end;
 
 		end);
 
+		-- Listen for the end of the snapping
 		Connections.SnapDragEnd = Support.AddUserInputListener('Ended', 'MouseButton1', false, function (Input)
-			-- Restore the parts' original states
+
+			-- Restore the selection's original state
 			for Part, PartState in pairs(SnappingStartSelectionState) do
 				Part:MakeJoints();
 				Part.Anchored = PartState.Anchored;
 			end;
-			RegisterChange();
+
+			-- Finish snapping
+			FinishSnapping();
+
 		end);
 
 	end);
@@ -849,18 +878,16 @@ function FinishSnapping()
 	-- Stop snap point tracking
 	SnapTracking.StopTracking();
 
-	Connections.SnapDragStart:disconnect();
-	Connections.SnapDragStart = nil;
-
-	if Connections.Snap then
-
-		Connections.Snap:disconnect();
-		Connections.Snap = nil;
-
-		Connections.SnapDrag:disconnect();
-		Connections.SnapDrag = nil;
-
+	-- Register any change
+	if HistoryRecord then
+		RegisterChange();
 	end;
+
+	-- Disconnect snapping listeners
+	ClearConnection 'SnapDragStart';
+	ClearConnection 'SnapDrag';
+	ClearConnection 'Snap';
+	ClearConnection 'SnapDragEnd';
 
 end;
 
