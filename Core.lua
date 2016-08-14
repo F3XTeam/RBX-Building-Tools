@@ -1,5 +1,8 @@
 Tool = script.Parent;
-Plugin = plugin;
+
+-- Await initialization
+repeat wait() until _G[Tool];
+Plugin = _G[Tool].Plugin;
 
 -- Detect mode
 Mode = Plugin and 'Plugin' or 'Tool';
@@ -166,8 +169,10 @@ function Disable()
 	UI.Parent = nil;
 
 	-- Unequip current tool
-	CurrentTool.Unequip();
-	CurrentTool.Equipped = false;
+	if CurrentTool then
+		CurrentTool.Unequip();
+		CurrentTool.Equipped = false;
+	end;
 
 	-- Clear temporary connections
 	ClearConnections();
@@ -194,11 +199,15 @@ if Mode == 'Plugin' then
 
 		-- Toggle the tool
 		if PluginEnabled then
+			Plugin:Activate(true);
 			Enable(Plugin:GetMouse());
 		else
 			Disable();
 		end;
 	end);
+
+	-- Disable the tool upon plugin deactivation
+	Plugin.Deactivation:connect(Disable);
 
 elseif Mode == 'Tool' then
 
