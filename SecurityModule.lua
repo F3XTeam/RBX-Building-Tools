@@ -178,8 +178,8 @@ end;
 function Security.AreAreasEnabled()
 	-- Returns whether areas are enabled
 
-	-- Base whether areas are enabled depending on whether there's an area container
-	if Security.Areas then
+	-- Base whether areas are enabled depending on area container presence and tool mode
+	if Security.Areas and Tool.ClassName == 'Tool' then
 		return true;
 	else
 		return false;
@@ -223,6 +223,10 @@ function Security.ArePartsViolatingAreas(Parts, Player, ExemptPartial, AreaPermi
 	-- If not in a private area, determine violation based on public building policy
 	if #Areas == 0 then
 		return not Security.AllowPublicBuilding;
+
+	-- If authorization for a partial violation-exempt check on an area failed, indicate a violation
+	elseif ExemptPartial then
+		return true;
 
 	-- If in authorized areas, determine violation based on public building policy compliance
 	elseif AreaMap and not Security.AllowPublicBuilding then
@@ -311,6 +315,5 @@ function Security.GetPermissions(Areas, Player)
 	-- Return the permissions cache
 	return Cache;
 end;
-
 
 return Security;
