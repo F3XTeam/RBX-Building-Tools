@@ -365,7 +365,7 @@ function PrismSelect()
 	-- Go through each selected part
 	for _, Part in pairs(Selection.Items) do
 		local Region = Region.FromPart(Part);
-		Support.MergeTable(Parts, Region:Cast());
+		Support.ConcatTable(Parts, Region:Cast());
 	end;
 
 	-- Delete the selection parts

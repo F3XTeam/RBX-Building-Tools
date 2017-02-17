@@ -705,33 +705,31 @@ end;
 function SupportLibrary.ScheduleRecurringTask(TaskFunction, Interval)
 	-- Repeats `Task` every `Interval` seconds until stopped
 
-	local Task = {};
+	-- Create a task object
+	local Task = {
 
-	coroutine.wrap(function ()
+		-- A switch determining if it's running or not
+		Running = true;
 
-		-- Create a task object
-		Task = {
+		-- A function to stop this task
+		Stop = function (Task)
+			Task.Running = false;
+		end;
 
-			-- A switch determining if it's running or not
-			Running = true;
+		-- References to the task function and set interval
+		TaskFunction = TaskFunction;
+		Interval = Interval;
 
-			-- A function to stop this task
-			Stop = function (Task)
-				Task.Running = false;
-			end;
+	};
 
-			-- References to the task function and set interval
-			TaskFunction = TaskFunction;
-			Interval = Interval;
-
-		};
+	coroutine.wrap(function (Task)
 
 		-- Repeat the task
 		while wait(Task.Interval) and Task.Running do
 			Task.TaskFunction();
 		end;
 
-	end)();
+	end)(Task);
 
 	-- Return the task object
 	return Task;
