@@ -102,15 +102,8 @@ function EnableHotkeys()
 
 	-- Listen for pressed keys
 	Connections.Hotkeys = Support.AddUserInputListener('Began', 'Keyboard', false, function (Input)
-		local PressedKeys = Support.ConcatTable(Support.GetListMembers(UserInputService:GetKeysPressed(), 'KeyCode'), { Input.KeyCode });
-
-		-- Filter out ROBLOX-processed keys
-		local ROBLOXKeys = { 'Q', 'E', 'W', 'A', 'S', 'D', 'Tab' };
-		local FilteredKeys = {};
-		for Index, Key in ipairs(PressedKeys) do
-			table.insert(FilteredKeys, not Support.IsInTable(ROBLOXKeys, Key.Name) and Key or nil);
-		end;
-		PressedKeys = FilteredKeys;
+		local PressedKeys = Support.GetListMembers(UserInputService:GetKeysPressed(), 'KeyCode');
+		local KeyCount = #PressedKeys;
 
 		-- Prioritize hotkeys based on # of required keys
 		table.sort(Hotkeys, function (A, B)
@@ -121,11 +114,24 @@ function EnableHotkeys()
 
 		-- Identify matching hotkeys
 		for _, Hotkey in ipairs(Hotkeys) do
-			if Support.DoTablesMatch(PressedKeys, Hotkey.Keys) then
+			if KeyCount == #Hotkey.Keys then
 
-				-- Trigger the hotkey's callback
-				Hotkey.Callback();
-				break;
+				-- Get the hotkey's key index
+				local Keys = Support.FlipTable(Hotkey.Keys)
+				local MatchingKeys = 0;
+
+				-- Check matching pressed keys
+				for _, PressedKey in pairs(PressedKeys) do
+					if Keys[PressedKey] then
+						MatchingKeys = MatchingKeys + 1;
+					end;
+				end;
+
+				-- Trigger the first matching hotkey's callback
+				if MatchingKeys == KeyCount then
+					Hotkey.Callback();
+					break;
+				end;
 
 			end;
 		end;
