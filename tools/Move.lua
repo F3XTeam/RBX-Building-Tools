@@ -320,6 +320,7 @@ function AttachHandles(Part, Autofocus)
 			-- Make joints, restore original anchor and collision states
 			for _, Part in pairs(Selection.Items) do
 				Part:MakeJoints();
+				Part.CanCollide = InitialState[Part].CanCollide;
 				Part.Anchored = InitialState[Part].Anchored;
 			end;
 
@@ -578,6 +579,7 @@ function SetAxisPosition(Axis, Position)
 	-- Restore the parts' original states
 	for Part, PartState in pairs(InitialState) do
 		Part:MakeJoints();
+		Part.CanCollide = InitialState[Part].CanCollide;
 		Part.Anchored = InitialState[Part].Anchored;
 	end;
 
@@ -611,6 +613,7 @@ function NudgeSelectionByFace(Face)
 	-- Restore the parts' original states
 	for Part, PartState in pairs(InitialState) do
 		Part:MakeJoints();
+		Part.CanCollide = InitialState[Part].CanCollide;
 		Part.Anchored = InitialState[Part].Anchored;
 	end;
 
@@ -796,8 +799,9 @@ function PreparePartsForDragging()
 
 	-- Stop parts from moving, and capture the initial state of the parts
 	for _, Part in pairs(Selection.Items) do
-		InitialState[Part] = { Anchored = Part.Anchored, CFrame = Part.CFrame };
+		InitialState[Part] = { Anchored = Part.Anchored, CanCollide = Part.CanCollide, CFrame = Part.CFrame };
 		Part.Anchored = true;
+		Part.CanCollide = false;
 		Part:BreakJoints();
 		Part.Velocity = Vector3.new();
 		Part.RotVelocity = Vector3.new();
@@ -1061,6 +1065,7 @@ function FinishDragging()
 	-- Restore the original state of each part
 	for _, Part in pairs(Selection.Items) do
 		Part:MakeJoints();
+		Part.CanCollide = InitialState[Part].CanCollide;
 		Part.Anchored = InitialState[Part].Anchored;
 	end;
 
