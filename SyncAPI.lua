@@ -14,6 +14,11 @@ CreateSignal = RbxUtility.CreateSignal;
 -- Import services
 Support.ImportServices();
 
+-- Default options
+Options = {
+	DefaultPartParent = Workspace
+};
+
 -- Keep track of created items in memory to not lose them in garbage collection
 CreatedInstances = {};
 LastParents = {};
@@ -58,7 +63,7 @@ Actions = {
 
 			-- Create the clone
 			local Clone = Part:Clone();
-			Clone.Parent = Workspace;
+			Clone.Parent = Options.DefaultPartParent;
 
 			-- Register the clone
 			table.insert(Clones, Clone);
@@ -88,7 +93,7 @@ Actions = {
 		end;
 
 		-- Parent the part
-		NewPart.Parent = Workspace;
+		NewPart.Parent = Options.DefaultPartParent;
 
 		-- Register the part
 		CreatedInstances[NewPart] = NewPart;
@@ -1196,6 +1201,10 @@ Actions = {
 -- Provide an interface into the module
 return {
 
+	-- Provide access to internal options
+	Options = Options;
+
+	-- Provide client actions API
 	PerformAction = function (Client, ActionName, ...)
 
 		-- Make sure the action exists
