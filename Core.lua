@@ -225,9 +225,6 @@ UI = Create 'ScreenGui' {
 	Name = 'Building Tools by F3X (UI)'
 };
 
--- Create the dock
-Dock = Cheer(Tool.Interfaces.BTDock, UI).Start(getfenv(0));
-
 -- Core connections
 Connections = {};
 
@@ -440,6 +437,9 @@ function ToggleSwitch(CurrentButtonName, SwitchContainer)
 
 	end;
 end;
+
+-- Create the dock
+Dock = Cheer(Tool.Interfaces.BTDock, UI).Start(getfenv(0));
 
 -- Return core
 return getfenv(0);

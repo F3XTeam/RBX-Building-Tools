@@ -204,7 +204,6 @@ function CreateSelectionBox(Item)
 	-- Create the selection box
 	local SelectionBox = RbxUtility.Create 'SelectionBox' {
 		Name = 'BTSelectionBox';
-		Parent = GetCore().UIContainer;
 		Color = Selection.Color;
 		Adornee = Item;
 		LineThickness = 0.025;
@@ -212,6 +211,7 @@ function CreateSelectionBox(Item)
 	};
 
 	-- Register the selection box
+	SelectionBox.Parent = GetCore().UIContainer;
 	Selection.Outlines[Item] = SelectionBox;
 
 end;
