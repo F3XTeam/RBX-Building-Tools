@@ -410,6 +410,37 @@ Tools.Resize.showHandles = function ( self, Part )
 				Item.Anchored = true;
 
 			end;
+		
+			local Typing = false
+			game.UserInputService.TextBoxFocused:connect(function()
+				Typing = true
+			end)
+			game.UserInputService.TextBoxFocusReleased:connect(function()
+				Typing = false
+				wait() -- This is to avoid any delay there may be between this event firing and KeyDown firing.
+			end)
+		
+			self.Connections.EnterButtonListener = Mouse.KeyDown:connect( function ( key )
+
+				local key = key:lower();
+				local key_code = key:byte();
+
+				-- If the Enter button is pressed
+				if key_code == 13 and not Typing then
+
+					if Tools.Resize.Options.directions == "normal" then
+	
+						Tools.Resize.Options.directions = "both"
+						
+					else
+						
+						Tools.Resize.Options.directions = "normal"
+
+					end;
+
+				end;
+		
+			end );
 
 			-- Return stuff to normal once the mouse button is released
 			self.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
