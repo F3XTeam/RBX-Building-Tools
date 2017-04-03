@@ -173,6 +173,12 @@ function Enable(Mouse)
 	-- Show UI
 	UI.Parent = UIContainer;
 
+	-- Display startup notifications
+	if not StartupNotificationsDisplayed then
+		Cheer(Tool.Interfaces.Notifications, UI).Start(getfenv(0));
+		StartupNotificationsDisplayed = true;
+	end;
+
 	-- Start systems
 	EnableHotkeys();
 	Targeting.EnableTargeting();
@@ -212,11 +218,7 @@ function InitializeUI()
 
 	-- Create the root UI
 	UI = Create 'ScreenGui' {
-		Name = 'Building Tools by F3X (UI)',
-
-		-- Include libraries
-		Tool['Cheer by F3X']:Clone(),
-		Tool.SupportLibrary:Clone()
+		Name = 'Building Tools by F3X (UI)'
 	};
 
 	-- Set up dock
@@ -489,6 +491,36 @@ end;
 -- Assign hotkey for exporting selection
 AssignHotkey({ 'LeftShift', 'P' }, ExportSelection);
 AssignHotkey({ 'RightShift', 'P' }, ExportSelection);
+
+function IsVersionOutdated()
+	-- Returns whether this version of Building Tools is out of date
+
+	-- Check most recent version number
+	local AssetInfo = MarketplaceService:GetProductInfo(142785488, Enum.InfoType.Asset);
+	local LatestMajorVersion, LatestMinorVersion, LatestPatchVersion = AssetInfo.Description:match '%[Version: ([0-9]+)%.([0-9]+)%.([0-9]+)%]';
+	local CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion = Tool.Version.Value:match '([0-9]+)%.([0-9]+)%.([0-9]+)';
+
+	-- Convert version data into numbers
+	local LatestMajorVersion, LatestMinorVersion, LatestPatchVersion =
+		tonumber(LatestMajorVersion), tonumber(LatestMinorVersion), tonumber(LatestPatchVersion);
+	local CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion =
+		tonumber(CurrentMajorVersion), tonumber(CurrentMinorVersion), tonumber(CurrentPatchVersion);
+
+	-- Determine whether current version is outdated
+	if LatestMajorVersion > CurrentMajorVersion then
+		return true;
+	elseif LatestMajorVersion == CurrentMajorVersion then
+		if LatestMinorVersion > CurrentMinorVersion then
+			return true;
+		elseif LatestMinorVersion == CurrentMinorVersion then
+			return LatestPatchVersion > CurrentPatchVersion;
+		end;
+	end;
+
+	-- Return an up-to-date status if not oudated
+	return false;
+
+end;
 
 function ToggleSwitch(CurrentButtonName, SwitchContainer)
 	-- Toggles between the buttons in a switch

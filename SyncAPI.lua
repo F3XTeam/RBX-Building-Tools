@@ -1244,6 +1244,31 @@ Actions = {
 
 	end;
 
+	['IsHttpServiceEnabled'] = function ()
+		-- Returns whether HttpService is enabled
+
+		-- For in-game tool, return cached status if available
+		if ToolMode == 'Tool' and (IsHttpServiceEnabled ~= nil) then
+			return IsHttpServiceEnabled;
+		end;
+
+		-- Perform test HTTP request
+		local Success, Error = pcall(function ()
+			return HttpService:GetAsync('http://google.com');
+		end);
+
+		-- Determine whether HttpService is enabled
+		if not Success and Error:match 'Http requests are not enabled' then
+			IsHttpServiceEnabled = false;
+		elseif Success then
+			IsHttpServiceEnabled = true;
+		end;
+
+		-- Return HttpService status
+		return IsHttpServiceEnabled;
+
+	end;
+
 };
 
 -- Provide an interface into the module
