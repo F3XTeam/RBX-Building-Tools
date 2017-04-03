@@ -1,8 +1,13 @@
--- Libraries
-Support = require(script.SupportLibrary);
-Cheer = require(script.Cheer);
-
 local View = script.Parent;
+while not _G.GetLibraries do wait() end;
+
+-- Load libraries
+local Support, Cheer = _G.GetLibraries(
+	'F3X/SupportLibrary@^1.0.0',
+	'F3X/Cheer@^0.0.0'
+);
+
+-- Create component
 local Component = Cheer.CreateComponent('Tooltip', View);
 
 local Connections = {};
@@ -46,5 +51,3 @@ function ClearConnections()
 	end;
 
 end;
-
-return Component;

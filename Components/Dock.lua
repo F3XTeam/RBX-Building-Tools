@@ -1,8 +1,13 @@
--- Libraries
-Support = require(script.SupportLibrary);
-Cheer = require(script.Cheer);
-
 local View = script.Parent;
+while not _G.GetLibraries do wait() end;
+
+-- Load libraries
+local Support, Cheer = _G.GetLibraries(
+	'F3X/SupportLibrary@^1.0.0',
+	'F3X/Cheer@^0.0.0'
+);
+
+-- Create component
 local Component = Cheer.CreateComponent('BTDock', View, true);
 
 function Component.Start(Core)
@@ -10,7 +15,7 @@ function Component.Start(Core)
 	-- Show the view
 	View.Visible = true;
 
-	-- Provide core reference
+	-- Store core API reference
 	getfenv(1).Core = Core;
 
 	-- Create selection buttons
@@ -25,6 +30,7 @@ function Component.Start(Core)
 	Cheer.Bind(RedoButton, Core.History.Redo);
 	Cheer.Bind(CloneButton, Core.CloneSelection);
 	Cheer.Bind(DeleteButton, Core.DeleteSelection);
+	Cheer.Bind(ExportButton, Core.ExportSelection);
 
 	-- Highlight history selection buttons according to state
 	Cheer.Bind(Core.History.Changed, function ()
@@ -41,7 +47,7 @@ function Component.Start(Core)
 
 	-- Highlight current tools
 	Cheer.Bind(Core.ToolChanged, function ()
-		for Tool, Button in pairs(ToolButtons) do
+		for Tool, Button in pairs(Component.ToolButtons) do
 			Button.BackgroundTransparency = (Tool == Core.CurrentTool) and 0 or 1;
 		end;
 	end);
@@ -71,7 +77,7 @@ function Component.AddSelectionButton(InitialIcon, Tooltip)
 
 end;
 
-ToolButtons = {};
+Component.ToolButtons = {};
 
 function Component.AddToolButton(Icon, Hotkey, Tool)
 
@@ -86,7 +92,7 @@ function Component.AddToolButton(Icon, Hotkey, Tool)
 	Button.Hotkey.Text = Hotkey;
 
 	-- Register the button
-	ToolButtons[Tool] = Button;
+	Component.ToolButtons[Tool] = Button;
 
 	-- Trigger tool when button is pressed
 	Cheer.Bind(Button, Support.Call(Core.EquipTool, Tool));
@@ -99,4 +105,5 @@ function Component.AddToolButton(Icon, Hotkey, Tool)
 
 end;
 
-return Component;
+-- Indicate readiness
+Component.Ready = true;

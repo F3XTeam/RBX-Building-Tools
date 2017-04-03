@@ -1,9 +1,12 @@
--- Libraries
-Support = require(script.SupportLibrary);
-Cheer = require(script.Cheer);
+-- Load libraries
+while not _G.GetLibraries do wait() end;
+local Support, Cheer = _G.GetLibraries(
+	'F3X/SupportLibrary@^1.0.0',
+	'F3X/Cheer@^0.0.0'
+);
 
 local View = script.Parent;
-local Component = Cheer.CreateComponent('HSVColorPicker', View);
+local Component = Cheer.CreateComponent('BTHSVColorPicker', View);
 
 local Connections = {};
 
@@ -18,14 +21,14 @@ function Component.Start(InitialColor, Callback)
 	Hue, Saturation, Brightness = Cheer.Link(Hue), Cheer.Link(Saturation), Cheer.Link(Brightness);
 
 	-- Connect direct inputs to color setting
-	Cheer.Bind(View.HueOption.Input, Cheer.Clamp(0, 360), Cheer.Divide(360), Hue);
-	Cheer.Bind(View.SaturationOption.Input, Cheer.Clamp(0, 100), Cheer.Divide(100), Saturation);
-	Cheer.Bind(View.BrightnessOption.Input, Cheer.Clamp(0, 100), Cheer.Divide(100), Brightness);
+	Cheer.Bind(View.HueOption.Input, { Cheer.Clamp(0, 360), Cheer.Divide(360) }, Hue);
+	Cheer.Bind(View.SaturationOption.Input, { Cheer.Clamp(0, 100), Cheer.Divide(100) }, Saturation);
+	Cheer.Bind(View.BrightnessOption.Input, { Cheer.Clamp(0, 100), Cheer.Divide(100) }, Brightness);
 
 	-- Connect color to inputs
-	Cheer.Bind(Hue, Cheer.Multiply(360), Cheer.Round(0), View.HueOption.Input):Trigger();
-	Cheer.Bind(Saturation, Cheer.Multiply(100), Cheer.Round(0), tostring, Cheer.Append('%'), View.SaturationOption.Input):Trigger();
-	Cheer.Bind(Brightness, Cheer.Multiply(100), Cheer.Round(0), tostring, Cheer.Append('%'), View.BrightnessOption.Input):Trigger();
+	Cheer.Bind(Hue, { Cheer.Multiply(360), Cheer.Round(0) }, View.HueOption.Input):Trigger();
+	Cheer.Bind(Saturation, { Cheer.Multiply(100), Cheer.Round(0), tostring, Cheer.Append('%') }, View.SaturationOption.Input):Trigger();
+	Cheer.Bind(Brightness, { Cheer.Multiply(100), Cheer.Round(0), tostring, Cheer.Append('%') }, View.BrightnessOption.Input):Trigger();
 
 	-- Connect color to color display
 	Cheer.Bind(Hue, UpdateDisplay):Trigger();
@@ -38,7 +41,7 @@ function Component.Start(InitialColor, Callback)
 	Connections.StopTrackingMouse = Support.AddUserInputListener('Ended', 'MouseButton1', true, StopTrackingMouse);
 
 	-- Connect OK/Cancel buttons
-	Cheer.Bind(View.OkButton, function () View:Destroy(); return Color3.fromHSV(#Hue, #Saturation, #Brightness) end, Callback);
+	Cheer.Bind(View.OkButton, { function () View:Destroy(); return Color3.fromHSV(#Hue, #Saturation, #Brightness) end }, Callback);
 	Cheer.Bind(View.CancelButton, function () View:Destroy() end);
 
 	-- Clear connections when the component is removed

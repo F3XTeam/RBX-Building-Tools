@@ -1,10 +1,19 @@
 local View = script.Parent;
-local Component = { View = View };
+while not _G.GetLibraries do wait() end;
+
+-- Load libraries
+local Support, Cheer = _G.GetLibraries(
+	'F3X/SupportLibrary@^1.0.0',
+	'F3X/Cheer@^0.0.0'
+);
+
+-- Create component
+local Component = Cheer.CreateComponent('BTDropdown', View);
 
 function Component.Start(Options, CurrentOption, Callback)
 
 	-- Toggle options when clicked
-	View.MouseButton1Click:connect(Component.Toggle);
+	Cheer.Bind(View, Component.Toggle);
 
 	-- Draw the component with the given options
 	Component.Draw(Options, CurrentOption, Callback);

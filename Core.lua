@@ -16,15 +16,21 @@ if Mode == 'Tool' then
 end;
 
 -- Libraries
-Support = require(Tool.SupportLibrary);
 Security = require(Tool.SecurityModule);
 History = require(Tool.HistoryModule);
 Selection = require(Tool.SelectionModule);
 Targeting = require(Tool.TargetingModule);
-Cheer = require(Tool['Cheer by F3X']);
 Region = require(Tool['Region by AxisAngle']);
 RbxUtility = LoadLibrary 'RbxUtility';
 Create = RbxUtility.Create;
+
+-- Load additional libraries
+while not _G.GetLibraries do wait() end
+Support, Cheer, Try = _G.GetLibraries(
+	'F3X/SupportLibrary@^1.0.0',
+	'F3X/Cheer@^0.0.0',
+	'F3X/Try@~1.0.0'
+);
 
 -- References
 Support.ImportServices();
@@ -102,7 +108,18 @@ function EnableHotkeys()
 
 	-- Listen for pressed keys
 	Connections.Hotkeys = Support.AddUserInputListener('Began', 'Keyboard', false, function (Input)
-		local PressedKeys = Support.GetListMembers(UserInputService:GetKeysPressed(), 'KeyCode');
+		local _PressedKeys = Support.GetListMembers(UserInputService:GetKeysPressed(), 'KeyCode');
+
+		-- Filter out problematic keys
+		local PressedKeys = {};
+		local FilteredKeys = Support.FlipTable { 'LeftAlt', 'W', 'S', 'A', 'D', 'Space' };
+		for _, Key in ipairs(_PressedKeys) do
+			if not FilteredKeys[Key.Name] then
+				table.insert(PressedKeys, Key);
+			end;
+		end;
+
+		-- Count pressed keys
 		local KeyCount = #PressedKeys;
 
 		-- Prioritize hotkeys based on # of required keys
@@ -185,6 +202,28 @@ function Disable()
 
 end;
 
+function InitializeUI()
+	-- Sets up the UI
+
+	-- Ensure UI has not yet been initialized
+	if UI then
+		return;
+	end;
+
+	-- Create the root UI
+	UI = Create 'ScreenGui' {
+		Name = 'Building Tools by F3X (UI)',
+
+		-- Include libraries
+		Tool['Cheer by F3X']:Clone(),
+		Tool.SupportLibrary:Clone()
+	};
+
+	-- Set up dock
+	Dock = Cheer(Tool.Interfaces.Dock, UI).Start(getfenv(0));
+
+end;
+
 -- Enable tool or plugin
 if Mode == 'Plugin' then
 
@@ -225,11 +264,6 @@ elseif Mode == 'Tool' then
 	Tool.Unequipped:connect(Disable);
 
 end;
-
--- Create the UI root
-UI = Create 'ScreenGui' {
-	Name = 'Building Tools by F3X (UI)'
-};
 
 -- Core connections
 Connections = {};
@@ -414,6 +448,48 @@ function SetParent(Parent)
 
 end;
 
+function ExportSelection()
+	-- Exports the selected parts
+
+	-- Make sure that there are items in the selection
+	if #Selection.Items == 0 then
+		return;
+	end;
+
+	-- Start an export dialog
+	local Dialog = Cheer(Tool.Interfaces.ExportDialog, UI).Start();
+
+	-- Send the exporting request to the server
+	Try(SyncAPI.Invoke, SyncAPI, 'Export', Selection.Items)
+
+	-- Display creation ID on success
+	:Then(function (CreationId)
+		Dialog.SetResult(CreationId);
+		PlayConfirmationSound();
+		print('[Building Tools by F3X] Uploaded Export:', CreationId);
+	end)
+
+	-- Display error messages on failure
+	:Catch('Http requests are not enabled', function ()
+		Dialog.SetError('Please enable HTTP requests');
+	end)
+	:Catch('Export failed due to server-side error', function ()
+		Dialog.SetError('An error occurred, try again');
+	end)
+	:Catch('Post data too large', function ()
+		Dialog.SetError('Try splitting up your build');
+	end)
+	:Catch(function (Error, Stack, Attempt)
+		Dialog.SetError('An unknown error occurred, try again')
+		warn('❌ [Building Tools by F3X] Failed to export selection', '\n\nError:\n', Error, '\n\nStack:\n', Stack);
+	end);
+
+end;
+
+-- Assign hotkey for exporting selection
+AssignHotkey({ 'LeftShift', 'P' }, ExportSelection);
+AssignHotkey({ 'RightShift', 'P' }, ExportSelection);
+
 function ToggleSwitch(CurrentButtonName, SwitchContainer)
 	-- Toggles between the buttons in a switch
 
@@ -444,8 +520,8 @@ function ToggleSwitch(CurrentButtonName, SwitchContainer)
 	end;
 end;
 
--- Create the dock
-Dock = Cheer(Tool.Interfaces.BTDock, UI).Start(getfenv(0));
+-- Initialize the UI
+InitializeUI();
 
 -- Return core
 return getfenv(0);

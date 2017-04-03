@@ -8,6 +8,7 @@ RbxUtility = LoadLibrary 'RbxUtility';
 Support = require(Tool.SupportLibrary);
 Security = require(Tool.SecurityModule);
 RegionModule = require(Tool['Region by AxisAngle']);
+Serialization = require(Tool.SerializationModule);
 Create = RbxUtility.Create;
 CreateSignal = RbxUtility.CreateSignal;
 
@@ -1192,6 +1193,53 @@ Actions = {
 
 			end;
 
+		end;
+
+	end;
+
+	['Export'] = function (Parts)
+		-- Serializes, exports, and returns ID for importing given parts
+
+		-- Ensure valid selection
+		assert(type(Parts) == 'table', 'Invalid item table');
+
+		-- Ensure there are items to export
+		if #Parts == 0 then
+			return;
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to access these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
+			return;
+		end;
+
+		-- Get all descendants of the parts
+		local Items = Support.CloneTable(Parts);
+		for _, Part in pairs(Parts) do
+			Support.ConcatTable(Items, Support.GetAllDescendants(Part));
+		end;
+
+		-- After confirming permissions, serialize parts
+		local SerializedBuildData = Serialization.SerializeModel(Items);
+
+		-- Push serialized data to server
+		local Response = HttpService:JSONDecode(
+			HttpService:PostAsync(
+				'http://f3xteam.com/bt/export',
+				HttpService:JSONEncode { data = SerializedBuildData, version = 2, userId = (Player and Player.UserId) },
+				Enum.HttpContentType.ApplicationJson,
+				true
+			)
+		);
+
+		-- Return creation ID on success
+		if Response.success then
+			return Response.id;
+		else
+			error('Export failed due to server-side error', 2);
 		end;
 
 	end;
