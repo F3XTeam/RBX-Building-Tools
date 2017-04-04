@@ -193,7 +193,7 @@ function Disable()
 	Disabling:fire();
 
 	-- Hide UI
-	UI.Parent = nil;
+	UI.Parent = script;
 
 	-- Unequip current tool
 	if CurrentTool then
