@@ -353,7 +353,10 @@ function ParseAssetId(Input)
 	-- Returns the intended asset ID for the given input
 
 	-- Get the ID number from the input
-	local Id = tonumber(Input) or Input:lower():match('%?id=([0-9]+)');
+	local Id = tonumber(Input)
+		or tonumber(Input:lower():match('%?id=([0-9]+)'))
+		or tonumber(Input:match('/([0-9]+)/'))
+		or tonumber(Input:lower():match('rbxassetid://([0-9]+)'));
 
 	-- Return the ID
 	return Id;
@@ -417,22 +420,14 @@ function SetTextureId(TextureType, Face, AssetId)
 
 	-- Prepare the change request
 	local Changes = {
-		Texture = 'http://www.roblox.com/asset/?id=' .. AssetId;
+		Texture = 'rbxassetid://' .. AssetId;
 	};
 
-	-- Only attempt extraction if HttpService is enabled
-	if Core.HttpAvailable then
-
-		-- Attempt an image extraction on the given asset
-		local ImageExtractionUrl = ('http://f3xteam.com/bt/getDecalImageID/%s'):format(AssetId);
-		local ExtractionData = Core.Tool.HttpInterface.GetAsync:InvokeServer(ImageExtractionUrl);
-
-		-- Check if the image extraction yielded any data
-		if ExtractionData and ExtractionData:len() > 0 then
-			Changes.Texture = 'http://www.roblox.com/asset/?id=' .. ExtractionData;
-		end;
-
-	end;
+	-- Attempt an image extraction on the given asset
+	Core.Try(Core.SyncAPI.Invoke, Core.SyncAPI, 'ExtractImageFromDecal', AssetId)
+		:Then(function (ExtractedImage)
+			Changes.Texture = 'rbxassetid://' .. ExtractedImage;
+		end);
 
 	-- Start a history record
 	TrackChange();

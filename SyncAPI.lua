@@ -1269,6 +1269,27 @@ Actions = {
 
 	end;
 
+	['ExtractMeshFromAsset'] = function (AssetId)
+		-- Returns the first found mesh in the given asset
+
+		-- Ensure valid asset ID is given
+		assert(type(AssetId) == 'number', 'Invalid asset ID');
+
+		-- Return parsed response from API
+		return HttpService:JSONDecode(
+			HttpService:GetAsync('http://f3xteam.com/bt/getFirstMeshData/' .. AssetId)
+		);
+
+	end;
+
+	['ExtractImageFromDecal'] = function (DecalAssetId)
+		-- Returns the first image found in the given decal asset
+
+		-- Return direct response from the API
+		return HttpService:GetAsync('http://f3xteam.com/bt/getDecalImageID/' .. DecalAssetId);
+
+	end;
+
 };
 
 -- Provide an interface into the module

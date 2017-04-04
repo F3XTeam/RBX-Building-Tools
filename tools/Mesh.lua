@@ -304,7 +304,10 @@ function ParseAssetId(Input)
 	-- Returns the intended asset ID for the given input
 
 	-- Get the ID number from the input
-	local Id = tonumber(Input) or Input:lower():match('%?id=([0-9]+)');
+	local Id = tonumber(Input)
+		or tonumber(Input:lower():match('%?id=([0-9]+)'))
+		or tonumber(Input:match('/([0-9]+)/'))
+		or tonumber(Input:lower():match('rbxassetid://([0-9]+)'));
 
 	-- Return the ID
 	return Id;
@@ -582,52 +585,41 @@ function SetMeshId(AssetId)
 
 	-- Prepare the change request
 	local Changes = {
-		MeshId = 'http://www.roblox.com/asset/?id=' .. AssetId;
+		MeshId = 'rbxassetid://' .. AssetId;
 	};
 
-	-- Only attempt extraction if HttpService is enabled
-	if Core.HttpAvailable then
+	-- Attempt a mesh extraction on the given asset
+	Core.Try(Core.SyncAPI.Invoke, Core.SyncAPI, 'ExtractMeshFromAsset', AssetId)
+		:Then(function (ExtractionData)
 
-		-- Attempt a mesh extraction on the given asset
-		local MeshExtractionUrl = ('http://f3xteam.com/bt/getFirstMeshData/%s'):format(AssetId);
-		local ExtractionData = Core.Tool.HttpInterface.GetAsync:InvokeServer(MeshExtractionUrl);
+			-- Ensure extraction succeeded
+			assert(ExtractionData.success, 'Extraction failed');
 
-		-- Check if the mesh extraction yielded any data
-		if ExtractionData and ExtractionData:len() > 0 then
-
-			-- Parse the extracted mesh information
-			ExtractionData = HttpService:JSONDecode(ExtractionData);
-			if ExtractionData and ExtractionData.success then
-			
-				-- Apply any mesh ID found
-				local MeshId = ExtractionData.meshID;
-				if MeshId then
-					Changes.MeshId = 'http://www.roblox.com/asset/?id=' .. MeshId;
-				end;
-
-				-- Apply any texture ID found
-				local TextureId = ExtractionData.textureID;
-				if TextureId then
-					Changes.TextureId = 'http://www.roblox.com/asset/?id=' .. TextureId;
-				end;
-
-				-- Apply any vertex color found
-				local VertexColor = ExtractionData.tint;
-				if VertexColor then
-					Changes.VertexColor = Vector3.new(VertexColor.x, VertexColor.y, VertexColor.z);
-				end;
-
-				-- Apply any scale found
-				local Scale = ExtractionData.scale;
-				if Scale then
-					Changes.Scale = Vector3.new(Scale.x, Scale.y, Scale.z);
-				end;
-
+			-- Apply any mesh found
+			local MeshId = ExtractionData.meshID;
+			if MeshId then
+				Changes.MeshId = 'rbxassetid://' .. MeshId;
 			end;
 
-		end;
+			-- Apply any texture found
+			local TextureId = ExtractionData.textureID;
+			if TextureId then
+				Changes.TextureId = 'rbxassetid://' .. TextureId;
+			end;
 
-	end;
+			-- Apply any vertex color found
+			local VertexColor = ExtractionData.tint;
+			if VertexColor then
+				Changes.VertexColor = Vector3.new(VertexColor.x, VertexColor.y, VertexColor.z);
+			end;
+
+			-- Apply any scale found
+			local Scale = ExtractionData.scale;
+			if Scale then
+				Changes.Scale = Vector3.new(Scale.x, Scale.y, Scale.z);
+			end;
+
+		end);
 
 	-- Start a history record
 	TrackChange();
@@ -667,22 +659,14 @@ function SetTextureId(AssetId)
 
 	-- Prepare the change request
 	local Changes = {
-		TextureId = 'http://www.roblox.com/asset/?id=' .. AssetId;
+		TextureId = 'rbxassetid://' .. AssetId;
 	};
 
-	-- Only attempt extraction if HttpService is enabled
-	if Core.HttpAvailable then
-
-		-- Attempt an image extraction on the given asset
-		local ImageExtractionUrl = ('http://f3xteam.com/bt/getDecalImageID/%s'):format(AssetId);
-		local ExtractionData = Core.Tool.HttpInterface.GetAsync:InvokeServer(ImageExtractionUrl);
-
-		-- Check if the image extraction yielded any data
-		if ExtractionData and ExtractionData:len() > 0 then
-			Changes.TextureId = 'http://www.roblox.com/asset/?id=' .. ExtractionData;
-		end;
-
-	end;
+	-- Attempt an image extraction on the given asset
+	Core.Try(Core.SyncAPI.Invoke, Core.SyncAPI, 'ExtractImageFromDecal', AssetId)
+		:Then(function (ExtractedImage)
+			Changes.TextureId = 'rbxassetid://' .. ExtractedImage;
+		end);
 
 	-- Start a history record
 	TrackChange();
