@@ -139,6 +139,13 @@ function RegisterLibrary(Metadata, Library)
 
 end;
 
+-- Load tool completely before loading cached libraries
+local Tool = script.Parent;
+local Indicator = Tool:WaitForChild 'Loaded';
+while not Indicator.Value do
+	Indicator.Changed:wait();
+end;
+
 -- Populate library list with cached libraries
 for _, Library in pairs(script:GetChildren()) do
 	pcall(function () RegisterLibrary(require(Library.Metadata), require(Library)) end);
