@@ -24,6 +24,7 @@ function WeldTool.Equip()
 
 	-- Start up our interface
 	ShowUI();
+	EnableFocusHighlighting();
 
 end;
 
@@ -173,6 +174,32 @@ function BreakWelds()
 
 	-- Register the history record
 	Core.History.Add(HistoryRecord);
+
+end;
+
+function EnableFocusHighlighting()
+	-- Enables automatic highlighting of the focused part in the selection
+
+	-- Reset all outline colors
+	Core.Selection.RecolorOutlines(Core.Selection.Color);
+
+	-- Recolor current focused item
+	if Selection.Focus and (#Selection.Items > 1) then
+		Core.Selection.Outlines[Selection.Focus].Color = BrickColor.new('Deep orange');
+	end;
+
+	-- Recolor future focused items
+	Connections.FocusHighlighting = Selection.FocusChanged:connect(function (FocusedItem)
+
+		-- Reset all outline colors
+		Core.Selection.RecolorOutlines(Core.Selection.Color);
+
+		-- Recolor newly focused item
+		if FocusedItem and (#Selection.Items > 1) then
+			Core.Selection.Outlines[FocusedItem].Color = BrickColor.new('Deep orange');
+		end;
+
+	end);
 
 end;
 
