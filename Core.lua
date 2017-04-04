@@ -8,11 +8,9 @@ Plugin = _G[Tool].Plugin;
 Mode = Plugin and 'Plugin' or 'Tool';
 
 -- Load tool completely
-if Mode == 'Tool' then
-	local Indicator = Tool:WaitForChild 'Loaded';
-	while not Indicator.Value do
-		Indicator.Changed:wait();
-	end;
+local Indicator = Tool:WaitForChild 'Loaded';
+while not Indicator.Value do
+	Indicator.Changed:wait();
 end;
 
 -- Libraries

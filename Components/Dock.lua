@@ -52,6 +52,15 @@ function Component.Start(Core)
 		end;
 	end);
 
+	-- Toggle help section on help button click
+	Cheer.Bind(View.InfoButtons.HelpButton, function ()
+		Cheer(View.ToolInformation).HideCurrentSection();
+		View.HelpInfo.Visible = not View.HelpInfo.Visible;
+	end);
+
+	-- Start tool information section manager
+	Cheer(View.ToolInformation).Start(Core);
+
 	-- Return component for chaining
 	return Component;
 
@@ -79,7 +88,7 @@ end;
 
 Component.ToolButtons = {};
 
-function Component.AddToolButton(Icon, Hotkey, Tool)
+function Component.AddToolButton(Icon, Hotkey, Tool, InfoSection)
 
 	-- Create the button
 	local Button = View.ToolButton:Clone();
@@ -96,6 +105,20 @@ function Component.AddToolButton(Icon, Hotkey, Tool)
 
 	-- Trigger tool when button is pressed
 	Cheer.Bind(Button, Support.Call(Core.EquipTool, Tool));
+
+	-- Register information section
+	Cheer(View.ToolInformation).RegisterSection(InfoSection);
+
+	-- Trigger information section on interactions with button
+	Cheer.Bind(Button.MouseEnter, function ()
+		Cheer(View.ToolInformation).ProcessHover(Tool, InfoSection);
+	end);
+	Cheer.Bind(Button.MouseLeave, function ()
+		Cheer(View.ToolInformation).ProcessUnhover(Tool, InfoSection);
+	end);
+	Cheer.Bind(Button, function ()
+		Cheer(View.ToolInformation).ProcessClick(Tool, InfoSection);
+	end);
 
 	-- Position the button
 	Button.Position = UDim2.new(Index % 2 * 0.5, 0, 0, Button.AbsoluteSize.Y * math.floor(Index / 2));
