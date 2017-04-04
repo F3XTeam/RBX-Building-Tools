@@ -460,6 +460,31 @@ end;
 AssignHotkey({ 'LeftShift', 'K' }, PrismSelect);
 AssignHotkey({ 'RightShift', 'K' }, PrismSelect);
 
+function SelectSiblings(ReplaceSelection)
+	-- Selects all parts under the same parent as the focused part
+
+	-- Ensure there is a focused item and its parent is not Workspace
+	if not Selection.Focus or Selection.Focus.Parent == Workspace then
+		return;
+	end;
+
+	-- Get the focused item's siblings
+	local Siblings = Support.GetAllDescendants(Selection.Focus.Parent);
+
+	-- Add to or replace selection
+	if ReplaceSelection then
+		Selection.Replace(Siblings, true);
+	else
+		Selection.Add(Siblings, true);
+	end;
+
+end;
+
+-- Assign hotkeys for sibling selection
+AssignHotkey({ 'LeftBracket' }, Support.Call(SelectSiblings, true));
+AssignHotkey({ 'LeftShift', 'LeftBracket' }, Support.Call(SelectSiblings, false));
+AssignHotkey({ 'RightShift', 'LeftBracket' }, Support.Call(SelectSiblings, false));
+
 -- Assign hotkeys for selection clearing
 AssignHotkey({ 'LeftShift', 'R' }, Support.Call(Selection.Clear, true));
 AssignHotkey({ 'RightShift', 'R' }, Support.Call(Selection.Clear, true));
