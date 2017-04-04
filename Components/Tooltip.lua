@@ -51,3 +51,5 @@ function ClearConnections()
 	end;
 
 end;
+
+return Component;

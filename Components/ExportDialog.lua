@@ -65,3 +65,5 @@ function Component.SetResult(Result)
 	View.Close:TweenSize(UDim2.new(1, 0, 0, 20), nil, nil, 0.25);
 
 end;
+
+return Component;

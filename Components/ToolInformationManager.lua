@@ -149,3 +149,5 @@ function Component.GetSection(SectionName)
 	return View:FindFirstChild(SectionName);
 
 end;
+
+return Component;

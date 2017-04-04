@@ -254,6 +254,21 @@ if Mode == 'Plugin' then
 	-- Disable the tool upon plugin deactivation
 	Plugin.Deactivation:connect(Disable);
 
+	-- Sync Studio selection to internal selection
+	Selection.Changed:connect(function ()
+		SelectionService:Set(Selection.Items);
+	end);
+
+	-- Sync internal selection to Studio selection on enabling
+	Enabling:connect(function ()
+		Selection.Replace(SelectionService:Get());
+	end);
+
+	-- Roughly sync Studio history to internal history (API lacking necessary functionality)
+	History.Changed:connect(function ()
+		ChangeHistoryService:SetWaypoint 'Building Tools by F3X';
+	end);
+
 elseif Mode == 'Tool' then
 
 	-- Set the UI root

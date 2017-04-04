@@ -42,3 +42,5 @@ function Component.Start(OnExpandCallback)
 	return Component;
 
 end;
+
+return Component;

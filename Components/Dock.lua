@@ -130,3 +130,5 @@ end;
 
 -- Indicate readiness
 Component.Ready = true;
+
+return Component;

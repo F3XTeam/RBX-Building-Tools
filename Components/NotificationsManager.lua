@@ -48,3 +48,5 @@ end;
 function Component.AdjustLayout()
 	View.UIListLayout:ApplyLayout();
 end;
+
+return Component;
