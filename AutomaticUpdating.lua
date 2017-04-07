@@ -36,7 +36,8 @@ if not (Tool:IsA 'Tool' and Tool.AutoUpdate.Value and IsVersionOutdated()) then
 end;
 
 -- Attempt to get latest copy of the asset
-local Model = Game:GetService('InsertService'):LoadAsset(142785488);
+local LatestVersionId = Game:GetService('InsertService'):GetLatestAssetVersionAsync(142785488);
+local Model = Game:GetService('InsertService'):LoadAssetVersion(LatestVersionId);
 if Model and #Model:GetChildren() > 0 then
 
 	-- Get the tool
