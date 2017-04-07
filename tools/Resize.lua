@@ -1,648 +1,945 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
+SnapTracking = require(Tool.SnappingModule);
 
-------------------------------------------
--- Resize tool
-------------------------------------------
+-- Import relevant references
+Selection = Core.Selection;
+Create = Core.Create;
+Support = Core.Support;
+Security = Core.Security;
+Support.ImportServices();
 
--- Create the tool
-Tools.Resize = {};
+-- Initialize the tool
+local ResizeTool = {
 
--- Create structures that will be used within the tool
-Tools.Resize.Connections = {};
+	Name = 'Resize Tool';
+	Color = BrickColor.new 'Cyan';
 
-Tools.Resize.Options = {
-	["increment"] = 1;
-	["directions"] = "normal";
+	-- Default options
+	Increment = 1;
+	Directions = 'Normal';
+
 };
 
-Tools.Resize.State = {
-	["PreResize"] = {};
-	["previous_distance"] = 0;
-	["resizing"] = false;
-	["length_resized"] = 0;
-};
+-- Container for temporary connections (disconnected automatically)
+local Connections = {};
 
-Tools.Resize.Listeners = {};
+function ResizeTool.Equip()
+	-- Enables the tool's equipped functionality
 
--- Define the color of the tool
-Tools.Resize.Color = BrickColor.new( "Cyan" );
-
-Tools.Resize.Listeners.Equipped = function ()
-
-	local self = Tools.Resize;
-
-	-- Change the color of selection boxes temporarily
-	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = self.Color;
-	updateSelectionBoxColor();
-
-	-- Reveal the GUI
-	self:showGUI();
-
-	-- Always have the handles on the most recent addition to the selection
-	table.insert( self.Connections, Selection.Changed:connect( function ()
-
-		-- Clear out any previous adornee
-		self:hideHandles();
-
-		-- If there /is/ a last item in the selection, attach the handles to it
-		if Selection.Last then
-			self:showHandles( Selection.Last );
-		end;
-
-	end ) );
-
-	-- Switch the adornee of the handles if the second mouse button is pressed
-	table.insert( self.Connections, Mouse.Button2Up:connect( function ()
-
-		-- Make sure the platform doesn't think we're selecting
-		override_selection = true;
-
-		-- If the target is in the selection, make it the new adornee
-		if Selection:find( Mouse.Target ) then
-			Selection:focus( Mouse.Target );
-		end;
-
-	end ) );
-
-	-- Finally, attach the handles to the last item added to the selection (if any)
-	if Selection.Last then
-		self:showHandles( Selection.Last );
-	end;
-
-	-- Update the GUI regularly
-	coroutine.wrap( function ()
-		updater_on = true;
-
-		-- Provide a function to stop the loop
-		self.Updater = function ()
-			updater_on = false;
-		end;
-
-		while wait( 0.1 ) and updater_on do
-
-			-- Make sure the tool's equipped
-			if CurrentTool == self then
-
-				-- Update the GUI if it's visible
-				if self.GUI and self.GUI.Visible then
-					self:updateGUI();
-				end;
-
-			end;
-
-		end;
-
-	end )();
+	-- Start up our interface
+	ShowUI();
+	ShowHandles();
+	BindShortcutKeys();
 
 end;
 
-Tools.Resize.Listeners.Unequipped = function ()
+function ResizeTool.Unequip()
+	-- Disables the tool's equipped functionality
 
-	local self = Tools.Resize;
+	-- Clear unnecessary resources
+	HideUI();
+	HideHandles();
+	ClearConnections();
+	SnapTracking.StopTracking();
 
-	-- Stop the update loop
-	if self.Updater then
-		self.Updater();
-		self.Updater = nil;
-	end;
+end;
 
-	-- Hide the GUI
-	self:hideGUI();
+function ClearConnections()
+	-- Clears out temporary connections
 
-	-- Hide the handles
-	self:hideHandles();
-
-	-- Clear out any temporary connections
-	for connection_index, Connection in pairs( self.Connections ) do
+	for ConnectionKey, Connection in pairs(Connections) do
 		Connection:disconnect();
-		self.Connections[connection_index] = nil;
+		Connections[ConnectionKey] = nil;
 	end;
-
-	-- Restore the original color of the selection boxes
-	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
 
 end;
 
-Tools.Resize.Listeners.KeyUp = function ( Key )
-	local self = Tools.Resize;
+function ClearConnection(ConnectionKey)
+	-- Clears the given specific connection
 
-	-- Provide a keyboard shortcut to the increment input
-	if Key == '-' and self.GUI then
-		self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
+	local Connection = Connections[ConnectionKey];
+
+	-- Disconnect the connection if it exists
+	if Connection then
+		Connection:disconnect();
+		Connections[ConnectionKey] = nil;
 	end;
-end;
-
-Tools.Resize.showGUI = function ( self )
-
-	-- Initialize the GUI if it's not ready yet
-	if not self.GUI then
-
-		local Container = Tool.Interfaces.BTResizeToolGUI:Clone();
-		Container.Parent = UI;
-
-		-- Change the axis type option when the button is clicked
-		Container.DirectionsOption.Normal.Button.MouseButton1Down:connect( function ()
-			self.Options.directions = "normal";
-			Container.DirectionsOption.Normal.SelectedIndicator.BackgroundTransparency = 0;
-			Container.DirectionsOption.Normal.Background.Image = Assets.DarkSlantedRectangle;
-			Container.DirectionsOption.Both.SelectedIndicator.BackgroundTransparency = 1;
-			Container.DirectionsOption.Both.Background.Image = Assets.LightSlantedRectangle;
-		end );
-
-		Container.DirectionsOption.Both.Button.MouseButton1Down:connect( function ()
-			self.Options.directions = "both";
-			Container.DirectionsOption.Normal.SelectedIndicator.BackgroundTransparency = 1;
-			Container.DirectionsOption.Normal.Background.Image = Assets.LightSlantedRectangle;
-			Container.DirectionsOption.Both.SelectedIndicator.BackgroundTransparency = 0;
-			Container.DirectionsOption.Both.Background.Image = Assets.DarkSlantedRectangle;
-		end );
-
-		-- Change the increment option when the value of the textbox is updated
-		Container.IncrementOption.Increment.TextBox.FocusLost:connect( function ( enter_pressed )
-			self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
-			Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
-		end );
-
-		-- Add functionality to the size inputs
-		Container.Info.SizeInfo.X.TextButton.MouseButton1Down:connect( function ()
-			self.State.size_x_focused = true;
-			Container.Info.SizeInfo.X.TextBox:CaptureFocus();
-		end );
-		Container.Info.SizeInfo.X.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.Info.SizeInfo.X.TextBox.Text );
-			if potential_new then
-				self:changeSize( 'x', potential_new );
-			end;
-			self.State.size_x_focused = false;
-		end );
-		Container.Info.SizeInfo.Y.TextButton.MouseButton1Down:connect( function ()
-			self.State.size_y_focused = true;
-			Container.Info.SizeInfo.Y.TextBox:CaptureFocus();
-		end );
-		Container.Info.SizeInfo.Y.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.Info.SizeInfo.Y.TextBox.Text );
-			if potential_new then
-				self:changeSize( 'y', potential_new );
-			end;
-			self.State.size_y_focused = false;
-		end );
-		Container.Info.SizeInfo.Z.TextButton.MouseButton1Down:connect( function ()
-			self.State.size_z_focused = true;
-			Container.Info.SizeInfo.Z.TextBox:CaptureFocus();
-		end );
-		Container.Info.SizeInfo.Z.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.Info.SizeInfo.Z.TextBox.Text );
-			if potential_new then
-				self:changeSize( 'z', potential_new );
-			end;
-			self.State.size_z_focused = false;
-		end );
-
-		self.GUI = Container;
-	end;
-
-	-- Reveal the GUI
-	self.GUI.Visible = true;
 
 end;
 
-Tools.Resize.startHistoryRecord = function ( self )
+function ShowUI()
+	-- Creates and reveals the UI
 
-	if self.State.HistoryRecord then
-		self.State.HistoryRecord = nil;
+	-- Reveal UI if already created
+	if ResizeTool.UI then
+
+		-- Reveal the UI
+		ResizeTool.UI.Visible = true;
+
+		-- Update the UI every 0.1 seconds
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
+
+		-- Skip UI creation
+		return;
+
 	end;
 
-	-- Create a history record
-	self.State.HistoryRecord = {
-		targets = _cloneTable( Selection.Items );
-		initial_positions = {};
-		terminal_positions = {};
-		initial_sizes = {};
-		terminal_sizes = {};
-		unapply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Target.Size = self.initial_sizes[Target];
-					Target.CFrame = self.initial_positions[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
-				end;
-			end;
+	-- Create the UI
+	ResizeTool.UI = Core.Tool.Interfaces.BTResizeToolGUI:Clone();
+	ResizeTool.UI.Parent = Core.UI;
+	ResizeTool.UI.Visible = true;
+
+	-- Add functionality to the directions option switch
+	local DirectionsSwitch = ResizeTool.UI.DirectionsOption;
+	DirectionsSwitch.Normal.Button.MouseButton1Down:connect(function ()
+		SetDirections('Normal');
+	end);
+	DirectionsSwitch.Both.Button.MouseButton1Down:connect(function ()
+		SetDirections('Both');
+	end);
+
+	-- Add functionality to the increment input
+	local IncrementInput = ResizeTool.UI.IncrementOption.Increment.TextBox;
+	IncrementInput.FocusLost:connect(function (EnterPressed)
+		ResizeTool.Increment = tonumber(IncrementInput.Text) or ResizeTool.Increment;
+		IncrementInput.Text = Support.Round(ResizeTool.Increment, 3);
+	end);
+
+	-- Add functionality to the size inputs
+	local XInput = ResizeTool.UI.Info.SizeInfo.X.TextBox;
+	local YInput = ResizeTool.UI.Info.SizeInfo.Y.TextBox;
+	local ZInput = ResizeTool.UI.Info.SizeInfo.Z.TextBox;
+	XInput.FocusLost:connect(function (EnterPressed)
+		local NewSize = tonumber(XInput.Text);
+		if NewSize then
+			SetAxisSize('X', NewSize);
 		end;
-		apply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Target.Size = self.terminal_sizes[Target];
-					Target.CFrame = self.terminal_positions[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
-				end;
-			end;
+	end);
+	YInput.FocusLost:connect(function (EnterPressed)
+		local NewSize = tonumber(YInput.Text);
+		if NewSize then
+			SetAxisSize('Y', NewSize);
 		end;
+	end);
+	ZInput.FocusLost:connect(function (EnterPressed)
+		local NewSize = tonumber(ZInput.Text);
+		if NewSize then
+			SetAxisSize('Z', NewSize);
+		end;
+	end);
+
+	-- Update the UI every 0.1 seconds
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
+
+end;
+
+function HideUI()
+	-- Hides the tool UI
+
+	-- Make sure there's a UI
+	if not ResizeTool.UI then
+		return;
+	end;
+
+	-- Hide the UI
+	ResizeTool.UI.Visible = false;
+
+	-- Stop updating the UI
+	UIUpdater:Stop();
+
+end;
+
+function UpdateUI()
+	-- Updates information on the UI
+
+	-- Make sure the UI's on
+	if not ResizeTool.UI then
+		return;
+	end;
+
+	-- Only show and calculate selection info if it's not empty
+	if #Selection.Items == 0 then
+		ResizeTool.UI.Info.Visible = false;
+		ResizeTool.UI.Size = UDim2.new(0, 245, 0, 90);
+		return;
+	else
+		ResizeTool.UI.Info.Visible = true;
+		ResizeTool.UI.Size = UDim2.new(0, 245, 0, 150);
+	end;
+
+	-----------------------------------------
+	-- Update the size information indicators
+	-----------------------------------------
+
+	-- Identify common sizes across axes
+	local XVariations, YVariations, ZVariations = {}, {}, {};
+	for _, Part in pairs(Selection.Items) do
+		table.insert(XVariations, Support.Round(Part.Size.X, 2));
+		table.insert(YVariations, Support.Round(Part.Size.Y, 2));
+		table.insert(ZVariations, Support.Round(Part.Size.Z, 2));
+	end;
+	local CommonX = Support.IdentifyCommonItem(XVariations);
+	local CommonY = Support.IdentifyCommonItem(YVariations);
+	local CommonZ = Support.IdentifyCommonItem(ZVariations);
+
+	-- Shortcuts to indicators
+	local XIndicator = ResizeTool.UI.Info.SizeInfo.X.TextBox;
+	local YIndicator = ResizeTool.UI.Info.SizeInfo.Y.TextBox;
+	local ZIndicator = ResizeTool.UI.Info.SizeInfo.Z.TextBox;
+
+	-- Update each indicator if it's not currently being edited
+	if not XIndicator:IsFocused() then
+		XIndicator.Text = CommonX or '*';
+	end;
+	if not YIndicator:IsFocused() then
+		YIndicator.Text = CommonY or '*';
+	end;
+	if not ZIndicator:IsFocused() then
+		ZIndicator.Text = CommonZ or '*';
+	end;
+
+end;
+
+function SetDirections(DirectionMode)
+	-- Sets the given resizing direction mode
+
+	-- Update setting
+	ResizeTool.Directions = DirectionMode;
+
+	-- Update the UI switch
+	if ResizeTool.UI then
+		Core.ToggleSwitch(DirectionMode, ResizeTool.UI.DirectionsOption);
+	end;
+
+end;
+
+local Handles;
+
+-- Directions of resizing for each handle's dragged face
+local AxisSizeMultipliers = {
+	[Enum.NormalId.Top] = Vector3.new(0, 1, 0);
+	[Enum.NormalId.Bottom] = Vector3.new(0, 1, 0);
+	[Enum.NormalId.Front] = Vector3.new(0, 0, 1);
+	[Enum.NormalId.Back] = Vector3.new(0, 0, 1);
+	[Enum.NormalId.Left] = Vector3.new(1, 0, 0);
+	[Enum.NormalId.Right] = Vector3.new(1, 0, 0);
+};
+
+-- Directions of positioning adjustment for each handle's dragged face
+local AxisPositioningMultipliers = {
+	[Enum.NormalId.Top] = Vector3.new(0, 1, 0);
+	[Enum.NormalId.Bottom] = Vector3.new(0, -1, 0);
+	[Enum.NormalId.Front] = Vector3.new(0, 0, -1);
+	[Enum.NormalId.Back] = Vector3.new(0, 0, 1);
+	[Enum.NormalId.Left] = Vector3.new(-1, 0, 0);
+	[Enum.NormalId.Right] = Vector3.new(1, 0, 0);
+};
+
+function ShowHandles()
+	-- Creates and automatically attaches handles to the currently focused part
+
+	-- Autofocus handles on latest focused part
+	Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
+		Handles.Adornee = Selection.Focus;
+	end);
+
+	-- If handles already exist, only show them
+	if Handles then
+		Handles.Adornee = Selection.Focus;
+		Handles.Visible = true;
+		Handles.Parent = Core.UIContainer;
+		return;
+	end;
+
+	-- Create the handles
+	Handles = Create 'Handles' {
+		Name = 'BTResizingHandles';
+		Color = ResizeTool.Color;
+		Parent = Core.UIContainer;
+		Adornee = Selection.Focus;
 	};
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.initial_sizes[Item] = Item.Size;
-			self.State.HistoryRecord.initial_positions[Item] = Item.CFrame;
+
+	--------------------------------------------------------
+	-- Prepare for resizing parts when the handle is clicked
+	--------------------------------------------------------
+
+	local InitialState = {};
+	local AreaPermissions;
+
+	Handles.MouseButton1Down:connect(function ()
+
+		-- Prevent selection
+		Core.Targeting.CancelSelecting();
+
+		-- Indicate resizing via handles
+		HandleResizing = true;
+
+		-- Stop parts from moving, and capture the initial state of the parts
+		InitialState = PreparePartsForResizing();
+
+		-- Track the change
+		TrackChange();
+
+		-- Cache area permissions information
+		if Core.Mode == 'Tool' then
+			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 		end;
-	end;
 
-end;
+		------------------------------------------------------
+		-- Finalize changes to parts when the handle is let go
+		------------------------------------------------------
 
-Tools.Resize.finishHistoryRecord = function ( self )
+		Connections.HandleRelease = UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
 
-	if not self.State.HistoryRecord then
-		return;
-	end;
-
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.terminal_sizes[Item] = Item.Size;
-			self.State.HistoryRecord.terminal_positions[Item] = Item.CFrame;
-		end;
-	end;
-	History:add( self.State.HistoryRecord );
-	self.State.HistoryRecord = nil;
-
-end;
-
-Tools.Resize.changeSize = function ( self, component, new_value )
-
-	self:startHistoryRecord();
-
-	-- Change the size of each item selected
-	for _, Item in pairs( Selection.Items ) do
-		local OldCFrame = Item.CFrame;
-		-- Make the item be able to be freely resized
-		if ( pcall( function () local test = Item.FormFactor; end ) ) then
-			Item.FormFactor = Enum.FormFactor.Custom;
-		end;
-		Item.Size = Vector3.new(
-			component == 'x' and new_value or Item.Size.x,
-			component == 'y' and new_value or Item.Size.y,
-			component == 'z' and new_value or Item.Size.z
-		);
-		Item.CFrame = OldCFrame;
-	end;
-
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Resize.updateGUI = function ( self )
-
-	-- Make sure the GUI exists
-	if not self.GUI then
-		return;
-	end;
-
-	local GUI = self.GUI;
-
-	if #Selection.Items > 0 then
-
-		-- Look for identical numbers in each axis
-		local size_x, size_y, size_z =  nil, nil, nil;
-		for item_index, Item in pairs( Selection.Items ) do
-
-			-- Set the first values for the first item
-			if item_index == 1 then
-				size_x, size_y, size_z = _round( Item.Size.x, 2 ), _round( Item.Size.y, 2 ), _round( Item.Size.z, 2 );
-
-			-- Otherwise, compare them and set them to `nil` if they're not identical
-			else
-				if size_x ~= _round( Item.Size.x, 2 ) then
-					size_x = nil;
-				end;
-				if size_y ~= _round( Item.Size.y, 2 ) then
-					size_y = nil;
-				end;
-				if size_z ~= _round( Item.Size.z, 2 ) then
-					size_z = nil;
-				end;
+			-- Make sure this was button 1 being released
+			if InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1 then
+				return;
 			end;
 
-		end;
+			-- Disable resizing
+			HandleResizing = false;
 
-		-- Update the size info on the GUI
-		if not self.State.size_x_focused then
-			GUI.Info.SizeInfo.X.TextBox.Text = size_x and tostring( size_x ) or "*";
-		end;
-		if not self.State.size_y_focused then
-			GUI.Info.SizeInfo.Y.TextBox.Text = size_y and tostring( size_y ) or "*";
-		end;
-		if not self.State.size_z_focused then
-			GUI.Info.SizeInfo.Z.TextBox.Text = size_z and tostring( size_z ) or "*";
-		end;
+			-- Prevent selection
+			Core.Targeting.CancelSelecting();
 
-		GUI.Info.Visible = true;
-	else
-		GUI.Info.Visible = false;
-	end;
+			-- Clear this connection to prevent it from firing again
+			Connections.HandleRelease:disconnect();
+			Connections.HandleRelease = nil;
 
-	if self.State.length_resized then
-		GUI.Changes.Text.Text = "resized " .. tostring( self.State.length_resized ) .. " studs";
-		GUI.Changes.Position = GUI.Info.Visible and UDim2.new( 0, 5, 0, 165 ) or UDim2.new( 0, 5, 0, 100 );
-		GUI.Changes.Visible = true;
-	else
-		GUI.Changes.Text.Text = "";
-		GUI.Changes.Visible = false;
-	end;
-
-end;
-
-Tools.Resize.hideGUI = function ( self )
-
-	-- Hide the GUI if it exists
-	if self.GUI then
-		self.GUI.Visible = false;
-	end;
-
-end;
-
-Tools.Resize.showHandles = function ( self, Part )
-
-	-- Create the handles if they don't exist yet
-	if not self.Handles then
-
-		-- Create the object
-		self.Handles = RbxUtility.Create "Handles" {
-			Name = "BTResizeHandles";
-			Style = Enum.HandlesStyle.Resize;
-			Color = self.Color;
-			Parent = GUIContainer;
-		};
-
-		-- Add functionality to the handles
-		self.Handles.MouseButton1Down:connect( function ()
-
-			-- Prevent the platform from thinking we're selecting
-			override_selection = true;
-			self.State.resizing = true;
-
-			-- Clear the change stats
-			self.State.length_resized = 0;
-
-			self:startHistoryRecord();
-
-			-- Do a few things to the selection before manipulating it
-			for _, Item in pairs( Selection.Items ) do
-
-				-- Keep a copy of the state of each item
-				self.State.PreResize[Item] = Item:Clone();
-
-				-- Make the item be able to be freely resized
-				if ( pcall( function () local test = Item.FormFactor; end ) ) then
-					Item.FormFactor = Enum.FormFactor.Custom;
-				end;
-
-				-- Anchor each item
-				Item.Anchored = true;
-
+			-- Make joints, restore original anchor and collision states
+			for _, Part in pairs(Selection.Items) do
+				Part:MakeJoints();
+				Part.CanCollide = InitialState[Part].CanCollide;
+				Part.Anchored = InitialState[Part].Anchored;
 			end;
 
-			-- Return stuff to normal once the mouse button is released
-			self.Connections.HandleReleaseListener = Mouse.Button1Up:connect( function ()
+			-- Register the change
+			RegisterChange();
 
-				-- Prevent the platform from thinking we're selecting
-				override_selection = true;
-				self.State.resizing = false;
+		end);
 
-				-- Stop this connection from firing again
-				if self.Connections.HandleReleaseListener then
-					self.Connections.HandleReleaseListener:disconnect();
-					self.Connections.HandleReleaseListener = nil;
-				end;
+	end);
 
-				self:finishHistoryRecord();
+	------------------------------------------
+	-- Update parts when the handles are moved
+	------------------------------------------
 
-				-- Restore properties that may have been changed temporarily
-				-- from the pre-resize state copies
-				for Item, PreviousItemState in pairs( self.State.PreResize ) do
-					Item.Anchored = PreviousItemState.Anchored;
-					self.State.PreResize[Item] = nil;
-					Item:MakeJoints();
-				end;
+	Handles.MouseDrag:connect(function (Face, Distance)
 
-			end );
-
-		end );
-
-		self.Handles.MouseDrag:connect( function ( face, drag_distance )
-
-			-- Calculate which multiple of the increment to use based on the current drag distance's
-			-- proximity to their nearest upper and lower multiples
-
-			local difference = drag_distance % self.Options.increment;
-
-			local lower_degree = drag_distance - difference;
-			local upper_degree = drag_distance - difference + self.Options.increment;
-
-			local lower_degree_proximity = math.abs( drag_distance - lower_degree );
-			local upper_degree_proximity = math.abs( drag_distance - upper_degree );
-
-			if lower_degree_proximity <= upper_degree_proximity then
-				drag_distance = lower_degree;
-			else
-				drag_distance = upper_degree;
-			end;
-
-			local increase = drag_distance;
-
-			-- Log the distance that the handle was dragged
-			self.State.previous_distance = drag_distance;
-
-			-- Note the length by which the selection will be enlarged
-			if self.Options.directions == "both" then
-				increase = drag_distance * 2;
-			end;
-			self.State.length_resized = increase;
-
-			-- Go through the selection and make changes to it
-			for _, Item in pairs( Selection.Items ) do
-
-				-- Keep a copy of `Item` in case we need to revert anything
-				local PreviousItemState = Item:Clone();
-
-				-- Break any of `Item`'s joints so it can move freely
-				Item:BreakJoints();
-
-				-- Position and resize `Item` according to the options and the handle that was used
-
-				if face == Enum.NormalId.Top then
-
-					-- Calculate the appropriate increment to the size based on the shape of `Item`
-					local SizeIncrease;
-					if ( pcall( function () local test = Item.Shape; end ) ) and ( Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder ) then
-						SizeIncrease = Vector3.new( increase, increase, increase );
-					elseif not ( pcall( function () local test = Item.Shape; end ) ) or ( Item.Shape and Item.Shape == Enum.PartType.Block ) then
-						SizeIncrease = Vector3.new( 0, increase, 0 );
-					end;
-
-					Item.Size = self.State.PreResize[Item].Size + SizeIncrease;
-					if Item.Size == self.State.PreResize[Item].Size + SizeIncrease then
-						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( 0, increase / 2, 0 ) ) )
-									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
-					-- If the resizing was not possible, revert `Item`'s state
-					else
-						Item.Size = PreviousItemState.Size;
-						Item.CFrame = PreviousItemState.CFrame;
-					end;
-
-				elseif face == Enum.NormalId.Bottom then
-
-					-- Calculate the appropriate increment to the size based on the shape of `Item`
-					local SizeIncrease;
-					if ( pcall( function () local test = Item.Shape; end ) ) and ( Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder ) then
-						SizeIncrease = Vector3.new( increase, increase, increase );
-					elseif not ( pcall( function () local test = Item.Shape; end ) ) or ( Item.Shape and Item.Shape == Enum.PartType.Block ) then
-						SizeIncrease = Vector3.new( 0, increase, 0 );
-					end;
-
-					Item.Size = self.State.PreResize[Item].Size + SizeIncrease;
-					if Item.Size == self.State.PreResize[Item].Size + SizeIncrease then
-						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( 0, -increase / 2, 0 ) ) )
-									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
-					-- If the resizing was not possible, revert `Item`'s state
-					else
-						Item.Size = PreviousItemState.Size;
-						Item.CFrame = PreviousItemState.CFrame;
-					end;
-
-				elseif face == Enum.NormalId.Front then
-
-					-- Calculate the appropriate increment to the size based on the shape of `Item`
-					local SizeIncrease;
-					if ( pcall( function () local test = Item.Shape; end ) ) and ( Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder ) then
-						SizeIncrease = Vector3.new( increase, increase, increase );
-					elseif not ( pcall( function () local test = Item.Shape; end ) ) or ( Item.Shape and Item.Shape == Enum.PartType.Block ) then
-						SizeIncrease = Vector3.new( 0, 0, increase );
-					end;
-
-					Item.Size = self.State.PreResize[Item].Size + SizeIncrease;
-					if Item.Size == self.State.PreResize[Item].Size + SizeIncrease then
-						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, -increase / 2 ) ) )
-									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
-					-- If the resizing was not possible, revert `Item`'s state
-					else
-						Item.Size = PreviousItemState.Size;
-						Item.CFrame = PreviousItemState.CFrame;
-					end;
-
-				elseif face == Enum.NormalId.Back then
-
-					-- Calculate the appropriate increment to the size based on the shape of `Item`
-					local SizeIncrease;
-					if ( pcall( function () local test = Item.Shape; end ) ) and ( Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder ) then
-						SizeIncrease = Vector3.new( increase, increase, increase );
-					elseif not ( pcall( function () local test = Item.Shape; end ) ) or ( Item.Shape and Item.Shape == Enum.PartType.Block ) then
-						SizeIncrease = Vector3.new( 0, 0, increase );
-					end;
-
-					Item.Size = self.State.PreResize[Item].Size + SizeIncrease;
-					if Item.Size == self.State.PreResize[Item].Size + SizeIncrease then
-						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, increase / 2 ) ) )
-									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
-					-- If the resizing was not possible, revert `Item`'s state
-					else
-						Item.Size = PreviousItemState.Size;
-						Item.CFrame = PreviousItemState.CFrame;
-					end;
-
-				elseif face == Enum.NormalId.Left then
-
-					-- Calculate the appropriate increment to the size based on the shape of `Item`
-					local SizeIncrease;
-					if ( pcall( function () local test = Item.Shape; end ) ) and ( Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder ) then
-						SizeIncrease = Vector3.new( increase, increase, increase );
-					elseif not ( pcall( function () local test = Item.Shape; end ) ) or ( Item.Shape and Item.Shape == Enum.PartType.Block ) then
-						SizeIncrease = Vector3.new( increase, 0, 0 );
-					end;
-
-					Item.Size = self.State.PreResize[Item].Size + SizeIncrease;
-					if Item.Size == self.State.PreResize[Item].Size + SizeIncrease then
-						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( -increase / 2, 0, 0 ) ) )
-									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
-					-- If the resizing was not possible, revert `Item`'s state
-					else
-						Item.Size = PreviousItemState.Size;
-						Item.CFrame = PreviousItemState.CFrame;
-					end;
-
-				elseif face == Enum.NormalId.Right then
-
-					-- Calculate the appropriate increment to the size based on the shape of `Item`
-					local SizeIncrease;
-					if ( pcall( function () local test = Item.Shape; end ) ) and ( Item.Shape == Enum.PartType.Ball or Item.Shape == Enum.PartType.Cylinder ) then
-						SizeIncrease = Vector3.new( increase, increase, increase );
-					elseif not ( pcall( function () local test = Item.Shape; end ) ) or ( Item.Shape and Item.Shape == Enum.PartType.Block ) then
-						SizeIncrease = Vector3.new( increase, 0, 0 );
-					end;
-
-					Item.Size = self.State.PreResize[Item].Size + SizeIncrease;
-					if Item.Size == self.State.PreResize[Item].Size + SizeIncrease then
-						Item.CFrame = ( self.Options.directions == "normal" and self.State.PreResize[Item].CFrame:toWorldSpace( CFrame.new( increase / 2, 0, 0 ) ) )
-									  or ( self.Options.directions == "both" and self.State.PreResize[Item].CFrame );
-					-- If the resizing was not possible, revert `Item`'s state
-					else
-						Item.Size = PreviousItemState.Size;
-						Item.CFrame = PreviousItemState.CFrame;
-					end;
-				end;
-
-				-- Make joints with surrounding parts again once the resizing is done
-				Item:MakeJoints();
-
-			end;
-
-		end );
-
-	end;
-
-	-- Stop listening for the existence of the previous adornee (if any)
-	if self.Connections.AdorneeExistenceListener then
-		self.Connections.AdorneeExistenceListener:disconnect();
-		self.Connections.AdorneeExistenceListener = nil;
-	end;
-
-	-- Attach the handles to `Part`
-	self.Handles.Adornee = Part;
-
-	-- Make sure to hide the handles if `Part` suddenly stops existing
-	self.Connections.AdorneeExistenceListener = Part.AncestryChanged:connect( function ( Object, NewParent )
-
-		-- Make sure this change in parent applies directly to `Part`
-		if Object ~= Part then
+		-- Only resize if handle is enabled
+		if not HandleResizing then
 			return;
 		end;
 
-		-- Show the handles according to the existence of the part
-		if NewParent == nil then
-			self:hideHandles();
-		else
-			self:showHandles( Part );
+		-- Calculate the increment-aligned drag distance
+		Distance = GetIncrementMultiple(Distance, ResizeTool.Increment);
+
+		-- Resize the parts on the selected faces by the calculated distance
+		local Success, Adjustment = ResizePartsByFace(Face, Distance, ResizeTool.Directions, InitialState);
+
+		-- If the resizing did not succeed, resize according to the suggested adjustment
+		if not Success then
+			ResizePartsByFace(Face, Adjustment, ResizeTool.Directions, InitialState);
 		end;
 
-	end );
+		-- Update the "studs resized" indicator
+		if ResizeTool.UI then
+			ResizeTool.UI.Changes.Text.Text = 'resized ' .. Support.Round(math.abs(Adjustment or Distance), 3) .. ' studs';
+		end;
+
+		-- Make sure we're not entering any unauthorized private areas
+		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+			for Part, PartState in pairs(InitialState) do
+				Part.Size = PartState.Size;
+				Part.CFrame = PartState.CFrame;
+			end;
+		end;
+
+	end);
 
 end;
 
-Tools.Resize.hideHandles = function ( self )
+function HideHandles()
+	-- Hides the resizing handles
 
-	-- Hide the handles if they exist
-	if self.Handles then
-		self.Handles.Adornee = nil;
+	-- Make sure handles exist and are visible
+	if not Handles or not Handles.Visible then
+		return;
+	end;
+
+	-- Hide the handles
+	Handles.Visible = false;
+	Handles.Parent = nil;
+
+	-- Clear unnecessary resources
+	Connections.AutofocusHandle:disconnect();
+	Connections.AutofocusHandle = nil;
+
+end;
+
+function ResizePartsByFace(Face, Distance, Directions, InitialState)
+	-- Resizes the selection on face `Face` by `Distance` studs, in the given `Directions`
+
+	-- Adjust the size increment to the resizing direction mode
+	if Directions == 'Both' then
+		Distance = Distance * 2;
+	end;
+
+	-- Calculate the increment vector for this resizing
+	local AxisSizeMultiplier = AxisSizeMultipliers[Face];
+	local IncrementVector = Distance * AxisSizeMultiplier;
+
+	-- Resize each part
+	for _, Part in pairs(Selection.Items) do
+
+		-- Make sure this increment will not undersize the part
+		local TargetSize = InitialState[Part].Size + IncrementVector;
+		local ShortestSize = math.min(TargetSize.X, TargetSize.Y, TargetSize.Z);
+		if ShortestSize < 0.2 then
+
+			-- Calculate and return how much to resize in order to normalize the resizing
+			local SizeAdjustment = Distance + 0.2 - ShortestSize;
+			return false, SizeAdjustment;
+
+		end;
+
+		-- Perform the size change
+		Part.Size = InitialState[Part].Size + IncrementVector;
+
+		-- Offset the part when resizing in the normal, one direction
+		if Directions == 'Normal' then
+			Part.CFrame = InitialState[Part].CFrame * CFrame.new(AxisPositioningMultipliers[Face] * Distance / 2);
+
+		-- Keep the part centered when resizing in both directions
+		elseif Directions == 'Both' then
+			Part.CFrame = InitialState[Part].CFrame;
+
+		end;
+
+	end;
+
+	-- Indicate that the resizing happened successfully
+	return true;
+end;
+
+function BindShortcutKeys()
+	-- Enables useful shortcut keys for this tool
+
+	-- Track user input while this tool is equipped
+	table.insert(Connections, UserInputService.InputBegan:connect(function (InputInfo, GameProcessedEvent)
+
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
+			return;
+		end;
+
+		-- Make sure this input is a key press
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
+		end;
+
+		-- Make sure it wasn't pressed while typing
+		if UserInputService:GetFocusedTextBox() then
+			return;
+		end;
+
+		-- Check if the enter key was pressed
+		if InputInfo.KeyCode == Enum.KeyCode.Return or InputInfo.KeyCode == Enum.KeyCode.KeypadEnter then
+
+			-- Toggle the current directions mode
+			if ResizeTool.Directions == 'Normal' then
+				SetDirections('Both');
+
+			elseif ResizeTool.Directions == 'Both' then
+				SetDirections('Normal');
+			end;
+
+		-- Check if the - key was pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.Minus or InputInfo.KeyCode == Enum.KeyCode.KeypadMinus then
+
+			-- Focus on the increment input
+			if ResizeTool.UI then
+				ResizeTool.UI.IncrementOption.Increment.TextBox:CaptureFocus();
+			end;
+
+		-- Nudge up if the 8 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadEight then
+			NudgeSelectionByFace(Enum.NormalId.Top);
+
+		-- Nudge down if the 2 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadTwo then
+			NudgeSelectionByFace(Enum.NormalId.Bottom);
+
+		-- Nudge forward if the 9 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadNine then
+			NudgeSelectionByFace(Enum.NormalId.Front);
+
+		-- Nudge backward if the 1 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadOne then
+			NudgeSelectionByFace(Enum.NormalId.Back);
+
+		-- Nudge left if the 4 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadFour then
+			NudgeSelectionByFace(Enum.NormalId.Left);
+
+		-- Nudge right if the 6 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadSix then
+			NudgeSelectionByFace(Enum.NormalId.Right);
+
+		-- Start snapping when the R key is pressed down (and it's not Shift R)
+		elseif InputInfo.KeyCode == Enum.KeyCode.R and not (Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift)) then
+			StartSnapping();
+
+		end;
+
+	end));
+
+	-- Track ending user input while this tool is equipped
+	table.insert(Connections, UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
+
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
+			return;
+		end;
+
+		-- Make sure this is input from the keyboard
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
+		end;
+
+		-- Make sure it wasn't pressed while typing
+		if UserInputService:GetFocusedTextBox() then
+			return;
+		end;
+
+		-- Finish snapping when the R key is released (and it's not Shift R)
+		if InputInfo.KeyCode == Enum.KeyCode.R and not (Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift)) then
+			FinishSnapping();
+
+		end;
+
+	end));
+
+end;
+
+function SetAxisSize(Axis, Size)
+	-- Sets the selection's size on axis `Axis` to `Size`
+
+	-- Track this change
+	TrackChange();
+
+	-- Prepare parts to be resized
+	local InitialState = PreparePartsForResizing();
+
+	-- Update each part
+	for _, Part in pairs(Selection.Items) do
+
+		-- Set the part's new size
+		Part.Size = Vector3.new(
+			Axis == 'X' and Size or Part.Size.X,
+			Axis == 'Y' and Size or Part.Size.Y,
+			Axis == 'Z' and Size or Part.Size.Z
+		);
+
+		-- Keep the part in place
+		Part.CFrame = InitialState[Part].CFrame;
+
+	end;
+
+	-- Cache up permissions for all private areas
+	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+
+	-- Revert changes if player is not authorized to resize parts towards the end destination
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+		for Part, PartState in pairs(InitialState) do
+			Part.Size = PartState.Size;
+			Part.CFrame = PartState.CFrame;
+		end;
+	end;
+
+	-- Restore the parts' original states
+	for Part, PartState in pairs(InitialState) do
+		Part:MakeJoints();
+		Part.CanCollide = InitialState[Part].CanCollide;
+		Part.Anchored = InitialState[Part].Anchored;
+	end;
+
+	-- Register the change
+	RegisterChange();
+
+end;
+
+function NudgeSelectionByFace(Face)
+	-- Nudges the size of the selection in the direction of the given face
+
+	-- Track this change
+	TrackChange();
+
+	-- Prepare parts to be resized
+	local InitialState = PreparePartsForResizing();
+
+	-- Perform the resizing
+	local Success = ResizePartsByFace(Face, ResizeTool.Increment, ResizeTool.Directions, InitialState);
+
+	-- If the resizing did not succeed, revert the parts to their original state
+	if not Success then
+		for Part, PartState in pairs(InitialState) do
+			Part.Size = PartState.Size;
+			Part.CFrame = PartState.CFrame;
+		end;
+	end;
+
+	-- Cache up permissions for all private areas
+	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+
+	-- Revert changes if player is not authorized to resize parts towards the end destination
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+		for Part, PartState in pairs(InitialState) do
+			Part.Size = PartState.Size;
+			Part.CFrame = PartState.CFrame;
+		end;
+	end;
+
+	-- Restore the parts' original states
+	for Part, PartState in pairs(InitialState) do
+		Part:MakeJoints();
+		Part.CanCollide = InitialState[Part].CanCollide;
+		Part.Anchored = InitialState[Part].Anchored;
+	end;
+
+	-- Register the change
+	RegisterChange();
+
+end;
+
+function TrackChange()
+
+	-- Start the record
+	HistoryRecord = {
+		Parts = Support.CloneTable(Selection.Items);
+		BeforeSize = {};
+		AfterSize = {};
+		BeforeCFrame = {};
+		AfterCFrame = {};
+
+		Unapply = function (Record)
+			-- Reverts this change
+
+			-- Select the changed parts
+			Selection.Replace(Record.Parts);
+
+			-- Put together the change request
+			local Changes = {};
+			for _, Part in pairs(Record.Parts) do
+				table.insert(Changes, { Part = Part, Size = Record.BeforeSize[Part], CFrame = Record.BeforeCFrame[Part] });
+			end;
+
+			-- Send the change request
+			Core.SyncAPI:Invoke('SyncResize', Changes);
+
+		end;
+
+		Apply = function (Record)
+			-- Applies this change
+
+			-- Select the changed parts
+			Selection.Replace(Record.Parts);
+
+			-- Put together the change request
+			local Changes = {};
+			for _, Part in pairs(Record.Parts) do
+				table.insert(Changes, { Part = Part, Size = Record.AfterSize[Part], CFrame = Record.AfterCFrame[Part] });
+			end;
+
+			-- Send the change request
+			Core.SyncAPI:Invoke('SyncResize', Changes);
+
+		end;
+
+	};
+
+	-- Collect the selection's initial state
+	for _, Part in pairs(HistoryRecord.Parts) do
+		HistoryRecord.BeforeSize[Part] = Part.Size;
+		HistoryRecord.BeforeCFrame[Part] = Part.CFrame;
 	end;
 
 end;
 
-Tools.Resize.Loaded = true;
+function RegisterChange()
+	-- Finishes creating the history record and registers it
+
+	-- Make sure there's an in-progress history record
+	if not HistoryRecord then
+		return;
+	end;
+
+	-- Collect the selection's final state
+	local Changes = {};
+	for _, Part in pairs(HistoryRecord.Parts) do
+		HistoryRecord.AfterSize[Part] = Part.Size;
+		HistoryRecord.AfterCFrame[Part] = Part.CFrame;
+		table.insert(Changes, { Part = Part, Size = Part.Size, CFrame = Part.CFrame });
+	end;
+
+	-- Send the change to the server
+	Core.SyncAPI:Invoke('SyncResize', Changes);
+
+	-- Register the record and clear the staging
+	Core.History.Add(HistoryRecord);
+	HistoryRecord = nil;
+
+end;
+
+function PreparePartsForResizing()
+	-- Prepares parts for resizing and returns the initial state of the parts
+
+	local InitialState = {};
+
+	-- Stop parts from moving, and capture the initial state of the parts
+	for _, Part in pairs(Selection.Items) do
+		InitialState[Part] = { Anchored = Part.Anchored, CanCollide = Part.CanCollide, Size = Part.Size, CFrame = Part.CFrame };
+		Part.Anchored = true;
+		Part.CanCollide = false;
+		Part:BreakJoints();
+		Part.Velocity = Vector3.new();
+		Part.RotVelocity = Vector3.new();
+	end;
+
+	return InitialState;
+end;
+
+function GetIncrementMultiple(Number, Increment)
+
+	-- Get how far the actual distance is from a multiple of our increment
+	local MultipleDifference = Number % Increment;
+
+	-- Identify the closest lower and upper multiples of the increment
+	local LowerMultiple = Number - MultipleDifference;
+	local UpperMultiple = Number - MultipleDifference + Increment;
+
+	-- Calculate to which of the two multiples we're closer
+	local LowerMultipleProximity = math.abs(Number - LowerMultiple);
+	local UpperMultipleProximity = math.abs(Number - UpperMultiple);
+
+	-- Use the closest multiple of our increment as the distance moved
+	if LowerMultipleProximity <= UpperMultipleProximity then
+		Number = LowerMultiple;
+	else
+		Number = UpperMultiple;
+	end;
+
+	return Number;
+end;
+
+-- Event that fires when a new point is snapped
+PointSnapped = Core.RbxUtility.CreateSignal();
+
+function StartSnapping()
+
+	-- Make sure snapping isn't already enabled
+	if SnapTracking.Enabled then
+		return;
+	end;
+
+	-- Only enable corner snapping
+	SnapTracking.TrackEdgeMidpoints = false;
+	SnapTracking.TrackFaceCentroids = false;
+	SnapTracking.TargetFilter = Selection.Find;
+
+	-- Trigger the PointSnapped event when a new point is snapped
+	SnapTracking.StartTracking(function (NewPoint)
+		if NewPoint and NewPoint.p ~= SnappedPoint then
+			SnappedPoint = NewPoint.p;
+			PointSnapped:fire(NewPoint.p);
+		end;
+	end);
+
+	-- Listen for when the user starts dragging while in snap mode
+	Connections.SnapDragStart = Support.AddUserInputListener('Began', 'MouseButton1', false, function (Input)
+
+		-- Initialize snapping state
+		SnappingStage = 'Direction';
+		SnappingStartAim = Vector2.new(Input.Position.X, Input.Position.Y);
+		SnappingStartPoint = SnappedPoint;
+		SnappingStartTarget = SnapTracking.Target;
+		SnappingStartDirections = GetFaceOffsetsFromCorner(SnappingStartTarget, SnappingStartPoint);
+		SnappingStartSelectionState = PreparePartsForResizing();
+		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+
+		-- Track changes for history
+		TrackChange();
+
+		-- Listen for when the user drags
+		Connections.SnapDrag = Support.AddUserInputListener('Changed', 'MouseMovement', false, function (Input)
+
+			-- Update the latest aim
+			SnappingEndAim = Vector2.new(Input.Position.X, Input.Position.Y);
+
+			-- Use the mouse position to figure out the resize direction (until after 20px)
+			if SnappingStage == 'Direction' then
+
+				-- Check the length
+				local Length = (SnappingEndAim - SnappingStartAim).magnitude;
+				if Length < 20 then
+					return;
+				end;
+
+				local DragSlope = (SnappingEndAim.Y - SnappingStartAim.Y) / (SnappingEndAim.X - SnappingStartAim.X);
+
+				-- Go through corner offsets representing the possible directions
+				local Directions = {};
+				for _, Direction in pairs(SnappingStartDirections) do
+
+					-- Map the corner & corner offset to screen points
+					local ScreenSnappedPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappingStartPoint);
+					local ScreenOffsetPoint = Workspace.CurrentCamera:WorldToScreenPoint(Direction.Offset);
+
+					-- Get the slope representing the direction (based on the mapped screen points)
+					local DirectionSlope = (ScreenOffsetPoint.Y - ScreenSnappedPoint.Y) / (ScreenOffsetPoint.X - ScreenSnappedPoint.X);
+
+					-- Calculate the similarity between the drag & direction slopes
+					local SlopeDelta = math.abs(math.abs(DragSlope) - math.abs(DirectionSlope));
+					table.insert(Directions, { Face = Direction.Face, SlopeDelta = SlopeDelta, Offset = Direction.Offset });
+
+				end;
+
+				-- Get the direction slope closest to the mouse's
+				table.sort(Directions, function (A, B)
+					return A.SlopeDelta < B.SlopeDelta;
+				end);
+
+				-- Select the resizing direction that was closest to the mouse drag
+				SnappingDirection = Directions[1].Face;
+				SnappingDirectionOffset = Directions[1].Offset;
+
+				-- Move to the destination-picking stage of snapping
+				SnappingStage = 'Destination';
+
+				SnapTracking.TargetFilter = function (Target) return not Target.Locked; end;
+				SnapTracking.TargetBlacklist = Selection.Items;
+
+			-- Resize in the selected direction up to the targeted destination
+			elseif SnappingStage == 'Destination' then
+
+			end;
+
+		end);
+
+		-- Listen for when a new point is snapped
+		Connections.Snap = PointSnapped:connect(function (SnappedPoint)
+
+			if SnappingStage == 'Destination' then
+				local Direction = (SnappingDirectionOffset - SnappingStartPoint).unit;
+				local Distance = (SnappedPoint - SnappingStartPoint):Dot(Direction);
+
+				-- Resize the parts on the selected faces by the calculated distance
+				local Success, Adjustment = ResizePartsByFace(SnappingDirection, Distance, 'Normal', SnappingStartSelectionState);
+
+				-- If the resizing did not succeed, resize according to the suggested adjustment
+				if not Success then
+					ResizePartsByFace(SnappingDirection, Adjustment, 'Normal', SnappingStartSelectionState);
+				end;
+
+				-- Make sure we're not entering any unauthorized private areas
+				if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+					for Part, PartState in pairs(SnappingStartSelectionState) do
+						Part.Size = PartState.Size;
+						Part.CFrame = PartState.CFrame;
+					end;
+				end;
+
+			end;
+
+		end);
+
+		-- Listen for the end of the snapping
+		Connections.SnapDragEnd = Support.AddUserInputListener('Ended', 'MouseButton1', false, function (Input)
+
+			-- Restore the selection's original state
+			for Part, PartState in pairs(SnappingStartSelectionState) do
+				Part:MakeJoints();
+				Part.CanCollide = PartState.CanCollide;
+				Part.Anchored = PartState.Anchored;
+			end;
+
+			-- Finish snapping
+			FinishSnapping();
+
+		end);
+
+	end);
+
+end;
+
+function FinishSnapping()
+
+	-- Make sure snapping is enabled
+	if not SnapTracking.Enabled then
+		return;
+	end;
+
+	-- Stop snap point tracking
+	SnapTracking.StopTracking();
+
+	-- Register any change
+	if HistoryRecord then
+		RegisterChange();
+	end;
+
+	-- Disconnect snapping listeners
+	ClearConnection 'SnapDragStart';
+	ClearConnection 'SnapDrag';
+	ClearConnection 'Snap';
+	ClearConnection 'SnapDragEnd';
+
+end;
+
+
+function GetFaceOffsetsFromCorner(Part, Point)
+	-- Returns offsets of the given corner point in the direction of its intersecting faces
+
+	local Offsets = {};
+
+	-- Go through each face the corner intersects
+	local Faces = GetFacesFromCorner(Part, Point);
+	for _, Face in pairs(Faces) do
+
+		-- Calculate the offset from the corner in the direction of the face
+		local Offset = CFrame.new(Point) * CFrame.Angles(Part.CFrame:toEulerAnglesXYZ()) * Vector3.FromNormalId(Face);
+		table.insert(Offsets, { Face = Face, Offset = Offset });
+
+	end;
+
+	-- Return the list of offsets
+	return Offsets;
+end;
+
+function GetFacesFromCorner(Part, Point)
+	-- Returns the 3 faces that the given corner point intersects
+
+	local Faces = {};
+
+	-- Get all the face centers of the part
+	for _, FaceEnum in pairs(Enum.NormalId:GetEnumItems()) do
+		local Face = Part.CFrame * (Part.Size / 2 * Vector3.FromNormalId(FaceEnum));
+
+		-- Get the face's proximity to the point
+		local Proximity = (Point - Face).magnitude;
+
+		-- Keep track of the proximity to the point
+		table.insert(Faces, { Proximity = Proximity, Face = FaceEnum });
+	end;
+
+	-- Find the closest faces to the point
+	table.sort(Faces, function (A, B)
+		return A.Proximity < B.Proximity;
+	end);
+
+	-- Return the 3 closest faces
+	return { Faces[1].Face, Faces[2].Face, Faces[3].Face };
+end;
+
+-- Return the tool
+return ResizeTool;

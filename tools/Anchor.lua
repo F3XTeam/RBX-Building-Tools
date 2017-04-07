@@ -1,298 +1,249 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
 
-------------------------------------------
--- Anchor tool
-------------------------------------------
+-- Import relevant references
+Selection = Core.Selection;
+Create = Core.Create;
+Support = Core.Support;
+Security = Core.Security;
+Support.ImportServices();
 
--- Create the tool
-Tools.Anchor = {};
+-- Initialize the tool
+local AnchorTool = {
 
--- Create structures to hold data that the tool needs
-Tools.Anchor.Connections = {};
+	Name = 'Anchor Tool';
+	Color = BrickColor.new 'Really black';
 
-Tools.Anchor.State = {
-	["anchored"] = nil;
 };
 
-Tools.Anchor.Listeners = {};
+-- Container for temporary connections (disconnected automatically)
+local Connections = {};
 
--- Define the color of the tool
-Tools.Anchor.Color = BrickColor.new( "Really black" );
+function AnchorTool.Equip()
+	-- Enables the tool's equipped functionality
 
--- Start adding functionality to the tool
-Tools.Anchor.Listeners.Equipped = function ()
-
-	local self = Tools.Anchor;
-
-	-- Change the color of selection boxes temporarily
-	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = self.Color;
-	updateSelectionBoxColor();
-
-	-- Reveal the GUI
-	self:showGUI();
-
-	-- Update the GUI regularly
-	coroutine.wrap( function ()
-		updater_on = true;
-
-		-- Provide a function to stop the loop
-		self.Updater = function ()
-			updater_on = false;
-		end;
-
-		while wait( 0.1 ) and updater_on do
-
-			-- Make sure the tool's equipped
-			if CurrentTool == self then
-
-				-- Update the anchor status of every item in the selection
-				local anchor_status = nil;
-				for item_index, Item in pairs( Selection.Items ) do
-
-					-- Set the first values for the first item
-					if item_index == 1 then
-						anchor_status = Item.Anchored;
-
-					-- Otherwise, compare them and set them to `nil` if they're not identical
-					else
-						if anchor_status ~= Item.Anchored then
-							anchor_status = nil;
-						end;
-					end;
-
-				end;
-
-				self.State.anchored = anchor_status;
-
-				-- Update the GUI if it's visible
-				if self.GUI and self.GUI.Visible then
-					self:updateGUI();
-				end;
-
-			end;
-
-		end;
-
-	end )();
-
-	-- Listen for the Enter button to be pressed to toggle the anchor
-	self.Connections.EnterButtonListener = Mouse.KeyDown:connect( function ( key )
-
-		local key = key:lower();
-		local key_code = key:byte();
-
-		-- If the Enter button is pressed
-		if key_code == 13 then
-
-			if self.State.anchored == true then
-				self:unanchor();
-
-			elseif self.State.anchored == false then
-				self:anchor();
-
-			elseif self.State.anchored == nil then
-				self:anchor();
-
-			end;
-
-		end;
-
-	end );
+	-- Start up our interface
+	ShowUI();
+	BindShortcutKeys();
 
 end;
 
+function AnchorTool.Unequip()
+	-- Disables the tool's equipped functionality
 
-Tools.Anchor.startHistoryRecord = function ( self )
-
-	if self.State.HistoryRecord then
-		self.State.HistoryRecord = nil;
-	end;
-
-	-- Create a history record
-	self.State.HistoryRecord = {
-		targets = _cloneTable( Selection.Items );
-		initial_positions = {};
-		terminal_positions = {};
-		initial_anchors = {};
-		terminal_anchors = {};
-		unapply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Target.RotVelocity = Vector3.new( 0, 0, 0 );
-					Target.Velocity = Vector3.new( 0, 0, 0 );
-					Target.CFrame = self.initial_positions[Target];
-					Target.Anchored = self.initial_anchors[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
-				end;
-			end;
-		end;
-		apply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Target.RotVelocity = Vector3.new( 0, 0, 0 );
-					Target.Velocity = Vector3.new( 0, 0, 0 );
-					Target.CFrame = self.terminal_positions[Target];
-					Target.Anchored = self.terminal_anchors[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
-				end;
-			end;
-		end;
-	};
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.initial_anchors[Item] = Item.Anchored;
-			self.State.HistoryRecord.initial_positions[Item] = Item.CFrame;
-		end;
-	end;
+	-- Clear unnecessary resources
+	HideUI();
+	ClearConnections();
 
 end;
 
-Tools.Anchor.finishHistoryRecord = function ( self )
+function ClearConnections()
+	-- Clears out temporary connections
 
-	if not self.State.HistoryRecord then
-		return;
-	end;
-
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.terminal_anchors[Item] = Item.Anchored;
-			self.State.HistoryRecord.terminal_positions[Item] = Item.CFrame;
-		end;
-	end;
-	History:add( self.State.HistoryRecord );
-	self.State.HistoryRecord = nil;
-
-end;
-
-Tools.Anchor.anchor = function ( self )
-
-	self:startHistoryRecord();
-
-	-- Anchor all the items in the selection
-	for _, Item in pairs( Selection.Items ) do
-		Item.Anchored = true;
-		Item:MakeJoints();
-	end;
-
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Anchor.unanchor = function ( self )
-
-	self:startHistoryRecord();
-
-	-- Unanchor all the items in the selection
-	for _, Item in pairs( Selection.Items ) do
-		Item.Anchored = false;
-		Item.Velocity = Vector3.new( 0, 0, 0 );
-		Item.RotVelocity = Vector3.new( 0, 0, 0 );
-		Item:MakeJoints();
-	end;
-
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Anchor.showGUI = function ( self )
-
-	-- Initialize the GUI if it's not ready yet
-	if not self.GUI then
-
-		local Container = Tool.Interfaces.BTAnchorToolGUI:Clone();
-		Container.Parent = UI;
-
-		-- Change the anchor status when the button is clicked
-		Container.Status.Anchored.Button.MouseButton1Down:connect( function ()
-			self:anchor();
-		end );
-
-		Container.Status.Unanchored.Button.MouseButton1Down:connect( function ()
-			self:unanchor();
-		end );
-
-		self.GUI = Container;
-	end;
-
-	-- Reveal the GUI
-	self.GUI.Visible = true;
-
-end;
-
-Tools.Anchor.updateGUI = function ( self )
-
-	-- Make sure the GUI exists
-	if not self.GUI then
-		return;
-	end;
-
-	local GUI = self.GUI;
-
-	if self.State.anchored == nil then
-		GUI.Status.Anchored.Background.Image = Assets.LightSlantedRectangle;
-		GUI.Status.Anchored.SelectedIndicator.BackgroundTransparency = 1;
-		GUI.Status.Unanchored.Background.Image = Assets.LightSlantedRectangle;
-		GUI.Status.Unanchored.SelectedIndicator.BackgroundTransparency = 1;
-
-	elseif self.State.anchored == true then
-		GUI.Status.Anchored.Background.Image = Assets.DarkSlantedRectangle;
-		GUI.Status.Anchored.SelectedIndicator.BackgroundTransparency = 0;
-		GUI.Status.Unanchored.Background.Image = Assets.LightSlantedRectangle;
-		GUI.Status.Unanchored.SelectedIndicator.BackgroundTransparency = 1;
-
-	elseif self.State.anchored == false then
-		GUI.Status.Anchored.Background.Image = Assets.LightSlantedRectangle;
-		GUI.Status.Anchored.SelectedIndicator.BackgroundTransparency = 1;
-		GUI.Status.Unanchored.Background.Image = Assets.DarkSlantedRectangle;
-		GUI.Status.Unanchored.SelectedIndicator.BackgroundTransparency = 0;
-
-	end;
-
-end;
-
-Tools.Anchor.hideGUI = function ( self )
-
-	-- Hide the GUI if it exists
-	if self.GUI then
-		self.GUI.Visible = false;
-	end;
-
-end;
-
-Tools.Anchor.Listeners.Unequipped = function ()
-
-	local self = Tools.Anchor;
-
-	-- Stop the update loop
-	if self.Updater then
-		self.Updater();
-		self.Updater = nil;
-	end;
-
-	-- Hide the GUI
-	self:hideGUI();
-
-	-- Clear out any temporary connections
-	for connection_index, Connection in pairs( self.Connections ) do
+	for ConnectionKey, Connection in pairs(Connections) do
 		Connection:disconnect();
-		self.Connections[connection_index] = nil;
+		Connections[ConnectionKey] = nil;
 	end;
-
-	-- Restore the original color of the selection boxes
-	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
 
 end;
 
-Tools.Anchor.Loaded = true;
+function ShowUI()
+	-- Creates and reveals the UI
+
+	-- Reveal UI if already created
+	if UI then
+
+		-- Reveal the UI
+		UI.Visible = true;
+
+		-- Update the UI every 0.1 seconds
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
+
+		-- Skip UI creation
+		return;
+
+	end;
+
+	-- Create the UI
+	UI = Core.Tool.Interfaces.BTAnchorToolGUI:Clone();
+	UI.Parent = Core.UI;
+	UI.Visible = true;
+
+	-- References to UI elements
+	local AnchorButton = UI.Status.Anchored.Button;
+	local UnanchorButton = UI.Status.Unanchored.Button;
+
+	-- Enable the anchor status switch
+	AnchorButton.MouseButton1Click:connect(function ()
+		SetProperty('Anchored', true);
+	end);
+	UnanchorButton.MouseButton1Click:connect(function ()
+		SetProperty('Anchored', false);
+	end);
+
+	-- Update the UI every 0.1 seconds
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
+
+end;
+
+function UpdateUI()
+	-- Updates information on the UI
+
+	-- Make sure the UI's on
+	if not UI then
+		return;
+	end;
+
+	-- Check the common anchor status of selection
+	local Anchored = Support.IdentifyCommonProperty(Selection.Items, 'Anchored');
+
+	-- Update the anchor option switch
+	if Anchored == true then
+		Core.ToggleSwitch('Anchored', UI.Status);
+
+	-- If the selection is unanchored
+	elseif Anchored == false then
+		Core.ToggleSwitch('Unanchored', UI.Status);
+
+	-- If the anchor status varies, don't select a current switch
+	elseif Anchored == nil then
+		Core.ToggleSwitch(nil, UI.Status);
+	end;
+
+end;
+
+function HideUI()
+	-- Hides the tool UI
+
+	-- Make sure there's a UI
+	if not UI then
+		return;
+	end;
+
+	-- Hide the UI
+	UI.Visible = false;
+
+	-- Stop updating the UI
+	UIUpdater:Stop();
+
+end;
+
+function SetProperty(Property, Value)
+
+	-- Make sure the given value is valid
+	if Value == nil then
+		return;
+	end;
+
+	-- Start a history record
+	TrackChange();
+
+	-- Go through each part
+	for _, Part in pairs(Selection.Items) do
+
+		-- Store the state of the part before modification
+		table.insert(HistoryRecord.Before, { Part = Part, [Property] = Part[Property] });
+
+		-- Create the change request for this part
+		table.insert(HistoryRecord.After, { Part = Part, [Property] = Value });
+
+	end;
+
+	-- Register the changes
+	RegisterChange();
+
+end;
+
+function BindShortcutKeys()
+	-- Enables useful shortcut keys for this tool
+
+	-- Track user input while this tool is equipped
+	table.insert(Connections, UserInputService.InputBegan:connect(function (InputInfo, GameProcessedEvent)
+
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
+			return;
+		end;
+
+		-- Make sure this input is a key press
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
+		end;
+
+		-- Make sure it wasn't pressed while typing
+		if UserInputService:GetFocusedTextBox() then
+			return;
+		end;
+
+		-- Check if the enter key was pressed
+		if InputInfo.KeyCode == Enum.KeyCode.Return or InputInfo.KeyCode == Enum.KeyCode.KeypadEnter then
+
+			-- Toggle the selection's anchor status
+			ToggleAnchors();
+
+		end;
+
+	end));
+
+end;
+
+function ToggleAnchors()
+	-- Toggles the anchor status of the selection
+
+	-- Change the anchor status to the opposite of the common anchor status
+	SetProperty('Anchored', not Support.IdentifyCommonProperty(Selection.Items, 'Anchored'));
+
+end;
+
+function TrackChange()
+
+	-- Start the record
+	HistoryRecord = {
+		Before = {};
+		After = {};
+
+		Unapply = function (Record)
+			-- Reverts this change
+
+			-- Select the changed parts
+			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
+
+			-- Send the change request
+			Core.SyncAPI:Invoke('SyncAnchor', Record.Before);
+
+		end;
+
+		Apply = function (Record)
+			-- Applies this change
+
+			-- Select the changed parts
+			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
+
+			-- Send the change request
+			Core.SyncAPI:Invoke('SyncAnchor', Record.After);
+
+		end;
+
+	};
+
+end;
+
+function RegisterChange()
+	-- Finishes creating the history record and registers it
+
+	-- Make sure there's an in-progress history record
+	if not HistoryRecord then
+		return;
+	end;
+
+	-- Send the change to the server
+	Core.SyncAPI:Invoke('SyncAnchor', HistoryRecord.After);
+
+	-- Register the record and clear the staging
+	Core.History.Add(HistoryRecord);
+	HistoryRecord = nil;
+
+end;
+
+-- Return the tool
+return AnchorTool;

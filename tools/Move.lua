@@ -1,922 +1,1078 @@
--- Load the main tool's core environment when it's ready
-repeat wait() until (
-	_G.BTCoreEnv and
-	_G.BTCoreEnv[script.Parent.Parent] and
-	_G.BTCoreEnv[script.Parent.Parent].CoreReady
-);
-setfenv( 1, _G.BTCoreEnv[script.Parent.Parent] );
+Tool = script.Parent.Parent;
+Core = require(Tool.Core);
+SnapTracking = require(Tool.SnappingModule);
+BoundingBox = require(Tool.BoundingBoxModule);
 
-------------------------------------------
--- Move tool
-------------------------------------------
+-- Import relevant references
+Selection = Core.Selection;
+Create = Core.Create;
+Support = Core.Support;
+Security = Core.Security;
+Support.ImportServices();
 
--- Create the main container for this tool
-Tools.Move = {};
+-- Initialize the tool
+local MoveTool = {
 
--- Define the color of the tool
-Tools.Move.Color = BrickColor.new( "Deep orange" );
+	Name = 'Move Tool';
+	Color = BrickColor.new 'Deep orange';
 
--- Keep a container for temporary connections
-Tools.Move.Connections = {};
+	-- Default options
+	Increment = 1;
+	Axes = 'Global';
 
--- Keep options in a container too
-Tools.Move.Options = {
-	["increment"] = 1;
-	["axes"] = "global";
 };
 
--- Keep internal state data in its own container
-Tools.Move.State = {
-	["distance_moved"] = 0;
-	["moving"] = false;
-	["PreMove"] = {};
-};
+-- Container for temporary connections (disconnected automatically)
+local Connections = {};
 
--- Add listeners
-Tools.Move.Listeners = {};
+function MoveTool.Equip()
+	-- Enables the tool's equipped functionality
 
-Tools.Move.Listeners.Equipped = function ()
+	-- Set our current axis mode
+	SetAxes(MoveTool.Axes);
 
-	local self = Tools.Move;
+	-- Start up our interface
+	ShowUI();
+	BindShortcutKeys();
+	EnableDragging();
 
-	-- Make sure the tool is actually being equipped (because this is the default tool)
-	if not Mouse then
+end;
+
+function MoveTool.Unequip()
+	-- Disables the tool's equipped functionality
+
+	-- If dragging, finish dragging
+	if Dragging then
+		FinishDragging();
+	end;
+
+	-- Clear unnecessary resources
+	HideUI();
+	HideHandles();
+	ClearConnections();
+	BoundingBox.ClearBoundingBox();
+	SnapTracking.StopTracking();
+
+end;
+
+function ClearConnections()
+	-- Clears out temporary connections
+
+	for ConnectionKey, Connection in pairs(Connections) do
+		Connection:disconnect();
+		Connections[ConnectionKey] = nil;
+	end;
+
+end;
+
+function ShowUI()
+	-- Creates and reveals the UI
+
+	-- Reveal UI if already created
+	if MoveTool.UI then
+
+		-- Reveal the UI
+		MoveTool.UI.Visible = true;
+
+		-- Update the UI every 0.1 seconds
+		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
+
+		-- Skip UI creation
+		return;
+
+	end;
+
+	-- Create the UI
+	MoveTool.UI = Core.Tool.Interfaces.BTMoveToolGUI:Clone();
+	MoveTool.UI.Parent = Core.UI;
+	MoveTool.UI.Visible = true;
+
+	-- Add functionality to the axes option switch
+	local AxesSwitch = MoveTool.UI.AxesOption;
+	AxesSwitch.Global.Button.MouseButton1Down:connect(function ()
+		SetAxes('Global');
+	end);
+	AxesSwitch.Local.Button.MouseButton1Down:connect(function ()
+		SetAxes('Local');
+	end);
+	AxesSwitch.Last.Button.MouseButton1Down:connect(function ()
+		SetAxes('Last');
+	end);
+
+	-- Add functionality to the increment input
+	local IncrementInput = MoveTool.UI.IncrementOption.Increment.TextBox;
+	IncrementInput.FocusLost:connect(function (EnterPressed)
+		MoveTool.Increment = tonumber(IncrementInput.Text) or MoveTool.Increment;
+		IncrementInput.Text = Support.Round(MoveTool.Increment, 3);
+	end);
+
+	-- Add functionality to the position inputs
+	local XInput = MoveTool.UI.Info.Center.X.TextBox;
+	local YInput = MoveTool.UI.Info.Center.Y.TextBox;
+	local ZInput = MoveTool.UI.Info.Center.Z.TextBox;
+	XInput.FocusLost:connect(function (EnterPressed)
+		local NewPosition = tonumber(XInput.Text);
+		if NewPosition then
+			SetAxisPosition('X', NewPosition);
+		end;
+	end);
+	YInput.FocusLost:connect(function (EnterPressed)
+		local NewPosition = tonumber(YInput.Text);
+		if NewPosition then
+			SetAxisPosition('Y', NewPosition);
+		end;
+	end);
+	ZInput.FocusLost:connect(function (EnterPressed)
+		local NewPosition = tonumber(ZInput.Text);
+		if NewPosition then
+			SetAxisPosition('Z', NewPosition);
+		end;
+	end);
+
+	-- Update the UI every 0.1 seconds
+	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
+
+end;
+
+function HideUI()
+	-- Hides the tool UI
+
+	-- Make sure there's a UI
+	if not MoveTool.UI then
 		return;
 	end;
 
-	-- Change the color of selection boxes temporarily
-	self.State.PreviousSelectionBoxColor = SelectionBoxColor;
-	SelectionBoxColor = self.Color;
-	updateSelectionBoxColor();
+	-- Hide the UI
+	MoveTool.UI.Visible = false;
 
-	-- Reveal the GUI
-	self:showGUI();
+	-- Stop updating the UI
+	UIUpdater:Stop();
 
-	-- Create the boundingbox if it doesn't already exist
-	if not self.BoundingBox then
-		self.BoundingBox = RbxUtility.Create "Part" {
-			Name = "BTBoundingBox";
-			CanCollide = false;
-			Transparency = 1;
-			Anchored = true;
-		};
+end;
+
+function UpdateUI()
+	-- Updates information on the UI
+
+	-- Make sure the UI's on
+	if not MoveTool.UI then
+		return;
 	end;
-	Mouse.TargetFilter = self.BoundingBox;
 
-	-- Refresh the axis type option
-	self:changeAxes( self.Options.axes );
+	-- Only show and calculate selection info if it's not empty
+	if #Selection.Items == 0 then
+		MoveTool.UI.Info.Visible = false;
+		MoveTool.UI.Size = UDim2.new(0, 245, 0, 90);
+		return;
+	else
+		MoveTool.UI.Info.Visible = true;
+		MoveTool.UI.Size = UDim2.new(0, 245, 0, 150);
+	end;
 
-	-- Listen for any keystrokes that might affect any dragging operation
-	self.Connections.DraggerKeyListener = Mouse.KeyDown:connect( function ( key )
+	---------------------------------------------
+	-- Update the position information indicators
+	---------------------------------------------
 
-		local key = key:lower();
+	-- Identify common positions across axes
+	local XVariations, YVariations, ZVariations = {}, {}, {};
+	for _, Part in pairs(Selection.Items) do
+		table.insert(XVariations, Support.Round(Part.Position.X, 2));
+		table.insert(YVariations, Support.Round(Part.Position.Y, 2));
+		table.insert(ZVariations, Support.Round(Part.Position.Z, 2));
+	end;
+	local CommonX = Support.IdentifyCommonItem(XVariations);
+	local CommonY = Support.IdentifyCommonItem(YVariations);
+	local CommonZ = Support.IdentifyCommonItem(ZVariations);
 
-		-- Make sure a dragger exists
-		if not self.Dragger then
-			return;
-		end;
+	-- Shortcuts to indicators	
+	local XIndicator = MoveTool.UI.Info.Center.X.TextBox;
+	local YIndicator = MoveTool.UI.Info.Center.Y.TextBox;
+	local ZIndicator = MoveTool.UI.Info.Center.Z.TextBox;
 
-		-- Rotate along the Z axis if `r` is pressed
-		if key == "r" then
-			self.Dragger:AxisRotate( Enum.Axis.Z );
+	-- Update each indicator if it's not currently being edited
+	if not XIndicator:IsFocused() then
+		XIndicator.Text = CommonX or '*';
+	end;
+	if not YIndicator:IsFocused() then
+		YIndicator.Text = CommonY or '*';
+	end;
+	if not ZIndicator:IsFocused() then
+		ZIndicator.Text = CommonZ or '*';
+	end;
 
-		-- Rotate along the X axis if `t` is pressed
-		elseif key == "t" then
-			self.Dragger:AxisRotate( Enum.Axis.X );
+end;
 
-		-- Rotate along the Y axis if `y` is pressed
-		elseif key == "y" then
-			self.Dragger:AxisRotate( Enum.Axis.Y );
-		end;
+function SetAxes(AxisMode)
+	-- Sets the given axis mode
 
-		-- Simulate a mouse move so that it applies the changes
-		self.Dragger:MouseMove( Mouse.UnitRay );
+	-- Update setting
+	MoveTool.Axes = AxisMode;
 
-	end );
+	-- Update the UI switch
+	if MoveTool.UI then
+		Core.ToggleSwitch(AxisMode, MoveTool.UI.AxesOption);
+	end;
 
-	self.State.StaticItems = {};
-	self.State.StaticExtents = nil;
-	self.State.RecalculateStaticExtents = true;	
+	-- Disable any unnecessary bounding boxes
+	BoundingBox.ClearBoundingBox();
+
+	-- For global mode, use bounding box handles
+	if AxisMode == 'Global' then
+		BoundingBox.StartBoundingBox(AttachHandles);
+
+	-- For local mode, use focused part handles
+	elseif AxisMode == 'Local' then
+		AttachHandles(Selection.Focus, true); 
+
+	-- For last mode, use focused part handles
+	elseif AxisMode == 'Last' then
+		AttachHandles(Selection.Focus, true);
+	end;
+
+end;
+
+local Handles;
+
+-- Directions of movement for each handle's dragged face
+local AxisMultipliers = {
+	[Enum.NormalId.Top] = Vector3.new(0, 1, 0);
+	[Enum.NormalId.Bottom] = Vector3.new(0, -1, 0);
+	[Enum.NormalId.Front] = Vector3.new(0, 0, -1);
+	[Enum.NormalId.Back] = Vector3.new(0, 0, 1);
+	[Enum.NormalId.Left] = Vector3.new(-1, 0, 0);
+	[Enum.NormalId.Right] = Vector3.new(1, 0, 0);
+};
+
+function AttachHandles(Part, Autofocus)
+	-- Creates and attaches handles to `Part`, and optionally automatically attaches to the focused part
 	
-	local StaticItemMonitors = {};
+	-- Enable autofocus if requested and not already on
+	if Autofocus and not Connections.AutofocusHandle then
+		Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
+			Handles.Adornee = Selection.Focus;
+		end);
 
-	function AddStaticItem(Item)
-		
-		-- Make sure the item isn't already in the list
-		if #_findTableOccurrences(self.State.StaticItems, Item) > 0 then
+	-- Disable autofocus if not requested and on
+	elseif not Autofocus and Connections.AutofocusHandle then
+		Connections.AutofocusHandle:disconnect();
+		Connections.AutofocusHandle = nil;
+	end;
+
+	-- Just attach and show the handles if they already exist
+	if Handles then
+		Handles.Adornee = Part;
+		Handles.Visible = true;
+		Handles.Parent = Part and Core.UIContainer or nil;
+		return;
+	end;
+
+	-- Create the handles
+	Handles = Create 'Handles' {
+		Name = 'BTMovementHandles';
+		Color = MoveTool.Color;
+		Parent = Core.UIContainer;
+		Adornee = Part;
+	};
+
+	------------------------------------------------------
+	-- Prepare for moving parts when the handle is clicked
+	------------------------------------------------------
+
+	local InitialState = {};
+	local AreaPermissions;
+
+	Handles.MouseButton1Down:connect(function ()
+
+		-- Prevent selection
+		Core.Targeting.CancelSelecting();
+
+		-- Indicate dragging via handles
+		HandleDragging = true;
+
+		-- Stop parts from moving, and capture the initial state of the parts
+		InitialState = PreparePartsForDragging();
+
+		-- Track the change
+		TrackChange();
+
+		-- Cache area permissions information
+		if Core.Mode == 'Tool' then
+			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+		end;
+
+		------------------------------------------------------
+		-- Finalize changes to parts when the handle is let go
+		------------------------------------------------------
+
+		Connections.HandleRelease = UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
+
+			-- Make sure this was button 1 being released
+			if InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1 then
+				return;
+			end;
+
+			-- Disable dragging
+			HandleDragging = false;
+
+			-- Clear this connection to prevent it from firing again
+			Connections.HandleRelease:disconnect();
+			Connections.HandleRelease = nil;
+
+			-- Make joints, restore original anchor and collision states
+			for _, Part in pairs(Selection.Items) do
+				Part:MakeJoints();
+				Part.CanCollide = InitialState[Part].CanCollide;
+				Part.Anchored = InitialState[Part].Anchored;
+			end;
+
+			-- Register the change
+			RegisterChange();
+
+		end);
+
+	end);
+
+	------------------------------------------
+	-- Update parts when the handles are moved
+	------------------------------------------
+
+	Handles.MouseDrag:connect(function (Face, Distance)
+
+		-- Only drag if handle is enabled
+		if not HandleDragging then
 			return;
 		end;
 
-		-- Add the item to the list
-		table.insert(self.State.StaticItems, Item);
+		-- Calculate the increment-aligned drag distance
+		Distance = GetIncrementMultiple(Distance, MoveTool.Increment);
 
-		-- Attach state monitors
-		StaticItemMonitors[Item] = Item.Changed:connect(function (Property)
+		-- Move the parts along the selected axes by the calculated distance
+		MovePartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Focus, Selection.Items, InitialState);
 
-			-- To tell when the extents may have changed
-			if Property == 'CFrame' or Property == 'Size' then
-				self.State.RecalculateStaticExtents = true;
-			
-			-- To tell when it's no longer static
-			elseif Property == 'Anchored' and not Item.Anchored then
-				RemoveStaticItem(Item);
+		-- Update the "distance moved" indicator
+		if MoveTool.UI then
+			MoveTool.UI.Changes.Text.Text = 'moved ' .. math.abs(Distance) .. ' studs';
+		end;
+
+		-- Make sure we're not entering any unauthorized private areas
+		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+			Selection.Focus.CFrame = InitialState[Selection.Focus].CFrame;
+			TranslatePartsRelativeToPart(Selection.Focus, InitialState, Selection.Items);
+		end;
+
+	end);
+
+end;
+
+function HideHandles()
+	-- Hides the resizing handles
+
+	-- Make sure handles exist and are visible
+	if not Handles or not Handles.Visible then
+		return;
+	end;
+
+	-- Hide the handles
+	Handles.Visible = false;
+	Handles.Parent = nil;
+
+	-- Disable handle autofocus if enabled
+	if Connections.AutofocusHandle then
+		Connections.AutofocusHandle:disconnect();
+		Connections.AutofocusHandle = nil;
+	end;
+
+end;
+
+function MovePartsAlongAxesByFace(Face, Distance, Axes, BasePart, Parts, InitialState)
+	-- Moves the given parts, along the given axis mode, in the given face direction, by the given distance
+
+	-- Get the axis multiplier for this face
+	local AxisMultiplier = AxisMultipliers[Face];
+
+	-- Move each part
+	for _, Part in pairs(Parts) do
+
+		-- Move along standard axes
+		if Axes == 'Global' then
+			Part.CFrame = InitialState[Part].CFrame + (Distance * AxisMultiplier);
+
+		-- Move along item's axes
+		elseif Axes == 'Local' then
+			Part.CFrame = InitialState[Part].CFrame * CFrame.new(Distance * AxisMultiplier);
+
+		-- Move along focused part's axes
+		elseif Axes == 'Last' then
+
+			-- Calculate the focused part's position
+			local RelativeTo = InitialState[BasePart].CFrame * CFrame.new(Distance * AxisMultiplier);
+
+			-- Calculate how far apart we should be from the focused part
+			local Offset = InitialState[BasePart].CFrame:toObjectSpace(InitialState[Part].CFrame);
+
+			-- Move relative to the focused part by this part's offset from it
+			Part.CFrame = RelativeTo * Offset;
+
+		end;
+
+	end;
+
+end;
+
+function BindShortcutKeys()
+	-- Enables useful shortcut keys for this tool
+
+	-- Track user input while this tool is equipped
+	table.insert(Connections, UserInputService.InputBegan:connect(function (InputInfo, GameProcessedEvent)
+
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
+			return;
+		end;
+
+		-- Make sure this input is a key press
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
+		end;
+
+		-- Make sure it wasn't pressed while typing
+		if UserInputService:GetFocusedTextBox() then
+			return;
+		end;
+
+		-- Check if the enter key was pressed
+		if InputInfo.KeyCode == Enum.KeyCode.Return or InputInfo.KeyCode == Enum.KeyCode.KeypadEnter then
+
+			-- Toggle the current axis mode
+			if MoveTool.Axes == 'Global' then
+				SetAxes('Local');
+
+			elseif MoveTool.Axes == 'Local' then
+				SetAxes('Last');
+
+			elseif MoveTool.Axes == 'Last' then
+				SetAxes('Global');
+			end;
+
+		-- Check if the - key was pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.Minus or InputInfo.KeyCode == Enum.KeyCode.KeypadMinus then
+
+			-- Focus on the increment input
+			if MoveTool.UI then
+				MoveTool.UI.IncrementOption.Increment.TextBox:CaptureFocus();
+			end;
+
+		-- Check if the R key was pressed down, and it wasn't Shift R
+		elseif InputInfo.KeyCode == Enum.KeyCode.R and not (Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift)) then
+
+			-- Start tracking snap points nearest to the mouse
+			StartSnapping();
+
+
+		-- Nudge up if the 8 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadEight then
+			NudgeSelectionByFace(Enum.NormalId.Top);
+
+		-- Nudge down if the 2 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadTwo then
+			NudgeSelectionByFace(Enum.NormalId.Bottom);
+
+		-- Nudge forward if the 9 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadNine then
+			NudgeSelectionByFace(Enum.NormalId.Front);
+
+		-- Nudge backward if the 1 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadOne then
+			NudgeSelectionByFace(Enum.NormalId.Back);
+
+		-- Nudge left if the 4 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadFour then
+			NudgeSelectionByFace(Enum.NormalId.Left);
+
+		-- Nudge right if the 6 button on the keypad is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadSix then
+			NudgeSelectionByFace(Enum.NormalId.Right);
+
+		end;
+
+	end));
+
+	-- Track ending user input while this tool is equipped
+	table.insert(Connections, UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
+
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
+			return;
+		end;
+
+		-- Make sure this is input from the keyboard
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
+		end;
+
+		-- Check if the R key was let go
+		if InputInfo.KeyCode == Enum.KeyCode.R then
+
+			-- Make sure it wasn't pressed while typing
+			if UserInputService:GetFocusedTextBox() then
+				return;
+			end;
+
+			-- Stop snapping point tracking if it was enabled
+			SnapTracking.StopTracking();
+
+		end;
+
+	end));
+
+end;
+
+-- Event that fires when new point comes into focus while snapping
+local PointSnapped = Core.RbxUtility.CreateSignal();
+
+function StartSnapping()
+	-- Starts tracking snap points nearest to the mouse
+
+	-- Start tracking the closest snapping point
+	SnapTracking.StartTracking(function (NewPoint)
+
+		-- Fire `SnappedPoint` and update `SnappedPoint` when there is a new snap point in focus
+		if NewPoint then
+			SnappedPoint = NewPoint.p;
+			PointSnapped:fire(SnappedPoint);
+		end;
+
+	end);
+
+end;
+
+function SetAxisPosition(Axis, Position)
+	-- Sets the selection's position on axis `Axis` to `Position`
+
+	-- Track this change
+	TrackChange();
+
+	-- Prepare parts to be moved
+	local InitialState = PreparePartsForDragging();
+
+	-- Update each part
+	for _, Part in pairs(Selection.Items) do
+
+		-- Set the part's new CFrame
+		Part.CFrame = CFrame.new(
+			Axis == 'X' and Position or Part.Position.X,
+			Axis == 'Y' and Position or Part.Position.Y,
+			Axis == 'Z' and Position or Part.Position.Z
+		) * CFrame.Angles(Part.CFrame:toEulerAnglesXYZ());
+
+	end;
+
+	-- Cache up permissions for all private areas
+	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+
+	-- Revert changes if player is not authorized to move parts to target destination
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+		for Part, PartState in pairs(InitialState) do
+			Part.CFrame = PartState.CFrame;
+		end;
+	end;
+
+	-- Restore the parts' original states
+	for Part, PartState in pairs(InitialState) do
+		Part:MakeJoints();
+		Part.CanCollide = InitialState[Part].CanCollide;
+		Part.Anchored = InitialState[Part].Anchored;
+	end;
+
+	-- Register the change
+	RegisterChange();
+
+end;
+
+function NudgeSelectionByFace(Face)
+	-- Nudges the selection along the current axes mode in the direction of the focused part's face
+
+	-- Track this change
+	TrackChange();
+
+	-- Prepare parts to be moved
+	local InitialState = PreparePartsForDragging();
+
+	-- Perform the movement
+	MovePartsAlongAxesByFace(Face, MoveTool.Increment, MoveTool.Axes, Selection.Focus, Selection.Items, InitialState);
+
+	-- Cache up permissions for all private areas
+	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+
+	-- Revert changes if player is not authorized to move parts to target destination
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+		for Part, PartState in pairs(InitialState) do
+			Part.CFrame = PartState.CFrame;
+		end;
+	end;
+
+	-- Restore the parts' original states
+	for Part, PartState in pairs(InitialState) do
+		Part:MakeJoints();
+		Part.CanCollide = InitialState[Part].CanCollide;
+		Part.Anchored = InitialState[Part].Anchored;
+	end;
+
+	-- Register the change
+	RegisterChange();
+
+end;
+
+function TrackChange()
+
+	-- Start the record
+	HistoryRecord = {
+		Parts = Support.CloneTable(Selection.Items);
+		BeforeCFrame = {};
+		AfterCFrame = {};
+		
+		Unapply = function (Record)
+			-- Reverts this change
+
+			-- Select the changed parts
+			Selection.Replace(Record.Parts);
+
+			-- Put together the change request
+			local Changes = {};
+			for _, Part in pairs(Record.Parts) do
+				table.insert(Changes, { Part = Part, CFrame = Record.BeforeCFrame[Part] });
+			end;
+
+			-- Send the change request
+			Core.SyncAPI:Invoke('SyncMove', Changes);
+
+		end;
+
+		Apply = function (Record)
+			-- Applies this change
+
+			-- Select the changed parts
+			Selection.Replace(Record.Parts);
+
+			-- Put together the change request
+			local Changes = {};
+			for _, Part in pairs(Record.Parts) do
+				table.insert(Changes, { Part = Part, CFrame = Record.AfterCFrame[Part] });
+			end;
+
+			-- Send the change request
+			Core.SyncAPI:Invoke('SyncMove', Changes);
+
+		end;
+
+	};
+
+	-- Collect the selection's initial state
+	for _, Part in pairs(HistoryRecord.Parts) do
+		HistoryRecord.BeforeCFrame[Part] = Part.CFrame;
+	end;
+
+end;
+
+function RegisterChange()
+	-- Finishes creating the history record and registers it
+
+	-- Make sure there's an in-progress history record
+	if not HistoryRecord then
+		return;
+	end;
+
+	-- Collect the selection's final state
+	local Changes = {};
+	for _, Part in pairs(HistoryRecord.Parts) do
+		HistoryRecord.AfterCFrame[Part] = Part.CFrame;
+		table.insert(Changes, { Part = Part, CFrame = Part.CFrame });
+	end;
+
+	-- Send the change to the server
+	Core.SyncAPI:Invoke('SyncMove', Changes);
+
+	-- Register the record and clear the staging
+	Core.History.Add(HistoryRecord);
+	HistoryRecord = nil;
+
+end;
+
+function EnableDragging()
+	-- Enables part dragging
+
+	-- Pay attention to when the user intends to start dragging
+	Connections.DragStart = Core.Mouse.Button1Down:connect(function ()
+
+		-- Make sure target is draggable
+		if not Core.IsSelectable(Core.Mouse.Target) then
+			return;
+		end;
+
+		-- Make sure this click was not to select
+		if Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift) then
+			return;
+		end;
+
+		-- Select the target if it's not selected
+		if not Selection.Find(Core.Mouse.Target) then
+			Selection.Replace({ Core.Mouse.Target }, true);
+		end;
+
+		-- Mark where dragging began
+		DragStart = Vector2.new(Core.Mouse.X, Core.Mouse.Y);
+		DragStartTarget = Core.Mouse.Target;
+
+		-- Watch for potential dragging
+		Connections.WatchForDrag = Core.Mouse.Move:connect(function ()
+
+			-- Trigger dragging if the mouse is moved over 2 pixels
+			if DragStart and (Vector2.new(Core.Mouse.X, Core.Mouse.Y) - DragStart).magnitude >= 2 then
+
+				-- Prepare for dragging
+				SetUpDragging(DragStartTarget, SnapTracking.Enabled and SnappedPoint or nil);
+
+				-- Disable watching for potential dragging
+				Connections.WatchForDrag:disconnect();
+
 			end;
 
 		end);
 
-		-- Recalculate the static extents
-		self.State.RecalculateStaticExtents = true;
+	end);
 
-	end;
+	-- Clear dragging-start watchers once mouse is released
+	Connections.DragEnd = Support.AddUserInputListener('Ended', 'MouseButton1', true, function ()
 
-	function RemoveStaticItem(Item)
+		-- Clear dragging-start data
+		DragStart = nil;
+		DragStartTarget = nil;
 
-		-- Remove `Item` from the list
-		local StaticItemIndex = _findTableOccurrences(self.State.StaticItems, Item)[1];
-		if StaticItemIndex then
-			self.State.StaticItems[StaticItemIndex] = nil;
+		-- Disconnect dragging-start listeners
+		if Connections.WatchForDrag then
+			Connections.WatchForDrag:disconnect();
+			Connections.WatchForDrag = nil;
 		end;
 
-		-- Remove `Item`'s state monitors
-		if StaticItemMonitors[Item] then
-			StaticItemMonitors[Item]:disconnect();
-			StaticItemMonitors[Item] = nil;
-		end;
-
-		-- Recalculate static extents
-		self.State.RecalculateStaticExtents = true;
-
-	end;
-
-	for _, Item in pairs(Selection.Items) do
-		if Item.Anchored then
-			AddStaticItem(Item);
-		end;
-	end;
-
-	table.insert(self.Connections, Selection.ItemAdded:connect(function (Item)
-		if Item.Anchored then
-			AddStaticItem(Item);
-		end;
-	end));
-
-	table.insert(self.Connections, Selection.ItemRemoved:connect(function (Item, Clearing)
-
-		-- Make sure this isn't part of a mass removal (i.e. a clearance),
-		-- and that the item is actually in the list of static parts
-		if Clearing or not StaticItemMonitors[Item] then
-			return;
-		end;
-
-		RemoveStaticItem(Item);
-
-	end));
-
-	table.insert(self.Connections, Selection.Cleared:connect(function ()
-		for MonitorIndex, Monitor in pairs(StaticItemMonitors) do
-			Monitor:disconnect();
-			StaticItemMonitors[MonitorIndex] = nil;
-		end;
-		self.State.StaticExtents = nil;
-		self.State.StaticItems = {};
-	end));
-
-	-- Oh, and update the boundingbox and the GUI regularly
-	coroutine.wrap( function ()
-		updater_on = true;
-
-		-- Provide a function to stop the loop
-		self.Updater = function ()
-			updater_on = false;
-		end;
-
-		while wait( 0.1 ) and updater_on do
-
-			-- Make sure the tool's equipped
-			if CurrentTool == self then
-
-				-- Update the GUI if it's visible
-				if self.GUI and self.GUI.Visible then
-					self:updateGUI();
-				end;
-
-				-- Update the boundingbox if it's visible
-				if self.Options.axes == "global" then
-					self:updateBoundingBox();
-				end;
-
-			end;
-
-		end;
-
-	end )();
+	end);
 
 end;
 
-Tools.Move.Listeners.Unequipped = function ()
+-- Catch whenever the user finishes dragging
+UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
 
-	local self = Tools.Move;
-
-	-- Stop the update loop
-	if self.Updater then
-		self.Updater();
-		self.Updater = nil;
-	end;
-
-	-- Stop any dragging
-	self:FinishDragging();
-
-	-- Hide the GUI
-	self:hideGUI();
-
-	-- Hide the handles
-	self:hideHandles();
-
-	-- Clear out any temporary connections
-	for connection_index, Connection in pairs( self.Connections ) do
-		Connection:disconnect();
-		self.Connections[connection_index] = nil;
-	end;
-
-	-- Restore the original color of the selection boxes
-	SelectionBoxColor = self.State.PreviousSelectionBoxColor;
-	updateSelectionBoxColor();
-
-end;
-
-Tools.Move.updateGUI = function ( self )
-
-	if self.GUI then
-		local GUI = self.GUI;
-
-		if #Selection.Items > 0 then
-
-			-- Look for identical numbers in each axis
-			local position_x, position_y, position_z =  nil, nil, nil;
-			for item_index, Item in pairs( Selection.Items ) do
-
-				-- Set the first values for the first item
-				if item_index == 1 then
-					position_x, position_y, position_z = _round( Item.Position.x, 2 ), _round( Item.Position.y, 2 ), _round( Item.Position.z, 2 );
-
-				-- Otherwise, compare them and set them to `nil` if they're not identical
-				else
-					if position_x ~= _round( Item.Position.x, 2 ) then
-						position_x = nil;
-					end;
-					if position_y ~= _round( Item.Position.y, 2 ) then
-						position_y = nil;
-					end;
-					if position_z ~= _round( Item.Position.z, 2 ) then
-						position_z = nil;
-					end;
-				end;
-
-			end;
-
-			-- If each position along each axis is the same, display that number; otherwise, display "*"
-			if not self.State.pos_x_focused then
-				GUI.Info.Center.X.TextBox.Text = position_x and tostring( position_x ) or "*";
-			end;
-			if not self.State.pos_y_focused then
-				GUI.Info.Center.Y.TextBox.Text = position_y and tostring( position_y ) or "*";
-			end;
-			if not self.State.pos_z_focused then
-				GUI.Info.Center.Z.TextBox.Text = position_z and tostring( position_z ) or "*";
-			end;
-
-			GUI.Info.Visible = true;
-		else
-			GUI.Info.Visible = false;
-		end;
-
-		if self.State.distance_moved then
-			GUI.Changes.Text.Text = "moved " .. tostring( self.State.distance_moved ) .. " studs";
-			GUI.Changes.Position = GUI.Info.Visible and UDim2.new( 0, 5, 0, 165 ) or UDim2.new( 0, 5, 0, 100 );
-			GUI.Changes.Visible = true;
-		else
-			GUI.Changes.Text.Text = "";
-			GUI.Changes.Visible = false;
-		end;
-	end;
-
-end;
-
-Tools.Move.changePosition = function ( self, component, new_value )
-
-	self:startHistoryRecord();
-
-	-- Change the position of each item selected
-	for _, Item in pairs( Selection.Items ) do
-		Item.CFrame = CFrame.new(
-			component == 'x' and new_value or Item.Position.x,
-			component == 'y' and new_value or Item.Position.y,
-			component == 'z' and new_value or Item.Position.z
-		) * CFrame.Angles( Item.CFrame:toEulerAnglesXYZ() );
-	end;
-
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Move.startHistoryRecord = function ( self )
-
-	if self.State.HistoryRecord then
-		self.State.HistoryRecord = nil;
-	end;
-
-	-- Create a history record
-	self.State.HistoryRecord = {
-		targets = _cloneTable( Selection.Items );
-		initial_positions = {};
-		terminal_positions = {};
-		unapply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Target.CFrame = self.initial_positions[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
-				end;
-			end;
-		end;
-		apply = function ( self )
-			Selection:clear();
-			for _, Target in pairs( self.targets ) do
-				if Target then
-					Target.CFrame = self.terminal_positions[Target];
-					Target:MakeJoints();
-					Selection:add( Target );
-				end;
-			end;
-		end;
-	};
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.initial_positions[Item] = Item.CFrame;
-		end;
-	end;
-
-end;
-
-Tools.Move.finishHistoryRecord = function ( self )
-
-	if not self.State.HistoryRecord then
+	-- Make sure dragging is active
+	if not Dragging then
 		return;
 	end;
 
-	for _, Item in pairs( self.State.HistoryRecord.targets ) do
-		if Item then
-			self.State.HistoryRecord.terminal_positions[Item] = Item.CFrame;
-		end;
-	end;
-	History:add( self.State.HistoryRecord );
-	self.State.HistoryRecord = nil;
-
-end;
-
-Tools.Move.StartDragging = function ( self, Target )
-	-- Begins dragging the current selection
-
-	for _, Item in pairs( Selection.Items ) do
-		Item.RotVelocity = Vector3.new( 0, 0, 0 );
-		Item.Velocity = Vector3.new( 0, 0, 0 );
-	end;
-
-	self:startHistoryRecord();
-
-	self.State.dragging = true;
-	override_selection = true;
-
-	self.Dragger = Instance.new( "Dragger" );
-	self.Dragger:MouseDown( Target, Target.CFrame:toObjectSpace( CFrame.new( Mouse.Hit.p ) ).p, Selection.Items );
-
-	-- Release the dragger once the left mouse button is released
-	self.Connections.DraggerConnection = Services.UserInputService.InputEnded:connect( function ( InputData )
-		if InputData.UserInputType == Enum.UserInputType.MouseButton1 then
-			self:FinishDragging();
-		end;
-	end );
-
-end;
-
-Tools.Move.FinishDragging = function ( self )
-	-- Finishes and cleans up the selection dragger
-
-	override_selection = true;
-
-	-- Disable the dragger
-	if self.Connections.DraggerConnection then
-		self.Connections.DraggerConnection:disconnect();
-		self.Connections.DraggerConnection = nil;
-	end;
-	if not self.Dragger then
-		return;
-	end;
-	self.Dragger:MouseUp();
-	self.State.dragging = false;
-	self.Dragger:Destroy();
-	self.Dragger = nil;
-
-	self:finishHistoryRecord();
-
-end;
-
-Tools.Move.Listeners.Button1Down = function ()
-
-	local self = Tools.Move;
-
-	local Target = self.ManualTarget or Mouse.Target;
-	self.ManualTarget = nil;
-
-	-- If an unselected part is being moved, switch to it
-	if not Selection:find( Target ) and isSelectable( Target ) then
-		Selection:clear();
-		Selection:add( Target );
-	end;
-
-	-- If the unselected target can't be selected at all, ignore the rest of the procedure
-	if not Selection:find( Target ) then
+	-- Make sure this was button 1 being released
+	if InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1 then
 		return;
 	end;
 
-	self:StartDragging( Target );
+	-- Finish dragging
+	FinishDragging();
+
+	-- Reset normal axes option state
+	SetAxes(MoveTool.Axes);
+
+end);
+
+function SetUpDragging(BasePart, BasePoint)
+	-- Sets up and initiates dragging based on the given base part
+
+	-- Prevent selection while dragging
+	Core.Targeting.CancelSelecting();
+
+	-- Prepare parts, and start dragging
+	InitialState = PreparePartsForDragging();
+	StartDragging(BasePart, InitialState, BasePoint);
 
 end;
 
-Tools.Move.Listeners.Move = function ()
+MoveTool.SetUpDragging = SetUpDragging;
 
-	local self = Tools.Move;
+function PreparePartsForDragging()
+	-- Prepares parts for dragging and returns the initial state of the parts
 
-	if not self.Dragger then
+	local InitialState = {};
+
+	-- Stop parts from moving, and capture the initial state of the parts
+	for _, Part in pairs(Selection.Items) do
+		InitialState[Part] = { Anchored = Part.Anchored, CanCollide = Part.CanCollide, CFrame = Part.CFrame };
+		Part.Anchored = true;
+		Part.CanCollide = false;
+		Part:BreakJoints();
+		Part.Velocity = Vector3.new();
+		Part.RotVelocity = Vector3.new();
+	end;
+
+	return InitialState;
+end;
+
+function StartDragging(BasePart, InitialState, BasePoint)
+	-- Begins dragging the selection
+
+	-- Indicate that we're dragging
+	Dragging = true;
+
+	-- Track changes
+	TrackChange();
+
+	-- Disable bounding box calculation
+	BoundingBox.ClearBoundingBox();
+
+	-- Cache area permissions information
+	local AreaPermissions;
+	if Core.Mode == 'Tool' then
+		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+	end;
+
+	-- Determine the base point and part for the dragging
+	local BasePart = BasePart or Core.Mouse.Target;
+	local BasePartOffset = BasePart.Position - Core.Mouse.Hit.p;
+
+	-- Improve base point alignment for the given increment
+	BasePartOffset = Vector3.new(
+		GetIncrementMultiple(BasePartOffset.X, MoveTool.Increment),
+		GetIncrementMultiple(BasePartOffset.Y, MoveTool.Increment),
+		GetIncrementMultiple(BasePartOffset.Z, MoveTool.Increment)
+	);
+	BasePartOffset = Vector3.new(
+		math.abs(BasePartOffset.X) >= BasePart.Size.X / 2 and (BasePart.Size.X / 2 * (BasePartOffset.X > 0 and 1 or -1)) or BasePartOffset.X,
+		math.abs(BasePartOffset.Y) >= BasePart.Size.Y / 2 and (BasePart.Size.Y / 2 * (BasePartOffset.Y > 0 and 1 or -1)) or BasePartOffset.Y,
+		math.abs(BasePartOffset.Z) >= BasePart.Size.Z / 2 and (BasePart.Size.Z / 2 * (BasePartOffset.Z > 0 and 1 or -1)) or BasePartOffset.Z
+	);
+
+	-- Use the given base point instead if any
+	if BasePoint then
+		BasePartOffset = BasePart.Position - BasePoint;
+	end;
+
+	-- Prepare snapping in case it is enabled, and make sure to override its default target selection
+	SnapTracking.TargetBlacklist = Selection.Items;
+	Connections.DragSnapping = PointSnapped:connect(function (SnappedPoint)
+
+		-- Align the selection's base point to the snapped point
+		BasePart.CFrame = CFrame.new(SnappedPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ());
+		TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+
+		-- Make sure we're not entering any unauthorized private areas
+		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+			BasePart.CFrame = InitialState[BasePart].CFrame;
+			TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+		end;
+
+	end);
+
+	-- Start up the dragging action
+	Connections.Drag = Core.Mouse.Move:connect(function ()
+		DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions);
+	end);
+
+end;
+
+function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
+	-- Drags the selection by `BasePart`, judging area authorization from `AreaPermissions`
+
+	----------------------------------------------
+	-- Check what and where the mouse is aiming at
+	----------------------------------------------
+
+	-- Don't consider other selected parts possible targets
+	local IgnoreList = Support.CloneTable(Selection.Items);
+	table.insert(IgnoreList, Core.Player and Core.Player.Character)
+
+	-- Perform the mouse target search
+	local Target, TargetPoint, TargetNormal = Workspace:FindPartOnRayWithIgnoreList(
+		Ray.new(Core.Mouse.UnitRay.Origin, Core.Mouse.UnitRay.Direction * 5000),
+		IgnoreList
+	);
+
+	------------------------------------------------
+	-- Move the selection towards any snapped points
+	------------------------------------------------
+
+	-- If snapping is enabled, skip regular dragging
+	if SnapTracking.Enabled then
 		return;
 	end;
 
-	override_selection = true;
+	------------------------------------------------------
+	-- Move the selection towards the right mouse location
+	------------------------------------------------------
 
-	self.Dragger:MouseMove( Mouse.UnitRay );
+	-- Get the increment-aligned target point
+	TargetPoint = GetAlignedTargetPoint(Target, TargetPoint, TargetNormal);
 
-end;
+	-- Move the parts towards their target destination
+	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ());
+	TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
 
-Tools.Move.Listeners.KeyUp = function ( Key )
-	local self = Tools.Move;
+	-- Check for the largest corner-target plane crossthrough we have to correct
+	local CrossthroughCorrection = 0;
+	local CornerCrossingMost;
+	for _, Part in pairs(Selection.Items) do
+		local Corners = Support.GetPartCorners(Part);
+		for _, Corner in pairs(Corners) do
 
-	-- Provide a keyboard shortcut to the increment input
-	if Key == '-' and self.GUI then
-		self.GUI.IncrementOption.Increment.TextBox:CaptureFocus();
-	end;
-end;
+			-- Calculate this corner's target plane crossthrough
+			local CornerCrossthrough = -(TargetPoint - Corner.p):Dot(TargetNormal);
+			CrossthroughCorrection = math.min(CrossthroughCorrection, CornerCrossthrough);
 
-Tools.Move.showGUI = function ( self )
-
-	-- Initialize the GUI if it's not ready yet
-	if not self.GUI then
-
-		local Container = Tool.Interfaces.BTMoveToolGUI:Clone();
-		Container.Parent = UI;
-
-		-- Change the axis type option when the button is clicked
-		Container.AxesOption.Global.Button.MouseButton1Down:connect( function ()
-			self:changeAxes( "global" );
-			Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 0;
-			Container.AxesOption.Global.Background.Image = Assets.DarkSlantedRectangle;
-			Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
-			Container.AxesOption.Local.Background.Image = Assets.LightSlantedRectangle;
-			Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
-			Container.AxesOption.Last.Background.Image = Assets.LightSlantedRectangle;
-		end );
-
-		Container.AxesOption.Local.Button.MouseButton1Down:connect( function ()
-			self:changeAxes( "local" );
-			Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
-			Container.AxesOption.Global.Background.Image = Assets.LightSlantedRectangle;
-			Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 0;
-			Container.AxesOption.Local.Background.Image = Assets.DarkSlantedRectangle;
-			Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 1;
-			Container.AxesOption.Last.Background.Image = Assets.LightSlantedRectangle;
-		end );
-
-		Container.AxesOption.Last.Button.MouseButton1Down:connect( function ()
-			self:changeAxes( "last" );
-			Container.AxesOption.Global.SelectedIndicator.BackgroundTransparency = 1;
-			Container.AxesOption.Global.Background.Image = Assets.LightSlantedRectangle;
-			Container.AxesOption.Local.SelectedIndicator.BackgroundTransparency = 1;
-			Container.AxesOption.Local.Background.Image = Assets.LightSlantedRectangle;
-			Container.AxesOption.Last.SelectedIndicator.BackgroundTransparency = 0;
-			Container.AxesOption.Last.Background.Image = Assets.DarkSlantedRectangle;
-		end );
-
-		-- Change the increment option when the value of the textbox is updated
-		Container.IncrementOption.Increment.TextBox.FocusLost:connect( function ( enter_pressed )
-			self.Options.increment = tonumber( Container.IncrementOption.Increment.TextBox.Text ) or self.Options.increment;
-			Container.IncrementOption.Increment.TextBox.Text = tostring( self.Options.increment );
-		end );
-
-		-- Add functionality to the position inputs
-		Container.Info.Center.X.TextButton.MouseButton1Down:connect( function ()
-			self.State.pos_x_focused = true;
-			Container.Info.Center.X.TextBox:CaptureFocus();
-		end );
-		Container.Info.Center.X.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.Info.Center.X.TextBox.Text );
-			if potential_new then
-				self:changePosition( 'x', potential_new );
+			-- Check if this corner crosses through the most
+			if CrossthroughCorrection == CornerCrossthrough then
+				CornerCrossingMost = Corner.p;
 			end;
-			self.State.pos_x_focused = false;
-		end );
-		Container.Info.Center.Y.TextButton.MouseButton1Down:connect( function ()
-			self.State.pos_y_focused = true;
-			Container.Info.Center.Y.TextBox:CaptureFocus();
-		end );
-		Container.Info.Center.Y.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.Info.Center.Y.TextBox.Text );
-			if potential_new then
-				self:changePosition( 'y', potential_new );
-			end;
-			self.State.pos_y_focused = false;
-		end );
-		Container.Info.Center.Z.TextButton.MouseButton1Down:connect( function ()
-			self.State.pos_z_focused = true;
-			Container.Info.Center.Z.TextBox:CaptureFocus();
-		end );
-		Container.Info.Center.Z.TextBox.FocusLost:connect( function ( enter_pressed )
-			local potential_new = tonumber( Container.Info.Center.Z.TextBox.Text );
-			if potential_new then
-				self:changePosition( 'z', potential_new );
-			end;
-			self.State.pos_z_focused = false;
-		end );
 
-		self.GUI = Container;
+		end;
 	end;
 
-	-- Reveal the GUI
-	self.GUI.Visible = true;
+	-- Retract the parts by the max. crossthrough amount
+	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ()) - (TargetNormal * CrossthroughCorrection);
+	TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
 
-end;
+	----------------------------------------
+	-- Check for relevant area authorization
+	----------------------------------------
 
-Tools.Move.hideGUI = function ( self )
-
-	-- Hide the GUI if it exists
-	if self.GUI then
-		self.GUI.Visible = false;
+	-- Make sure we're not entering any unauthorized private areas
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+		BasePart.CFrame = InitialState[BasePart].CFrame;
+		TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
 	end;
 
 end;
 
-Tools.Move.showHandles = function ( self, Part )
+function GetAlignedTargetPoint(Target, TargetPoint, TargetNormal)
+	-- Returns the target point aligned to the nearest increment multiple
 
-	-- Create the handles if they don't exist yet
-	if not self.Handles then
+	-- By default, use (0, 0, 0) as the alignment reference point
+	local ReferencePoint = CFrame.new();
 
-		-- Create the object
-		self.Handles = RbxUtility.Create "Handles" {
-			Name = "BTMovementHandles";
-			Color = self.Color;
-			Parent = GUIContainer;
-		};
+	-------------------------------------------------------------------------
+	-- Detect a part target's face being pointed at based on the given normal
+	-------------------------------------------------------------------------
 
-		-- Add functionality to the handles
+	-- Make sure the target is a part
+	if Target and Target:IsA 'BasePart' then
 
-		self.Handles.MouseButton1Down:connect( function ()
+		-- Get a front face's corner as a reference point
+		if TargetNormal:isClose(Target.CFrame.lookVector, 0.000001) then
+			ReferencePoint = Target.CFrame * CFrame.new(Target.Size.X / 2, Target.Size.Y / 2, -Target.Size.Z / 2);
 
-			-- Prevent the platform from thinking we're selecting
-			override_selection = true;
-			self.State.moving = true;
+		-- Get a back face's corner as a reference point
+		elseif TargetNormal:isClose((Target.CFrame * CFrame.Angles(0, math.pi, 0)).lookVector, 0.000001) then
+			ReferencePoint = Target.CFrame * CFrame.new(-Target.Size.X / 2, Target.Size.Y / 2, Target.Size.Z / 2);
 
-			-- Clear the change stats
-			self.State.distance_moved = 0;
+		-- Get a left face's corner as a reference point
+		elseif TargetNormal:isClose((Target.CFrame * CFrame.Angles(0, math.pi / 2, 0)).lookVector, 0.000001) then
+			ReferencePoint = Target.CFrame * CFrame.new(-Target.Size.X / 2, Target.Size.Y / 2, Target.Size.Z / 2);
 
-			self:startHistoryRecord();
+		-- Get a right face's corner as a reference point
+		elseif TargetNormal:isClose((Target.CFrame * CFrame.Angles(0, 3 * math.pi / 2, 0)).lookVector, 0.000001) then
+			ReferencePoint = Target.CFrame * CFrame.new(Target.Size.X / 2, Target.Size.Y / 2, Target.Size.Z / 2);
 
-			-- Do a few things to the selection before manipulating it
-			for _, Item in pairs( Selection.Items ) do
+		-- Get a top face's corner as a reference point
+		elseif TargetNormal:isClose((Target.CFrame * CFrame.Angles(math.pi / 2, 0, 0)).lookVector, 0.000001) then
+			ReferencePoint = Target.CFrame * CFrame.new(-Target.Size.X / 2, Target.Size.Y / 2, Target.Size.Z / 2);
 
-				-- Keep a copy of the state of each item
-				self.State.PreMove[Item] = Item:Clone();
-
-				-- Anchor each item
-				Item.Anchored = true;
-
-			end;
-
-			-- Return stuff to normal once the mouse button is released
-			self.Connections.HandleReleaseListener = Services.UserInputService.InputEnded:connect( function ( InputData )
-
-				-- Make sure the left mouse button was released
-				if InputData.UserInputType ~= Enum.UserInputType.MouseButton1 then
-					return;
-				end;
-
-				-- Prevent the platform from thinking we're selecting
-				override_selection = true;
-				self.State.moving = false;
-
-				-- Stop this connection from firing again
-				if self.Connections.HandleReleaseListener then
-					self.Connections.HandleReleaseListener:disconnect();
-					self.Connections.HandleReleaseListener = nil;
-				end;
-
-				self:finishHistoryRecord();
-
-				-- Restore properties that may have been changed temporarily
-				-- from the pre-movement state copies
-				for Item, PreviousItemState in pairs( self.State.PreMove ) do
-					Item.Anchored = PreviousItemState.Anchored;
-					self.State.PreMove[Item] = nil;
-					Item:MakeJoints();
-					Item.Velocity = Vector3.new( 0, 0, 0 );
-					Item.RotVelocity = Vector3.new( 0, 0, 0 );
-				end;
-
-			end );
-
-		end );
-
-		self.Handles.MouseDrag:connect( function ( face, drag_distance )
-
-			-- Calculate which multiple of the increment to use based on the current drag distance's
-			-- proximity to their nearest upper and lower multiples
-
-			local difference = drag_distance % self.Options.increment;
-
-			local lower_degree = drag_distance - difference;
-			local upper_degree = drag_distance - difference + self.Options.increment;
-
-			local lower_degree_proximity = math.abs( drag_distance - lower_degree );
-			local upper_degree_proximity = math.abs( drag_distance - upper_degree );
-
-			if lower_degree_proximity <= upper_degree_proximity then
-				drag_distance = lower_degree;
-			else
-				drag_distance = upper_degree;
-			end;
-
-			local increase = drag_distance;
-
-			self.State.distance_moved = drag_distance;
-
-			-- Increment the position of each selected item in the direction of `face`
-			for _, Item in pairs( Selection.Items ) do
-
-				-- Remove any joints connected with `Item` so that it can freely move
-				Item:BreakJoints();
-
-				-- Update the position of `Item` depending on the type of axes that is currently set
-				if face == Enum.NormalId.Top then
-					if self.Options.axes == "global" then
-						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( 0, increase, 0 ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
-					elseif self.Options.axes == "local" then
-						Item.CFrame = self.State.PreMove[Item].CFrame:toWorldSpace( CFrame.new( 0, increase, 0 ) );
-					elseif self.Options.axes == "last" then
-						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, increase, 0 ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
-					end;
-
-				elseif face == Enum.NormalId.Bottom then
-					if self.Options.axes == "global" then
-						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( 0, -increase, 0 ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
-					elseif self.Options.axes == "local" then
-						Item.CFrame = self.State.PreMove[Item].CFrame:toWorldSpace( CFrame.new( 0, -increase, 0 ) );
-					elseif self.Options.axes == "last" then
-						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, -increase, 0 ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
-					end;
-
-				elseif face == Enum.NormalId.Front then
-					if self.Options.axes == "global" then
-						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( 0, 0, -increase ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
-					elseif self.Options.axes == "local" then
-						Item.CFrame = self.State.PreMove[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, -increase ) );
-					elseif self.Options.axes == "last" then
-						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, 0, -increase ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
-					end;
-
-				elseif face == Enum.NormalId.Back then
-					if self.Options.axes == "global" then
-						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( 0, 0, increase ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
-					elseif self.Options.axes == "local" then
-						Item.CFrame = self.State.PreMove[Item].CFrame:toWorldSpace( CFrame.new( 0, 0, increase ) );
-					elseif self.Options.axes == "last" then
-						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( 0, 0, increase ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
-					end;
-
-				elseif face == Enum.NormalId.Right then
-					if self.Options.axes == "global" then
-						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( increase, 0, 0 ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
-					elseif self.Options.axes == "local" then
-						Item.CFrame = self.State.PreMove[Item].CFrame:toWorldSpace( CFrame.new( increase, 0, 0 ) );
-					elseif self.Options.axes == "last" then
-						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( increase, 0, 0 ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
-					end;
-
-				elseif face == Enum.NormalId.Left then
-					if self.Options.axes == "global" then
-						Item.CFrame = CFrame.new( self.State.PreMove[Item].CFrame.p ):toWorldSpace( CFrame.new( -increase, 0, 0 ) ) * CFrame.Angles( self.State.PreMove[Item].CFrame:toEulerAnglesXYZ() );
-					elseif self.Options.axes == "local" then
-						Item.CFrame = self.State.PreMove[Item].CFrame:toWorldSpace( CFrame.new( -increase, 0, 0 ) );
-					elseif self.Options.axes == "last" then
-						Item.CFrame = self.State.PreMove[Selection.Last].CFrame:toWorldSpace( CFrame.new( -increase, 0, 0 ) ):toWorldSpace( self.State.PreMove[Item].CFrame:toObjectSpace( self.State.PreMove[Selection.Last].CFrame ):inverse() );
-					end;
-
-				end;
-
-			end;
-
-		end );
-
-	end;
-
-	-- Stop listening for the existence of the previous adornee (if any)
-	if self.Connections.AdorneeExistenceListener then
-		self.Connections.AdorneeExistenceListener:disconnect();
-		self.Connections.AdorneeExistenceListener = nil;
-	end;
-
-	-- Attach the handles to `Part`
-	self.Handles.Adornee = Part;
-
-	-- Make sure to hide the handles if `Part` suddenly stops existing
-	self.Connections.AdorneeExistenceListener = Part.AncestryChanged:connect( function ( Object, NewParent )
-
-		-- Make sure this change in parent applies directly to `Part`
-		if Object ~= Part then
-			return;
+		-- Get a bottom face's corner as a reference point
+		elseif TargetNormal:isClose((Target.CFrame * CFrame.Angles(math.pi / 2, 0, 0)).lookVector * -1, 0.000001) then
+			ReferencePoint = Target.CFrame * CFrame.new(-Target.Size.X / 2, -Target.Size.Y / 2, Target.Size.Z / 2);
 		end;
 
-		-- Show the handles according to the existence of the part
-		if NewParent == nil then
-			self:hideHandles();
-		else
-			self:showHandles( Part );
-		end;
-
-	end );
-
-end;
-
-Tools.Move.hideHandles = function ( self )
-
-	-- Hide the handles if they exist
-	if self.Handles then
-		self.Handles.Adornee = nil;
 	end;
 
+	-------------------------------------
+	-- Calculate the aligned target point
+	-------------------------------------
+
+	-- Align the target point to an increment multiple from the reference point
+	local AlignedTargetPoint = ReferencePoint:pointToObjectSpace(TargetPoint);
+	AlignedTargetPoint = Vector3.new(
+		GetIncrementMultiple(AlignedTargetPoint.X, MoveTool.Increment),
+		GetIncrementMultiple(AlignedTargetPoint.Y, MoveTool.Increment),
+		GetIncrementMultiple(AlignedTargetPoint.Z, MoveTool.Increment)
+	);
+	AlignedTargetPoint = (ReferencePoint * CFrame.new(AlignedTargetPoint)).p;
+
+	-- Return the aligned target point
+	return AlignedTargetPoint;
 end;
 
-Tools.Move.updateBoundingBox = function ( self )
-	if #Selection.Items > 0 and not self.State.dragging then
-		if self.State.RecalculateStaticExtents then
-			self.State.StaticExtents = calculateExtents(self.State.StaticItems, nil, true);
-			self.State.RecalculateStaticExtents = false;
-		end;
-		local SelectionSize, SelectionPosition = calculateExtents(Selection.Items, self.State.StaticExtents);
-		self.BoundingBox.Size = SelectionSize;
-		self.BoundingBox.CFrame = SelectionPosition;
-		self:showHandles(self.BoundingBox);
+function GetIncrementMultiple(Number, Increment)
 
+	-- Get how far the actual distance is from a multiple of our increment
+	local MultipleDifference = Number % Increment;
+
+	-- Identify the closest lower and upper multiples of the increment 
+	local LowerMultiple = Number - MultipleDifference;
+	local UpperMultiple = Number - MultipleDifference + Increment;
+
+	-- Calculate to which of the two multiples we're closer
+	local LowerMultipleProximity = math.abs(Number - LowerMultiple);
+	local UpperMultipleProximity = math.abs(Number - UpperMultiple);
+
+	-- Use the closest multiple of our increment as the distance moved
+	if LowerMultipleProximity <= UpperMultipleProximity then
+		Number = LowerMultiple;
 	else
-		self:hideHandles();
+		Number = UpperMultiple;
 	end;
+
+	return Number;
 end;
 
-Tools.Move.changeAxes = function ( self, new_axes )
+function TranslatePartsRelativeToPart(BasePart, InitialState, Parts)
+	-- Moves the given parts to BasePart's current position, with their original offset from it
 
-	-- Have a quick reference to the GUI (if any)
-	local AxesOptionGUI = self.GUI and self.GUI.AxesOption or nil;
+	for _, Part in pairs(Parts) do
 
-	-- Disconnect any handle-related listeners that are specific to a certain axes option
+		-- Calculate the focused part's position
+		local RelativeTo = InitialState[BasePart].CFrame;
 
-	if self.Connections.HandleFocusChangeListener then
-		self.Connections.HandleFocusChangeListener:disconnect();
-		self.Connections.HandleFocusChangeListener = nil;
-	end;
+		-- Calculate how far apart we should be from the focused part
+		local Offset = RelativeTo:toObjectSpace(InitialState[Part].CFrame);
 
-	if self.Connections.HandleSelectionChangeListener then
-		self.Connections.HandleSelectionChangeListener:disconnect();
-		self.Connections.HandleSelectionChangeListener = nil;
-	end;
-
-	if new_axes == "global" then
-
-		-- Update the options
-		self.Options.axes = "global";
-
-		-- Clear out any previous adornee
-		self:hideHandles();
-
-		-- Focus the handles on the boundary box
-		self:showHandles( self.BoundingBox );
-
-		-- Update the GUI's option panel
-		if self.GUI then
-			AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 0;
-			AxesOptionGUI.Global.Background.Image = Assets.DarkSlantedRectangle;
-			AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
-			AxesOptionGUI.Local.Background.Image = Assets.LightSlantedRectangle;
-			AxesOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
-			AxesOptionGUI.Last.Background.Image = Assets.LightSlantedRectangle;
-		end;
-
-	end;
-
-	if new_axes == "local" then
-
-		-- Update the options
-		self.Options.axes = "local";
-
-		-- Always have the handles on the most recent addition to the selection
-		self.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
-
-			-- Clear out any previous adornee
-			self:hideHandles();
-
-			-- If there /is/ a last item in the selection, attach the handles to it
-			if Selection.Last then
-				self:showHandles( Selection.Last );
-			end;
-
-		end );
-
-		-- Switch the adornee of the handles if the second mouse button is pressed
-		self.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
-
-			-- Make sure the platform doesn't think we're selecting
-			override_selection = true;
-
-			-- If the target is in the selection, make it the new adornee
-			if Selection:find( Mouse.Target ) then
-				Selection:focus( Mouse.Target );
-				self:showHandles( Mouse.Target );
-			end;
-
-		end );
-
-		-- Finally, attach the handles to the last item added to the selection (if any)
-		if Selection.Last then
-			self:showHandles( Selection.Last );
-		end;
-
-		-- Update the GUI's option panel
-		if self.GUI then
-			AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 1;
-			AxesOptionGUI.Global.Background.Image = Assets.LightSlantedRectangle;
-			AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 0;
-			AxesOptionGUI.Local.Background.Image = Assets.DarkSlantedRectangle;
-			AxesOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 1;
-			AxesOptionGUI.Last.Background.Image = Assets.LightSlantedRectangle;
-		end;
-
-	end;
-
-	if new_axes == "last" then
-
-		-- Update the options
-		self.Options.axes = "last";
-
-		-- Always have the handles on the most recent addition to the selection
-		self.Connections.HandleSelectionChangeListener = Selection.Changed:connect( function ()
-
-			-- Clear out any previous adornee
-			self:hideHandles();
-
-			-- If there /is/ a last item in the selection, attach the handles to it
-			if Selection.Last then
-				self:showHandles( Selection.Last );
-			end;
-
-		end );
-
-		-- Switch the adornee of the handles if the second mouse button is pressed
-		self.Connections.HandleFocusChangeListener = Mouse.Button2Up:connect( function ()
-
-			-- Make sure the platform doesn't think we're selecting
-			override_selection = true;
-
-			-- If the target is in the selection, make it the new adornee
-			if Selection:find( Mouse.Target ) then
-				Selection:focus( Mouse.Target );
-				self:showHandles( Mouse.Target );
-			end;
-
-		end );
-
-		-- Finally, attach the handles to the last item added to the selection (if any)
-		if Selection.Last then
-			self:showHandles( Selection.Last );
-		end;
-
-		-- Update the GUI's option panel
-		if self.GUI then
-			AxesOptionGUI.Global.SelectedIndicator.BackgroundTransparency = 1;
-			AxesOptionGUI.Global.Background.Image = Assets.LightSlantedRectangle;
-			AxesOptionGUI.Local.SelectedIndicator.BackgroundTransparency = 1;
-			AxesOptionGUI.Local.Background.Image = Assets.LightSlantedRectangle;
-			AxesOptionGUI.Last.SelectedIndicator.BackgroundTransparency = 0;
-			AxesOptionGUI.Last.Background.Image = Assets.DarkSlantedRectangle;
-		end;
+		-- Move relative to the focused part by this part's offset from it
+		Part.CFrame = BasePart.CFrame * Offset;
 
 	end;
 
 end;
 
-Tools.Move.Loaded = true;
+function FinishDragging()
+	-- Releases parts and registers position changes from dragging
+
+	-- Make sure dragging is active
+	if not Dragging then
+		return;
+	end;
+
+	-- Indicate that we're no longer dragging
+	Dragging = false;
+
+	-- Stop the dragging action
+	Connections.Drag:disconnect()
+	Connections.Drag = nil;
+
+	-- Stop, clean up snapping point tracking
+	SnapTracking.StopTracking();
+	Connections.DragSnapping:disconnect();
+	Connections.DragSnapping = nil;
+
+	-- Restore the original state of each part
+	for _, Part in pairs(Selection.Items) do
+		Part:MakeJoints();
+		Part.CanCollide = InitialState[Part].CanCollide;
+		Part.Anchored = InitialState[Part].Anchored;
+	end;
+
+	-- Register changes
+	RegisterChange();
+
+end;
+
+-- Return the tool
+return MoveTool;

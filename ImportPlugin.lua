@@ -25,6 +25,7 @@ local GUI;
 ------------------------------------------
 RbxUtility = LoadLibrary( 'RbxUtility' );
 Services.ContentProvider:Preload( bt_logo );
+Serialization = require(script.SerializationModule);
 
 ------------------------------------------
 -- Define functions that are depended-upon
@@ -330,7 +331,7 @@ function import( creation_id )
 		showGUI( "We couldn't get your creation", ':(' );
 		return false;
 	end;
-	if not pcall( function () creation_data = RbxUtility.DecodeJSON( creation_data ); end ) then
+	if not pcall( function () creation_data = Services.HttpService:JSONDecode( creation_data ); end ) then
 		showGUI( "We couldn't get your creation", ":'(" );
 		return false;
 	end;
@@ -369,10 +370,6 @@ function import( creation_id )
 				Part = Instance.new( "SpawnLocation" );
 			end;
 			objects[part_id] = Part;
-
-			if ( pcall( function () local test = Part.FormFactor; end ) ) then
-				Part.FormFactor = "Custom";
-			end;
 
 			Part.Size = Vector3.new( unpack( part_data[2] ) );
 			Part.CFrame = CFrame.new( unpack( part_data[3] ) );
@@ -417,6 +414,14 @@ function import( creation_id )
 				WeldScript.Name = 'BTWelder';
 				WeldScript.Source = [[-- This script creates the welds between parts imported by the Building Tools by F3X plugin.
 
+local BeforeAnchored = {};
+for _, Part in pairs(script.Parent:GetChildren()) do
+	if Part:IsA 'BasePart' then
+		BeforeAnchored[Part] = Part.Anchored;
+		Part.Anchored = true;
+	end;
+end;
+
 local create = LoadLibrary( 'RbxUtility' ).Create;
 function _getAllDescendants( Parent )
 	-- Recursively gets all the descendants of  `Parent` and returns them
@@ -439,7 +444,7 @@ function _getAllDescendants( Parent )
 
 end;
 function findExportedPart( part_id )
-	for _, Object in pairs( _getAllDescendants( Game:GetService( 'Workspace' ) ) ) do
+	for _, Object in pairs( _getAllDescendants( script.Parent ) ) do
 		if Object:IsA( 'StringValue' ) then
 			if Object.Name == 'BTID' and Object.Value == part_id then
 				return Object.Parent;
@@ -470,6 +475,12 @@ end;
 end )();
 	]];
 				end;
+
+				WeldScript.Source = WeldScript.Source .. [[
+
+for Part, Anchored in pairs(BeforeAnchored) do
+	Part.Anchored = Anchored;
+end;]];
 				WeldScript.Parent = Container;
 			end;
 		end;
@@ -579,6 +590,21 @@ end )();
 
 		Container:MakeJoints();
 		Services.Selection:Set( { Container } );
+
+	-- Parse builds with serialization format version 2
+	elseif creation_data.Version == 2 then
+
+		-- Inflate the build data
+		local Parts = Serialization.InflateBuildData(creation_data);
+
+		-- Parent the build into the export container
+		for _, Part in pairs(Parts) do
+			Part.Parent = Container;
+		end;
+
+		-- Finalize the import
+		Container:MakeJoints();
+		Services.Selection:Set { Container };
 
 	end;
 
