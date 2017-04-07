@@ -168,6 +168,11 @@ function Enable(Mouse)
 	-- Use default mouse behavior
 	UserInputService.MouseBehavior = Enum.MouseBehavior.Default;
 
+	-- Wait for UI to initialize asynchronously
+	while not UI do
+		wait(0.1);
+	end;
+
 	-- Show UI
 	UI.Parent = UIContainer;
 
