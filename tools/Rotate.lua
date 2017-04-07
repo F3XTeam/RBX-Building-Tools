@@ -610,6 +610,15 @@ end;
 function NudgeSelectionByAxis(Axis, Direction)
 	-- Nudges the rotation of the selection in the direction of the given axis
 
+	-- Get amount to nudge by
+	local NudgeAmount = RotateTool.Increment;
+
+	-- Reverse nudge amount if shift key is held while nudging
+	local PressedKeys = Support.FlipTable(Support.GetListMembers(UserInputService:GetKeysPressed(), 'KeyCode'));
+	if PressedKeys[Enum.KeyCode.LeftShift] or PressedKeys[Enum.KeyCode.RightShift] then
+		NudgeAmount = -NudgeAmount;
+	end;
+
 	-- Track the change
 	TrackChange();
 
@@ -627,7 +636,7 @@ function NudgeSelectionByAxis(Axis, Direction)
 	end;
 
 	-- Perform the rotation
-	RotatePartsAroundPivot(RotateTool.Pivot, PivotPoint, Axis, RotateTool.Increment * (Direction or 1), Selection.Items, InitialState);
+	RotatePartsAroundPivot(RotateTool.Pivot, PivotPoint, Axis, NudgeAmount * (Direction or 1), Selection.Items, InitialState);
 
 	-- Cache area permissions information
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);

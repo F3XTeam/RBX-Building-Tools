@@ -1200,6 +1200,11 @@ Actions = {
 	['Export'] = function (Parts)
 		-- Serializes, exports, and returns ID for importing given parts
 
+		-- Offload action to server-side if API is running locally
+		if RunService:IsClient() and not RunService:IsStudio() then
+			return SyncAPI.ServerEndpoint:InvokeServer('Export', Parts);
+		end;
+
 		-- Ensure valid selection
 		assert(type(Parts) == 'table', 'Invalid item table');
 
@@ -1247,6 +1252,11 @@ Actions = {
 	['IsHttpServiceEnabled'] = function ()
 		-- Returns whether HttpService is enabled
 
+		-- Offload action to server-side if API is running locally
+		if RunService:IsClient() and not RunService:IsStudio() then
+			return SyncAPI.ServerEndpoint:InvokeServer('IsHttpServiceEnabled');
+		end;
+
 		-- For in-game tool, return cached status if available
 		if ToolMode == 'Tool' and (IsHttpServiceEnabled ~= nil) then
 			return IsHttpServiceEnabled;
@@ -1272,6 +1282,11 @@ Actions = {
 	['ExtractMeshFromAsset'] = function (AssetId)
 		-- Returns the first found mesh in the given asset
 
+		-- Offload action to server-side if API is running locally
+		if RunService:IsClient() and not RunService:IsStudio() then
+			return SyncAPI.ServerEndpoint:InvokeServer('ExtractMeshFromAsset', AssetId);
+		end;
+
 		-- Ensure valid asset ID is given
 		assert(type(AssetId) == 'number', 'Invalid asset ID');
 
@@ -1284,6 +1299,11 @@ Actions = {
 
 	['ExtractImageFromDecal'] = function (DecalAssetId)
 		-- Returns the first image found in the given decal asset
+
+		-- Offload action to server-side if API is running locally
+		if RunService:IsClient() and not RunService:IsStudio() then
+			return SyncAPI.ServerEndpoint:InvokeServer('ExtractImageFromDecal', DecalAssetId);
+		end;
 
 		-- Return direct response from the API
 		return HttpService:GetAsync('http://f3xteam.com/bt/getDecalImageID/' .. DecalAssetId);
