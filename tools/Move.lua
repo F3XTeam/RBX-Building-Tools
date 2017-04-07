@@ -591,6 +591,15 @@ end;
 function NudgeSelectionByFace(Face)
 	-- Nudges the selection along the current axes mode in the direction of the focused part's face
 
+	-- Get amount to nudge by
+	local NudgeAmount = MoveTool.Increment;
+
+	-- Reverse nudge amount if shift key is held while nudging
+	local PressedKeys = Support.FlipTable(Support.GetListMembers(UserInputService:GetKeysPressed(), 'KeyCode'));
+	if PressedKeys[Enum.KeyCode.LeftShift] or PressedKeys[Enum.KeyCode.RightShift] then
+		NudgeAmount = -NudgeAmount;
+	end;
+
 	-- Track this change
 	TrackChange();
 
@@ -598,7 +607,7 @@ function NudgeSelectionByFace(Face)
 	local InitialState = PreparePartsForDragging();
 
 	-- Perform the movement
-	MovePartsAlongAxesByFace(Face, MoveTool.Increment, MoveTool.Axes, Selection.Focus, Selection.Items, InitialState);
+	MovePartsAlongAxesByFace(Face, NudgeAmount, MoveTool.Axes, Selection.Focus, Selection.Items, InitialState);
 
 	-- Cache up permissions for all private areas
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);

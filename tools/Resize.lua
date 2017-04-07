@@ -573,6 +573,15 @@ end;
 function NudgeSelectionByFace(Face)
 	-- Nudges the size of the selection in the direction of the given face
 
+	-- Get amount to nudge by
+	local NudgeAmount = ResizeTool.Increment;
+
+	-- Reverse nudge amount if shift key is held while nudging
+	local PressedKeys = Support.FlipTable(Support.GetListMembers(UserInputService:GetKeysPressed(), 'KeyCode'));
+	if PressedKeys[Enum.KeyCode.LeftShift] or PressedKeys[Enum.KeyCode.RightShift] then
+		NudgeAmount = -NudgeAmount;
+	end;
+
 	-- Track this change
 	TrackChange();
 
@@ -580,7 +589,7 @@ function NudgeSelectionByFace(Face)
 	local InitialState = PreparePartsForResizing();
 
 	-- Perform the resizing
-	local Success = ResizePartsByFace(Face, ResizeTool.Increment, ResizeTool.Directions, InitialState);
+	local Success = ResizePartsByFace(Face, NudgeAmount, ResizeTool.Directions, InitialState);
 
 	-- If the resizing did not succeed, revert the parts to their original state
 	if not Success then
