@@ -123,6 +123,7 @@ function EnableClickCreation()
 
 		-- Enable new part dragging
 		DragNewParts = true;
+		Core.Targeting.CancelSelecting();
 
 		-- Create the part
 		CreatePart(NewPartTool.Type);
