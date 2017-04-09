@@ -121,8 +121,19 @@ function EnableClickCreation()
 			return;
 		end;
 
+		-- Enable new part dragging
+		DragNewParts = true;
+
 		-- Create the part
 		CreatePart(NewPartTool.Type);
+
+	end);
+
+	-- Listen for click releases
+	Connections.ClickReleaseListener = Support.AddUserInputListener('Ended', 'MouseButton1', true, function ()
+
+		-- Cancel dragging new parts if mouse button is released
+		DragNewParts = false;
 
 	end);
 
@@ -171,7 +182,9 @@ function CreatePart(Type)
 	Core.EquipTool(MoveTool);
 
 	-- Enable dragging to allow easy positioning of the created part
-	MoveTool.SetUpDragging(Part);
+	if DragNewParts then
+		MoveTool.SetUpDragging(Part);
+	end;
 
 end;
 
