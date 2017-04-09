@@ -495,8 +495,8 @@ function BindShortcutKeys()
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadSix then
 			NudgeSelectionByAxis(Enum.Axis.Y, 1);
 
-		-- Start snapping when the R key is pressed down (and it's not Shift R)
-		elseif InputInfo.KeyCode == Enum.KeyCode.R and not (Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift)) then
+		-- Start snapping when the R key is pressed down, and it's not the selection clearing hotkey
+		elseif InputInfo.KeyCode == Enum.KeyCode.R and not Selection.Multiselecting then
 			StartSnapping();
 
 		end;

@@ -235,8 +235,8 @@ function BindShortcutKeys()
 
 		end;
 
-		-- Check if the R key was pressed
-		if InputInfo.KeyCode == Enum.KeyCode.R and not (Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift)) then
+		-- Check if the R key was pressed, and it wasn't the selection clearing hotkey
+		if InputInfo.KeyCode == Enum.KeyCode.R and not Selection.Multiselecting then
 
 			-- Set the current color to that of the current mouse target (if any)
 			if Core.Mouse.Target then

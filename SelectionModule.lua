@@ -8,6 +8,7 @@ Selection = {};
 Selection.Items = {};
 Selection.Outlines = {};
 Selection.Color = BrickColor.new 'Cyan';
+Selection.Multiselecting = false;
 
 -- Events to listen to selection changes
 Selection.ItemsAdded = RbxUtility.CreateSignal();
@@ -275,6 +276,42 @@ function Selection.EnableOutlines()
 
 	-- Hide outlines when tool is disabled
 	GetCore().Connections.HideOutlinesOnDisable = GetCore().Disabling:connect(Selection.HideOutlines);
+
+end;
+
+function Selection.EnableMultiselectionHotkeys()
+	-- Enables hotkeys for multiselecting
+
+	-- Determine multiselection hotkeys
+	local Hotkeys = Support.FlipTable { 'LeftShift', 'RightShift', 'LeftControl', 'RightControl' };
+
+	-- Get core API
+	local Core = GetCore();
+
+	-- Listen for matching key presses
+	Core.Connections.MultiselectionHotkeys = Support.AddUserInputListener('Began', 'Keyboard', false, function (Input)
+		if Hotkeys[Input.KeyCode.Name] then
+			Selection.Multiselecting = true;
+		end;
+	end);
+
+	-- Listen for matching key releases
+	Core.Connections.MultiselectingReleaseHotkeys = Support.AddUserInputListener('Ended', 'Keyboard', true, function (Input)
+
+		-- Get currently pressed keys
+		local PressedKeys = Support.GetListMembers(Support.GetListMembers(Game:GetService('UserInputService'):GetKeysPressed(), 'KeyCode'), 'Name');
+
+		-- Continue multiselection if a hotkey is still pressed
+		for _, PressedKey in pairs(PressedKeys) do
+			if Hotkeys[PressedKey] then
+				return;
+			end;
+		end;
+
+		-- Disable multiselection if matching key not found
+		Selection.Multiselecting = false;
+
+	end);
 
 end;
 
