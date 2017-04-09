@@ -66,9 +66,6 @@ end;
 
 function TargetingModule.SelectTarget()
 
-	-- Check if shift is held
-	local ShiftHeld = Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift);
-
 	-- Ensure target selection isn't cancelled
 	if SelectionCancelled then
 		SelectionCancelled = false;
@@ -76,7 +73,7 @@ function TargetingModule.SelectTarget()
 	end;
 
 	-- Focus on clicked, selected item
-	if not ShiftHeld and Selection.Find(Target) then
+	if not Selection.Multiselecting and Selection.Find(Target) then
 		Selection.SetFocus(Target);
 		return;
 	end;
@@ -87,17 +84,17 @@ function TargetingModule.SelectTarget()
 		return;
 	end;
 
-	-- Unselect clicked, selected item if shift is held
-	if ShiftHeld and Selection.Find(Target) then
+	-- Unselect clicked, selected item if multiselection is enabled
+	if Selection.Multiselecting and Selection.Find(Target) then
 		Selection.Remove({ Target }, true);
 		return;
 	end;
 
-	-- Add to selection if shift is held
-	if ShiftHeld then
+	-- Add to selection if multiselecting
+	if Selection.Multiselecting then
 		Selection.Add({ Target }, true);
 
-	-- Replace selection if shift is not held
+	-- Replace selection if not multiselecting
 	else
 		Selection.Replace({ Target }, true);
 	end;
@@ -231,11 +228,11 @@ function TargetingModule.FinishRectangleSelecting()
 		end;
 	end;
 
-	-- Add to selection if shift is held
-	if Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift) then
+	-- Add to selection if multiselecting
+	if Selection.Multiselecting then
 		Selection.Add(SelectableItems, true);
 
-	-- Replace selection if shift is not held
+	-- Replace selection if not multiselecting
 	else
 		Selection.Replace(SelectableItems, true);
 	end;

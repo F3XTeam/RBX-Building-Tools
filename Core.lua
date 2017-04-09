@@ -186,6 +186,7 @@ function Enable(Mouse)
 	EnableHotkeys();
 	Targeting.EnableTargeting();
 	Selection.EnableOutlines();
+	Selection.EnableMultiselectionHotkeys();
 
 	-- Equip current tool
 	EquipTool(CurrentTool or require(Tool.Tools.MoveTool));
@@ -304,6 +305,14 @@ AssignHotkey({ 'RightShift', 'Z' }, History.Undo);
 AssignHotkey({ 'LeftShift', 'Y' }, History.Redo);
 AssignHotkey({ 'RightShift', 'Y' }, History.Redo);
 
+-- If in-game, enable ctrl hotkeys for undoing and redoing
+if Mode == 'Tool' then
+	AssignHotkey({ 'LeftControl', 'Z' }, History.Undo);
+	AssignHotkey({ 'RightControl', 'Z' }, History.Undo);
+	AssignHotkey({ 'LeftControl', 'Y' }, History.Redo);
+	AssignHotkey({ 'RightControl', 'Y' }, History.Redo);
+end;
+
 function CloneSelection()
 	-- Clones selected parts
 
@@ -414,6 +423,14 @@ AssignHotkey({ 'RightShift', 'C' }, CloneSelection);
 AssignHotkey({ 'LeftShift', 'X' }, DeleteSelection);
 AssignHotkey({ 'RightShift', 'X' }, DeleteSelection);
 
+-- If in-game, enable ctrl hotkeys for cloning and deleting
+if Mode == 'Tool' then
+	AssignHotkey({ 'LeftControl', 'C' }, CloneSelection);
+	AssignHotkey({ 'RightControl', 'C' }, CloneSelection);
+	AssignHotkey({ 'LeftControl', 'X' }, DeleteSelection);
+	AssignHotkey({ 'RightControl', 'X' }, DeleteSelection);
+end;
+
 function PrismSelect()
 	-- Selects parts in the currently selected parts
 
@@ -465,6 +482,12 @@ end;
 AssignHotkey({ 'LeftShift', 'K' }, PrismSelect);
 AssignHotkey({ 'RightShift', 'K' }, PrismSelect);
 
+-- If in-game, enable ctrl hotkeys for prism selection
+if Mode == 'Tool' then
+	AssignHotkey({ 'LeftControl', 'K' }, PrismSelect);
+	AssignHotkey({ 'RightControl', 'K' }, PrismSelect);
+end;
+
 function SelectSiblings(ReplaceSelection)
 	-- Selects all parts under the same parent as the focused part
 
@@ -493,6 +516,14 @@ AssignHotkey({ 'RightShift', 'LeftBracket' }, Support.Call(SelectSiblings, false
 -- Assign hotkeys for selection clearing
 AssignHotkey({ 'LeftShift', 'R' }, Support.Call(Selection.Clear, true));
 AssignHotkey({ 'RightShift', 'R' }, Support.Call(Selection.Clear, true));
+
+-- If in-game, enable ctrl hotkeys for sibling selection & selection clearing
+if Mode == 'Tool' then
+	AssignHotkey({ 'LeftControl', 'LeftBracket' }, Support.Call(SelectSiblings, false));
+	AssignHotkey({ 'RightControl', 'LeftBracket' }, Support.Call(SelectSiblings, false));
+	AssignHotkey({ 'LeftControl', 'R' }, Support.Call(Selection.Clear, true));
+	AssignHotkey({ 'RightControl', 'R' }, Support.Call(Selection.Clear, true));
+end;
 
 function IsSelectable(Object)
 	-- Returns whether `Object` can be selected
@@ -562,6 +593,12 @@ end;
 -- Assign hotkey for exporting selection
 AssignHotkey({ 'LeftShift', 'P' }, ExportSelection);
 AssignHotkey({ 'RightShift', 'P' }, ExportSelection);
+
+-- If in-game, enable ctrl hotkeys for exporting
+if Mode == 'Tool' then
+	AssignHotkey({ 'LeftControl', 'P' }, ExportSelection);
+	AssignHotkey({ 'RightControl', 'P' }, ExportSelection);
+end;
 
 function IsVersionOutdated()
 	-- Returns whether this version of Building Tools is out of date

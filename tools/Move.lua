@@ -103,7 +103,7 @@ function ShowUI()
 	local IncrementInput = MoveTool.UI.IncrementOption.Increment.TextBox;
 	IncrementInput.FocusLost:connect(function (EnterPressed)
 		MoveTool.Increment = tonumber(IncrementInput.Text) or MoveTool.Increment;
-		IncrementInput.Text = Support.Round(MoveTool.Increment, 3);
+		IncrementInput.Text = Support.Round(MoveTool.Increment, 4);
 	end);
 
 	-- Add functionality to the position inputs
@@ -305,8 +305,8 @@ function AttachHandles(Part, Autofocus)
 
 		Connections.HandleRelease = UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
 
-			-- Make sure this was button 1 being released
-			if InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1 then
+			-- Make sure this was button 1 being released, and dragging is ongoing
+			if not HandleDragging or (InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1) then
 				return;
 			end;
 
@@ -461,8 +461,8 @@ function BindShortcutKeys()
 				MoveTool.UI.IncrementOption.Increment.TextBox:CaptureFocus();
 			end;
 
-		-- Check if the R key was pressed down, and it wasn't Shift R
-		elseif InputInfo.KeyCode == Enum.KeyCode.R and not (Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift)) then
+		-- Check if the R key was pressed down, and it's not the selection clearing hotkey
+		elseif InputInfo.KeyCode == Enum.KeyCode.R and not Selection.Multiselecting then
 
 			-- Start tracking snap points nearest to the mouse
 			StartSnapping();
@@ -718,7 +718,7 @@ function EnableDragging()
 		end;
 
 		-- Make sure this click was not to select
-		if Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift) then
+		if Selection.Multiselecting then
 			return;
 		end;
 

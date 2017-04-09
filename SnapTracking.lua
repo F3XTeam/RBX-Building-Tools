@@ -212,6 +212,17 @@ end;
 function SnapTracking.StopTracking()
 	-- Stops tracking the current closest snapping point, cleans up
 
+	-- Clear the previous tracking target, and callback
+	SnapTracking.Target = nil;
+	SnapTracking.Callback = nil;
+
+	-- Reset snapping point options
+	SnapTracking.TrackFaceCentroids = true;
+	SnapTracking.TrackEdgeMidpoints = true;
+	SnapTracking.TrackCorners = true;
+	SnapTracking.TargetFilter = nil;
+	SnapTracking.TargetBlacklist = {};
+
 	-- Make sure we're currently tracking
 	if not SnapTracking.Enabled then
 		return;
@@ -223,18 +234,6 @@ function SnapTracking.StopTracking()
 
 	-- Clear the point marker UI from the screen
 	SnapTracking.ClearUI();
-
-	-- Clear the previous tracking target, and callback
-	SnapTracking.Target = nil;
-	SnapTracking.Callback = nil;
-
-	-- Reset snapping point options
-	SnapTracking.TrackFaceCentroids = true;
-	SnapTracking.TrackEdgeMidpoints = true;
-	SnapTracking.TrackCorners = true;
-
-	SnapTracking.TargetFilter = nil;
-	SnapTracking.TargetBlacklist = {};
 
 	-- Indicate that tracking is no longer enabled
 	SnapTracking.Enabled = false;

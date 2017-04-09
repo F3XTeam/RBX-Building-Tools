@@ -110,7 +110,7 @@ function ShowUI()
 	local IncrementInput = RotateTool.UI.IncrementOption.Increment.TextBox;
 	IncrementInput.FocusLost:connect(function (EnterPressed)
 		RotateTool.Increment = tonumber(IncrementInput.Text) or RotateTool.Increment;
-		IncrementInput.Text = Support.Round(RotateTool.Increment, 3);
+		IncrementInput.Text = Support.Round(RotateTool.Increment, 4);
 	end);
 
 	-- Add functionality to the rotation inputs
@@ -250,8 +250,7 @@ function AttachHandles(Part, Autofocus)
 
 	-- Disable autofocus if not requested and on
 	elseif not Autofocus and Connections.AutofocusHandle then
-		Connections.AutofocusHandle:disconnect();
-		Connections.AutofocusHandle = nil;
+		ClearConnection 'AutofocusHandle';
 	end;
 
 	-- Just attach and show the handles if they already exist
@@ -312,8 +311,8 @@ function AttachHandles(Part, Autofocus)
 
 		Connections.HandleRelease = UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
 
-			-- Make sure this was button 1 being released
-			if InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1 then
+			-- Make sure this was button 1 being released, and rotating is ongoing
+			if not HandleRotating or (InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1) then
 				return;
 			end;
 
@@ -324,8 +323,7 @@ function AttachHandles(Part, Autofocus)
 			HandleRotating = false;
 
 			-- Clear this connection to prevent it from firing again
-			Connections.HandleRelease:disconnect();
-			Connections.HandleRelease = nil;
+			ClearConnection 'HandleRelease';
 
 			-- Make joints, restore original anchor and collision states
 			for _, Part in pairs(Selection.Items) do
@@ -390,10 +388,7 @@ function HideHandles()
 	Handles.Parent = nil;
 
 	-- Disable handle autofocus if enabled
-	if Connections.AutofocusHandle then
-		Connections.AutofocusHandle:disconnect();
-		Connections.AutofocusHandle = nil;
-	end;
+	ClearConnection 'AutofocusHandle';
 
 end;
 
@@ -495,8 +490,12 @@ function BindShortcutKeys()
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadSix then
 			NudgeSelectionByAxis(Enum.Axis.Y, 1);
 
-		-- Start snapping when the R key is pressed down (and it's not Shift R)
-		elseif InputInfo.KeyCode == Enum.KeyCode.R and not (Support.AreKeysPressed(Enum.KeyCode.LeftShift) or Support.AreKeysPressed(Enum.KeyCode.RightShift)) then
+		-- Start snapping when the R key is pressed down, and it's not the selection clearing hotkey
+		elseif (InputInfo.KeyCode == Enum.KeyCode.R) and not Selection.Multiselecting then
+			StartSnapping();
+
+		-- Start snapping when T key is pressed down (alias)
+		elseif InputInfo.KeyCode == Enum.KeyCode.T then
 			StartSnapping();
 
 		end;
