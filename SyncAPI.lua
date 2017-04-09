@@ -1435,6 +1435,27 @@ function ArePartsSelectable(Parts)
 
 end;
 
+-- Keep current player updated in tool mode
+if ToolMode == 'Tool' then
+
+	-- Set current player
+	Player = Players:GetPlayerFromCharacter(Tool.Parent);
+
+	-- Stay updated with latest player operating the tool
+	Tool.AncestryChanged:Connect(function (Child, Parent)
+
+		-- Ensure tool's parent changed
+		if Child ~= Tool then
+			return;
+		end;
+
+		-- Update current player
+		Player = Players:GetPlayerFromCharacter(Parent);
+
+	end);
+
+end;
+
 -- Provide an interface into the module
 return {
 
@@ -1450,8 +1471,10 @@ return {
 			return;
 		end;
 
-		-- Update the Player pointer
-		Player = Client;
+		-- Ensure client is current player in tool mode
+		if ToolMode == 'Tool' then
+			assert(Player and (Client == Player), 'Permission denied for client');
+		end;
 
 		-- Execute valid actions
 		return Action(...);
