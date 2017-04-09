@@ -103,7 +103,7 @@ function ShowUI()
 	local IncrementInput = MoveTool.UI.IncrementOption.Increment.TextBox;
 	IncrementInput.FocusLost:connect(function (EnterPressed)
 		MoveTool.Increment = tonumber(IncrementInput.Text) or MoveTool.Increment;
-		IncrementInput.Text = Support.Round(MoveTool.Increment, 3);
+		IncrementInput.Text = Support.Round(MoveTool.Increment, 4);
 	end);
 
 	-- Add functionality to the position inputs

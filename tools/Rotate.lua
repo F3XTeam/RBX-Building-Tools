@@ -110,7 +110,7 @@ function ShowUI()
 	local IncrementInput = RotateTool.UI.IncrementOption.Increment.TextBox;
 	IncrementInput.FocusLost:connect(function (EnterPressed)
 		RotateTool.Increment = tonumber(IncrementInput.Text) or RotateTool.Increment;
-		IncrementInput.Text = Support.Round(RotateTool.Increment, 3);
+		IncrementInput.Text = Support.Round(RotateTool.Increment, 4);
 	end);
 
 	-- Add functionality to the rotation inputs

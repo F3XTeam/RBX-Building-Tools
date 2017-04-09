@@ -103,7 +103,7 @@ function ShowUI()
 	local IncrementInput = ResizeTool.UI.IncrementOption.Increment.TextBox;
 	IncrementInput.FocusLost:connect(function (EnterPressed)
 		ResizeTool.Increment = tonumber(IncrementInput.Text) or ResizeTool.Increment;
-		IncrementInput.Text = Support.Round(ResizeTool.Increment, 3);
+		IncrementInput.Text = Support.Round(ResizeTool.Increment, 4);
 	end);
 
 	-- Add functionality to the size inputs
