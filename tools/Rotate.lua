@@ -250,8 +250,7 @@ function AttachHandles(Part, Autofocus)
 
 	-- Disable autofocus if not requested and on
 	elseif not Autofocus and Connections.AutofocusHandle then
-		Connections.AutofocusHandle:disconnect();
-		Connections.AutofocusHandle = nil;
+		ClearConnection 'AutofocusHandle';
 	end;
 
 	-- Just attach and show the handles if they already exist
@@ -312,8 +311,8 @@ function AttachHandles(Part, Autofocus)
 
 		Connections.HandleRelease = UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
 
-			-- Make sure this was button 1 being released
-			if InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1 then
+			-- Make sure this was button 1 being released, and rotating is ongoing
+			if not HandleRotating or (InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1) then
 				return;
 			end;
 
@@ -324,8 +323,7 @@ function AttachHandles(Part, Autofocus)
 			HandleRotating = false;
 
 			-- Clear this connection to prevent it from firing again
-			Connections.HandleRelease:disconnect();
-			Connections.HandleRelease = nil;
+			ClearConnection 'HandleRelease';
 
 			-- Make joints, restore original anchor and collision states
 			for _, Part in pairs(Selection.Items) do
@@ -390,10 +388,7 @@ function HideHandles()
 	Handles.Parent = nil;
 
 	-- Disable handle autofocus if enabled
-	if Connections.AutofocusHandle then
-		Connections.AutofocusHandle:disconnect();
-		Connections.AutofocusHandle = nil;
-	end;
+	ClearConnection 'AutofocusHandle';
 
 end;
 

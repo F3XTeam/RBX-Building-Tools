@@ -292,8 +292,8 @@ function ShowHandles()
 
 		Connections.HandleRelease = UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
 
-			-- Make sure this was button 1 being released
-			if InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1 then
+			-- Make sure this was button 1 being released, and handle resizing is ongoing
+			if not HandleResizing or (InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1) then
 				return;
 			end;
 
@@ -304,8 +304,7 @@ function ShowHandles()
 			Core.Targeting.CancelSelecting();
 
 			-- Clear this connection to prevent it from firing again
-			Connections.HandleRelease:disconnect();
-			Connections.HandleRelease = nil;
+			ClearConnection 'HandleRelease';
 
 			-- Make joints, restore original anchor and collision states
 			for _, Part in pairs(Selection.Items) do
@@ -373,8 +372,7 @@ function HideHandles()
 	Handles.Parent = nil;
 
 	-- Clear unnecessary resources
-	Connections.AutofocusHandle:disconnect();
-	Connections.AutofocusHandle = nil;
+	ClearConnection 'AutofocusHandle';
 
 end;
 

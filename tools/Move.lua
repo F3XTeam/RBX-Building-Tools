@@ -305,8 +305,8 @@ function AttachHandles(Part, Autofocus)
 
 		Connections.HandleRelease = UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
 
-			-- Make sure this was button 1 being released
-			if InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1 then
+			-- Make sure this was button 1 being released, and dragging is ongoing
+			if not HandleDragging or (InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1) then
 				return;
 			end;
 
