@@ -491,7 +491,11 @@ function BindShortcutKeys()
 			NudgeSelectionByAxis(Enum.Axis.Y, 1);
 
 		-- Start snapping when the R key is pressed down, and it's not the selection clearing hotkey
-		elseif InputInfo.KeyCode == Enum.KeyCode.R and not Selection.Multiselecting then
+		elseif (InputInfo.KeyCode == Enum.KeyCode.R) and not Selection.Multiselecting then
+			StartSnapping();
+
+		-- Start snapping when T key is pressed down (alias)
+		elseif InputInfo.KeyCode == Enum.KeyCode.T then
 			StartSnapping();
 
 		end;
