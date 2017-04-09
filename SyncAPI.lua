@@ -43,10 +43,8 @@ Actions = {
 		-- Clones the given parts
 
 		-- Make sure the given items are all parts
-		for _, Part in pairs(Parts) do
-			if not Part:IsA 'BasePart' then
-				return;
-			end;
+		if not ArePartsSelectable(Parts) then
+			return;
 		end;
 
 		-- Cache up permissions for all private areas
@@ -126,6 +124,11 @@ Actions = {
 
 		end;
 
+		-- Ensure relevant parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
+
 		-- Cache up permissions for all private areas
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
@@ -173,6 +176,11 @@ Actions = {
 
 		end;
 
+		-- Ensure relevant parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
+
 		-- Cache up permissions for all private areas
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
@@ -207,6 +215,11 @@ Actions = {
 			if Change.Part then
 				table.insert(Parts, Change.Part);
 			end;
+		end;
+
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
 		end;
 
 		-- Cache up permissions for all private areas
@@ -267,6 +280,11 @@ Actions = {
 			if Change.Part then
 				table.insert(Parts, Change.Part);
 			end;
+		end;
+
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
 		end;
 
 		-- Cache up permissions for all private areas
@@ -331,6 +349,11 @@ Actions = {
 			end;
 		end;
 
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
+
 		-- Cache up permissions for all private areas
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
@@ -391,6 +414,11 @@ Actions = {
 			end;
 		end;
 
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
+
 		-- Cache up permissions for all private areas
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
@@ -433,6 +461,11 @@ Actions = {
 			end;
 		end;
 
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
+
 		-- Cache up permissions for all private areas
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
@@ -470,6 +503,11 @@ Actions = {
 			if Change.Part then
 				table.insert(Parts, Change.Part);
 			end;
+		end;
+
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
 		end;
 
 		-- Cache up permissions for all private areas
@@ -525,6 +563,11 @@ Actions = {
 			if Change.Part then
 				table.insert(Parts, Change.Part);
 			end;
+		end;
+
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
 		end;
 
 		-- Cache up permissions for all private areas
@@ -597,6 +640,11 @@ Actions = {
 			end;
 		end;
 
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
+
 		-- Cache up permissions for all private areas
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
@@ -650,6 +698,11 @@ Actions = {
 			if Change.Part then
 				table.insert(Parts, Change.Part);
 			end;
+		end;
+
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
 		end;
 
 		-- Cache up permissions for all private areas
@@ -725,6 +778,11 @@ Actions = {
 			end;
 		end;
 
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
+
 		-- Cache up permissions for all private areas
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
@@ -770,6 +828,11 @@ Actions = {
 			if Change.Part then
 				table.insert(Parts, Change.Part);
 			end;
+		end;
+
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
 		end;
 
 		-- Cache up permissions for all private areas
@@ -834,6 +897,11 @@ Actions = {
 			end;
 		end;
 
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
+
 		-- Cache up permissions for all private areas
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
@@ -888,6 +956,11 @@ Actions = {
 			if Change.Part then
 				table.insert(Parts, Change.Part);
 			end;
+		end;
+
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
 		end;
 
 		-- Cache up permissions for all private areas
@@ -953,6 +1026,11 @@ Actions = {
 			end;
 		end;
 
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
+
 		-- Cache up permissions for all private areas
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
@@ -985,6 +1063,11 @@ Actions = {
 			if Change.Part then
 				table.insert(Parts, Change.Part);
 			end;
+		end;
+
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
 		end;
 
 		-- Cache up permissions for all private areas
@@ -1021,6 +1104,11 @@ Actions = {
 			end;
 		end;
 
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
+
 		-- Cache up permissions for all private areas
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
@@ -1054,6 +1142,11 @@ Actions = {
 
 	['CreateWelds'] = function (Parts, TargetPart)
 		-- Creates welds for the given parts to the target part
+
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
 
 		-- Cache up permissions for all private areas
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
@@ -1113,6 +1206,11 @@ Actions = {
 
 		end;
 
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
+
 		local WeldsRemoved = 0;
 
 		-- Cache up permissions for all private areas
@@ -1168,6 +1266,11 @@ Actions = {
 
 		end;
 
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
+			return;
+		end;
+
 		-- Cache up permissions for all private areas
 		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
 
@@ -1210,6 +1313,11 @@ Actions = {
 
 		-- Ensure there are items to export
 		if #Parts == 0 then
+			return;
+		end;
+
+		-- Ensure parts are selectable
+		if not ArePartsSelectable(Parts) then
 			return;
 		end;
 
@@ -1311,6 +1419,21 @@ Actions = {
 	end;
 
 };
+
+function ArePartsSelectable(Parts)
+	-- Returns whether the parts are selectable
+
+	-- Check whether each part is selectable
+	for _, Part in pairs(Parts) do
+		if not Part:IsA 'BasePart' or Part.Locked then
+			return false;
+		end;
+	end;
+
+	-- Return true if all parts are selectable
+	return true;
+
+end;
 
 -- Provide an interface into the module
 return {
