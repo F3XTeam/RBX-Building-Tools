@@ -746,9 +746,12 @@ PointSnapped = Core.RbxUtility.CreateSignal();
 function StartSnapping()
 
 	-- Make sure snapping isn't already enabled
-	if SnapTracking.Enabled then
+	if SnappingStage or SnapTracking.Enabled then
 		return;
 	end;
+
+	-- Start first snapping stage
+	SnappingStage = 'Starting';
 
 	-- Only enable corner snapping
 	SnapTracking.TrackEdgeMidpoints = false;
@@ -775,47 +778,88 @@ function StartSnapping()
 		SnappingStartSelectionState = PreparePartsForResizing();
 		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
+		-- Pause snapping
+		SnapTracking.StopTracking();
+
+		-- Start a direction line
+		DirectionLine = Core.Tool.Interfaces.SnapLine:Clone();
+		DirectionLine.Parent = Core.UI;
+		DirectionLine.Visible = false;
+
 		-- Track changes for history
 		TrackChange();
 
 		-- Listen for when the user drags
-		Connections.SnapDrag = Support.AddUserInputListener('Changed', 'MouseMovement', false, function (Input)
+		Connections.SnapDrag = Support.AddUserInputListener('Changed', 'MouseMovement', true, function (Input)
 
 			-- Update the latest aim
 			SnappingEndAim = Vector2.new(Input.Position.X, Input.Position.Y);
+			ScreenSnappedPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappingStartPoint);
+			ScreenSnappedPoint = Vector2.new(ScreenSnappedPoint.X, ScreenSnappedPoint.Y);
 
-			-- Use the mouse position to figure out the resize direction (until after 20px)
+			-- Calculate direction setting length
+			local DirectionSettingLength = math.min(50, math.max(50, (SnappingStartAim - ScreenSnappedPoint).magnitude * 1.5));
+
+			-- Use the mouse position to figure out the resize direction (until after direction setting length)
 			if SnappingStage == 'Direction' then
 
-				-- Check the length
-				local Length = (SnappingEndAim - SnappingStartAim).magnitude;
-				if Length < 20 then
-					return;
-				end;
-
-				local DragSlope = (SnappingEndAim.Y - SnappingStartAim.Y) / (SnappingEndAim.X - SnappingStartAim.X);
+				-- Get current angle from snap point
+				local DragAngle = math.deg(math.atan2(SnappingEndAim.Y - ScreenSnappedPoint.Y, SnappingEndAim.X - ScreenSnappedPoint.X));
+				DragAngle = (DragAngle > 0) and (DragAngle - 360) or DragAngle;
 
 				-- Go through corner offsets representing the possible directions
 				local Directions = {};
 				for _, Direction in pairs(SnappingStartDirections) do
 
 					-- Map the corner & corner offset to screen points
-					local ScreenSnappedPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappingStartPoint);
 					local ScreenOffsetPoint = Workspace.CurrentCamera:WorldToScreenPoint(Direction.Offset);
 
-					-- Get the slope representing the direction (based on the mapped screen points)
-					local DirectionSlope = (ScreenOffsetPoint.Y - ScreenSnappedPoint.Y) / (ScreenOffsetPoint.X - ScreenSnappedPoint.X);
+					-- Get direction angle from snap point
+					local DirectionAngle = math.deg(math.atan2(ScreenOffsetPoint.Y - ScreenSnappedPoint.Y, ScreenOffsetPoint.X - ScreenSnappedPoint.X));
+					DirectionAngle = (DirectionAngle > 0) and (DirectionAngle - 360) or DirectionAngle;
 
-					-- Calculate the similarity between the drag & direction slopes
-					local SlopeDelta = math.abs(math.abs(DragSlope) - math.abs(DirectionSlope));
-					table.insert(Directions, { Face = Direction.Face, SlopeDelta = SlopeDelta, Offset = Direction.Offset });
+					-- Calculate delta between drag and direction angles
+					local AngleDelta = math.abs(DragAngle - DirectionAngle) % 180;
+					AngleDelta = (AngleDelta > 90) and (180 - AngleDelta) or AngleDelta;
+
+					-- Insert the potential direction
+					table.insert(Directions, {
+						Face = Direction.Face,
+						AngleDelta = AngleDelta,
+						DirectionAngle = DirectionAngle,
+						Offset = Direction.Offset
+					});
 
 				end;
 
-				-- Get the direction slope closest to the mouse's
+				-- Get the direction most similar to the dragging angle
 				table.sort(Directions, function (A, B)
-					return A.SlopeDelta < B.SlopeDelta;
+					return A.AngleDelta < B.AngleDelta;
 				end);
+
+				-- Center direction line at snap point
+				DirectionLine.Position = UDim2.new(0, ScreenSnappedPoint.X, 0, ScreenSnappedPoint.Y);
+
+				-- Orient direction line towards drag direction
+				if math.abs(DragAngle - Directions[1].DirectionAngle) <= 90 then
+					DirectionLine.Rotation = Directions[1].DirectionAngle;
+				else
+					DirectionLine.Rotation = 180 + Directions[1].DirectionAngle;
+				end;
+
+				-- Show the direction line
+				DirectionLine.PointMarker.Rotation = -DirectionLine.Rotation;
+				DirectionLine.SnapProgress.Size = UDim2.new(0, DirectionSettingLength, 2, 0);
+				DirectionLine.Visible = true;
+
+				-- Check if drag has passed direction setting length
+				local Length = (SnappingEndAim - ScreenSnappedPoint).magnitude;
+				if Length < DirectionSettingLength then
+					return;
+				end;
+
+				-- Clear the direction line
+				DirectionLine:Destroy()
 
 				-- Select the resizing direction that was closest to the mouse drag
 				SnappingDirection = Directions[1].Face;
@@ -824,11 +868,24 @@ function StartSnapping()
 				-- Move to the destination-picking stage of snapping
 				SnappingStage = 'Destination';
 
+				-- Set destination-stage snapping options
+				SnapTracking.TrackEdgeMidpoints = true;
+				SnapTracking.TrackFaceCentroids = true;
 				SnapTracking.TargetFilter = function (Target) return not Target.Locked; end;
 				SnapTracking.TargetBlacklist = Selection.Items;
 
-			-- Resize in the selected direction up to the targeted destination
-			elseif SnappingStage == 'Destination' then
+				-- Re-enable snapping to select destination
+				SnapTracking.StartTracking(function (NewPoint)
+					if NewPoint and NewPoint.p ~= SnappedPoint then
+						SnappedPoint = NewPoint.p;
+						PointSnapped:fire(NewPoint.p);
+					end;
+				end);
+
+				-- Start a distance alignment line
+				AlignmentLine = Core.Tool.Interfaces.SnapLineSegment:Clone();
+				AlignmentLine.Visible = false;
+				AlignmentLine.Parent = Core.UI;
 
 			end;
 
@@ -837,7 +894,10 @@ function StartSnapping()
 		-- Listen for when a new point is snapped
 		Connections.Snap = PointSnapped:connect(function (SnappedPoint)
 
+			-- Resize to snap point if in the destination stage of snapping
 			if SnappingStage == 'Destination' then
+
+				-- Calculate direction and distance to resize towards
 				local Direction = (SnappingDirectionOffset - SnappingStartPoint).unit;
 				local Distance = (SnappedPoint - SnappingStartPoint):Dot(Direction);
 
@@ -857,24 +917,41 @@ function StartSnapping()
 					end;
 				end;
 
+				-- Get snap point and destination point screen positions for UI alignment
+				local ScreenStartPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappingStartPoint + (Direction * Distance));
+				ScreenStartPoint = Vector2.new(ScreenStartPoint.X, ScreenStartPoint.Y);
+				local ScreenDestinationPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappedPoint);
+				ScreenDestinationPoint = Vector2.new(ScreenDestinationPoint.X, ScreenDestinationPoint.Y)
+
+				-- Update the distance alignment line
+				local AlignmentAngle = math.deg(math.atan2(ScreenDestinationPoint.Y - ScreenStartPoint.Y, ScreenDestinationPoint.X - ScreenStartPoint.X));
+				local AlignmentCenter = ScreenStartPoint:Lerp(ScreenDestinationPoint, 0.5);
+				AlignmentLine.Position = UDim2.new(0, AlignmentCenter.X, 0, AlignmentCenter.Y);
+				AlignmentLine.Rotation = AlignmentAngle;
+				AlignmentLine.Size = UDim2.new(0, (ScreenDestinationPoint - ScreenStartPoint).magnitude, 0, 1);
+				AlignmentLine.PointMarkerA.Rotation = -AlignmentAngle;
+				AlignmentLine.Visible = true;
+
 			end;
 
 		end);
 
-		-- Listen for the end of the snapping
-		Connections.SnapDragEnd = Support.AddUserInputListener('Ended', 'MouseButton1', false, function (Input)
+	end);
 
-			-- Restore the selection's original state
+	-- Listen for the end of the snapping
+	Connections.SnapDragEnd = Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
+
+		-- If destination stage was reached, restore the selection's original state
+		if SnappingStage == 'Destination' then
 			for Part, PartState in pairs(SnappingStartSelectionState) do
 				Part:MakeJoints();
 				Part.CanCollide = PartState.CanCollide;
 				Part.Anchored = PartState.Anchored;
 			end;
+		end;
 
-			-- Finish snapping
-			FinishSnapping();
-
-		end);
+		-- Finish snapping
+		FinishSnapping();
 
 	end);
 
@@ -882,13 +959,26 @@ end;
 
 function FinishSnapping()
 
-	-- Make sure snapping is enabled
-	if not SnapTracking.Enabled then
+	-- Ensure snapping is ongoing
+	if not SnappingStage then
 		return;
 	end;
 
+	-- Disable any snapping stage
+	SnappingStage = nil;
+
 	-- Stop snap point tracking
 	SnapTracking.StopTracking();
+
+	-- Clear any UI
+	if DirectionLine then
+		DirectionLine:Destroy();
+		DirectionLine = nil;
+	end;
+	if AlignmentLine then
+		AlignmentLine:Destroy();
+		AlignmentLine = nil;
+	end;
 
 	-- Register any change
 	if HistoryRecord then
@@ -914,7 +1004,8 @@ function GetFaceOffsetsFromCorner(Part, Point)
 	for _, Face in pairs(Faces) do
 
 		-- Calculate the offset from the corner in the direction of the face
-		local Offset = CFrame.new(Point) * CFrame.Angles(Part.CFrame:toEulerAnglesXYZ()) * Vector3.FromNormalId(Face);
+		local FaceOffset = (Vector3.FromNormalId(Face) * Part.Size) / 2;
+		local Offset = CFrame.new(Point) * CFrame.Angles(Part.CFrame:toEulerAnglesXYZ()) * FaceOffset;
 		table.insert(Offsets, { Face = Face, Offset = Offset });
 
 	end;
