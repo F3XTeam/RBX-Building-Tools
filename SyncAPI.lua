@@ -1438,8 +1438,18 @@ end;
 -- Keep current player updated in tool mode
 if ToolMode == 'Tool' then
 
-	-- Set current player
-	Player = Players:GetPlayerFromCharacter(Tool.Parent);
+	-- Set current player if in backpack
+	if Tool.Parent and Tool.Parent:IsA 'Backpack' then
+		Player = Tool.Parent.Parent;
+
+	-- Set current player if in character
+	elseif Tool.Parent and Tool.Parent:IsA 'Model' then
+		Player = Players:GetPlayerFromCharacter(Tool.Parent);
+
+	-- Clear `Player` if not in possession of a player
+	else
+		Player = nil;
+	end;
 
 	-- Stay updated with latest player operating the tool
 	Tool.AncestryChanged:Connect(function (Child, Parent)
@@ -1449,8 +1459,18 @@ if ToolMode == 'Tool' then
 			return;
 		end;
 
-		-- Update current player
-		Player = Players:GetPlayerFromCharacter(Parent);
+		-- Set `Player` to player of the backpack the tool is in
+		if Parent and Parent:IsA 'Backpack' then
+			Player = Parent.Parent;
+
+		-- Set `Player` to player of the character holding the tool
+		elseif Parent and Parent:IsA 'Model' then
+			Player = Players:GetPlayerFromCharacter(Parent);
+
+		-- Clear `Player` if tool is not parented to a player
+		else
+			Player = nil;
+		end;
 
 	end);
 
