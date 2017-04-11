@@ -136,8 +136,8 @@ function Serialization.SerializeModel(Items)
 
 		if Item.ClassName == 'Texture' then
 			local Datum = Data.Items[Index];
-			Datum[6] = Item.StudsPerTileU;
-			Datum[7] = Item.StudsPerTileV;
+			Datum[7] = Item.StudsPerTileU;
+			Datum[8] = Item.StudsPerTileV;
 		end;
 
 		if Item:IsA 'Light' then
