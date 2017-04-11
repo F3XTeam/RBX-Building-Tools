@@ -10,23 +10,27 @@ TargetingModule.TargetChanged = RbxUtility.CreateSignal();
 function TargetingModule.EnableTargeting()
 	-- 	Begin targeting parts from the mouse
 
+	-- Get core API
+	local Core = GetCore();
+
+	-- Get current mouse
 	Mouse = GetCore().Mouse;
 
 	-- Listen for target changes
-	GetCore().Connections.Targeting = Mouse.Move:connect(TargetingModule.UpdateTarget);
+	Core.Connections.Targeting = Mouse.Move:connect(TargetingModule.UpdateTarget);
 
 	-- Listen for target clicks
-	GetCore().Connections.Selecting = Mouse.Button1Up:connect(TargetingModule.SelectTarget);
+	Core.Connections.Selecting = Mouse.Button1Up:connect(TargetingModule.SelectTarget);
 
 	-- Listen for 2D selection
-	GetCore().Connections.RectSelectionStarted = Mouse.Button1Down:connect(TargetingModule.StartRectangleSelecting);
-	GetCore().Connections.RectSelectionFinished = Support.AddUserInputListener('Ended', 'MouseButton1', true, TargetingModule.FinishRectangleSelecting);
+	Core.Connections.RectSelectionStarted = Mouse.Button1Down:connect(TargetingModule.StartRectangleSelecting);
+	Core.Connections.RectSelectionFinished = Support.AddUserInputListener('Ended', 'MouseButton1', true, TargetingModule.FinishRectangleSelecting);
 
 	-- Hide target box when tool is unequipped
-	GetCore().Connections.HideTargetBoxOnDisable = GetCore().Disabling:connect(TargetingModule.HighlightTarget);
+	Core.Connections.HideTargetBoxOnDisable = Core.Disabling:connect(TargetingModule.HighlightTarget);
 
 	-- Cancel any ongoing selection when tool is unequipped
-	GetCore().Connections.CancelSelectionOnDisable = GetCore().Disabling:connect(TargetingModule.CancelRectangleSelecting);
+	Core.Connections.CancelSelectionOnDisable = Core.Disabling:connect(TargetingModule.CancelRectangleSelecting);
 
 end;
 
@@ -73,7 +77,7 @@ function TargetingModule.SelectTarget()
 	end;
 
 	-- Focus on clicked, selected item
-	if not Selection.Multiselecting and Selection.Find(Target) then
+	if not Selection.Multiselecting and Selection.IsSelected(Target) then
 		Selection.SetFocus(Target);
 		return;
 	end;
@@ -85,7 +89,7 @@ function TargetingModule.SelectTarget()
 	end;
 
 	-- Unselect clicked, selected item if multiselection is enabled
-	if Selection.Multiselecting and Selection.Find(Target) then
+	if Selection.Multiselecting and Selection.IsSelected(Target) then
 		Selection.Remove({ Target }, true);
 		return;
 	end;
@@ -240,9 +244,9 @@ function TargetingModule.FinishRectangleSelecting()
 end;
 
 TargetingModule.TargetChanged:connect(function (Target)
-	
+
 	-- Hide target box if no/unselectable target
-	if not Target or not GetCore().IsSelectable(Target) or GetCore().Selection.Find(Target) then
+	if not Target or not GetCore().IsSelectable(Target) or GetCore().Selection.IsSelected(Target) then
 		TargetingModule.HighlightTarget(nil);
 
 	-- Show target outline if target is selectable

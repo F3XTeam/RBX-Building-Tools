@@ -331,6 +331,9 @@ function CloneSelection()
 		Unapply = function (HistoryRecord)
 			-- Reverts this change
 
+			-- Deselect the clones
+			Selection.Remove(HistoryRecord.Clones, false);
+
 			-- Remove the clones
 			SyncAPI:Invoke('Remove', HistoryRecord.Clones);
 
@@ -400,6 +403,9 @@ function DeleteSelection()
 		Apply = function (HistoryRecord)
 			-- Applies this change
 
+			-- Deselect the parts
+			Selection.Remove(HistoryRecord.Parts, false);
+
 			-- Remove the parts
 			SyncAPI:Invoke('Remove', HistoryRecord.Parts);
 
@@ -407,8 +413,11 @@ function DeleteSelection()
 
 	};
 
+	-- Deselect parts before deleting
+	Selection.Remove(HistoryRecord.Parts, false);
+
 	-- Perform the removal
-	SyncAPI:Invoke('Remove', Selection.Items);
+	SyncAPI:Invoke('Remove', HistoryRecord.Parts);
 
 	-- Register the history record
 	History.Add(HistoryRecord);
@@ -458,7 +467,7 @@ function PrismSelect()
 	for _, Part in pairs(Selection.Items) do
 		local TouchingParts = Part:GetTouchingParts();
 		for _, TouchingPart in pairs(TouchingParts) do
-			if not Selection.Find(TouchingPart) then
+			if not Selection.IsSelected(TouchingPart) then
 				Parts[TouchingPart] = true;
 			end;
 		end;

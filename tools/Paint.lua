@@ -254,7 +254,7 @@ function EnableClickPainting()
 
 	-- Watch out for clicks on selected parts
 	Connections.ClickPainting = Selection.FocusChanged:connect(function (Part)
-		if Selection.Find(Core.Mouse.Target) then
+		if Selection.IsSelected(Core.Mouse.Target) then
 
 			-- Paint the selected parts
 			PaintParts();

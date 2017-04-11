@@ -65,6 +65,19 @@ function ClearConnections()
 
 end;
 
+function ClearConnection(ConnectionKey)
+	-- Clears the given specific connection
+
+	local Connection = Connections[ConnectionKey];
+
+	-- Disconnect the connection if it exists
+	if Connections[ConnectionKey] then
+		Connection:disconnect();
+		Connections[ConnectionKey] = nil;
+	end;
+
+end;
+
 function ShowUI()
 	-- Creates and reveals the UI
 
@@ -183,7 +196,7 @@ function UpdateUI()
 	local CommonY = Support.IdentifyCommonItem(YVariations);
 	local CommonZ = Support.IdentifyCommonItem(ZVariations);
 
-	-- Shortcuts to indicators	
+	-- Shortcuts to indicators
 	local XIndicator = MoveTool.UI.Info.Center.X.TextBox;
 	local YIndicator = MoveTool.UI.Info.Center.Y.TextBox;
 	local ZIndicator = MoveTool.UI.Info.Center.Z.TextBox;
@@ -244,7 +257,7 @@ local AxisMultipliers = {
 
 function AttachHandles(Part, Autofocus)
 	-- Creates and attaches handles to `Part`, and optionally automatically attaches to the focused part
-	
+
 	-- Enable autofocus if requested and not already on
 	if Autofocus and not Connections.AutofocusHandle then
 		Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
@@ -253,8 +266,7 @@ function AttachHandles(Part, Autofocus)
 
 	-- Disable autofocus if not requested and on
 	elseif not Autofocus and Connections.AutofocusHandle then
-		Connections.AutofocusHandle:disconnect();
-		Connections.AutofocusHandle = nil;
+		ClearConnection 'AutofocusHandle';
 	end;
 
 	-- Just attach and show the handles if they already exist
@@ -277,7 +289,6 @@ function AttachHandles(Part, Autofocus)
 	-- Prepare for moving parts when the handle is clicked
 	------------------------------------------------------
 
-	local InitialState = {};
 	local AreaPermissions;
 
 	Handles.MouseButton1Down:connect(function ()
@@ -298,36 +309,6 @@ function AttachHandles(Part, Autofocus)
 		if Core.Mode == 'Tool' then
 			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 		end;
-
-		------------------------------------------------------
-		-- Finalize changes to parts when the handle is let go
-		------------------------------------------------------
-
-		Connections.HandleRelease = UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
-
-			-- Make sure this was button 1 being released, and dragging is ongoing
-			if not HandleDragging or (InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1) then
-				return;
-			end;
-
-			-- Disable dragging
-			HandleDragging = false;
-
-			-- Clear this connection to prevent it from firing again
-			Connections.HandleRelease:disconnect();
-			Connections.HandleRelease = nil;
-
-			-- Make joints, restore original anchor and collision states
-			for _, Part in pairs(Selection.Items) do
-				Part:MakeJoints();
-				Part.CanCollide = InitialState[Part].CanCollide;
-				Part.Anchored = InitialState[Part].Anchored;
-			end;
-
-			-- Register the change
-			RegisterChange();
-
-		end);
 
 	end);
 
@@ -363,6 +344,32 @@ function AttachHandles(Part, Autofocus)
 
 end;
 
+-- Finalize changes to parts when the handle is let go
+Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
+
+	-- Ensure handle dragging is ongoing
+	if not HandleDragging then
+		return;
+	end;
+
+	-- Disable dragging
+	HandleDragging = false;
+
+	-- Clear this connection to prevent it from firing again
+	ClearConnection 'HandleRelease';
+
+	-- Make joints, restore original anchor and collision states
+	for _, Part in pairs(Selection.Items) do
+		Part:MakeJoints();
+		Part.CanCollide = InitialState[Part].CanCollide;
+		Part.Anchored = InitialState[Part].Anchored;
+	end;
+
+	-- Register the change
+	RegisterChange();
+
+end);
+
 function HideHandles()
 	-- Hides the resizing handles
 
@@ -375,11 +382,8 @@ function HideHandles()
 	Handles.Visible = false;
 	Handles.Parent = nil;
 
-	-- Disable handle autofocus if enabled
-	if Connections.AutofocusHandle then
-		Connections.AutofocusHandle:disconnect();
-		Connections.AutofocusHandle = nil;
-	end;
+	-- Disable handle autofocus
+	ClearConnection 'AutofocusHandle';
 
 end;
 
@@ -638,7 +642,7 @@ function TrackChange()
 		Parts = Support.CloneTable(Selection.Items);
 		BeforeCFrame = {};
 		AfterCFrame = {};
-		
+
 		Unapply = function (Record)
 			-- Reverts this change
 
@@ -723,7 +727,7 @@ function EnableDragging()
 		end;
 
 		-- Select the target if it's not selected
-		if not Selection.Find(Core.Mouse.Target) then
+		if not Selection.IsSelected(Core.Mouse.Target) then
 			Selection.Replace({ Core.Mouse.Target }, true);
 		end;
 
@@ -741,7 +745,7 @@ function EnableDragging()
 				SetUpDragging(DragStartTarget, SnapTracking.Enabled and SnappedPoint or nil);
 
 				-- Disable watching for potential dragging
-				Connections.WatchForDrag:disconnect();
+				ClearConnection 'WatchForDrag';
 
 			end;
 
@@ -757,10 +761,7 @@ function EnableDragging()
 		DragStartTarget = nil;
 
 		-- Disconnect dragging-start listeners
-		if Connections.WatchForDrag then
-			Connections.WatchForDrag:disconnect();
-			Connections.WatchForDrag = nil;
-		end;
+		ClearConnection 'WatchForDrag';
 
 	end);
 
@@ -1036,13 +1037,14 @@ end;
 function TranslatePartsRelativeToPart(BasePart, InitialState, Parts)
 	-- Moves the given parts to BasePart's current position, with their original offset from it
 
+	-- Get focused part's position for offsetting
+	local RelativeTo = InitialState[BasePart].CFrame:inverse();
+
+	-- Calculate offset and move each part
 	for _, Part in pairs(Parts) do
 
-		-- Calculate the focused part's position
-		local RelativeTo = InitialState[BasePart].CFrame;
-
 		-- Calculate how far apart we should be from the focused part
-		local Offset = RelativeTo:toObjectSpace(InitialState[Part].CFrame);
+		local Offset = RelativeTo * InitialState[Part].CFrame;
 
 		-- Move relative to the focused part by this part's offset from it
 		Part.CFrame = BasePart.CFrame * Offset;
@@ -1063,13 +1065,11 @@ function FinishDragging()
 	Dragging = false;
 
 	-- Stop the dragging action
-	Connections.Drag:disconnect()
-	Connections.Drag = nil;
+	ClearConnection 'Drag';
 
 	-- Stop, clean up snapping point tracking
 	SnapTracking.StopTracking();
-	Connections.DragSnapping:disconnect();
-	Connections.DragSnapping = nil;
+	ClearConnection 'DragSnapping';
 
 	-- Restore the original state of each part
 	for _, Part in pairs(Selection.Items) do

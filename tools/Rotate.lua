@@ -273,7 +273,6 @@ function AttachHandles(Part, Autofocus)
 	-- Prepare for rotating parts when the handle is clicked
 	--------------------------------------------------------
 
-	local InitialState = {};
 	local AreaPermissions;
 
 	Handles.MouseButton1Down:connect(function ()
@@ -304,38 +303,6 @@ function AttachHandles(Part, Autofocus)
 		elseif RotateTool.Pivot == 'Last' and not CustomPivotPoint then
 			PivotPoint = InitialState[Selection.Focus].CFrame;
 		end;
-
-		------------------------------------------------------
-		-- Finalize changes to parts when the handle is let go
-		------------------------------------------------------
-
-		Connections.HandleRelease = UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
-
-			-- Make sure this was button 1 being released, and rotating is ongoing
-			if not HandleRotating or (InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1) then
-				return;
-			end;
-
-			-- Prevent selection
-			Core.Targeting.CancelSelecting();
-
-			-- Disable rotating
-			HandleRotating = false;
-
-			-- Clear this connection to prevent it from firing again
-			ClearConnection 'HandleRelease';
-
-			-- Make joints, restore original anchor and collision states
-			for _, Part in pairs(Selection.Items) do
-				Part:MakeJoints();
-				Part.CanCollide = InitialState[Part].CanCollide;
-				Part.Anchored = InitialState[Part].Anchored;
-			end;
-
-			-- Register the change
-			RegisterChange();
-
-		end);
 
 	end);
 
@@ -374,6 +341,35 @@ function AttachHandles(Part, Autofocus)
 	end);
 
 end;
+
+-- Finalize changes to parts when the handle is let go
+Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
+
+	-- Make sure rotating is ongoing
+	if not HandleRotating then
+		return;
+	end;
+
+	-- Prevent selection
+	Core.Targeting.CancelSelecting();
+
+	-- Disable rotating
+	HandleRotating = false;
+
+	-- Clear this connection to prevent it from firing again
+	ClearConnection 'HandleRelease';
+
+	-- Make joints, restore original anchor and collision states
+	for _, Part in pairs(Selection.Items) do
+		Part:MakeJoints();
+		Part.CanCollide = InitialState[Part].CanCollide;
+		Part.Anchored = InitialState[Part].Anchored;
+	end;
+
+	-- Register the change
+	RegisterChange();
+
+end);
 
 function HideHandles()
 	-- Hides the resizing handles
