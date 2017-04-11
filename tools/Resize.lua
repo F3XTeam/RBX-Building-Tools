@@ -42,6 +42,7 @@ function ResizeTool.Unequip()
 	HideHandles();
 	ClearConnections();
 	SnapTracking.StopTracking();
+	FinishSnapping();
 
 end;
 
@@ -264,7 +265,6 @@ function ShowHandles()
 	-- Prepare for resizing parts when the handle is clicked
 	--------------------------------------------------------
 
-	local InitialState = {};
 	local AreaPermissions;
 
 	Handles.MouseButton1Down:connect(function ()
@@ -285,38 +285,6 @@ function ShowHandles()
 		if Core.Mode == 'Tool' then
 			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 		end;
-
-		------------------------------------------------------
-		-- Finalize changes to parts when the handle is let go
-		------------------------------------------------------
-
-		Connections.HandleRelease = UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
-
-			-- Make sure this was button 1 being released, and handle resizing is ongoing
-			if not HandleResizing or (InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1) then
-				return;
-			end;
-
-			-- Disable resizing
-			HandleResizing = false;
-
-			-- Prevent selection
-			Core.Targeting.CancelSelecting();
-
-			-- Clear this connection to prevent it from firing again
-			ClearConnection 'HandleRelease';
-
-			-- Make joints, restore original anchor and collision states
-			for _, Part in pairs(Selection.Items) do
-				Part:MakeJoints();
-				Part.CanCollide = InitialState[Part].CanCollide;
-				Part.Anchored = InitialState[Part].Anchored;
-			end;
-
-			-- Register the change
-			RegisterChange();
-
-		end);
 
 	end);
 
@@ -358,6 +326,36 @@ function ShowHandles()
 	end);
 
 end;
+
+
+-- Finalize changes to parts when the handle is let go
+Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
+
+	-- Ensure handle resizing is ongoing
+	if not HandleResizing then
+		return;
+	end;
+
+	-- Disable resizing
+	HandleResizing = false;
+
+	-- Prevent selection
+	Core.Targeting.CancelSelecting();
+
+	-- Clear this connection to prevent it from firing again
+	ClearConnection 'HandleRelease';
+
+	-- Make joints, restore original anchor and collision states
+	for _, Part in pairs(Selection.Items) do
+		Part:MakeJoints();
+		Part.CanCollide = InitialState[Part].CanCollide;
+		Part.Anchored = InitialState[Part].Anchored;
+	end;
+
+	-- Register the change
+	RegisterChange();
+
+end);
 
 function HideHandles()
 	-- Hides the resizing handles
@@ -938,30 +936,35 @@ function StartSnapping()
 
 	end);
 
-	-- Listen for the end of the snapping
-	Connections.SnapDragEnd = Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
-
-		-- If destination stage was reached, restore the selection's original state
-		if SnappingStage == 'Destination' then
-			for Part, PartState in pairs(SnappingStartSelectionState) do
-				Part:MakeJoints();
-				Part.CanCollide = PartState.CanCollide;
-				Part.Anchored = PartState.Anchored;
-			end;
-		end;
-
-		-- Finish snapping
-		FinishSnapping();
-
-	end);
-
 end;
 
-function FinishSnapping()
+-- Stop snapping whenever mouse is released
+Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 
 	-- Ensure snapping is ongoing
 	if not SnappingStage then
 		return;
+	end;
+
+	-- Finish snapping
+	FinishSnapping();
+
+end);
+
+
+function FinishSnapping()
+	-- Cleans up and finalizes the snapping operation
+
+	-- Ensure snapping is ongoing
+	if not SnappingStage then
+		return;
+	end;
+
+	-- Restore the selection's original state
+	for Part, PartState in pairs(SnappingStartSelectionState) do
+		Part:MakeJoints();
+		Part.CanCollide = PartState.CanCollide;
+		Part.Anchored = PartState.Anchored;
 	end;
 
 	-- Disable any snapping stage

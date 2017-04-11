@@ -65,6 +65,19 @@ function ClearConnections()
 
 end;
 
+function ClearConnection(ConnectionKey)
+	-- Clears the given specific connection
+
+	local Connection = Connections[ConnectionKey];
+
+	-- Disconnect the connection if it exists
+	if Connections[ConnectionKey] then
+		Connection:disconnect();
+		Connections[ConnectionKey] = nil;
+	end;
+
+end;
+
 function ShowUI()
 	-- Creates and reveals the UI
 
@@ -253,8 +266,7 @@ function AttachHandles(Part, Autofocus)
 
 	-- Disable autofocus if not requested and on
 	elseif not Autofocus and Connections.AutofocusHandle then
-		Connections.AutofocusHandle:disconnect();
-		Connections.AutofocusHandle = nil;
+		ClearConnection 'AutofocusHandle';
 	end;
 
 	-- Just attach and show the handles if they already exist
@@ -277,7 +289,6 @@ function AttachHandles(Part, Autofocus)
 	-- Prepare for moving parts when the handle is clicked
 	------------------------------------------------------
 
-	local InitialState = {};
 	local AreaPermissions;
 
 	Handles.MouseButton1Down:connect(function ()
@@ -298,36 +309,6 @@ function AttachHandles(Part, Autofocus)
 		if Core.Mode == 'Tool' then
 			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 		end;
-
-		------------------------------------------------------
-		-- Finalize changes to parts when the handle is let go
-		------------------------------------------------------
-
-		Connections.HandleRelease = UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
-
-			-- Make sure this was button 1 being released, and dragging is ongoing
-			if not HandleDragging or (InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1) then
-				return;
-			end;
-
-			-- Disable dragging
-			HandleDragging = false;
-
-			-- Clear this connection to prevent it from firing again
-			Connections.HandleRelease:disconnect();
-			Connections.HandleRelease = nil;
-
-			-- Make joints, restore original anchor and collision states
-			for _, Part in pairs(Selection.Items) do
-				Part:MakeJoints();
-				Part.CanCollide = InitialState[Part].CanCollide;
-				Part.Anchored = InitialState[Part].Anchored;
-			end;
-
-			-- Register the change
-			RegisterChange();
-
-		end);
 
 	end);
 
@@ -363,6 +344,32 @@ function AttachHandles(Part, Autofocus)
 
 end;
 
+-- Finalize changes to parts when the handle is let go
+Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
+
+	-- Ensure handle dragging is ongoing
+	if not HandleDragging then
+		return;
+	end;
+
+	-- Disable dragging
+	HandleDragging = false;
+
+	-- Clear this connection to prevent it from firing again
+	ClearConnection 'HandleRelease';
+
+	-- Make joints, restore original anchor and collision states
+	for _, Part in pairs(Selection.Items) do
+		Part:MakeJoints();
+		Part.CanCollide = InitialState[Part].CanCollide;
+		Part.Anchored = InitialState[Part].Anchored;
+	end;
+
+	-- Register the change
+	RegisterChange();
+
+end);
+
 function HideHandles()
 	-- Hides the resizing handles
 
@@ -375,11 +382,8 @@ function HideHandles()
 	Handles.Visible = false;
 	Handles.Parent = nil;
 
-	-- Disable handle autofocus if enabled
-	if Connections.AutofocusHandle then
-		Connections.AutofocusHandle:disconnect();
-		Connections.AutofocusHandle = nil;
-	end;
+	-- Disable handle autofocus
+	ClearConnection 'AutofocusHandle';
 
 end;
 
@@ -741,7 +745,7 @@ function EnableDragging()
 				SetUpDragging(DragStartTarget, SnapTracking.Enabled and SnappedPoint or nil);
 
 				-- Disable watching for potential dragging
-				Connections.WatchForDrag:disconnect();
+				ClearConnection 'WatchForDrag';
 
 			end;
 
@@ -757,10 +761,7 @@ function EnableDragging()
 		DragStartTarget = nil;
 
 		-- Disconnect dragging-start listeners
-		if Connections.WatchForDrag then
-			Connections.WatchForDrag:disconnect();
-			Connections.WatchForDrag = nil;
-		end;
+		ClearConnection 'WatchForDrag';
 
 	end);
 
@@ -1064,13 +1065,11 @@ function FinishDragging()
 	Dragging = false;
 
 	-- Stop the dragging action
-	Connections.Drag:disconnect()
-	Connections.Drag = nil;
+	ClearConnection 'Drag';
 
 	-- Stop, clean up snapping point tracking
 	SnapTracking.StopTracking();
-	Connections.DragSnapping:disconnect();
-	Connections.DragSnapping = nil;
+	ClearConnection 'DragSnapping';
 
 	-- Restore the original state of each part
 	for _, Part in pairs(Selection.Items) do
