@@ -756,7 +756,7 @@ function StartSnapping()
 	-- Only enable corner snapping
 	SnapTracking.TrackEdgeMidpoints = false;
 	SnapTracking.TrackFaceCentroids = false;
-	SnapTracking.TargetFilter = Selection.Find;
+	SnapTracking.TargetFilter = Selection.IsSelected;
 
 	-- Trigger the PointSnapped event when a new point is snapped
 	SnapTracking.StartTracking(function (NewPoint)

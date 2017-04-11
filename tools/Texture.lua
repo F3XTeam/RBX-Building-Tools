@@ -145,7 +145,7 @@ function EnableSurfaceClickSelection()
 
 	-- Add the new click connection
 	Connections.SurfaceClickSelection = UserInputService.InputEnded:connect(function (Input, GameProcessedEvent)
-		if not GameProcessedEvent and Input.UserInputType == Enum.UserInputType.MouseButton1 and Selection.Find(Core.Mouse.Target) then
+		if not GameProcessedEvent and Input.UserInputType == Enum.UserInputType.MouseButton1 and Selection.IsSelected(Core.Mouse.Target) then
 			SetFace(Core.Mouse.TargetSurface);
 		end;
 	end);

@@ -173,7 +173,7 @@ function UpdateUI()
 		end;
 
 	end;
-	
+
 	-- Identify common surface type in selection
 	local CommonSurfaceType = Support.IdentifyCommonItem(SurfaceTypeVariations);
 
@@ -215,7 +215,7 @@ function SetSurfaceType(SurfaceType)
 			Part.BackSurface = SurfaceType;
 			Part.LeftSurface = SurfaceType;
 			Part.RightSurface = SurfaceType;
-		
+
 		-- Change specific selected surface
 		else
 			Part[SurfaceTool.Surface .. 'Surface'] = SurfaceType;
@@ -233,7 +233,7 @@ function EnableSurfaceSelection()
 
 	-- Watch out for clicks on selected parts
 	Connections.SurfaceSelection = Selection.FocusChanged:connect(function (Part)
-		if Selection.Find(Core.Mouse.Target) then
+		if Selection.IsSelected(Core.Mouse.Target) then
 
 			-- Set the surface option to the target surface
 			SetSurface(Core.Mouse.TargetSurface.Name);
@@ -302,7 +302,7 @@ function TrackChange()
 			Surfaces.Back = Part.BackSurface;
 			Surfaces.Left = Part.LeftSurface;
 			Surfaces.Right = Part.RightSurface;
-		
+
 		-- Record specific selected surface
 		else
 			Surfaces[SurfaceTool.Surface] = Part[SurfaceTool.Surface .. 'Surface'];
@@ -336,7 +336,7 @@ function RegisterChange()
 			Surfaces.Back = Part.BackSurface;
 			Surfaces.Left = Part.LeftSurface;
 			Surfaces.Right = Part.RightSurface;
-		
+
 		-- Record specific selected surface
 		else
 			Surfaces[SurfaceTool.Surface] = Part[SurfaceTool.Surface .. 'Surface'];

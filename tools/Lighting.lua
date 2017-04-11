@@ -90,7 +90,7 @@ function EnableSurfaceClickSelection(LightType)
 
 	-- Add the new click connection
 	Connections.SurfaceClickSelection = UserInputService.InputEnded:connect(function (Input, GameProcessedEvent)
-		if not GameProcessedEvent and Input.UserInputType == Enum.UserInputType.MouseButton1 and Selection.Find(Core.Mouse.Target) then
+		if not GameProcessedEvent and Input.UserInputType == Enum.UserInputType.MouseButton1 and Selection.IsSelected(Core.Mouse.Target) then
 			SetSurface(LightType, Core.Mouse.TargetSurface);
 		end;
 	end);
@@ -155,7 +155,7 @@ function EnableLightSettingsUI(LightSettingsUI)
 
 	-- Enable light type-specific features
 	if LightType == 'SpotLight' or LightType == 'SurfaceLight' then
-		
+
 		-- Create a surface selection dropdown
 		Surfaces = { 'Top', 'Bottom', 'Front', 'Back', 'Left', 'Right' };
 		local SurfaceDropdown = Core.Cheer(Options.SideOption.Dropdown).Start(Surfaces, '', function (Surface)
@@ -292,7 +292,7 @@ function CloseLightOptions(Exception)
 			),
 			Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true
 		);
-		
+
 		-- Make sure to not resize the exempt light type UI
 		if not Exception or Exception and LightType ~= Exception then
 
@@ -415,7 +415,7 @@ function UpdateUI()
 			-- Update the surface dropdown input
 			local Face = Support.IdentifyCommonProperty(Lights, 'Face');
 			SideDropdown.SetOption(Face and Face.Name or '*');
-			
+
 		end;
 
 		-- Update special color input

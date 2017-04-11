@@ -6,6 +6,7 @@ local Support = require(script.Parent.SupportLibrary);
 -- Core selection system
 Selection = {};
 Selection.Items = {};
+Selection.ItemIndex = {};
 Selection.Outlines = {};
 Selection.Color = BrickColor.new 'Cyan';
 Selection.Multiselecting = false;
@@ -20,51 +21,38 @@ Selection.Changed = RbxUtility.CreateSignal();
 -- Item existence listeners
 local Listeners = {};
 
-function Selection.Find(Needle)
-	-- Return `Needle`'s index in the selection, or `nil` if not found
+function Selection.IsSelected(Item)
+	-- Returns whether `Item` is selected or not
 
-	-- Go through each selected item
-	for Index, Item in pairs(Selection.Items) do
+	-- Check and return item presence in index
+	return Selection.ItemIndex[Item];
 
-		-- Return the index if a match is found
-		if Item == Needle then
-			return Index;
-		end;
-
-	end;
-
-	-- Return `nil` if no match is found
-	return nil;
 end;
 
 function Selection.Add(Items, RegisterHistory)
 	-- Adds the given items to the selection
 
-	local SelectableItems = {};
+	-- Get core API
+	local Core = GetCore();
 
 	-- Go through and validate each given item
+	local SelectableItems = {};
 	for _, Item in pairs(Items) do
 
 		-- Make sure each item is valid and not already selected
-		if GetCore().IsSelectable(Item) and not Selection.Find(Item) then
-
-			-- Queue each part to be added into the selection
+		if Core.IsSelectable(Item) and not Selection.ItemIndex[Item] then
 			table.insert(SelectableItems, Item);
-
 		end;
 
 	end;
 
-	local OldSelection = Support.CloneTable(Selection.Items);
+	local OldSelection = Selection.Items;
 
 	-- Go through the valid new selection items
 	for _, Item in pairs(SelectableItems) do
 
 		-- Add each valid item to the selection
-		table.insert(Selection.Items, Item);
-
-		-- Add a selection box
-		CreateSelectionBox(Item);
+		Selection.ItemIndex[Item] = true;
 
 		-- Deselect items that are destroyed
 		Listeners[Item] = Item.AncestryChanged:connect(function (Object, Parent)
@@ -75,10 +63,16 @@ function Selection.Add(Items, RegisterHistory)
 
 	end;
 
+	-- Update selected item list
+	Selection.Items = Support.Keys(Selection.ItemIndex);
+
 	-- Create a history record for this selection change, if requested
 	if RegisterHistory and #SelectableItems > 0 then
 		TrackSelectionChange(OldSelection);
 	end;
+
+	-- Create selection boxes for the selection
+	CreateSelectionBoxes(SelectableItems);
 
 	-- Fire relevant events
 	Selection.ItemsAdded:fire(SelectableItems);
@@ -89,34 +83,36 @@ end;
 function Selection.Remove(Items, RegisterHistory)
 	-- Removes the given items from the selection
 
-	local DeselectableItems = {};
-
 	-- Go through and validate each given item
+	local DeselectableItems = {};
 	for _, Item in pairs(Items) do
 
 		-- Make sure each item is actually selected
-		if Selection.Find(Item) then
+		if Selection.IsSelected(Item) then
 			table.insert(DeselectableItems, Item);
 		end;
 
 	end;
 
-	local OldSelection = Support.CloneTable(Selection.Items);
+	local OldSelection = Selection.Items;
 
 	-- Go through the valid deselectable items
 	for _, Item in pairs(DeselectableItems) do
 
-		-- Clear item's selection box
-		RemoveSelectionBox(Item);
-
 		-- Remove item from selection
-		table.remove(Selection.Items, Selection.Find(Item));
+		Selection.ItemIndex[Item] = nil;
 
 		-- Stop tracking item's parent
 		Listeners[Item]:disconnect();
 		Listeners[Item] = nil;
 
 	end;
+
+	-- Remove selection boxes from deselected items
+	RemoveSelectionBoxes(DeselectableItems);
+
+	-- Update selected item list
+	Selection.Items = Support.Keys(Selection.ItemIndex);
 
 	-- Create a history record for this selection change, if requested
 	if RegisterHistory and #DeselectableItems > 0 then
@@ -155,7 +151,7 @@ function Selection.SetFocus(Item)
 	-- Selects `Item` as the focused selection item
 
 	-- Make sure the item is selected or is `nil`
-	if not Selection.Find(Item) and Item ~= nil then
+	if not Selection.IsSelected(Item) and Item ~= nil then
 		return;
 	end;
 
@@ -189,47 +185,72 @@ function GetCore()
 	return require(script.Parent.Core);
 end;
 
-function CreateSelectionBox(Item)
-	-- Creates a SelectionBox for the given item
+function CreateSelectionBoxes(Items)
+	-- Creates a SelectionBox for each given item
+
+	-- Get the core API
+	local Core = GetCore();
 
 	-- Only create selection boxes if in tool mode
+	if Core.Mode ~= 'Tool' then
+		return;
+	end;
+
+	-- Track new selection boxes
+	local SelectionBoxes = {};
+
+	-- Create an outline for each part
+	for _, Item in pairs(Items) do
+
+		-- Avoid duplicate selection boxes
+		if not Selection.Outlines[Item] then
+
+			-- Create the selection box
+			local SelectionBox = Instance.new 'SelectionBox';
+			SelectionBox.Name = 'BTSelectionBox';
+			SelectionBox.Color = Selection.Color;
+			SelectionBox.Adornee = Item;
+			SelectionBox.LineThickness = 0.025;
+			SelectionBox.Transparency = 0.5;
+
+			-- Register the outline
+			Selection.Outlines[Item] = SelectionBox;
+			table.insert(SelectionBoxes, SelectionBox);
+
+		end;
+
+	end;
+
+	-- Parent the selection boxes
+	for _, SelectionBox in pairs(SelectionBoxes) do
+		SelectionBox.Parent = Core.UIContainer;
+	end;
+
+end;
+
+function RemoveSelectionBoxes(Items)
+	-- Removes the given item's selection box
+
+	-- Only proceed if in tool mode
 	if GetCore().Mode ~= 'Tool' then
 		return;
 	end;
 
-	-- Avoid duplicate selection boxes
-	if Selection.Outlines[Item] then
-		return;
+	-- Remove each item's outline
+	for _, Item in pairs(Items) do
+
+		-- Get the item's selection box
+		local SelectionBox = Selection.Outlines[Item];
+
+		-- Remove the selection box if found
+		if SelectionBox then
+			SelectionBox:Destroy();
+		end;
+
+		-- Deregister the selection box
+		Selection.Outlines[Item] = nil;
+
 	end;
-
-	-- Create the selection box
-	local SelectionBox = RbxUtility.Create 'SelectionBox' {
-		Name = 'BTSelectionBox';
-		Color = Selection.Color;
-		Adornee = Item;
-		LineThickness = 0.025;
-		Transparency = 0.5;
-	};
-
-	-- Register the selection box
-	SelectionBox.Parent = GetCore().UIContainer;
-	Selection.Outlines[Item] = SelectionBox;
-
-end;
-
-function RemoveSelectionBox(Item)
-	-- Removes the given item's selection box
-
-	-- Get the item's selection box
-	local SelectionBox = Selection.Outlines[Item];
-
-	-- Remove the selection box if found
-	if SelectionBox then
-		SelectionBox:Destroy();
-	end;
-
-	-- Deregister the selection box
-	Selection.Outlines[Item] = nil;
 
 end;
 
@@ -332,7 +353,7 @@ function TrackSelectionChange(OldSelection)
 	History.Add({
 
 		Before = OldSelection;
-		After = Support.CloneTable(Selection.Items);
+		After = Selection.Items;
 
 		Unapply = function (HistoryRecord)
 			-- Reverts this change

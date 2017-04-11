@@ -183,7 +183,7 @@ function UpdateUI()
 	local CommonY = Support.IdentifyCommonItem(YVariations);
 	local CommonZ = Support.IdentifyCommonItem(ZVariations);
 
-	-- Shortcuts to indicators	
+	-- Shortcuts to indicators
 	local XIndicator = MoveTool.UI.Info.Center.X.TextBox;
 	local YIndicator = MoveTool.UI.Info.Center.Y.TextBox;
 	local ZIndicator = MoveTool.UI.Info.Center.Z.TextBox;
@@ -244,7 +244,7 @@ local AxisMultipliers = {
 
 function AttachHandles(Part, Autofocus)
 	-- Creates and attaches handles to `Part`, and optionally automatically attaches to the focused part
-	
+
 	-- Enable autofocus if requested and not already on
 	if Autofocus and not Connections.AutofocusHandle then
 		Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
@@ -638,7 +638,7 @@ function TrackChange()
 		Parts = Support.CloneTable(Selection.Items);
 		BeforeCFrame = {};
 		AfterCFrame = {};
-		
+
 		Unapply = function (Record)
 			-- Reverts this change
 
@@ -723,7 +723,7 @@ function EnableDragging()
 		end;
 
 		-- Select the target if it's not selected
-		if not Selection.Find(Core.Mouse.Target) then
+		if not Selection.IsSelected(Core.Mouse.Target) then
 			Selection.Replace({ Core.Mouse.Target }, true);
 		end;
 
@@ -1036,13 +1036,14 @@ end;
 function TranslatePartsRelativeToPart(BasePart, InitialState, Parts)
 	-- Moves the given parts to BasePart's current position, with their original offset from it
 
+	-- Get focused part's position for offsetting
+	local RelativeTo = InitialState[BasePart].CFrame:inverse();
+
+	-- Calculate offset and move each part
 	for _, Part in pairs(Parts) do
 
-		-- Calculate the focused part's position
-		local RelativeTo = InitialState[BasePart].CFrame;
-
 		-- Calculate how far apart we should be from the focused part
-		local Offset = RelativeTo:toObjectSpace(InitialState[Part].CFrame);
+		local Offset = RelativeTo * InitialState[Part].CFrame;
 
 		-- Move relative to the focused part by this part's offset from it
 		Part.CFrame = BasePart.CFrame * Offset;

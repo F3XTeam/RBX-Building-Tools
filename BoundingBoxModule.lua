@@ -1,8 +1,17 @@
 -- Libraries
-Core = require(script.Parent.Core);
-Support = Core.Support;
+local Core = require(script.Parent.Core);
+local Support = Core.Support;
 
-BoundingBoxModule = {};
+-- Initialize module
+local BoundingBoxModule = {};
+
+-- Initialize internal module state
+local StaticParts = {};
+local StaticPartsIndex = {};
+local StaticPartMonitors = {};
+local RecalculateStaticExtents = true;
+local AggregatingStaticParts = false;
+local StaticPartAggregators = {};
 
 function BoundingBoxModule.StartBoundingBox(HandleAttachmentCallback)
 	-- Creates and starts a selection bounding box
@@ -116,109 +125,104 @@ function BoundingBoxModule.ClearBoundingBox()
 
 end;
 
-StaticParts = {};
-StaticPartMonitors = {};
-RecalculateStaticExtents = true;
-AggregatingStaticParts = false;
-StaticPartAggregators = {};
+function AddStaticParts(Parts)
+	-- Adds the static parts to the list for state tracking
 
-function AddStaticPart(Part)
-	-- Adds the static part to the list for state tracking
+	-- Add each given part
+	for _, Part in pairs(Parts) do
 
-	-- Make sure the part isn't already in the list
-	if Support.IsInTable(StaticParts, Part) then
-		return;
-	end;
+		-- Ensure part isn't already indexed, and verify it is static
+		if not StaticPartsIndex[Part] and Part.Anchored then
 
-	-- Add the part to the list
-	table.insert(StaticParts, Part);
+			-- Add part to static index
+			StaticPartsIndex[Part] = true;
 
-	-- Starts monitoring the part
-	StaticPartMonitors[Part] = Part.Changed:connect(function (Property)
+			-- Start monitoring part for changes
+			StaticPartMonitors[Part] = Part.Changed:connect(function (Property)
 
-		if Property == 'CFrame' or Property == 'Size' then
-			RecalculateStaticExtents = true;
+				-- Trigger static extent recalculations on position or size changes
+				if Property == 'CFrame' or Property == 'Size' then
+					RecalculateStaticExtents = true;
 
-		elseif Property == 'Anchored' and not Part.Anchored then
-			RemoveStaticPart(Part);
+				-- Remove part from static index if it becomes mobile
+				elseif Property == 'Anchored' and not Part.Anchored then
+					RemoveStaticParts { Part };
+				end;
+
+			end);
+
 		end;
 
-	end);
+	end;
 
-	-- Recalculate the extents including this new part
+	-- Update the static parts list
+	StaticParts = Support.Keys(StaticPartsIndex);
+
+	-- Recalculate static extents to include added parts
 	RecalculateStaticExtents = true;
 
 end;
 
-function RemoveStaticPart(Part)
-	-- Removes the part from the static part tracking list
+function RemoveStaticParts(Parts)
+	-- Removes the given parts from the static parts index
 
-	-- Get the part's key in the list
-	local PartKey = Support.FindTableOccurrence(StaticParts, Part);
+	-- Remove each given part
+	for _, Part in pairs(Parts) do
 
-	-- Remove it from the list
-	if PartKey then
-		StaticParts[PartKey] = nil;
+		-- Remove part from static parts index
+		StaticPartsIndex[Part] = nil;
+
+		-- Clean up the part's change monitors
+		if StaticPartMonitors[Part] then
+			StaticPartMonitors[Part]:disconnect();
+			StaticPartMonitors[Part] = nil;
+		end;
+
 	end;
 
-	-- Clear its state monitors
-	if StaticPartMonitors[Part] then
-		StaticPartMonitors[Part]:disconnect();
-		StaticPartMonitors[Part] = nil;
-	end;
+	-- Update the static parts list
+	StaticParts = Support.Keys(StaticPartsIndex);
+
+	-- Recalculate static extents to exclude removed parts
+	RecalculateStaticExtents = true;
 
 end;
 
 function StartAggregatingStaticParts()
 	-- Begins to look for and identify static parts
 
-	-- Add current static parts
-	for _, Part in pairs(Core.Selection.Items) do
-		if Part.Anchored then
-			AddStaticPart(Part);
-		end;
+	-- Add current qualifying parts to static parts index
+	AddStaticParts(Core.Selection.Items);
 
-		-- Watch for parts that become anchored
+	-- Watch for parts that become static
+	for _, Part in pairs(Core.Selection.Items) do
 		table.insert(StaticPartAggregators, Part.Changed:connect(function (Property)
 			if Property == 'Anchored' and Part.Anchored then
-				AddStaticPart(Part);
+				AddStaticParts { Part };
 			end;
 		end));
 	end;
 
-	-- Add newly selected anchored parts
+	-- Watch newly selected parts
 	table.insert(StaticPartAggregators, Core.Selection.ItemsAdded:connect(function (Parts)
 
-		-- Go through each selected part
+		-- Add qualifying parts to static parts index
+		AddStaticParts(Parts);
+
+		-- Watch for parts that become anchored
 		for _, Part in pairs(Parts) do
-
-			-- Only add anchored, static parts
-			if Part.Anchored then
-				AddStaticPart(Part);
-			end;
-
-			-- Watch for parts that become anchored
 			table.insert(StaticPartAggregators, Part.Changed:connect(function (Property)
 				if Property == 'Anchored' and Part.Anchored then
-					AddStaticPart(Part);
+					AddStaticParts { Part };
 				end;
 			end));
-
 		end;
 
 	end));
 
-	-- Remove deselected parts
+	-- Remove deselected parts from static parts index
 	table.insert(StaticPartAggregators, Core.Selection.ItemsRemoved:connect(function (Parts)
-
-		-- Remove the items
-		for _, Part in pairs(Parts) do
-			RemoveStaticPart(Part);
-		end;
-
-		-- Recalculate static extents without the removed parts
-		RecalculateStaticExtents = true;
-
+		RemoveStaticParts(Parts);
 	end));
 
 end;
@@ -240,6 +244,7 @@ function StopAggregatingStaticParts()
 
 	-- Clear all static part information
 	StaticParts = {};
+	StaticPartsIndex = {};
 	BoundingBoxModule.StaticExtents = nil;
 
 end;
@@ -250,6 +255,7 @@ local table_insert = table.insert;
 local CFrame_toWorldSpace = CFrame.new().toWorldSpace;
 local math_min = math.min;
 local math_max = math.max;
+local unpack = unpack;
 
 function BoundingBoxModule.CalculateExtents(Items, StaticExtents, ExtentsOnly)
 	-- Returns the size and position of a box covering all items in `Items`
@@ -279,45 +285,45 @@ function BoundingBoxModule.CalculateExtents(Items, StaticExtents, ExtentsOnly)
 			local Corner;
 			local XPoints, YPoints, ZPoints = {}, {}, {};
 
-			Corner = CFrame_toWorldSpace(PartCFrame, CFrame_new(SizeX, SizeY, SizeZ));
-			table_insert(XPoints, Corner['x']);
-			table_insert(YPoints, Corner['y']);
-			table_insert(ZPoints, Corner['z']);
-			
-			Corner = CFrame_toWorldSpace(PartCFrame, CFrame_new(-SizeX, SizeY, SizeZ));
-			table_insert(XPoints, Corner['x']);
-			table_insert(YPoints, Corner['y']);
-			table_insert(ZPoints, Corner['z']);
+			Corner = PartCFrame * CFrame_new(SizeX, SizeY, SizeZ);
+			table_insert(XPoints, Corner.x);
+			table_insert(YPoints, Corner.y);
+			table_insert(ZPoints, Corner.z);
 
-			Corner = CFrame_toWorldSpace(PartCFrame, CFrame_new(SizeX, -SizeY, SizeZ));
-			table_insert(XPoints, Corner['x']);
-			table_insert(YPoints, Corner['y']);
-			table_insert(ZPoints, Corner['z']);
-			
-			Corner = CFrame_toWorldSpace(PartCFrame, CFrame_new(SizeX, SizeY, -SizeZ));
-			table_insert(XPoints, Corner['x']);
-			table_insert(YPoints, Corner['y']);
-			table_insert(ZPoints, Corner['z']);
-			
-			Corner = CFrame_toWorldSpace(PartCFrame, CFrame_new(-SizeX, SizeY, -SizeZ));
-			table_insert(XPoints, Corner['x']);
-			table_insert(YPoints, Corner['y']);
-			table_insert(ZPoints, Corner['z']);
-			
-			Corner = CFrame_toWorldSpace(PartCFrame, CFrame_new(-SizeX, -SizeY, SizeZ));
-			table_insert(XPoints, Corner['x']);
-			table_insert(YPoints, Corner['y']);
-			table_insert(ZPoints, Corner['z']);
-			
-			Corner = CFrame_toWorldSpace(PartCFrame, CFrame_new(SizeX, -SizeY, -SizeZ));
-			table_insert(XPoints, Corner['x']);
-			table_insert(YPoints, Corner['y']);
-			table_insert(ZPoints, Corner['z']);
-			
-			Corner = CFrame_toWorldSpace(PartCFrame, CFrame_new(-SizeX, -SizeY, -SizeZ));
-			table_insert(XPoints, Corner['x']);
-			table_insert(YPoints, Corner['y']);
-			table_insert(ZPoints, Corner['z']);
+			Corner = PartCFrame * CFrame_new(-SizeX, SizeY, SizeZ);
+			table_insert(XPoints, Corner.x);
+			table_insert(YPoints, Corner.y);
+			table_insert(ZPoints, Corner.z);
+
+			Corner = PartCFrame * CFrame_new(SizeX, -SizeY, SizeZ);
+			table_insert(XPoints, Corner.x);
+			table_insert(YPoints, Corner.y);
+			table_insert(ZPoints, Corner.z);
+
+			Corner = PartCFrame * CFrame_new(SizeX, SizeY, -SizeZ);
+			table_insert(XPoints, Corner.x);
+			table_insert(YPoints, Corner.y);
+			table_insert(ZPoints, Corner.z);
+
+			Corner = PartCFrame * CFrame_new(-SizeX, SizeY, -SizeZ);
+			table_insert(XPoints, Corner.x);
+			table_insert(YPoints, Corner.y);
+			table_insert(ZPoints, Corner.z);
+
+			Corner = PartCFrame * CFrame_new(-SizeX, -SizeY, SizeZ);
+			table_insert(XPoints, Corner.x);
+			table_insert(YPoints, Corner.y);
+			table_insert(ZPoints, Corner.z);
+
+			Corner = PartCFrame * CFrame_new(SizeX, -SizeY, -SizeZ);
+			table_insert(XPoints, Corner.x);
+			table_insert(YPoints, Corner.y);
+			table_insert(ZPoints, Corner.z);
+
+			Corner = PartCFrame * CFrame_new(-SizeX, -SizeY, -SizeZ);
+			table_insert(XPoints, Corner.x);
+			table_insert(YPoints, Corner.y);
+			table_insert(ZPoints, Corner.z);
 
 			-- Reduce gathered points to min/max extents
 			MinX = math_min(MinX, unpack(XPoints));
