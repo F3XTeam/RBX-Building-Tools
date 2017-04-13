@@ -51,9 +51,6 @@ function ClearConnections()
 
 end;
 
--- Import the color list
-local Colors = require(script:WaitForChild 'Colors');
-
 function ShowUI()
 	-- Creates and reveals the UI
 
@@ -76,39 +73,24 @@ function ShowUI()
 	PaintTool.UI.Parent = Core.UI;
 	PaintTool.UI.Visible = true;
 
-	-- Populate the palette
-	local Columns = 11;
-	for Index, Color in ipairs(Colors) do
+	-- Track palette buttons
+	PaletteButtons = {};
 
-		-- Get the BrickColor for this color
-		local Color = BrickColor.new(Color);
+	-- Enable the palette
+	for _, Column in pairs(PaintTool.UI.Palette:GetChildren()) do
+		for _, Button in pairs(Column:GetChildren()) do
+			if Button.ClassName == 'TextButton' then
 
-		-- Calculate the column and row for this button
-		local Column = (Index - 1) % Columns;
-		local Row = math.floor((Index - 1) / Columns);
+				-- Recolor the selection when the button is clicked
+				Button.MouseButton1Click:connect(function ()
+					SetColor(BrickColor.new(Button.Name));
+				end);
 
-		-- Create the button for this color
-		local Button = Create 'TextButton' {
-			Parent = PaintTool.UI.Palette;
-			Name = Color.Name;
-			BackgroundColor3 = Color.Color;
-			Size = UDim2.new(1 / Columns, 0, 1 / Columns, 0);
-			Position = UDim2.new(Column * (1 / Columns), 0, Row * (1 / Columns), 0);
-			SizeConstraint = Enum.SizeConstraint.RelativeXX;
-			BorderSizePixel = 0;
-			TextColor3 = Color3.new(1, 1, 1);
-			Text = '';
-			FontSize = Enum.FontSize.Size8;
-			Font = Enum.Font.ArialBold;
-			TextStrokeTransparency = 0.15;
-			TextStrokeColor3 = Color3.new(0, 0, 0);
-		};
+				-- Register the button
+				PaletteButtons[Button.Name] = Button;
 
-		-- Recolor the selection when the button is clicked
-		Button.MouseButton1Click:connect(function ()
-			SetColor(Color);
-		end);
-
+			end;
+		end;
 	end;
 
 	-- Paint selection when current color indicator is clicked
@@ -148,13 +130,15 @@ function UpdateUI()
 	-----------------------------------------
 
 	-- Clear old color indicators
-	for _, Button in pairs(PaintTool.UI.Palette:GetChildren()) do
+	for Color, Button in pairs(PaletteButtons) do
 		Button.Text = '';
 	end;
 
 	-- Indicate the variety of colors in the selection
 	for _, Part in pairs(Selection.Items) do
-		PaintTool.UI.Palette[Part.BrickColor.Name].Text = '-';
+		if PaletteButtons[Part.BrickColor.Name] then
+			PaletteButtons[Part.BrickColor.Name].Text = '+';
+		end;
 	end;
 
 end;
@@ -173,7 +157,7 @@ function SetColor(Color)
 	ColorLabel.Visible = true;
 	ColorLabel.Text = Color.Name;
 	ColorSquare.BackgroundColor3 = Color.Color;
-	ColorSquare.Position = UDim2.new(0.5, -ColorLabel.TextBounds.X / 2 - 16, 0.2, 1);
+	ColorSquare.Position = UDim2.new(1, -ColorLabel.TextBounds.X - 16, 0.2, 1);
 
 	-- Paint currently selected parts
 	PaintParts();
