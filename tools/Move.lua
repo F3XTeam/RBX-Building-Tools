@@ -474,7 +474,6 @@ function BindShortcutKeys()
 			-- Start tracking snap points nearest to the mouse
 			StartSnapping();
 
-
 		-- Nudge up if the 8 button on the keypad is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadEight then
 			NudgeSelectionByFace(Enum.NormalId.Top);
@@ -498,6 +497,10 @@ function BindShortcutKeys()
 		-- Nudge right if the 6 button on the keypad is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadSix then
 			NudgeSelectionByFace(Enum.NormalId.Right);
+
+		-- Align the selection to the current target surface if T is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.T then
+			AlignSelectionToTarget();
 
 		end;
 
@@ -524,6 +527,9 @@ function BindShortcutKeys()
 				return;
 			end;
 
+			-- Reset handles
+			SetAxes(MoveTool.Axes);
+
 			-- Stop snapping point tracking if it was enabled
 			SnapTracking.StopTracking();
 
@@ -538,6 +544,10 @@ local PointSnapped = Core.RbxUtility.CreateSignal();
 
 function StartSnapping()
 	-- Starts tracking snap points nearest to the mouse
+
+	-- Hide any handles or bounding boxes
+	AttachHandles(nil, true);
+	BoundingBox.ClearBoundingBox();
 
 	-- Start tracking the closest snapping point
 	SnapTracking.StartTracking(function (NewPoint)
@@ -870,7 +880,8 @@ function StartDragging(BasePart, InitialState, BasePoint)
 	Connections.DragSnapping = PointSnapped:connect(function (SnappedPoint)
 
 		-- Align the selection's base point to the snapped point
-		BasePart.CFrame = CFrame.new(SnappedPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ());
+		local Rotation = SurfaceAlignment or CFrame.Angles(InitialState[BasePart].CFrame:toEulerAnglesXYZ());
+		BasePart.CFrame = CFrame.new(SnappedPoint + BasePartOffset) * Rotation;
 		TranslatePartsRelativeToPart(BasePart, InitialState);
 
 		-- Make sure we're not entering any unauthorized private areas
@@ -880,6 +891,11 @@ function StartDragging(BasePart, InitialState, BasePoint)
 		end;
 
 	end);
+
+	-- Provide a callback to trigger alignment
+	TriggerAlignment = function ()
+		DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions);
+	end;
 
 	-- Start up the dragging action
 	Connections.Drag = Core.Mouse.Move:connect(function ()
@@ -899,11 +915,19 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	local IgnoreList = Support.CloneTable(Selection.Items);
 	table.insert(IgnoreList, Core.Player and Core.Player.Character)
 
+	-- Save last target surface for change detection
+	local LastTargetNormal = TargetNormal;
+
 	-- Perform the mouse target search
-	local Target, TargetPoint, TargetNormal = Workspace:FindPartOnRayWithIgnoreList(
+	Target, TargetPoint, TargetNormal = Workspace:FindPartOnRayWithIgnoreList(
 		Ray.new(Core.Mouse.UnitRay.Origin, Core.Mouse.UnitRay.Direction * 5000),
 		IgnoreList
 	);
+
+	-- Reset any surface alignment if target surface changes
+	if LastTargetNormal ~= TargetNormal then
+		SurfaceAlignment = nil;
+	end;
 
 	------------------------------------------------
 	-- Move the selection towards any snapped points
@@ -922,7 +946,8 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	TargetPoint = GetAlignedTargetPoint(Target, TargetPoint, TargetNormal);
 
 	-- Move the parts towards their target destination
-	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ());
+	local Rotation = SurfaceAlignment or CFrame.Angles(InitialState[BasePart].CFrame:toEulerAnglesXYZ());
+	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * Rotation;
 	TranslatePartsRelativeToPart(BasePart, InitialState);
 
 	-- Check for the largest corner-target plane crossthrough we have to correct
@@ -945,7 +970,8 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	end;
 
 	-- Retract the parts by the max. crossthrough amount
-	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ()) - (TargetNormal * CrossthroughCorrection);
+	local Rotation = SurfaceAlignment or CFrame.Angles(InitialState[BasePart].CFrame:toEulerAnglesXYZ());
+	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * Rotation - (TargetNormal * CrossthroughCorrection);
 	TranslatePartsRelativeToPart(BasePart, InitialState);
 
 	----------------------------------------
@@ -957,6 +983,24 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 		BasePart.CFrame = InitialState[BasePart].CFrame;
 		TranslatePartsRelativeToPart(BasePart, InitialState);
 	end;
+
+end;
+
+function AlignSelectionToTarget()
+	-- Aligns the selection to the current target surface while dragging
+
+	-- Ensure dragging is ongoing
+	if not Dragging or not TargetNormal then
+		return;
+	end;
+
+	-- Set the current surface alignment
+	local Rotation = CFrame.new(Vector3.new(), TargetNormal) * CFrame.Angles(-math.pi / 2, 0, 0);
+	local RotationX, RotationY, RotationZ = Rotation:toEulerAnglesXYZ();
+	SurfaceAlignment = CFrame.Angles(RotationX, RotationY, RotationZ);
+
+	-- Trigger alignment
+	TriggerAlignment();
 
 end;
 
@@ -1069,6 +1113,9 @@ function FinishDragging()
 
 	-- Indicate that we're no longer dragging
 	Dragging = false;
+
+	-- Clear any surface alignment
+	SurfaceAlignment = nil;
 
 	-- Stop the dragging action
 	ClearConnection 'Drag';
