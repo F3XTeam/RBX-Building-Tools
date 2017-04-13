@@ -327,7 +327,7 @@ function AttachHandles(Part, Autofocus)
 		Distance = GetIncrementMultiple(Distance, MoveTool.Increment);
 
 		-- Move the parts along the selected axes by the calculated distance
-		MovePartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Focus, Selection.Items, InitialState);
+		MovePartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Focus, InitialState);
 
 		-- Update the "distance moved" indicator
 		if MoveTool.UI then
@@ -337,7 +337,7 @@ function AttachHandles(Part, Autofocus)
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 			Selection.Focus.CFrame = InitialState[Selection.Focus].CFrame;
-			TranslatePartsRelativeToPart(Selection.Focus, InitialState, Selection.Items);
+			TranslatePartsRelativeToPart(Selection.Focus, InitialState);
 		end;
 
 	end);
@@ -359,10 +359,10 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 	ClearConnection 'HandleRelease';
 
 	-- Make joints, restore original anchor and collision states
-	for _, Part in pairs(Selection.Items) do
+	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register the change
@@ -387,31 +387,34 @@ function HideHandles()
 
 end;
 
-function MovePartsAlongAxesByFace(Face, Distance, Axes, BasePart, Parts, InitialState)
-	-- Moves the given parts, along the given axis mode, in the given face direction, by the given distance
+function MovePartsAlongAxesByFace(Face, Distance, Axes, BasePart, InitialStates)
+	-- Moves the given parts in `InitialStates`, along the given axis mode, in the given face direction, by the given distance
 
 	-- Get the axis multiplier for this face
 	local AxisMultiplier = AxisMultipliers[Face];
 
+	-- Get starting state for `BasePart`
+	local InitialBasePartState = InitialStates[BasePart];
+
 	-- Move each part
-	for _, Part in pairs(Parts) do
+	for Part, InitialState in pairs(InitialStates) do
 
 		-- Move along standard axes
 		if Axes == 'Global' then
-			Part.CFrame = InitialState[Part].CFrame + (Distance * AxisMultiplier);
+			Part.CFrame = InitialState.CFrame + (Distance * AxisMultiplier);
 
 		-- Move along item's axes
 		elseif Axes == 'Local' then
-			Part.CFrame = InitialState[Part].CFrame * CFrame.new(Distance * AxisMultiplier);
+			Part.CFrame = InitialState.CFrame * CFrame.new(Distance * AxisMultiplier);
 
 		-- Move along focused part's axes
 		elseif Axes == 'Last' then
 
 			-- Calculate the focused part's position
-			local RelativeTo = InitialState[BasePart].CFrame * CFrame.new(Distance * AxisMultiplier);
+			local RelativeTo = InitialBasePartState.CFrame * CFrame.new(Distance * AxisMultiplier);
 
 			-- Calculate how far apart we should be from the focused part
-			local Offset = InitialState[BasePart].CFrame:toObjectSpace(InitialState[Part].CFrame);
+			local Offset = InitialBasePartState.CFrame:toObjectSpace(InitialState.CFrame);
 
 			-- Move relative to the focused part by this part's offset from it
 			Part.CFrame = RelativeTo * Offset;
@@ -556,10 +559,10 @@ function SetAxisPosition(Axis, Position)
 	TrackChange();
 
 	-- Prepare parts to be moved
-	local InitialState = PreparePartsForDragging();
+	local InitialStates = PreparePartsForDragging();
 
 	-- Update each part
-	for _, Part in pairs(Selection.Items) do
+	for Part in pairs(InitialStates) do
 
 		-- Set the part's new CFrame
 		Part.CFrame = CFrame.new(
@@ -575,16 +578,16 @@ function SetAxisPosition(Axis, Position)
 
 	-- Revert changes if player is not authorized to move parts to target destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-		for Part, PartState in pairs(InitialState) do
-			Part.CFrame = PartState.CFrame;
+		for Part, State in pairs(InitialStates) do
+			Part.CFrame = State.CFrame;
 		end;
 	end;
 
 	-- Restore the parts' original states
-	for Part, PartState in pairs(InitialState) do
+	for Part, State in pairs(InitialStates) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register the change
@@ -611,23 +614,23 @@ function NudgeSelectionByFace(Face)
 	local InitialState = PreparePartsForDragging();
 
 	-- Perform the movement
-	MovePartsAlongAxesByFace(Face, NudgeAmount, MoveTool.Axes, Selection.Focus, Selection.Items, InitialState);
+	MovePartsAlongAxesByFace(Face, NudgeAmount, MoveTool.Axes, Selection.Focus, InitialState);
 
 	-- Cache up permissions for all private areas
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
 	-- Revert changes if player is not authorized to move parts to target destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-		for Part, PartState in pairs(InitialState) do
-			Part.CFrame = PartState.CFrame;
+		for Part, State in pairs(InitialState) do
+			Part.CFrame = State.CFrame;
 		end;
 	end;
 
 	-- Restore the parts' original states
-	for Part, PartState in pairs(InitialState) do
+	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register the change
@@ -865,12 +868,12 @@ function StartDragging(BasePart, InitialState, BasePoint)
 
 		-- Align the selection's base point to the snapped point
 		BasePart.CFrame = CFrame.new(SnappedPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ());
-		TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+		TranslatePartsRelativeToPart(BasePart, InitialState);
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 			BasePart.CFrame = InitialState[BasePart].CFrame;
-			TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+			TranslatePartsRelativeToPart(BasePart, InitialState);
 		end;
 
 	end);
@@ -917,7 +920,7 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 
 	-- Move the parts towards their target destination
 	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ());
-	TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+	TranslatePartsRelativeToPart(BasePart, InitialState);
 
 	-- Check for the largest corner-target plane crossthrough we have to correct
 	local CrossthroughCorrection = 0;
@@ -940,7 +943,7 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 
 	-- Retract the parts by the max. crossthrough amount
 	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ()) - (TargetNormal * CrossthroughCorrection);
-	TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+	TranslatePartsRelativeToPart(BasePart, InitialState);
 
 	----------------------------------------
 	-- Check for relevant area authorization
@@ -949,7 +952,7 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	-- Make sure we're not entering any unauthorized private areas
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 		BasePart.CFrame = InitialState[BasePart].CFrame;
-		TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+		TranslatePartsRelativeToPart(BasePart, InitialState);
 	end;
 
 end;
@@ -1034,17 +1037,17 @@ function GetIncrementMultiple(Number, Increment)
 	return Number;
 end;
 
-function TranslatePartsRelativeToPart(BasePart, InitialState, Parts)
-	-- Moves the given parts to BasePart's current position, with their original offset from it
+function TranslatePartsRelativeToPart(BasePart, InitialStates)
+	-- Moves the given parts in `InitialStates` to BasePart's current position, with their original offset from it
 
 	-- Get focused part's position for offsetting
-	local RelativeTo = InitialState[BasePart].CFrame:inverse();
+	local RelativeTo = InitialStates[BasePart].CFrame:inverse();
 
 	-- Calculate offset and move each part
-	for _, Part in pairs(Parts) do
+	for Part, InitialState in pairs(InitialStates) do
 
 		-- Calculate how far apart we should be from the focused part
-		local Offset = RelativeTo * InitialState[Part].CFrame;
+		local Offset = RelativeTo * InitialState.CFrame;
 
 		-- Move relative to the focused part by this part's offset from it
 		Part.CFrame = BasePart.CFrame * Offset;
@@ -1072,10 +1075,10 @@ function FinishDragging()
 	ClearConnection 'DragSnapping';
 
 	-- Restore the original state of each part
-	for _, Part in pairs(Selection.Items) do
+	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register changes

@@ -317,9 +317,9 @@ function ShowHandles()
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-			for Part, PartState in pairs(InitialState) do
-				Part.Size = PartState.Size;
-				Part.CFrame = PartState.CFrame;
+			for Part, State in pairs(InitialState) do
+				Part.Size = State.Size;
+				Part.CFrame = State.CFrame;
 			end;
 		end;
 
@@ -346,10 +346,10 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 	ClearConnection 'HandleRelease';
 
 	-- Make joints, restore original anchor and collision states
-	for _, Part in pairs(Selection.Items) do
+	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register the change
@@ -374,7 +374,7 @@ function HideHandles()
 
 end;
 
-function ResizePartsByFace(Face, Distance, Directions, InitialState)
+function ResizePartsByFace(Face, Distance, Directions, InitialStates)
 	-- Resizes the selection on face `Face` by `Distance` studs, in the given `Directions`
 
 	-- Adjust the size increment to the resizing direction mode
@@ -387,10 +387,10 @@ function ResizePartsByFace(Face, Distance, Directions, InitialState)
 	local IncrementVector = Distance * AxisSizeMultiplier;
 
 	-- Resize each part
-	for _, Part in pairs(Selection.Items) do
+	for Part, InitialState in pairs(InitialStates) do
 
 		-- Make sure this increment will not undersize the part
-		local TargetSize = InitialState[Part].Size + IncrementVector;
+		local TargetSize = InitialState.Size + IncrementVector;
 		local ShortestSize = math.min(TargetSize.X, TargetSize.Y, TargetSize.Z);
 		if ShortestSize < 0.2 then
 
@@ -401,15 +401,15 @@ function ResizePartsByFace(Face, Distance, Directions, InitialState)
 		end;
 
 		-- Perform the size change
-		Part.Size = InitialState[Part].Size + IncrementVector;
+		Part.Size = InitialState.Size + IncrementVector;
 
 		-- Offset the part when resizing in the normal, one direction
 		if Directions == 'Normal' then
-			Part.CFrame = InitialState[Part].CFrame * CFrame.new(AxisPositioningMultipliers[Face] * Distance / 2);
+			Part.CFrame = InitialState.CFrame * CFrame.new(AxisPositioningMultipliers[Face] * Distance / 2);
 
 		-- Keep the part centered when resizing in both directions
 		elseif Directions == 'Both' then
-			Part.CFrame = InitialState[Part].CFrame;
+			Part.CFrame = InitialState.CFrame;
 
 		end;
 
@@ -526,10 +526,10 @@ function SetAxisSize(Axis, Size)
 	TrackChange();
 
 	-- Prepare parts to be resized
-	local InitialState = PreparePartsForResizing();
+	local InitialStates = PreparePartsForResizing();
 
 	-- Update each part
-	for _, Part in pairs(Selection.Items) do
+	for Part, InitialState in pairs(InitialStates) do
 
 		-- Set the part's new size
 		Part.Size = Vector3.new(
@@ -539,7 +539,7 @@ function SetAxisSize(Axis, Size)
 		);
 
 		-- Keep the part in place
-		Part.CFrame = InitialState[Part].CFrame;
+		Part.CFrame = InitialState.CFrame;
 
 	end;
 
@@ -548,17 +548,17 @@ function SetAxisSize(Axis, Size)
 
 	-- Revert changes if player is not authorized to resize parts towards the end destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-		for Part, PartState in pairs(InitialState) do
-			Part.Size = PartState.Size;
-			Part.CFrame = PartState.CFrame;
+		for Part, State in pairs(InitialStates) do
+			Part.Size = State.Size;
+			Part.CFrame = State.CFrame;
 		end;
 	end;
 
 	-- Restore the parts' original states
-	for Part, PartState in pairs(InitialState) do
+	for Part, State in pairs(InitialStates) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register the change
@@ -589,9 +589,9 @@ function NudgeSelectionByFace(Face)
 
 	-- If the resizing did not succeed, revert the parts to their original state
 	if not Success then
-		for Part, PartState in pairs(InitialState) do
-			Part.Size = PartState.Size;
-			Part.CFrame = PartState.CFrame;
+		for Part, State in pairs(InitialState) do
+			Part.Size = State.Size;
+			Part.CFrame = State.CFrame;
 		end;
 	end;
 
@@ -600,17 +600,17 @@ function NudgeSelectionByFace(Face)
 
 	-- Revert changes if player is not authorized to resize parts towards the end destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-		for Part, PartState in pairs(InitialState) do
-			Part.Size = PartState.Size;
-			Part.CFrame = PartState.CFrame;
+		for Part, State in pairs(InitialState) do
+			Part.Size = State.Size;
+			Part.CFrame = State.CFrame;
 		end;
 	end;
 
 	-- Restore the parts' original states
-	for Part, PartState in pairs(InitialState) do
+	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register the change
@@ -907,14 +907,6 @@ function StartSnapping()
 					ResizePartsByFace(SnappingDirection, Adjustment, 'Normal', SnappingStartSelectionState);
 				end;
 
-				-- Make sure we're not entering any unauthorized private areas
-				if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-					for Part, PartState in pairs(SnappingStartSelectionState) do
-						Part.Size = PartState.Size;
-						Part.CFrame = PartState.CFrame;
-					end;
-				end;
-
 				-- Get snap point and destination point screen positions for UI alignment
 				local ScreenStartPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappingStartPoint + (Direction * Distance));
 				ScreenStartPoint = Vector2.new(ScreenStartPoint.X, ScreenStartPoint.Y);
@@ -929,6 +921,14 @@ function StartSnapping()
 				AlignmentLine.Size = UDim2.new(0, (ScreenDestinationPoint - ScreenStartPoint).magnitude, 0, 1);
 				AlignmentLine.PointMarkerA.Rotation = -AlignmentAngle;
 				AlignmentLine.Visible = true;
+
+				-- Make sure we're not entering any unauthorized private areas
+				if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+					for Part, State in pairs(SnappingStartSelectionState) do
+						Part.Size = State.Size;
+						Part.CFrame = State.CFrame;
+					end;
+				end;
 
 			end;
 
@@ -960,11 +960,13 @@ function FinishSnapping()
 		return;
 	end;
 
-	-- Restore the selection's original state
-	for Part, PartState in pairs(SnappingStartSelectionState) do
-		Part:MakeJoints();
-		Part.CanCollide = PartState.CanCollide;
-		Part.Anchored = PartState.Anchored;
+	-- Restore the selection's original state if stage was reached
+	if SnappingStartSelectionState then
+		for Part, State in pairs(SnappingStartSelectionState) do
+			Part:MakeJoints();
+			Part.CanCollide = State.CanCollide;
+			Part.Anchored = State.Anchored;
+		end;
 	end;
 
 	-- Disable any snapping stage

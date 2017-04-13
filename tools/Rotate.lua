@@ -324,7 +324,7 @@ function AttachHandles(Part, Autofocus)
 		Rotation = GetIncrementMultiple(Rotation, RotateTool.Increment);
 
 		-- Perform the rotation
-		RotatePartsAroundPivot(RotateTool.Pivot, PivotPoint, Axis, Rotation, Selection.Items, InitialState);
+		RotatePartsAroundPivot(RotateTool.Pivot, PivotPoint, Axis, Rotation, InitialState);
 
 		-- Update the "degrees rotated" indicator
 		if RotateTool.UI then
@@ -333,8 +333,8 @@ function AttachHandles(Part, Autofocus)
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-			for Part, PartState in pairs(InitialState) do
-				Part.CFrame = PartState.CFrame;
+			for Part, State in pairs(InitialState) do
+				Part.CFrame = State.CFrame;
 			end;
 		end;
 
@@ -360,10 +360,10 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 	ClearConnection 'HandleRelease';
 
 	-- Make joints, restore original anchor and collision states
-	for _, Part in pairs(Selection.Items) do
+	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register the change
@@ -388,14 +388,14 @@ function HideHandles()
 
 end;
 
-function RotatePartsAroundPivot(PivotMode, PivotPoint, Axis, Rotation, Parts, InitialState)
-	-- Rotates the given `Parts` around `PivotMode` (using `PivotPoint` if applicable)'s `Axis` by `Rotation`
+function RotatePartsAroundPivot(PivotMode, PivotPoint, Axis, Rotation, InitialStates)
+	-- Rotates the given parts in `InitialStates` around `PivotMode` (using `PivotPoint` if applicable)'s `Axis` by `Rotation`
 
 	-- Create a CFrame that increments rotation by `Rotation` around `Axis`
 	local RotationCFrame = CFrame.fromAxisAngle(Vector3.FromAxis(Axis), math.rad(Rotation));
 
 	-- Rotate each part
-	for _, Part in pairs(Parts) do
+	for Part, InitialState in pairs(InitialStates) do
 
 		-- Rotate around the selection's center, or the currently focused part
 		if PivotMode == 'Center' or PivotMode == 'Last' then
@@ -404,14 +404,14 @@ function RotatePartsAroundPivot(PivotMode, PivotPoint, Axis, Rotation, Parts, In
 			local RelativeTo = PivotPoint * RotationCFrame;
 
 			-- Calculate this part's offset from the focused part's rotation
-			local Offset = PivotPoint:toObjectSpace(InitialState[Part].CFrame);
+			local Offset = PivotPoint:toObjectSpace(InitialState.CFrame);
 
 			-- Rotate relative to the focused part by this part's offset from it
 			Part.CFrame = RelativeTo * Offset;
 
 		-- Rotate around the part's center
 		elseif RotateTool.Pivot == 'Local' then
-			Part.CFrame = InitialState[Part].CFrame * RotationCFrame;
+			Part.CFrame = InitialState.CFrame * RotationCFrame;
 
 		end;
 
@@ -566,10 +566,10 @@ function SetAxisAngle(Axis, Angle)
 	TrackChange();
 
 	-- Prepare parts to be moved
-	local InitialState = PreparePartsForRotating();
+	local InitialStates = PreparePartsForRotating();
 
 	-- Update each part
-	for _, Part in pairs(Selection.Items) do
+	for Part, State in pairs(InitialStates) do
 
 		-- Set the part's new CFrame
 		Part.CFrame = CFrame.new(Part.Position) * CFrame.Angles(
@@ -585,16 +585,16 @@ function SetAxisAngle(Axis, Angle)
 
 	-- Revert changes if player is not authorized to move parts to target destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-		for Part, PartState in pairs(InitialState) do
-			Part.CFrame = PartState.CFrame;
+		for Part, State in pairs(InitialStates) do
+			Part.CFrame = State.CFrame;
 		end;
 	end;
 
 	-- Restore the parts' original states
-	for Part, PartState in pairs(InitialState) do
+	for Part, State in pairs(InitialStates) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register the change
@@ -604,6 +604,11 @@ end;
 
 function NudgeSelectionByAxis(Axis, Direction)
 	-- Nudges the rotation of the selection in the direction of the given axis
+
+	-- Ensure selection is not empty
+	if #Selection.Items == 0 then
+		return;
+	end;
 
 	-- Get amount to nudge by
 	local NudgeAmount = RotateTool.Increment;
@@ -631,23 +636,23 @@ function NudgeSelectionByAxis(Axis, Direction)
 	end;
 
 	-- Perform the rotation
-	RotatePartsAroundPivot(RotateTool.Pivot, PivotPoint, Axis, NudgeAmount * (Direction or 1), Selection.Items, InitialState);
+	RotatePartsAroundPivot(RotateTool.Pivot, PivotPoint, Axis, NudgeAmount * (Direction or 1), InitialState);
 
 	-- Cache area permissions information
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
 	-- Make sure we're not entering any unauthorized private areas
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-		for Part, PartState in pairs(InitialState) do
-			Part.CFrame = PartState.CFrame;
+		for Part, State in pairs(InitialState) do
+			Part.CFrame = State.CFrame;
 		end;
 	end;
 
 	-- Make joints, restore original anchor and collision states
-	for _, Part in pairs(Selection.Items) do
+	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register the change
