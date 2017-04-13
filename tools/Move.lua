@@ -719,24 +719,27 @@ function EnableDragging()
 	-- Pay attention to when the user intends to start dragging
 	Connections.DragStart = Core.Mouse.Button1Down:connect(function ()
 
-		-- Make sure target is draggable
-		if not Core.IsSelectable(Core.Mouse.Target) then
-			return;
-		end;
-
 		-- Make sure this click was not to select
 		if Selection.Multiselecting then
 			return;
 		end;
 
-		-- Select the target if it's not selected
-		if not Selection.IsSelected(Core.Mouse.Target) then
+		-- Check whether the user is snapping
+		local IsSnapping = UserInputService:IsKeyDown(Enum.KeyCode.R) and #Selection.Items > 0;
+
+		-- Make sure target is draggable, unless snapping is ongoing
+		if not Core.IsSelectable(Core.Mouse.Target) and not IsSnapping then
+			return;
+		end;
+
+		-- Select the target if it's not selected, and snapping is not ongoing
+		if not Selection.IsSelected(Core.Mouse.Target) and not IsSnapping then
 			Selection.Replace({ Core.Mouse.Target }, true);
 		end;
 
 		-- Mark where dragging began
 		DragStart = Vector2.new(Core.Mouse.X, Core.Mouse.Y);
-		DragStartTarget = Core.Mouse.Target;
+		DragStartTarget = IsSnapping and Selection.Focus or Core.Mouse.Target;
 
 		-- Watch for potential dragging
 		Connections.WatchForDrag = Core.Mouse.Move:connect(function ()
