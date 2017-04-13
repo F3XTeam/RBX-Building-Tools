@@ -188,9 +188,9 @@ function UpdateUI()
 	-- Identify common positions across axes
 	local XVariations, YVariations, ZVariations = {}, {}, {};
 	for _, Part in pairs(Selection.Items) do
-		table.insert(XVariations, Support.Round(Part.Position.X, 2));
-		table.insert(YVariations, Support.Round(Part.Position.Y, 2));
-		table.insert(ZVariations, Support.Round(Part.Position.Z, 2));
+		table.insert(XVariations, Support.Round(Part.Position.X, 3));
+		table.insert(YVariations, Support.Round(Part.Position.Y, 3));
+		table.insert(ZVariations, Support.Round(Part.Position.Z, 3));
 	end;
 	local CommonX = Support.IdentifyCommonItem(XVariations);
 	local CommonY = Support.IdentifyCommonItem(YVariations);

@@ -176,9 +176,9 @@ function UpdateUI()
 	-- Identify common sizes across axes
 	local XVariations, YVariations, ZVariations = {}, {}, {};
 	for _, Part in pairs(Selection.Items) do
-		table.insert(XVariations, Support.Round(Part.Size.X, 2));
-		table.insert(YVariations, Support.Round(Part.Size.Y, 2));
-		table.insert(ZVariations, Support.Round(Part.Size.Z, 2));
+		table.insert(XVariations, Support.Round(Part.Size.X, 3));
+		table.insert(YVariations, Support.Round(Part.Size.Y, 3));
+		table.insert(ZVariations, Support.Round(Part.Size.Z, 3));
 	end;
 	local CommonX = Support.IdentifyCommonItem(XVariations);
 	local CommonY = Support.IdentifyCommonItem(YVariations);

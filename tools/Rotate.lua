@@ -182,9 +182,9 @@ function UpdateUI()
 	-- Identify common angles across axes
 	local XVariations, YVariations, ZVariations = {}, {}, {};
 	for _, Part in pairs(Selection.Items) do
-		table.insert(XVariations, Support.Round(Part.Rotation.X, 2));
-		table.insert(YVariations, Support.Round(Part.Rotation.Y, 2));
-		table.insert(ZVariations, Support.Round(Part.Rotation.Z, 2));
+		table.insert(XVariations, Support.Round(Part.Rotation.X, 3));
+		table.insert(YVariations, Support.Round(Part.Rotation.Y, 3));
+		table.insert(ZVariations, Support.Round(Part.Rotation.Z, 3));
 	end;
 	local CommonX = Support.IdentifyCommonItem(XVariations);
 	local CommonY = Support.IdentifyCommonItem(YVariations);
