@@ -237,6 +237,16 @@ local AxisPositioningMultipliers = {
 	[Enum.NormalId.Right] = Vector3.new(1, 0, 0);
 };
 
+-- Axis names corresponding to each face
+local FaceAxisNames = {
+	[Enum.NormalId.Top] = 'Y';
+	[Enum.NormalId.Bottom] = 'Y';
+	[Enum.NormalId.Front] = 'Z';
+	[Enum.NormalId.Back] = 'Z';
+	[Enum.NormalId.Left] = 'X';
+	[Enum.NormalId.Right] = 'X';
+};
+
 function ShowHandles()
 	-- Creates and automatically attaches handles to the currently focused part
 
@@ -386,19 +396,42 @@ function ResizePartsByFace(Face, Distance, Directions, InitialStates)
 	local AxisSizeMultiplier = AxisSizeMultipliers[Face];
 	local IncrementVector = Distance * AxisSizeMultiplier;
 
-	-- Resize each part
+	-- Get name of axis the resize will occur on
+	local AxisName = FaceAxisNames[Face];
+
+	-- Check for any potential undersizing or oversizing
+	local ShortestSize, ShortestPart, LongestSize, LongestPart;
 	for Part, InitialState in pairs(InitialStates) do
 
-		-- Make sure this increment will not undersize the part
-		local TargetSize = InitialState.Size + IncrementVector;
-		local ShortestSize = math.min(TargetSize.X, TargetSize.Y, TargetSize.Z);
-		if ShortestSize < 0.2 then
+		-- Calculate target size for this resize
+		local TargetSize = InitialState.Size[AxisName] + Distance;
 
-			-- Calculate and return how much to resize in order to normalize the resizing
-			local SizeAdjustment = Distance + 0.2 - ShortestSize;
-			return false, SizeAdjustment;
+		-- If target size is under 0.2, note if it's the shortest size
+		if TargetSize < 0.199999 and (not ShortestSize or (ShortestSize and TargetSize < ShortestSize)) then
+			ShortestSize, ShortestPart = TargetSize, Part;
 
+		-- If target size is over 2048, note if it's the longest size
+		elseif TargetSize > 2048 and (not LongestSize or (LongestSize and TargetSize > LongestSize)) then
+			LongestSize, LongestPart = TargetSize, Part;
 		end;
+
+	end;
+
+	-- Return adjustment for undersized parts (snap to lowest possible valid increment multiple)
+	if ShortestSize then
+		local InitialSize = InitialStates[ShortestPart].Size[AxisName];
+		local TargetSize = InitialSize - ResizeTool.Increment * tonumber((tostring((InitialSize - 0.2) / ResizeTool.Increment):gsub('%..+', '')));
+		return false, Distance + TargetSize - ShortestSize;
+	end;
+
+	-- Return adjustment for oversized parts (snap to highest possible valid increment multiple)
+	if LongestSize then
+		local TargetSize = ResizeTool.Increment * tonumber((tostring(2048 / ResizeTool.Increment):gsub('%..+', '')));
+		return false, Distance + TargetSize - LongestSize;
+	end;
+
+	-- Resize each part
+	for Part, InitialState in pairs(InitialStates) do
 
 		-- Perform the size change
 		Part.Size = InitialState.Size + IncrementVector;
@@ -872,6 +905,11 @@ function StartSnapping()
 				SnapTracking.TargetFilter = function (Target) return not Target.Locked; end;
 				SnapTracking.TargetBlacklist = Selection.Items;
 
+				-- Start a distance alignment line
+				AlignmentLine = Core.Tool.Interfaces.SnapLineSegment:Clone();
+				AlignmentLine.Visible = false;
+				AlignmentLine.Parent = Core.UI;
+
 				-- Re-enable snapping to select destination
 				SnapTracking.StartTracking(function (NewPoint)
 					if NewPoint and NewPoint.p ~= SnappedPoint then
@@ -879,11 +917,6 @@ function StartSnapping()
 						PointSnapped:fire(NewPoint.p);
 					end;
 				end);
-
-				-- Start a distance alignment line
-				AlignmentLine = Core.Tool.Interfaces.SnapLineSegment:Clone();
-				AlignmentLine.Visible = false;
-				AlignmentLine.Parent = Core.UI;
 
 			end;
 
@@ -900,12 +933,7 @@ function StartSnapping()
 				local Distance = (SnappedPoint - SnappingStartPoint):Dot(Direction);
 
 				-- Resize the parts on the selected faces by the calculated distance
-				local Success, Adjustment = ResizePartsByFace(SnappingDirection, Distance, 'Normal', SnappingStartSelectionState);
-
-				-- If the resizing did not succeed, resize according to the suggested adjustment
-				if not Success then
-					ResizePartsByFace(SnappingDirection, Adjustment, 'Normal', SnappingStartSelectionState);
-				end;
+				ResizePartsByFace(SnappingDirection, Distance, 'Normal', SnappingStartSelectionState);
 
 				-- Get snap point and destination point screen positions for UI alignment
 				local ScreenStartPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappingStartPoint + (Direction * Distance));
