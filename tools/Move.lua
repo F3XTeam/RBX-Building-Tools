@@ -626,6 +626,11 @@ function NudgeSelectionByFace(Face)
 	-- Perform the movement
 	MovePartsAlongAxesByFace(Face, NudgeAmount, MoveTool.Axes, Selection.Focus, InitialState);
 
+	-- Update the "distance moved" indicator
+	if MoveTool.UI then
+		MoveTool.UI.Changes.Text.Text = 'moved ' .. math.abs(NudgeAmount) .. ' studs';
+	end;
+
 	-- Cache up permissions for all private areas
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 

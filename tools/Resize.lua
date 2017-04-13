@@ -618,14 +618,16 @@ function NudgeSelectionByFace(Face)
 	local InitialState = PreparePartsForResizing();
 
 	-- Perform the resizing
-	local Success = ResizePartsByFace(Face, NudgeAmount, ResizeTool.Directions, InitialState);
+	local Success, Adjustment = ResizePartsByFace(Face, NudgeAmount, ResizeTool.Directions, InitialState);
 
-	-- If the resizing did not succeed, revert the parts to their original state
+	-- If the resizing did not succeed, resize according to the suggested adjustment
 	if not Success then
-		for Part, State in pairs(InitialState) do
-			Part.Size = State.Size;
-			Part.CFrame = State.CFrame;
-		end;
+		ResizePartsByFace(Face, Adjustment, ResizeTool.Directions, InitialState);
+	end;
+
+	-- Update "studs resized" indicator
+	if ResizeTool.UI then
+		ResizeTool.UI.Changes.Text.Text = 'resized ' .. Support.Round(Adjustment or NudgeAmount, 3) .. ' studs';
 	end;
 
 	-- Cache up permissions for all private areas
@@ -933,22 +935,32 @@ function StartSnapping()
 				local Distance = (SnappedPoint - SnappingStartPoint):Dot(Direction);
 
 				-- Resize the parts on the selected faces by the calculated distance
-				ResizePartsByFace(SnappingDirection, Distance, 'Normal', SnappingStartSelectionState);
+				local Success = ResizePartsByFace(SnappingDirection, Distance, 'Normal', SnappingStartSelectionState);
 
-				-- Get snap point and destination point screen positions for UI alignment
-				local ScreenStartPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappingStartPoint + (Direction * Distance));
-				ScreenStartPoint = Vector2.new(ScreenStartPoint.X, ScreenStartPoint.Y);
-				local ScreenDestinationPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappedPoint);
-				ScreenDestinationPoint = Vector2.new(ScreenDestinationPoint.X, ScreenDestinationPoint.Y)
+				-- Update the UI on resize success
+				if Success then
 
-				-- Update the distance alignment line
-				local AlignmentAngle = math.deg(math.atan2(ScreenDestinationPoint.Y - ScreenStartPoint.Y, ScreenDestinationPoint.X - ScreenStartPoint.X));
-				local AlignmentCenter = ScreenStartPoint:Lerp(ScreenDestinationPoint, 0.5);
-				AlignmentLine.Position = UDim2.new(0, AlignmentCenter.X, 0, AlignmentCenter.Y);
-				AlignmentLine.Rotation = AlignmentAngle;
-				AlignmentLine.Size = UDim2.new(0, (ScreenDestinationPoint - ScreenStartPoint).magnitude, 0, 1);
-				AlignmentLine.PointMarkerA.Rotation = -AlignmentAngle;
-				AlignmentLine.Visible = true;
+					-- Update "studs resized" indicator
+					if ResizeTool.UI then
+						ResizeTool.UI.Changes.Text.Text = 'resized ' .. Support.Round(Distance, 3) .. ' studs';
+					end;
+
+					-- Get snap point and destination point screen positions for UI alignment
+					local ScreenStartPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappingStartPoint + (Direction * Distance));
+					ScreenStartPoint = Vector2.new(ScreenStartPoint.X, ScreenStartPoint.Y);
+					local ScreenDestinationPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappedPoint);
+					ScreenDestinationPoint = Vector2.new(ScreenDestinationPoint.X, ScreenDestinationPoint.Y)
+
+					-- Update the distance alignment line
+					local AlignmentAngle = math.deg(math.atan2(ScreenDestinationPoint.Y - ScreenStartPoint.Y, ScreenDestinationPoint.X - ScreenStartPoint.X));
+					local AlignmentCenter = ScreenStartPoint:Lerp(ScreenDestinationPoint, 0.5);
+					AlignmentLine.Position = UDim2.new(0, AlignmentCenter.X, 0, AlignmentCenter.Y);
+					AlignmentLine.Rotation = AlignmentAngle;
+					AlignmentLine.Size = UDim2.new(0, (ScreenDestinationPoint - ScreenStartPoint).magnitude, 0, 1);
+					AlignmentLine.PointMarkerA.Rotation = -AlignmentAngle;
+					AlignmentLine.Visible = true;
+
+				end;
 
 				-- Make sure we're not entering any unauthorized private areas
 				if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then

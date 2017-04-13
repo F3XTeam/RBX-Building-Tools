@@ -638,6 +638,11 @@ function NudgeSelectionByAxis(Axis, Direction)
 	-- Perform the rotation
 	RotatePartsAroundPivot(RotateTool.Pivot, PivotPoint, Axis, NudgeAmount * (Direction or 1), InitialState);
 
+	-- Update the "degrees rotated" indicator
+	if RotateTool.UI then
+		RotateTool.UI.Changes.Text.Text = 'rotated ' .. (NudgeAmount * (Direction or 1)) .. ' degrees';
+	end;
+
 	-- Cache area permissions information
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
