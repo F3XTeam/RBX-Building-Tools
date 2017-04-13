@@ -168,6 +168,11 @@ function Enable(Mouse)
 	-- Use default mouse behavior
 	UserInputService.MouseBehavior = Enum.MouseBehavior.Default;
 
+	-- Disable mouse lock in tool mode
+	if Mode == 'Tool' then
+		SyncAPI:Invoke('SetMouseLockEnabled', false);
+	end;
+
 	-- Wait for UI to initialize asynchronously
 	while not UI do
 		wait(0.1);
@@ -197,6 +202,11 @@ function Disable()
 
 	-- Fire event
 	Disabling:fire();
+
+	-- Reenable mouse lock option in tool mode
+	if Mode == 'Tool' then
+		SyncAPI:Invoke('SetMouseLockEnabled', true);
+	end;
 
 	-- Hide UI
 	UI.Parent = script;

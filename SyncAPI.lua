@@ -1418,6 +1418,19 @@ Actions = {
 
 	end;
 
+	['SetMouseLockEnabled'] = function (Enabled)
+		-- Sets whether mouse lock is enabled for the current player
+
+		-- Offload action to server-side if API is running locally
+		if RunService:IsClient() and not RunService:IsStudio() then
+			return SyncAPI.ServerEndpoint:InvokeServer('SetMouseLockEnabled', Enabled);
+		end;
+
+		-- Set whether mouse lock is enabled
+		Player.DevEnableMouseLock = Enabled;
+
+	end;
+
 };
 
 function ArePartsSelectable(Parts)
