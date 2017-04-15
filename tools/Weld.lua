@@ -85,6 +85,56 @@ function HideUI()
 
 end;
 
+-- References to reduce indexing time
+local GetConnectedParts = Instance.new('Part').GetConnectedParts;
+local GetChildren = script.GetChildren;
+
+function GetPartWelds(Part)
+	-- Returns any BT-created welds involving `Part`
+
+	local Welds = {};
+
+	-- Get welds stored inside `Part`
+	for Weld in pairs(SearchWelds(Part, Part)) do
+		Welds[Weld] = true;
+	end;
+
+	-- Get welds stored inside connected parts
+	for _, ConnectedPart in pairs(GetConnectedParts(Part)) do
+		for Weld in pairs(SearchWelds(ConnectedPart, Part)) do
+			Welds[Weld] = true;
+		end;
+	end;
+
+	-- Return all found welds
+	return Welds;
+
+end;
+
+function SearchWelds(Haystack, Part)
+	-- Searches for and returns BT-created welds in `Haystack` involving `Part`
+
+	local Welds = {};
+
+	-- Search the haystack for welds involving `Part`
+	for _, Item in pairs(GetChildren(Haystack)) do
+
+		-- Check if this item is a BT-created weld involving the part
+		if Item.Name == 'BTWeld' and Item.ClassName == 'Weld' and
+		   (Item.Part0 == Part or Item.Part1 == Part) then
+
+			-- Store weld if valid
+			Welds[Item] = true;
+
+		end;
+
+	end;
+
+	-- Return the found welds
+	return Welds;
+
+end;
+
 function CreateWelds()
 	-- Creates welds for every selected part to the focused part
 
@@ -129,20 +179,15 @@ function BreakWelds()
 
 	local Welds = {};
 
-	-- Go through each selected part
+	-- Find welds in selected parts
 	for _, Part in pairs(Selection.Items) do
-
-		-- Search JointsService for relevant joints
-		for _, Joint in pairs(Game.JointsService:GetChildren()) do
-
-			-- Collect this joint if it is a BT-created weld connecting `Part`
-			if Joint.Name == 'BTWeld' and Joint.ClassName == 'Weld' and (Joint.Part0 == Part or Joint.Part1 == Part) then
-				table.insert(Welds, Joint);
-			end;
-
+		for Weld in pairs(GetPartWelds(Part)) do
+			Welds[Weld] = true;
 		end;
-
 	end;
+
+	-- Turn weld index into list
+	Welds = Support.Keys(Welds);
 
 	-- Send the change request to the server API
 	local WeldsRemoved = Core.SyncAPI:Invoke('RemoveWelds', Welds);

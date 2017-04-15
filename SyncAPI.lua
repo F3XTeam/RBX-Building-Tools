@@ -1180,12 +1180,13 @@ Actions = {
 				local Offset = Part.CFrame:toObjectSpace(TargetPart.CFrame);
 
 				-- Create the weld
-				local Weld = Instance.new('Weld', Game.JointsService);
+				local Weld = Instance.new('Weld');
 				Weld.Name = 'BTWeld';
 				Weld.Part0 = TargetPart;
 				Weld.Part1 = Part;
 				Weld.C1 = Offset;
 				Weld.Archivable = true;
+				Weld.Parent = TargetPart;
 
 				-- Register the weld
 				CreatedInstances[Weld] = Weld;
