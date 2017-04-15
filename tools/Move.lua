@@ -188,9 +188,9 @@ function UpdateUI()
 	-- Identify common positions across axes
 	local XVariations, YVariations, ZVariations = {}, {}, {};
 	for _, Part in pairs(Selection.Items) do
-		table.insert(XVariations, Support.Round(Part.Position.X, 2));
-		table.insert(YVariations, Support.Round(Part.Position.Y, 2));
-		table.insert(ZVariations, Support.Round(Part.Position.Z, 2));
+		table.insert(XVariations, Support.Round(Part.Position.X, 3));
+		table.insert(YVariations, Support.Round(Part.Position.Y, 3));
+		table.insert(ZVariations, Support.Round(Part.Position.Z, 3));
 	end;
 	local CommonX = Support.IdentifyCommonItem(XVariations);
 	local CommonY = Support.IdentifyCommonItem(YVariations);
@@ -327,7 +327,7 @@ function AttachHandles(Part, Autofocus)
 		Distance = GetIncrementMultiple(Distance, MoveTool.Increment);
 
 		-- Move the parts along the selected axes by the calculated distance
-		MovePartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Focus, Selection.Items, InitialState);
+		MovePartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Focus, InitialState);
 
 		-- Update the "distance moved" indicator
 		if MoveTool.UI then
@@ -337,7 +337,7 @@ function AttachHandles(Part, Autofocus)
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 			Selection.Focus.CFrame = InitialState[Selection.Focus].CFrame;
-			TranslatePartsRelativeToPart(Selection.Focus, InitialState, Selection.Items);
+			TranslatePartsRelativeToPart(Selection.Focus, InitialState);
 		end;
 
 	end);
@@ -359,10 +359,11 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 	ClearConnection 'HandleRelease';
 
 	-- Make joints, restore original anchor and collision states
-	for _, Part in pairs(Selection.Items) do
+	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Core.RestoreJoints(State.Joints);
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register the change
@@ -387,31 +388,34 @@ function HideHandles()
 
 end;
 
-function MovePartsAlongAxesByFace(Face, Distance, Axes, BasePart, Parts, InitialState)
-	-- Moves the given parts, along the given axis mode, in the given face direction, by the given distance
+function MovePartsAlongAxesByFace(Face, Distance, Axes, BasePart, InitialStates)
+	-- Moves the given parts in `InitialStates`, along the given axis mode, in the given face direction, by the given distance
 
 	-- Get the axis multiplier for this face
 	local AxisMultiplier = AxisMultipliers[Face];
 
+	-- Get starting state for `BasePart`
+	local InitialBasePartState = InitialStates[BasePart];
+
 	-- Move each part
-	for _, Part in pairs(Parts) do
+	for Part, InitialState in pairs(InitialStates) do
 
 		-- Move along standard axes
 		if Axes == 'Global' then
-			Part.CFrame = InitialState[Part].CFrame + (Distance * AxisMultiplier);
+			Part.CFrame = InitialState.CFrame + (Distance * AxisMultiplier);
 
 		-- Move along item's axes
 		elseif Axes == 'Local' then
-			Part.CFrame = InitialState[Part].CFrame * CFrame.new(Distance * AxisMultiplier);
+			Part.CFrame = InitialState.CFrame * CFrame.new(Distance * AxisMultiplier);
 
 		-- Move along focused part's axes
 		elseif Axes == 'Last' then
 
 			-- Calculate the focused part's position
-			local RelativeTo = InitialState[BasePart].CFrame * CFrame.new(Distance * AxisMultiplier);
+			local RelativeTo = InitialBasePartState.CFrame * CFrame.new(Distance * AxisMultiplier);
 
 			-- Calculate how far apart we should be from the focused part
-			local Offset = InitialState[BasePart].CFrame:toObjectSpace(InitialState[Part].CFrame);
+			local Offset = InitialBasePartState.CFrame:toObjectSpace(InitialState.CFrame);
 
 			-- Move relative to the focused part by this part's offset from it
 			Part.CFrame = RelativeTo * Offset;
@@ -471,7 +475,6 @@ function BindShortcutKeys()
 			-- Start tracking snap points nearest to the mouse
 			StartSnapping();
 
-
 		-- Nudge up if the 8 button on the keypad is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadEight then
 			NudgeSelectionByFace(Enum.NormalId.Top);
@@ -495,6 +498,10 @@ function BindShortcutKeys()
 		-- Nudge right if the 6 button on the keypad is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadSix then
 			NudgeSelectionByFace(Enum.NormalId.Right);
+
+		-- Align the selection to the current target surface if T is pressed
+		elseif InputInfo.KeyCode == Enum.KeyCode.T then
+			AlignSelectionToTarget();
 
 		end;
 
@@ -521,6 +528,9 @@ function BindShortcutKeys()
 				return;
 			end;
 
+			-- Reset handles
+			SetAxes(MoveTool.Axes);
+
 			-- Stop snapping point tracking if it was enabled
 			SnapTracking.StopTracking();
 
@@ -535,6 +545,10 @@ local PointSnapped = Core.RbxUtility.CreateSignal();
 
 function StartSnapping()
 	-- Starts tracking snap points nearest to the mouse
+
+	-- Hide any handles or bounding boxes
+	AttachHandles(nil, true);
+	BoundingBox.ClearBoundingBox();
 
 	-- Start tracking the closest snapping point
 	SnapTracking.StartTracking(function (NewPoint)
@@ -556,10 +570,10 @@ function SetAxisPosition(Axis, Position)
 	TrackChange();
 
 	-- Prepare parts to be moved
-	local InitialState = PreparePartsForDragging();
+	local InitialStates = PreparePartsForDragging();
 
 	-- Update each part
-	for _, Part in pairs(Selection.Items) do
+	for Part in pairs(InitialStates) do
 
 		-- Set the part's new CFrame
 		Part.CFrame = CFrame.new(
@@ -575,16 +589,17 @@ function SetAxisPosition(Axis, Position)
 
 	-- Revert changes if player is not authorized to move parts to target destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-		for Part, PartState in pairs(InitialState) do
-			Part.CFrame = PartState.CFrame;
+		for Part, State in pairs(InitialStates) do
+			Part.CFrame = State.CFrame;
 		end;
 	end;
 
 	-- Restore the parts' original states
-	for Part, PartState in pairs(InitialState) do
+	for Part, State in pairs(InitialStates) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Core.RestoreJoints(State.Joints);
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register the change
@@ -611,23 +626,29 @@ function NudgeSelectionByFace(Face)
 	local InitialState = PreparePartsForDragging();
 
 	-- Perform the movement
-	MovePartsAlongAxesByFace(Face, NudgeAmount, MoveTool.Axes, Selection.Focus, Selection.Items, InitialState);
+	MovePartsAlongAxesByFace(Face, NudgeAmount, MoveTool.Axes, Selection.Focus, InitialState);
+
+	-- Update the "distance moved" indicator
+	if MoveTool.UI then
+		MoveTool.UI.Changes.Text.Text = 'moved ' .. math.abs(NudgeAmount) .. ' studs';
+	end;
 
 	-- Cache up permissions for all private areas
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 
 	-- Revert changes if player is not authorized to move parts to target destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-		for Part, PartState in pairs(InitialState) do
-			Part.CFrame = PartState.CFrame;
+		for Part, State in pairs(InitialState) do
+			Part.CFrame = State.CFrame;
 		end;
 	end;
 
 	-- Restore the parts' original states
-	for Part, PartState in pairs(InitialState) do
+	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Core.RestoreJoints(State.Joints);
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register the change
@@ -716,24 +737,27 @@ function EnableDragging()
 	-- Pay attention to when the user intends to start dragging
 	Connections.DragStart = Core.Mouse.Button1Down:connect(function ()
 
-		-- Make sure target is draggable
-		if not Core.IsSelectable(Core.Mouse.Target) then
-			return;
-		end;
-
 		-- Make sure this click was not to select
 		if Selection.Multiselecting then
 			return;
 		end;
 
-		-- Select the target if it's not selected
-		if not Selection.IsSelected(Core.Mouse.Target) then
+		-- Check whether the user is snapping
+		local IsSnapping = UserInputService:IsKeyDown(Enum.KeyCode.R) and #Selection.Items > 0;
+
+		-- Make sure target is draggable, unless snapping is ongoing
+		if not Core.IsSelectable(Core.Mouse.Target) and not IsSnapping then
+			return;
+		end;
+
+		-- Select the target if it's not selected, and snapping is not ongoing
+		if not Selection.IsSelected(Core.Mouse.Target) and not IsSnapping then
 			Selection.Replace({ Core.Mouse.Target }, true);
 		end;
 
 		-- Mark where dragging began
 		DragStart = Vector2.new(Core.Mouse.X, Core.Mouse.Y);
-		DragStartTarget = Core.Mouse.Target;
+		DragStartTarget = IsSnapping and Selection.Focus or Core.Mouse.Target;
 
 		-- Watch for potential dragging
 		Connections.WatchForDrag = Core.Mouse.Move:connect(function ()
@@ -742,6 +766,7 @@ function EnableDragging()
 			if DragStart and (Vector2.new(Core.Mouse.X, Core.Mouse.Y) - DragStart).magnitude >= 2 then
 
 				-- Prepare for dragging
+				BoundingBox.ClearBoundingBox();
 				SetUpDragging(DragStartTarget, SnapTracking.Enabled and SnappedPoint or nil);
 
 				-- Disable watching for potential dragging
@@ -807,11 +832,15 @@ function PreparePartsForDragging()
 
 	local InitialState = {};
 
+	-- Get index of parts
+	local PartIndex = Support.FlipTable(Selection.Items);
+
 	-- Stop parts from moving, and capture the initial state of the parts
 	for _, Part in pairs(Selection.Items) do
 		InitialState[Part] = { Anchored = Part.Anchored, CanCollide = Part.CanCollide, CFrame = Part.CFrame };
 		Part.Anchored = true;
 		Part.CanCollide = false;
+		InitialState[Part].Joints = Core.PreserveJoints(Part, PartIndex);
 		Part:BreakJoints();
 		Part.Velocity = Vector3.new();
 		Part.RotVelocity = Vector3.new();
@@ -864,16 +893,22 @@ function StartDragging(BasePart, InitialState, BasePoint)
 	Connections.DragSnapping = PointSnapped:connect(function (SnappedPoint)
 
 		-- Align the selection's base point to the snapped point
-		BasePart.CFrame = CFrame.new(SnappedPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ());
-		TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+		local Rotation = SurfaceAlignment or CFrame.Angles(InitialState[BasePart].CFrame:toEulerAnglesXYZ());
+		BasePart.CFrame = CFrame.new(SnappedPoint + BasePartOffset) * Rotation;
+		TranslatePartsRelativeToPart(BasePart, InitialState);
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 			BasePart.CFrame = InitialState[BasePart].CFrame;
-			TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+			TranslatePartsRelativeToPart(BasePart, InitialState);
 		end;
 
 	end);
+
+	-- Provide a callback to trigger alignment
+	TriggerAlignment = function ()
+		DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions);
+	end;
 
 	-- Start up the dragging action
 	Connections.Drag = Core.Mouse.Move:connect(function ()
@@ -893,11 +928,19 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	local IgnoreList = Support.CloneTable(Selection.Items);
 	table.insert(IgnoreList, Core.Player and Core.Player.Character)
 
+	-- Save last target surface for change detection
+	local LastTargetNormal = TargetNormal;
+
 	-- Perform the mouse target search
-	local Target, TargetPoint, TargetNormal = Workspace:FindPartOnRayWithIgnoreList(
+	Target, TargetPoint, TargetNormal = Workspace:FindPartOnRayWithIgnoreList(
 		Ray.new(Core.Mouse.UnitRay.Origin, Core.Mouse.UnitRay.Direction * 5000),
 		IgnoreList
 	);
+
+	-- Reset any surface alignment if target surface changes
+	if LastTargetNormal ~= TargetNormal then
+		SurfaceAlignment = nil;
+	end;
 
 	------------------------------------------------
 	-- Move the selection towards any snapped points
@@ -916,8 +959,9 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	TargetPoint = GetAlignedTargetPoint(Target, TargetPoint, TargetNormal);
 
 	-- Move the parts towards their target destination
-	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ());
-	TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+	local Rotation = SurfaceAlignment or CFrame.Angles(InitialState[BasePart].CFrame:toEulerAnglesXYZ());
+	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * Rotation;
+	TranslatePartsRelativeToPart(BasePart, InitialState);
 
 	-- Check for the largest corner-target plane crossthrough we have to correct
 	local CrossthroughCorrection = 0;
@@ -939,8 +983,9 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	end;
 
 	-- Retract the parts by the max. crossthrough amount
-	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * CFrame.Angles(BasePart.CFrame:toEulerAnglesXYZ()) - (TargetNormal * CrossthroughCorrection);
-	TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+	local Rotation = SurfaceAlignment or CFrame.Angles(InitialState[BasePart].CFrame:toEulerAnglesXYZ());
+	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * Rotation - (TargetNormal * CrossthroughCorrection);
+	TranslatePartsRelativeToPart(BasePart, InitialState);
 
 	----------------------------------------
 	-- Check for relevant area authorization
@@ -949,8 +994,26 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	-- Make sure we're not entering any unauthorized private areas
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 		BasePart.CFrame = InitialState[BasePart].CFrame;
-		TranslatePartsRelativeToPart(BasePart, InitialState, Selection.Items);
+		TranslatePartsRelativeToPart(BasePart, InitialState);
 	end;
+
+end;
+
+function AlignSelectionToTarget()
+	-- Aligns the selection to the current target surface while dragging
+
+	-- Ensure dragging is ongoing
+	if not Dragging or not TargetNormal then
+		return;
+	end;
+
+	-- Set the current surface alignment
+	local Rotation = CFrame.new(Vector3.new(), TargetNormal) * CFrame.Angles(-math.pi / 2, 0, 0);
+	local RotationX, RotationY, RotationZ = Rotation:toEulerAnglesXYZ();
+	SurfaceAlignment = CFrame.Angles(RotationX, RotationY, RotationZ);
+
+	-- Trigger alignment
+	TriggerAlignment();
 
 end;
 
@@ -1034,17 +1097,17 @@ function GetIncrementMultiple(Number, Increment)
 	return Number;
 end;
 
-function TranslatePartsRelativeToPart(BasePart, InitialState, Parts)
-	-- Moves the given parts to BasePart's current position, with their original offset from it
+function TranslatePartsRelativeToPart(BasePart, InitialStates)
+	-- Moves the given parts in `InitialStates` to BasePart's current position, with their original offset from it
 
 	-- Get focused part's position for offsetting
-	local RelativeTo = InitialState[BasePart].CFrame:inverse();
+	local RelativeTo = InitialStates[BasePart].CFrame:inverse();
 
 	-- Calculate offset and move each part
-	for _, Part in pairs(Parts) do
+	for Part, InitialState in pairs(InitialStates) do
 
 		-- Calculate how far apart we should be from the focused part
-		local Offset = RelativeTo * InitialState[Part].CFrame;
+		local Offset = RelativeTo * InitialState.CFrame;
 
 		-- Move relative to the focused part by this part's offset from it
 		Part.CFrame = BasePart.CFrame * Offset;
@@ -1064,6 +1127,9 @@ function FinishDragging()
 	-- Indicate that we're no longer dragging
 	Dragging = false;
 
+	-- Clear any surface alignment
+	SurfaceAlignment = nil;
+
 	-- Stop the dragging action
 	ClearConnection 'Drag';
 
@@ -1072,10 +1138,11 @@ function FinishDragging()
 	ClearConnection 'DragSnapping';
 
 	-- Restore the original state of each part
-	for _, Part in pairs(Selection.Items) do
+	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
-		Part.CanCollide = InitialState[Part].CanCollide;
-		Part.Anchored = InitialState[Part].Anchored;
+		Core.RestoreJoints(State.Joints);
+		Part.CanCollide = State.CanCollide;
+		Part.Anchored = State.Anchored;
 	end;
 
 	-- Register changes

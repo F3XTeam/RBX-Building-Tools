@@ -51,6 +51,14 @@ function BoundingBoxModule.StartBoundingBox(HandleAttachmentCallback)
 
 end;
 
+function BoundingBoxModule.GetBoundingBox()
+	-- Returns the current bounding box
+
+	-- Get and return bounding box
+	return BoundingBox;
+
+end;
+
 function UpdateBoundingBox()
 	-- Updates the bounding box to fit the selection's extents
 

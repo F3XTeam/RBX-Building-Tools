@@ -349,6 +349,11 @@ end;
 function TrackSelectionChange(OldSelection)
 	-- Registers a history record for a change in the selection
 
+	-- Avoid overwriting history for selection actions
+	if History.Index ~= #History.Stack then
+		return;
+	end;
+
 	-- Add the history record
 	History.Add({
 
