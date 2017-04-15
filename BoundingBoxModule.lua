@@ -40,12 +40,15 @@ function BoundingBoxModule.StartBoundingBox(HandleAttachmentCallback)
 	RecalculateStaticExtents = true;
 	StartAggregatingStaticParts();
 
+	-- Store handle attachment callback
+	BoundingBoxHandleCallback = HandleAttachmentCallback;
+
 	-- Begin the bounding box's updater
+	UpdateBoundingBox();
 	BoundingBoxUpdater = Support.ScheduleRecurringTask(UpdateBoundingBox, 0.05);
 
 	-- Attach handles if requested
-	if HandleAttachmentCallback then
-		BoundingBoxHandleCallback = HandleAttachmentCallback;
+	if BoundingBoxHandleCallback then
 		BoundingBoxHandleCallback(BoundingBox);
 	end;
 
