@@ -805,11 +805,11 @@ UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
 		return;
 	end;
 
-	-- Finish dragging
-	FinishDragging();
-
 	-- Reset normal axes option state
 	SetAxes(MoveTool.Axes);
+
+	-- Finish dragging
+	FinishDragging();
 
 end);
 
