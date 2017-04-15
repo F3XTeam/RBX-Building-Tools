@@ -205,7 +205,7 @@ function Disable()
 
 	-- Reenable mouse lock option in tool mode
 	if Mode == 'Tool' then
-		SyncAPI:Invoke('SetMouseLockEnabled', true);
+		pcall(SyncAPI.Invoke, SyncAPI, 'SetMouseLockEnabled', true);
 	end;
 
 	-- Hide UI
