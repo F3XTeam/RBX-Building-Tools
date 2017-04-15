@@ -209,7 +209,9 @@ function Disable()
 	end;
 
 	-- Hide UI
-	UI.Parent = script;
+	if UI then
+		UI.Parent = script;
+	end;
 
 	-- Unequip current tool
 	if CurrentTool then
@@ -220,6 +222,18 @@ function Disable()
 	-- Clear temporary connections
 	ClearConnections();
 
+end;
+
+
+-- Core connections
+Connections = {};
+
+function ClearConnections()
+	-- Clears and disconnects temporary connections
+	for Index, Connection in pairs(Connections) do
+		Connection:disconnect();
+		Connections[Index] = nil;
+	end;
 end;
 
 function InitializeUI()
@@ -294,17 +308,18 @@ elseif Mode == 'Tool' then
 	Tool.Equipped:connect(Enable);
 	Tool.Unequipped:connect(Disable);
 
-end;
-
--- Core connections
-Connections = {};
-
-function ClearConnections()
-	-- Clears and disconnects temporary connections
-	for Index, Connection in pairs(Connections) do
-		Connection:disconnect();
-		Connections[Index] = nil;
+	-- Disable the tool if not parented
+	if not Tool.Parent then
+		Disable();
 	end;
+
+	-- Disable the tool automatically if not equipped or in backpack
+	Tool.AncestryChanged:connect(function (Item, Parent)
+		if not Parent or not (Parent:IsA 'Backpack' or (Parent:IsA 'Model' and Players:GetPlayerFromCharacter(Parent))) then
+			Disable();
+		end;
+	end);
+
 end;
 
 -- Assign hotkeys for undoing (left or right shift + Z)
