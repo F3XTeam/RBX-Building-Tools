@@ -296,8 +296,7 @@ function AttachHandles(Part, Autofocus)
 
 		-- Set the pivot point to the center of the selection if in Center mode
 		if RotateTool.Pivot == 'Center' then
-			local BoundingBoxSize, BoundingBoxCFrame = BoundingBox.CalculateExtents(Selection.Items);
-			PivotPoint = BoundingBoxCFrame;
+			PivotPoint = BoundingBox.GetBoundingBox().CFrame;
 
 		-- Set the pivot point to the center of the focused part if in Last mode
 		elseif RotateTool.Pivot == 'Last' and not CustomPivotPoint then
@@ -362,6 +361,7 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 	-- Make joints, restore original anchor and collision states
 	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
+		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -593,6 +593,7 @@ function SetAxisAngle(Axis, Angle)
 	-- Restore the parts' original states
 	for Part, State in pairs(InitialStates) do
 		Part:MakeJoints();
+		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -656,6 +657,7 @@ function NudgeSelectionByAxis(Axis, Direction)
 	-- Make joints, restore original anchor and collision states
 	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
+		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -745,11 +747,15 @@ function PreparePartsForRotating()
 
 	local InitialState = {};
 
+	-- Get index of parts
+	local PartIndex = Support.FlipTable(Selection.Items);
+
 	-- Stop parts from moving, and capture the initial state of the parts
 	for _, Part in pairs(Selection.Items) do
 		InitialState[Part] = { Anchored = Part.Anchored, CanCollide = Part.CanCollide, CFrame = Part.CFrame };
 		Part.Anchored = true;
 		Part.CanCollide = false;
+		InitialState[Part].Joints = Core.PreserveJoints(Part, PartIndex);
 		Part:BreakJoints();
 		Part.Velocity = Vector3.new();
 		Part.RotVelocity = Vector3.new();

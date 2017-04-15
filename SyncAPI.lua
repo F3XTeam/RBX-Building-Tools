@@ -239,6 +239,11 @@ Actions = {
 			end;
 		end;
 
+		-- Preserve joints
+		for Part, Change in pairs(ChangeSet) do
+			Change.Joints = PreserveJoints(Part, ChangeSet);
+		end;
+
 		-- Perform each change
 		for Part, Change in pairs(ChangeSet) do
 
@@ -266,6 +271,7 @@ Actions = {
 		-- Restore the parts' original states
 		for Part, Change in pairs(ChangeSet) do
 			Part:MakeJoints();
+			RestoreJoints(Change.Joints);
 			Part.Anchored = Change.InitialState.Anchored;
 		end;
 
@@ -371,6 +377,11 @@ Actions = {
 			end;
 		end;
 
+		-- Preserve joints
+		for Part, Change in pairs(ChangeSet) do
+			Change.Joints = PreserveJoints(Part, ChangeSet);
+		end;
+
 		-- Perform each change
 		for Part, Change in pairs(ChangeSet) do
 
@@ -398,6 +409,7 @@ Actions = {
 		-- Restore the parts' original states
 		for Part, Change in pairs(ChangeSet) do
 			Part:MakeJoints();
+			RestoreJoints(Change.Joints);
 			Part.Anchored = Change.InitialState.Anchored;
 		end;
 
@@ -1445,6 +1457,85 @@ function ArePartsSelectable(Parts)
 
 	-- Return true if all parts are selectable
 	return true;
+
+end;
+
+-- References to reduce indexing time
+local GetConnectedParts = Instance.new('Part').GetConnectedParts;
+local GetChildren = script.GetChildren;
+
+function GetPartJoints(Part, Whitelist)
+	-- Returns any manual joints involving `Part`
+
+	local Joints = {};
+
+	-- Get joints stored inside `Part`
+	for Joint, JointParent in pairs(SearchJoints(Part, Part, Whitelist)) do
+		Joints[Joint] = JointParent;
+	end;
+
+	-- Get joints stored inside connected parts
+	for _, ConnectedPart in pairs(GetConnectedParts(Part)) do
+		for Joint, JointParent in pairs(SearchJoints(ConnectedPart, Part, Whitelist)) do
+			Joints[Joint] = JointParent;
+		end;
+	end;
+
+	-- Return all found joints
+	return Joints;
+
+end;
+
+-- Types of joints to assume should be preserved
+local ManualJointTypes = Support.FlipTable { 'Weld', 'ManualWeld', 'ManualGlue', 'Motor', 'Motor6D' };
+
+function SearchJoints(Haystack, Part, Whitelist)
+	-- Searches for and returns manual joints in `Haystack` involving `Part` and other parts in `Whitelist`
+
+	local Joints = {};
+
+	-- Search the haystack for joints involving `Part`
+	for _, Item in pairs(GetChildren(Haystack)) do
+
+		-- Check if this item is a manual, intentional joint
+		if ManualJointTypes[Item.ClassName] and
+		   (Whitelist[Item.Part0] and Whitelist[Item.Part1]) then
+
+			-- Save joint and state if intentional
+			Joints[Item] = Item.Parent;
+
+		end;
+
+	end;
+
+	-- Return the found joints
+	return Joints;
+
+end;
+
+function RestoreJoints(Joints)
+	-- Restores the joints from the given `Joints` data
+
+	-- Restore each joint
+	for Joint, JointParent in pairs(Joints) do
+		Joint.Parent = JointParent;
+	end;
+
+end;
+
+function PreserveJoints(Part, Whitelist)
+	-- Preserves and returns intentional joints of `Part` connecting parts in `Whitelist`
+
+	-- Get the part's joints
+	local Joints = GetPartJoints(Part, Whitelist);
+
+	-- Save the joints from being broken
+	for Joint in pairs(Joints) do
+		Joint.Parent = nil;
+	end;
+
+	-- Return the joints
+	return Joints;
 
 end;
 

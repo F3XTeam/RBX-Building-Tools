@@ -361,6 +361,7 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 	-- Make joints, restore original anchor and collision states
 	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
+		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -596,6 +597,7 @@ function SetAxisPosition(Axis, Position)
 	-- Restore the parts' original states
 	for Part, State in pairs(InitialStates) do
 		Part:MakeJoints();
+		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -644,6 +646,7 @@ function NudgeSelectionByFace(Face)
 	-- Restore the parts' original states
 	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
+		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -763,6 +766,7 @@ function EnableDragging()
 			if DragStart and (Vector2.new(Core.Mouse.X, Core.Mouse.Y) - DragStart).magnitude >= 2 then
 
 				-- Prepare for dragging
+				BoundingBox.ClearBoundingBox();
 				SetUpDragging(DragStartTarget, SnapTracking.Enabled and SnappedPoint or nil);
 
 				-- Disable watching for potential dragging
@@ -828,11 +832,15 @@ function PreparePartsForDragging()
 
 	local InitialState = {};
 
+	-- Get index of parts
+	local PartIndex = Support.FlipTable(Selection.Items);
+
 	-- Stop parts from moving, and capture the initial state of the parts
 	for _, Part in pairs(Selection.Items) do
 		InitialState[Part] = { Anchored = Part.Anchored, CanCollide = Part.CanCollide, CFrame = Part.CFrame };
 		Part.Anchored = true;
 		Part.CanCollide = false;
+		InitialState[Part].Joints = Core.PreserveJoints(Part, PartIndex);
 		Part:BreakJoints();
 		Part.Velocity = Vector3.new();
 		Part.RotVelocity = Vector3.new();
@@ -1132,6 +1140,7 @@ function FinishDragging()
 	-- Restore the original state of each part
 	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
+		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
