@@ -299,6 +299,12 @@ function AttachHandles(Part, Autofocus)
 		-- Indicate dragging via handles
 		HandleDragging = true;
 
+		-- Freeze bounding box extents while dragging
+		if BoundingBox.GetBoundingBox() then
+			InitialExtentsSize, InitialExtentsCFrame = BoundingBox.CalculateExtents(Core.Selection.Items, BoundingBox.StaticExtents);
+			BoundingBox.PauseMonitoring();
+		end;
+
 		-- Stop parts from moving, and capture the initial state of the parts
 		InitialState = PreparePartsForDragging();
 
@@ -329,15 +335,21 @@ function AttachHandles(Part, Autofocus)
 		-- Move the parts along the selected axes by the calculated distance
 		MovePartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Focus, InitialState);
 
+		-- Make sure we're not entering any unauthorized private areas
+		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+			Selection.Focus.CFrame = InitialState[Selection.Focus].CFrame;
+			TranslatePartsRelativeToPart(Selection.Focus, InitialState);
+			Distance = 0;
+		end;
+
 		-- Update the "distance moved" indicator
 		if MoveTool.UI then
 			MoveTool.UI.Changes.Text.Text = 'moved ' .. math.abs(Distance) .. ' studs';
 		end;
 
-		-- Make sure we're not entering any unauthorized private areas
-		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-			Selection.Focus.CFrame = InitialState[Selection.Focus].CFrame;
-			TranslatePartsRelativeToPart(Selection.Focus, InitialState);
+		-- Update bounding box if enabled in global axes movements
+		if MoveTool.Axes == 'Global' and BoundingBox.GetBoundingBox() then
+			BoundingBox.GetBoundingBox().CFrame = InitialExtentsCFrame + (AxisMultipliers[Face] * Distance);
 		end;
 
 	end);
@@ -368,6 +380,10 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 
 	-- Register the change
 	RegisterChange();
+
+	-- Resume normal bounding box updating
+	BoundingBox.RecalculateStaticExtents();
+	BoundingBox.ResumeMonitoring();
 
 end);
 

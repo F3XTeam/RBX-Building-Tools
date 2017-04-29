@@ -283,6 +283,12 @@ function AttachHandles(Part, Autofocus)
 		-- Indicate rotating via handle
 		HandleRotating = true;
 
+		-- Freeze bounding box extents while rotating
+		if BoundingBox.GetBoundingBox() then
+			InitialExtentsSize, InitialExtentsCFrame = BoundingBox.CalculateExtents(Core.Selection.Items, BoundingBox.StaticExtents);
+			BoundingBox.PauseMonitoring();
+		end;
+
 		-- Stop parts from moving, and capture the initial state of the parts
 		InitialState = PreparePartsForRotating();
 
@@ -368,6 +374,10 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 
 	-- Register the change
 	RegisterChange();
+
+	-- Resume normal bounding box updating
+	BoundingBox.RecalculateStaticExtents();
+	BoundingBox.ResumeMonitoring();
 
 end);
 
