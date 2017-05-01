@@ -1023,10 +1023,26 @@ function AlignSelectionToTarget()
 		return;
 	end;
 
-	-- Set the current surface alignment
-	local Rotation = CFrame.new(Vector3.new(), TargetNormal) * CFrame.Angles(-math.pi / 2, 0, 0);
-	local RotationX, RotationY, RotationZ = Rotation:toEulerAnglesXYZ();
-	SurfaceAlignment = CFrame.Angles(RotationX, RotationY, RotationZ);
+	-- Get target surface normal CFrame and its leftward direction
+	local TargetNormalCF = CFrame.new(Vector3.new(), TargetNormal);
+	local TargetNormalLeft = -TargetNormalCF.rightVector;
+
+	-- Use detected surface normal directly if not targeting a part
+	if not Target then
+		SurfaceAlignment = TargetNormalCF * CFrame.Angles(-math.pi / 2, 0, 0);
+
+	-- Align upward directions if targeting a part's front or back surface
+	elseif TargetNormal:isClose(Target.CFrame.lookVector, 0.000001) or TargetNormal:isClose(-Target.CFrame.lookVector, 0.000001) then
+		SurfaceAlignment = TargetNormalCF *
+			CFrame.Angles(0, 0, math.acos(TargetNormalLeft:Dot(Target.CFrame.upVector))) *
+			CFrame.Angles(-math.pi / 2, 0, 0);
+
+	-- Align forward directions if targeting any other part surface
+	else
+		SurfaceAlignment = TargetNormalCF *
+			CFrame.Angles(0, 0, math.pi - math.acos(TargetNormalLeft:Dot(Target.CFrame.lookVector))) *
+			CFrame.Angles(-math.pi / 2, 0, 0);
+	end;
 
 	-- Trigger alignment
 	TriggerAlignment();
