@@ -57,8 +57,19 @@ if NewTool then
 	script.Parent = nil;
 	local ToolParent = Tool.Parent;
 
-	-- Replace the current tool with the new one
-	Tool:Destroy();
+	-- Remove current tool (delayed to prevent parenting conflicts)
+	wait(0.05);
+	Tool.Parent = nil;
+
+	-- Remove the tool again if anything attempts to reparent it
+	Tool.Changed:connect(function (Property)
+		if Property == 'Parent' and Tool.Parent then
+			wait(0.05);
+			Tool.Parent = nil;
+		end;
+	end);
+
+	-- Add the new tool
 	NewTool.Parent = ToolParent;
 
 end;

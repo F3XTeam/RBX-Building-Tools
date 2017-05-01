@@ -12,6 +12,7 @@ local StaticPartMonitors = {};
 local RecalculateStaticExtents = true;
 local AggregatingStaticParts = false;
 local StaticPartAggregators = {};
+local PotentialPartMonitors = {};
 
 function BoundingBoxModule.StartBoundingBox(HandleAttachmentCallback)
 	-- Creates and starts a selection bounding box
@@ -40,12 +41,15 @@ function BoundingBoxModule.StartBoundingBox(HandleAttachmentCallback)
 	RecalculateStaticExtents = true;
 	StartAggregatingStaticParts();
 
+	-- Store handle attachment callback
+	BoundingBoxHandleCallback = HandleAttachmentCallback;
+
 	-- Begin the bounding box's updater
-	BoundingBoxUpdater = Support.ScheduleRecurringTask(UpdateBoundingBox, 0.05);
+	BoundingBoxModule.UpdateBoundingBox();
+	BoundingBoxUpdater = Support.ScheduleRecurringTask(BoundingBoxModule.UpdateBoundingBox, 0.05);
 
 	-- Attach handles if requested
-	if HandleAttachmentCallback then
-		BoundingBoxHandleCallback = HandleAttachmentCallback;
+	if BoundingBoxHandleCallback then
 		BoundingBoxHandleCallback(BoundingBox);
 	end;
 
@@ -59,7 +63,20 @@ function BoundingBoxModule.GetBoundingBox()
 
 end;
 
-function UpdateBoundingBox()
+function IsPhysicsStatic()
+	-- Returns whether the game's physics are active or static
+
+	-- Determine value if not yet cached
+	if _IsPhysicsStatic == nil then
+		_IsPhysicsStatic = (Core.Mode == 'Plugin') and (Workspace.DistributedGameTime == 0);
+	end;
+
+	-- Return cached value
+	return _IsPhysicsStatic;
+
+end;
+
+function BoundingBoxModule.UpdateBoundingBox()
 	-- Updates the bounding box to fit the selection's extents
 
 	-- Make sure the bounding box is enabled
@@ -140,24 +157,13 @@ function AddStaticParts(Parts)
 	for _, Part in pairs(Parts) do
 
 		-- Ensure part isn't already indexed, and verify it is static
-		if not StaticPartsIndex[Part] and Part.Anchored then
+		if not StaticPartsIndex[Part] and (IsPhysicsStatic() or Part.Anchored) then
 
 			-- Add part to static index
 			StaticPartsIndex[Part] = true;
 
-			-- Start monitoring part for changes
-			StaticPartMonitors[Part] = Part.Changed:connect(function (Property)
-
-				-- Trigger static extent recalculations on position or size changes
-				if Property == 'CFrame' or Property == 'Size' then
-					RecalculateStaticExtents = true;
-
-				-- Remove part from static index if it becomes mobile
-				elseif Property == 'Anchored' and not Part.Anchored then
-					RemoveStaticParts { Part };
-				end;
-
-			end);
+			-- Monitor static part for changes
+			AddStaticPartMonitor(Part);
 
 		end;
 
@@ -168,6 +174,30 @@ function AddStaticParts(Parts)
 
 	-- Recalculate static extents to include added parts
 	RecalculateStaticExtents = true;
+
+end;
+
+function AddStaticPartMonitor(Part)
+	-- Monitors the given part to track when it is no longer static
+
+	-- Ensure part isn't already monitored
+	if not StaticPartsIndex[Part] then
+		return;
+	end;
+
+	-- Start monitoring part for changes
+	StaticPartMonitors[Part] = Part.Changed:connect(function (Property)
+
+		-- Trigger static extent recalculations on position or size changes
+		if Property == 'CFrame' or Property == 'Size' then
+			RecalculateStaticExtents = true;
+
+		-- Remove part from static index if it becomes mobile
+		elseif Property == 'Anchored' and not IsPhysicsStatic() and not Part.Anchored then
+			RemoveStaticParts { Part };
+		end;
+
+	end);
 
 end;
 
@@ -203,12 +233,8 @@ function StartAggregatingStaticParts()
 	AddStaticParts(Core.Selection.Items);
 
 	-- Watch for parts that become static
-	for _, Part in pairs(Core.Selection.Items) do
-		table.insert(StaticPartAggregators, Part.Changed:connect(function (Property)
-			if Property == 'Anchored' and Part.Anchored then
-				AddStaticParts { Part };
-			end;
-		end));
+	for Part in pairs(Core.Selection.ItemIndex) do
+		AddPotentialPartMonitor(Part);
 	end;
 
 	-- Watch newly selected parts
@@ -219,11 +245,7 @@ function StartAggregatingStaticParts()
 
 		-- Watch for parts that become anchored
 		for _, Part in pairs(Parts) do
-			table.insert(StaticPartAggregators, Part.Changed:connect(function (Property)
-				if Property == 'Anchored' and Part.Anchored then
-					AddStaticParts { Part };
-				end;
-			end));
+			AddPotentialPartMonitor(Part);
 		end;
 
 	end));
@@ -231,7 +253,81 @@ function StartAggregatingStaticParts()
 	-- Remove deselected parts from static parts index
 	table.insert(StaticPartAggregators, Core.Selection.ItemsRemoved:connect(function (Parts)
 		RemoveStaticParts(Parts);
+		for _, Part in pairs(Parts) do
+			if PotentialPartMonitors[Part] then
+				PotentialPartMonitors[Part]:disconnect();
+				PotentialPartMonitors[Part] = nil;
+			end;
+		end;
 	end));
+
+end;
+
+function BoundingBoxModule.RecalculateStaticExtents()
+	-- Sets flag indicating that extents of static items should be recalculated
+
+	-- Set flag to trigger recalculation on the next step in the update loop
+	RecalculateStaticExtents = true;
+
+end;
+
+function AddPotentialPartMonitor(Part)
+	-- Monitors the given part to track when it becomes static
+
+	-- Ensure part is not already monitored
+	if PotentialPartMonitors[Part] then
+		return;
+	end;
+
+	-- Create anchored state change monitor
+	PotentialPartMonitors[Part] = Part.Changed:connect(function (Property)
+		if Property == 'Anchored' and Part.Anchored then
+			AddStaticParts { Part };
+		end;
+	end);
+
+end;
+
+function BoundingBoxModule.PauseMonitoring()
+	-- Disables part monitors
+
+	-- Disconnect all potential part monitors
+	for Part, Monitor in pairs(PotentialPartMonitors) do
+		Monitor:disconnect();
+		PotentialPartMonitors[Part] = nil;
+	end;
+
+	-- Disconnect all static part monitors
+	for Part, Monitor in pairs(StaticPartMonitors) do
+		Monitor:disconnect();
+		StaticPartMonitors[Part] = nil;
+	end;
+
+	-- Stop update loop
+	if BoundingBoxUpdater then
+		BoundingBoxUpdater:Stop();
+		BoundingBoxUpdater = nil;
+	end;
+
+end;
+
+function BoundingBoxModule.ResumeMonitoring()
+	-- Starts update loop and part monitors for selected and indexed parts
+
+	-- Start static part monitors
+	for StaticPart in pairs(StaticPartsIndex) do
+		AddStaticPartMonitor(StaticPart);
+	end;
+
+	-- Start potential part monitors
+	for Part in pairs(Core.Selection.ItemIndex) do
+		AddPotentialPartMonitor(Part);
+	end;
+
+	-- Start update loop
+	if not BoundingBoxUpdater then
+		BoundingBoxUpdater = Support.ScheduleRecurringTask(BoundingBoxModule.UpdateBoundingBox, 0.05);
+	end;
 
 end;
 
@@ -248,6 +344,12 @@ function StopAggregatingStaticParts()
 	for MonitorKey, Monitor in pairs(StaticPartMonitors) do
 		Monitor:disconnect();
 		StaticPartMonitors[MonitorKey] = nil;
+	end;
+
+	-- Remove all potential part monitors
+	for MonitorKey, Monitor in pairs(PotentialPartMonitors) do
+		Monitor:disconnect();
+		PotentialPartMonitors[MonitorKey] = nil;
 	end;
 
 	-- Clear all static part information
@@ -283,7 +385,7 @@ function BoundingBoxModule.CalculateExtents(Items, StaticExtents, ExtentsOnly)
 	for _, Part in pairs(Items) do
 
 		-- Avoid re-calculating for static parts
-		if not (Part.Anchored and StaticExtents) then
+		if not ((IsPhysicsStatic() or Part.Anchored) and StaticExtents) then
 
 			-- Get shortcuts to part data
 			local PartCFrame = Part.CFrame;

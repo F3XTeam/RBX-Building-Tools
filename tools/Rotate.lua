@@ -283,6 +283,12 @@ function AttachHandles(Part, Autofocus)
 		-- Indicate rotating via handle
 		HandleRotating = true;
 
+		-- Freeze bounding box extents while rotating
+		if BoundingBox.GetBoundingBox() then
+			InitialExtentsSize, InitialExtentsCFrame = BoundingBox.CalculateExtents(Core.Selection.Items, BoundingBox.StaticExtents);
+			BoundingBox.PauseMonitoring();
+		end;
+
 		-- Stop parts from moving, and capture the initial state of the parts
 		InitialState = PreparePartsForRotating();
 
@@ -320,21 +326,27 @@ function AttachHandles(Part, Autofocus)
 		Rotation = math.deg(Rotation);
 
 		-- Calculate the increment-aligned rotation amount
-		Rotation = GetIncrementMultiple(Rotation, RotateTool.Increment);
+		Rotation = GetIncrementMultiple(Rotation, RotateTool.Increment) % 360;
+
+		-- Get displayable rotation delta
+		local DisplayedRotation = GetHandleDisplayDelta(Rotation);
 
 		-- Perform the rotation
 		RotatePartsAroundPivot(RotateTool.Pivot, PivotPoint, Axis, Rotation, InitialState);
-
-		-- Update the "degrees rotated" indicator
-		if RotateTool.UI then
-			RotateTool.UI.Changes.Text.Text = 'rotated ' .. math.abs(Rotation) .. ' degrees';
-		end;
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
 			for Part, State in pairs(InitialState) do
 				Part.CFrame = State.CFrame;
 			end;
+
+			-- Reset displayed rotation delta
+			DisplayedRotation = 0;
+		end;
+
+		-- Update the "degrees rotated" indicator
+		if RotateTool.UI then
+			RotateTool.UI.Changes.Text.Text = 'rotated ' .. DisplayedRotation .. ' degrees';
 		end;
 
 	end);
@@ -358,6 +370,11 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 	-- Clear this connection to prevent it from firing again
 	ClearConnection 'HandleRelease';
 
+	-- Clear change indicator states
+	HandleDirection = nil;
+	HandleFirstAngle = nil;
+	LastDisplayedRotation = nil;
+
 	-- Make joints, restore original anchor and collision states
 	for Part, State in pairs(InitialState) do
 		Part:MakeJoints();
@@ -368,6 +385,10 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 
 	-- Register the change
 	RegisterChange();
+
+	-- Resume normal bounding box updating
+	BoundingBox.RecalculateStaticExtents();
+	BoundingBox.ResumeMonitoring();
 
 end);
 
@@ -416,6 +437,59 @@ function RotatePartsAroundPivot(PivotMode, PivotPoint, Axis, Rotation, InitialSt
 		end;
 
 	end;
+
+end;
+
+function GetHandleDisplayDelta(HandleRotation)
+	-- Returns a human-friendly version of the handle's rotation delta
+
+	-- Prepare to capture first angle
+	if HandleFirstAngle == nil then
+		HandleFirstAngle = true;
+		HandleDirection = true;
+
+	-- Capture first angle
+	elseif HandleFirstAngle == true then
+
+		-- Determine direction based on first angle
+		if math.abs(HandleRotation) > 180 then
+			HandleDirection = false;
+		else
+			HandleDirection = true;
+		end;
+
+		-- Disable first angle capturing
+		HandleFirstAngle = false;
+
+	end;
+
+	-- Determine the rotation delta to display
+	local DisplayedRotation;
+	if HandleDirection == true then
+		DisplayedRotation = (360 - HandleRotation) % 360;
+	else
+		DisplayedRotation = HandleRotation % 360;
+	end;
+
+	-- Switch delta calculation direction if crossing directions
+	if LastDisplayedRotation and (
+	   (LastDisplayedRotation <= 120 and DisplayedRotation >= 240) or
+	   (LastDisplayedRotation >= 240 and DisplayedRotation <= 120)) then
+		HandleDirection = not HandleDirection;
+	end;
+
+	-- Update displayed rotation after direction correction
+	if HandleDirection == true then
+		DisplayedRotation = (360 - HandleRotation) % 360;
+	else
+		DisplayedRotation = HandleRotation % 360;
+	end;
+
+	-- Store this last display rotation
+	LastDisplayedRotation = DisplayedRotation;
+
+	-- Return updated display delta
+	return DisplayedRotation;
 
 end;
 

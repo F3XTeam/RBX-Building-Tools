@@ -299,6 +299,12 @@ function AttachHandles(Part, Autofocus)
 		-- Indicate dragging via handles
 		HandleDragging = true;
 
+		-- Freeze bounding box extents while dragging
+		if BoundingBox.GetBoundingBox() then
+			InitialExtentsSize, InitialExtentsCFrame = BoundingBox.CalculateExtents(Core.Selection.Items, BoundingBox.StaticExtents);
+			BoundingBox.PauseMonitoring();
+		end;
+
 		-- Stop parts from moving, and capture the initial state of the parts
 		InitialState = PreparePartsForDragging();
 
@@ -329,15 +335,21 @@ function AttachHandles(Part, Autofocus)
 		-- Move the parts along the selected axes by the calculated distance
 		MovePartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Focus, InitialState);
 
+		-- Make sure we're not entering any unauthorized private areas
+		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+			Selection.Focus.CFrame = InitialState[Selection.Focus].CFrame;
+			TranslatePartsRelativeToPart(Selection.Focus, InitialState);
+			Distance = 0;
+		end;
+
 		-- Update the "distance moved" indicator
 		if MoveTool.UI then
 			MoveTool.UI.Changes.Text.Text = 'moved ' .. math.abs(Distance) .. ' studs';
 		end;
 
-		-- Make sure we're not entering any unauthorized private areas
-		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
-			Selection.Focus.CFrame = InitialState[Selection.Focus].CFrame;
-			TranslatePartsRelativeToPart(Selection.Focus, InitialState);
+		-- Update bounding box if enabled in global axes movements
+		if MoveTool.Axes == 'Global' and BoundingBox.GetBoundingBox() then
+			BoundingBox.GetBoundingBox().CFrame = InitialExtentsCFrame + (AxisMultipliers[Face] * Distance);
 		end;
 
 	end);
@@ -368,6 +380,10 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 
 	-- Register the change
 	RegisterChange();
+
+	-- Resume normal bounding box updating
+	BoundingBox.RecalculateStaticExtents();
+	BoundingBox.ResumeMonitoring();
 
 end);
 
@@ -805,11 +821,11 @@ UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
 		return;
 	end;
 
-	-- Finish dragging
-	FinishDragging();
-
 	-- Reset normal axes option state
 	SetAxes(MoveTool.Axes);
+
+	-- Finish dragging
+	FinishDragging();
 
 end);
 
@@ -1007,10 +1023,26 @@ function AlignSelectionToTarget()
 		return;
 	end;
 
-	-- Set the current surface alignment
-	local Rotation = CFrame.new(Vector3.new(), TargetNormal) * CFrame.Angles(-math.pi / 2, 0, 0);
-	local RotationX, RotationY, RotationZ = Rotation:toEulerAnglesXYZ();
-	SurfaceAlignment = CFrame.Angles(RotationX, RotationY, RotationZ);
+	-- Get target surface normal CFrame and its leftward direction
+	local TargetNormalCF = CFrame.new(Vector3.new(), TargetNormal);
+	local TargetNormalLeft = -TargetNormalCF.rightVector;
+
+	-- Use detected surface normal directly if not targeting a part
+	if not Target then
+		SurfaceAlignment = TargetNormalCF * CFrame.Angles(-math.pi / 2, 0, 0);
+
+	-- Align upward directions if targeting a part's front or back surface
+	elseif TargetNormal:isClose(Target.CFrame.lookVector, 0.000001) or TargetNormal:isClose(-Target.CFrame.lookVector, 0.000001) then
+		SurfaceAlignment = TargetNormalCF *
+			CFrame.Angles(0, 0, math.acos(TargetNormalLeft:Dot(Target.CFrame.upVector))) *
+			CFrame.Angles(-math.pi / 2, 0, 0);
+
+	-- Align forward directions if targeting any other part surface
+	else
+		SurfaceAlignment = TargetNormalCF *
+			CFrame.Angles(0, 0, math.pi - math.acos(TargetNormalLeft:Dot(Target.CFrame.lookVector))) *
+			CFrame.Angles(-math.pi / 2, 0, 0);
+	end;
 
 	-- Trigger alignment
 	TriggerAlignment();

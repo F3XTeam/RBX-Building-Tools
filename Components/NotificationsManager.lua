@@ -15,9 +15,9 @@ function Component.Start(Core)
 	-- Display update notification if tool is outdated
 	if Core.IsVersionOutdated() then
 		if Core.Mode == 'Plugin' then
-			Cheer(View.ToolUpdateNotification).Start(Component.AdjustLayout);
-		elseif Core.Mode == 'Tool' then
 			Cheer(View.PluginUpdateNotification).Start(Component.AdjustLayout);
+		elseif Core.Mode == 'Tool' then
+			Cheer(View.ToolUpdateNotification).Start(Component.AdjustLayout);
 		end;
 	end;
 
