@@ -180,8 +180,8 @@ end;
 function AddStaticPartMonitor(Part)
 	-- Monitors the given part to track when it is no longer static
 
-	-- Ensure part isn't already monitored
-	if not StaticPartsIndex[Part] then
+	-- Ensure part is static and isn't already monitored
+	if not StaticPartsIndex[Part] or StaticPartMonitors[Part] then
 		return;
 	end;
 
@@ -313,6 +313,11 @@ end;
 
 function BoundingBoxModule.ResumeMonitoring()
 	-- Starts update loop and part monitors for selected and indexed parts
+
+	-- Ensure bounding box is enabled
+	if not BoundingBoxEnabled then
+		return;
+	end;
 
 	-- Start static part monitors
 	for StaticPart in pairs(StaticPartsIndex) do
