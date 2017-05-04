@@ -544,8 +544,10 @@ function BindShortcutKeys()
 				return;
 			end;
 
-			-- Reset handles
-			SetAxes(MoveTool.Axes);
+			-- Reset handles if not dragging
+			if not Dragging then
+				SetAxes(MoveTool.Axes);
+			end;
 
 			-- Stop snapping point tracking if it was enabled
 			SnapTracking.StopTracking();
