@@ -298,13 +298,25 @@ if Mode == 'Plugin' then
 	Plugin.Deactivation:connect(Disable);
 
 	-- Sync Studio selection to internal selection
+	local ChangingSelection = false;
 	Selection.Changed:connect(function ()
+		-- Use this variable to disregard changes we do ourselves.
+		ChangingSelection = true;
 		SelectionService:Set(Selection.Items);
 	end);
 
 	-- Sync internal selection to Studio selection on enabling
 	Enabling:connect(function ()
 		Selection.Replace(SelectionService:Get());
+
+		table.insert(Connections, SelectionService.SelectionChanged:Connect(function()
+			if ChangingSelection then
+				ChangingSelection = false;
+				return;
+			end;
+			
+			Selection.Replace(SelectionService:Get());
+		end));
 	end);
 
 	-- Roughly sync Studio history to internal history (API lacking necessary functionality)
