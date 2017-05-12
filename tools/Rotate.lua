@@ -602,8 +602,8 @@ function BindShortcutKeys()
 				if InputInfo.KeyCode == Enum.KeyCode[Key] then
 					RotateTool.Increment = Increment;
 					RotateTool.UI.IncrementOption.Increment.TextBox.Text = RotateTool.Increment;
-				end
-			end
+				end;
+			end;
 		end;
 
 	end));

@@ -553,8 +553,8 @@ function BindShortcutKeys()
 				if InputInfo.KeyCode == Enum.KeyCode[Key] then
 					MoveTool.Increment = Increment;
 					MoveTool.UI.IncrementOption.Increment.TextBox.Text = MoveTool.Increment;
-				end
-			end
+				end;
+			end;
 		end;
 
 	end));
