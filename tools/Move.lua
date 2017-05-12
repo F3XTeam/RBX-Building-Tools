@@ -16,6 +16,14 @@ local MoveTool = {
 	Name = 'Move Tool';
 	Color = BrickColor.new 'Deep orange';
 
+	IncrementSteps = {0.05, 0.1, 0.25, 0.5, 1, 2, 4, 5, 10, 15, 20, 40, 50, 100, 200};
+	IncrementHotkeys = {
+		Backquote = 1;
+		Three = 0.5;
+		Four = 0.2;
+		Five = 0.1;
+	};
+
 	-- Default options
 	Increment = 1;
 	Axes = 'Global';
@@ -519,6 +527,34 @@ function BindShortcutKeys()
 		elseif InputInfo.KeyCode == Enum.KeyCode.T then
 			AlignSelectionToTarget();
 
+		-- Check if the One key was pressed eryn
+		elseif Core.Mode == "Plugin" and InputInfo.KeyCode == Enum.KeyCode.One then
+
+			-- Decrease increment
+			local ClosestIncrementIndex = Core.NearestValue(MoveTool.IncrementSteps, MoveTool.Increment);
+			local NextIncrement = MoveTool.IncrementSteps[ClosestIncrementIndex - 1];
+			MoveTool.Increment = NextIncrement or MoveTool.Increment;
+			MoveTool.UI.IncrementOption.Increment.TextBox.Text = MoveTool.Increment;
+
+		-- Check if the Two key was pressed 
+		elseif Core.Mode == "Plugin" and InputInfo.KeyCode == Enum.KeyCode.Two then
+
+			-- Increase increment
+			local ClosestIncrementIndex = Core.NearestValue(MoveTool.IncrementSteps, MoveTool.Increment);
+			local NextIncrement = MoveTool.IncrementSteps[ClosestIncrementIndex + 1];
+			MoveTool.Increment = NextIncrement or MoveTool.Increment;
+			MoveTool.UI.IncrementOption.Increment.TextBox.Text = MoveTool.Increment;
+
+		-- Handle increment hotkeys
+		elseif Core.Mode == "Plugin" then
+
+			-- Loop over increment hotkeys and check if this is one of them.
+			for Key, Increment in pairs(MoveTool.IncrementHotkeys) do
+				if InputInfo.KeyCode == Enum.KeyCode[Key] then
+					MoveTool.Increment = Increment;
+					MoveTool.UI.IncrementOption.Increment.TextBox.Text = MoveTool.Increment;
+				end
+			end
 		end;
 
 	end));

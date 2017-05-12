@@ -16,6 +16,14 @@ local RotateTool = {
 	Name = 'Rotate Tool';
 	Color = BrickColor.new 'Bright green';
 
+	IncrementSteps = {0.5, 1, 5, 10, 15, 20, 45, 90};
+	IncrementHotkeys = {
+		Backquote = 15;
+		Three = 10;
+		Four = 5;
+		Five = 1;
+	};
+
 	-- Default options
 	Increment = 15;
 	Pivot = 'Center';
@@ -568,6 +576,34 @@ function BindShortcutKeys()
 		elseif InputInfo.KeyCode == Enum.KeyCode.T then
 			StartSnapping();
 
+		-- Check if the One key was pressed eryn
+		elseif Core.Mode == "Plugin" and InputInfo.KeyCode == Enum.KeyCode.One then
+
+			-- Decrease increment
+			local ClosestIncrementIndex = Core.NearestValue(RotateTool.IncrementSteps, RotateTool.Increment);
+			local NextIncrement = RotateTool.IncrementSteps[ClosestIncrementIndex - 1];
+			RotateTool.Increment = NextIncrement or RotateTool.Increment;
+			RotateTool.UI.IncrementOption.Increment.TextBox.Text = RotateTool.Increment;
+
+		-- Check if the Two key was pressed 
+		elseif Core.Mode == "Plugin" and InputInfo.KeyCode == Enum.KeyCode.Two then
+
+			-- Increase increment
+			local ClosestIncrementIndex = Core.NearestValue(RotateTool.IncrementSteps, RotateTool.Increment);
+			local NextIncrement = RotateTool.IncrementSteps[ClosestIncrementIndex + 1];
+			RotateTool.Increment = NextIncrement or RotateTool.Increment;
+			RotateTool.UI.IncrementOption.Increment.TextBox.Text = RotateTool.Increment;
+
+		-- Handle increment hotkeys
+		elseif Core.Mode == "Plugin" then
+
+			-- Loop over increment hotkeys and check if this is one of them.
+			for Key, Increment in pairs(RotateTool.IncrementHotkeys) do
+				if InputInfo.KeyCode == Enum.KeyCode[Key] then
+					RotateTool.Increment = Increment;
+					RotateTool.UI.IncrementOption.Increment.TextBox.Text = RotateTool.Increment;
+				end
+			end
 		end;
 
 	end));

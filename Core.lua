@@ -773,6 +773,17 @@ function PreserveJoints(Part, Whitelist)
 
 end;
 
+function NearestValue(table, number)
+    local smallestSoFar, smallestIndex
+    for i, y in ipairs(table) do
+        if not smallestSoFar or (math.abs(number-y) < smallestSoFar) then
+            smallestSoFar = math.abs(number-y)
+            smallestIndex = i
+        end
+    end
+    return smallestIndex, table[smallestIndex]
+end
+
 -- Initialize the UI
 InitializeUI();
 
