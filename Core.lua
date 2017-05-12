@@ -267,6 +267,9 @@ function InitializeUI()
 
 end;
 
+local ChangingSelection = false;
+local OutlinesShown = true;
+
 -- Enable tool or plugin
 if Mode == 'Plugin' then
 
@@ -298,11 +301,14 @@ if Mode == 'Plugin' then
 	Plugin.Deactivation:connect(Disable);
 
 	-- Sync Studio selection to internal selection
-	local ChangingSelection = false;
 	Selection.Changed:connect(function ()
 		-- Use this variable to disregard changes we do ourselves.
 		ChangingSelection = true;
 		SelectionService:Set(Selection.Items);
+
+		if OutlinesShown == false then
+			ToggleOutlinesShown();
+		end;
 	end);
 
 	-- Sync internal selection to Studio selection on enabling
@@ -480,6 +486,28 @@ function SetDefaultPartParent()
 	SyncAPI:Invoke('SetDefaultPartParent', Parent);
 	print("[Building Tools by F3X] Set New/Cloned Part Parent to: " .. Parent:GetFullName());
 end;
+
+function ToggleOutlinesShown()
+	OutlinesShown = not OutlinesShown;
+
+	if OutlinesShown then
+		Targeting.EnableOutline();
+		Selection.EnableOutlines();
+		ChangingSelection = true;
+		SelectionService:Set(Selection.Items);
+		print("[Building Tools by F3X] Outlines on");
+	else
+		Targeting.HideOutline();
+		Selection.HideOutlines();
+		ChangingSelection = true;
+		SelectionService:Set({});
+		print("[Building Tools by F3X] Outlines off");
+	end;
+end;
+
+-- Assign hotkey for setting if outlines are shown (shift + j)
+AssignHotkey({ 'LeftShift', 'J' }, ToggleOutlinesShown);
+AssignHotkey({ 'RightShift', 'J' }, ToggleOutlinesShown);
 
 -- Assign hotkey for setting new part parent (shift + h)
 AssignHotkey({ 'LeftShift', 'H' }, SetDefaultPartParent);
