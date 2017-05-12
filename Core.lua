@@ -101,6 +101,18 @@ function AssignHotkey(Hotkey, Callback)
 
 end;
 
+function EnableSiblingSelectMouseButton3() -- eryn
+	table.insert(Connections, UserInputService.InputBegan:Connect(function(InputInfo, GameProcessed)
+		if GameProcessed then
+			return;
+		end;
+
+		if InputInfo.UserInputType == Enum.UserInputType.MouseButton3 then
+			SelectSiblings(not UserInputService:IsKeyDown(Enum.KeyCode.LeftShift));
+		end;
+	end));
+end;
+
 function EnableHotkeys()
 	-- Begins to listen for hotkey triggering
 
@@ -189,6 +201,7 @@ function Enable(Mouse)
 
 	-- Start systems
 	EnableHotkeys();
+	EnableSiblingSelectMouseButton3();
 	Targeting.EnableTargeting();
 	Selection.EnableOutlines();
 	Selection.EnableMultiselectionHotkeys();
