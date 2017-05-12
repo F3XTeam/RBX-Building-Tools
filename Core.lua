@@ -462,6 +462,17 @@ function DeleteSelection()
 
 end;
 
+function SetDefaultPartParent()
+	local Parent = game.Selection:Get()[1];
+	Parent = Parent or Workspace
+	SyncAPI:Invoke('SetDefaultPartParent', Parent);
+	print("[Building Tools by F3X] Set New/Cloned Part Parent to: " .. Parent:GetFullName());
+end;
+
+-- Assign hotkey for setting new part parent (shift + h)
+AssignHotkey({ 'LeftShift', 'H' }, SetDefaultPartParent);
+AssignHotkey({ 'RightShift', 'H' }, SetDefaultPartParent);
+
 -- Assign hotkeys for cloning (left or right shift + c)
 AssignHotkey({ 'LeftShift', 'C' }, CloneSelection);
 AssignHotkey({ 'RightShift', 'C' }, CloneSelection);
