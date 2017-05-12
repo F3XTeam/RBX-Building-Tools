@@ -527,7 +527,7 @@ function BindShortcutKeys()
 		elseif InputInfo.KeyCode == Enum.KeyCode.T then
 			AlignSelectionToTarget();
 
-		-- Check if the One key was pressed eryn
+		-- Check if the One key was pressed
 		elseif Core.Mode == "Plugin" and InputInfo.KeyCode == Enum.KeyCode.One then
 
 			-- Decrease increment

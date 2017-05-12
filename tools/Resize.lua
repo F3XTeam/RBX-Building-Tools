@@ -524,7 +524,7 @@ function BindShortcutKeys()
 		elseif InputInfo.KeyCode == Enum.KeyCode.R and not Selection.Multiselecting then
 			StartSnapping();
 
-		-- Check if the One key was pressed eryn
+		-- Check if the One key was pressed
 		elseif Core.Mode == "Plugin" and InputInfo.KeyCode == Enum.KeyCode.One then
 
 			-- Decrease increment

@@ -101,7 +101,7 @@ function AssignHotkey(Hotkey, Callback)
 
 end;
 
-function EnableSiblingSelectMouseButton3() -- eryn
+function EnableSiblingSelectMouseButton3()
 	table.insert(Connections, UserInputService.InputBegan:Connect(function(InputInfo, GameProcessed)
 		if GameProcessed then
 			return;
