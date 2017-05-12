@@ -394,7 +394,7 @@ function CloneSelection()
 	Selection.Replace(Clones);
 
 	-- Play a confirmation sound
-	PlayConfirmationSound();
+	-- PlayConfirmationSound();
 
 	-- Flash the outlines of the new parts
 	coroutine.wrap(Selection.FlashOutlines)();
