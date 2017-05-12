@@ -1,6 +1,7 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 SnapTracking = require(Tool.SnappingModule);
+MoveTool = require(Tool.Tools.MoveTool);
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -14,6 +15,9 @@ local ResizeTool = {
 
 	Name = 'Resize Tool';
 	Color = BrickColor.new 'Cyan';
+
+	IncrementSteps = MoveTool.IncrementSteps;
+	IncrementHotkeys = MoveTool.IncrementHotkeys;
 
 	-- Default options
 	Increment = 1;
@@ -520,6 +524,34 @@ function BindShortcutKeys()
 		elseif InputInfo.KeyCode == Enum.KeyCode.R and not Selection.Multiselecting then
 			StartSnapping();
 
+		-- Check if the One key was pressed
+		elseif Core.Mode == "Plugin" and InputInfo.KeyCode == Enum.KeyCode.One then
+
+			-- Decrease increment
+			local ClosestIncrementIndex = Core.NearestValue(ResizeTool.IncrementSteps, ResizeTool.Increment);
+			local NextIncrement = ResizeTool.IncrementSteps[ClosestIncrementIndex - 1];
+			ResizeTool.Increment = NextIncrement or ResizeTool.Increment;
+			ResizeTool.UI.IncrementOption.Increment.TextBox.Text = ResizeTool.Increment;
+
+		-- Check if the Two key was pressed 
+		elseif Core.Mode == "Plugin" and InputInfo.KeyCode == Enum.KeyCode.Two then
+
+			-- Increase increment
+			local ClosestIncrementIndex = Core.NearestValue(ResizeTool.IncrementSteps, ResizeTool.Increment);
+			local NextIncrement = ResizeTool.IncrementSteps[ClosestIncrementIndex + 1];
+			ResizeTool.Increment = NextIncrement or ResizeTool.Increment;
+			ResizeTool.UI.IncrementOption.Increment.TextBox.Text = ResizeTool.Increment;
+
+		-- Handle increment hotkeys
+		elseif Core.Mode == "Plugin" then
+
+			-- Loop over increment hotkeys and check if this is one of them.
+			for Key, Increment in pairs(ResizeTool.IncrementHotkeys) do
+				if InputInfo.KeyCode == Enum.KeyCode[Key] then
+					ResizeTool.Increment = Increment;
+					ResizeTool.UI.IncrementOption.Increment.TextBox.Text = ResizeTool.Increment;
+				end;
+			end;
 		end;
 
 	end));

@@ -39,6 +39,10 @@ Actions = {
 		Tool.Handle.BrickColor = NewColor;
 	end;
 
+	['SetDefaultPartParent'] = function (Parent)
+		Options.DefaultPartParent = Parent;
+	end;
+
 	['Clone'] = function (Parts)
 		-- Clones the given parts
 

@@ -68,6 +68,24 @@ function TargetingModule.HighlightTarget(Target)
 
 end;
 
+function TargetingModule.HideOutline()
+
+	if not TargetBox then
+		return;
+	end;
+
+	TargetBox.Transparency = 1;
+end;
+
+function TargetingModule.EnableOutline()
+
+	if not TargetBox then
+		return;
+	end;
+
+	TargetBox.Transparency = 0.5;
+end;
+
 function TargetingModule.SelectTarget()
 
 	-- Ensure target selection isn't cancelled

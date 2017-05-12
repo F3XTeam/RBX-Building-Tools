@@ -101,6 +101,18 @@ function AssignHotkey(Hotkey, Callback)
 
 end;
 
+function EnableSiblingSelectMouseButton3()
+	table.insert(Connections, UserInputService.InputBegan:Connect(function(InputInfo, GameProcessed)
+		if GameProcessed then
+			return;
+		end;
+
+		if InputInfo.UserInputType == Enum.UserInputType.MouseButton3 then
+			SelectSiblings(not UserInputService:IsKeyDown(Enum.KeyCode.LeftShift));
+		end;
+	end));
+end;
+
 function EnableHotkeys()
 	-- Begins to listen for hotkey triggering
 
@@ -189,6 +201,7 @@ function Enable(Mouse)
 
 	-- Start systems
 	EnableHotkeys();
+	EnableSiblingSelectMouseButton3();
 	Targeting.EnableTargeting();
 	Selection.EnableOutlines();
 	Selection.EnableMultiselectionHotkeys();
@@ -254,6 +267,9 @@ function InitializeUI()
 
 end;
 
+local ChangingSelection = false;
+local OutlinesShown = true;
+
 -- Enable tool or plugin
 if Mode == 'Plugin' then
 
@@ -286,12 +302,27 @@ if Mode == 'Plugin' then
 
 	-- Sync Studio selection to internal selection
 	Selection.Changed:connect(function ()
+		-- Use this variable to disregard changes we do ourselves.
+		ChangingSelection = true;
 		SelectionService:Set(Selection.Items);
+
+		if OutlinesShown == false then
+			ToggleOutlinesShown();
+		end;
 	end);
 
 	-- Sync internal selection to Studio selection on enabling
 	Enabling:connect(function ()
 		Selection.Replace(SelectionService:Get());
+
+		table.insert(Connections, SelectionService.SelectionChanged:Connect(function()
+			if ChangingSelection then
+				ChangingSelection = false;
+				return;
+			end;
+			
+			Selection.Replace(SelectionService:Get());
+		end));
 	end);
 
 	-- Roughly sync Studio history to internal history (API lacking necessary functionality)
@@ -381,7 +412,7 @@ function CloneSelection()
 	Selection.Replace(Clones);
 
 	-- Play a confirmation sound
-	PlayConfirmationSound();
+	-- PlayConfirmationSound();
 
 	-- Flash the outlines of the new parts
 	coroutine.wrap(Selection.FlashOutlines)();
@@ -448,6 +479,39 @@ function DeleteSelection()
 	History.Add(HistoryRecord);
 
 end;
+
+function SetDefaultPartParent()
+	local Parent = game.Selection:Get()[1];
+	Parent = Parent or Workspace
+	SyncAPI:Invoke('SetDefaultPartParent', Parent);
+	print("[Building Tools by F3X] Set New/Cloned Part Parent to: " .. Parent:GetFullName());
+end;
+
+function ToggleOutlinesShown()
+	OutlinesShown = not OutlinesShown;
+
+	if OutlinesShown then
+		Targeting.EnableOutline();
+		Selection.EnableOutlines();
+		ChangingSelection = true;
+		SelectionService:Set(Selection.Items);
+		print("[Building Tools by F3X] Outlines on");
+	else
+		Targeting.HideOutline();
+		Selection.HideOutlines();
+		ChangingSelection = true;
+		SelectionService:Set({});
+		print("[Building Tools by F3X] Outlines off");
+	end;
+end;
+
+-- Assign hotkey for setting if outlines are shown (shift + j)
+AssignHotkey({ 'LeftShift', 'J' }, ToggleOutlinesShown);
+AssignHotkey({ 'RightShift', 'J' }, ToggleOutlinesShown);
+
+-- Assign hotkey for setting new part parent (shift + h)
+AssignHotkey({ 'LeftShift', 'H' }, SetDefaultPartParent);
+AssignHotkey({ 'RightShift', 'H' }, SetDefaultPartParent);
 
 -- Assign hotkeys for cloning (left or right shift + c)
 AssignHotkey({ 'LeftShift', 'C' }, CloneSelection);
@@ -772,6 +836,17 @@ function PreserveJoints(Part, Whitelist)
 	return Joints;
 
 end;
+
+function NearestValue(table, number)
+    local smallestSoFar, smallestIndex
+    for i, y in ipairs(table) do
+        if not smallestSoFar or (math.abs(number-y) < smallestSoFar) then
+            smallestSoFar = math.abs(number-y)
+            smallestIndex = i
+        end
+    end
+    return smallestIndex, table[smallestIndex]
+end
 
 -- Initialize the UI
 InitializeUI();
