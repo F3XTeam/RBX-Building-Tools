@@ -603,7 +603,7 @@ function SetAxisPosition(Axis, Position)
 			Axis == 'X' and Position or Part.Position.X,
 			Axis == 'Y' and Position or Part.Position.Y,
 			Axis == 'Z' and Position or Part.Position.Z
-		) * CFrame.Angles(Part.CFrame:toEulerAnglesXYZ());
+		) * (Part.CFrame - Part.CFrame.p);
 
 	end;
 
@@ -916,7 +916,7 @@ function StartDragging(BasePart, InitialState, BasePoint)
 	Connections.DragSnapping = PointSnapped:connect(function (SnappedPoint)
 
 		-- Align the selection's base point to the snapped point
-		local Rotation = SurfaceAlignment or CFrame.Angles(InitialState[BasePart].CFrame:toEulerAnglesXYZ());
+		local Rotation = SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p);
 		BasePart.CFrame = CFrame.new(SnappedPoint + BasePartOffset) * Rotation;
 		TranslatePartsRelativeToPart(BasePart, InitialState);
 
@@ -982,7 +982,7 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	TargetPoint = GetAlignedTargetPoint(Target, TargetPoint, TargetNormal);
 
 	-- Move the parts towards their target destination
-	local Rotation = SurfaceAlignment or CFrame.Angles(InitialState[BasePart].CFrame:toEulerAnglesXYZ());
+	local Rotation = SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p);
 	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * Rotation;
 	TranslatePartsRelativeToPart(BasePart, InitialState);
 
