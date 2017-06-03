@@ -928,7 +928,15 @@ function StartDragging(BasePart, InitialState, BasePoint)
 
 	-- Provide a callback to trigger alignment
 	TriggerAlignment = function ()
+
+		-- Trigger drag recalculation
 		DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions);
+
+		-- Trigger snapping recalculation
+		if SnapTracking.Enabled then
+			PointSnapped:fire(SnappedPoint);
+		end;
+
 	end;
 
 	-- Start up the dragging action
