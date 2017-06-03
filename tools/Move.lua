@@ -568,6 +568,11 @@ function StartSnapping()
 	AttachHandles(nil, true);
 	BoundingBox.ClearBoundingBox();
 
+	-- Avoid targeting snap points in selected parts while dragging
+	if Dragging then
+		SnapTracking.TargetBlacklist = Selection.Items;
+	end;
+
 	-- Start tracking the closest snapping point
 	SnapTracking.StartTracking(function (NewPoint)
 
