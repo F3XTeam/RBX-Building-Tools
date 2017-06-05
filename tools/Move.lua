@@ -243,8 +243,6 @@ function SetAxes(AxisMode)
 
 end;
 
-local Handles;
-
 -- Directions of movement for each handle's dragged face
 local AxisMultipliers = {
 	[Enum.NormalId.Top] = Vector3.new(0, 1, 0);
@@ -261,7 +259,7 @@ function AttachHandles(Part, Autofocus)
 	-- Enable autofocus if requested and not already on
 	if Autofocus and not Connections.AutofocusHandle then
 		Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
-			Handles.Adornee = Selection.Focus;
+			AttachHandles(Selection.Focus, true);
 		end);
 
 	-- Disable autofocus if not requested and on

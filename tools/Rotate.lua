@@ -237,15 +237,13 @@ function SetPivot(PivotMode)
 
 end;
 
-local Handles;
-
 function AttachHandles(Part, Autofocus)
 	-- Creates and attaches handles to `Part`, and optionally automatically attaches to the focused part
-	
+
 	-- Enable autofocus if requested and not already on
 	if Autofocus and not Connections.AutofocusHandle then
 		Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
-			Handles.Adornee = Selection.Focus;
+			AttachHandles(Selection.Focus, true);
 		end);
 
 	-- Disable autofocus if not requested and on

@@ -215,8 +215,6 @@ function SetDirections(DirectionMode)
 
 end;
 
-local Handles;
-
 -- Directions of resizing for each handle's dragged face
 local AxisSizeMultipliers = {
 	[Enum.NormalId.Top] = Vector3.new(0, 1, 0);
@@ -251,15 +249,15 @@ function ShowHandles()
 	-- Creates and automatically attaches handles to the currently focused part
 
 	-- Autofocus handles on latest focused part
-	Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
-		Handles.Adornee = Selection.Focus;
-	end);
+	if not Connections.AutofocusHandle then
+		Connections.AutofocusHandle = Selection.FocusChanged:connect(ShowHandles);
+	end;
 
 	-- If handles already exist, only show them
 	if Handles then
 		Handles.Adornee = Selection.Focus;
 		Handles.Visible = true;
-		Handles.Parent = Core.UIContainer;
+		Handles.Parent = Selection.Focus and Core.UIContainer or nil;
 		return;
 	end;
 
