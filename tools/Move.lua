@@ -243,8 +243,6 @@ function SetAxes(AxisMode)
 
 end;
 
-local Handles;
-
 -- Directions of movement for each handle's dragged face
 local AxisMultipliers = {
 	[Enum.NormalId.Top] = Vector3.new(0, 1, 0);
@@ -261,7 +259,7 @@ function AttachHandles(Part, Autofocus)
 	-- Enable autofocus if requested and not already on
 	if Autofocus and not Connections.AutofocusHandle then
 		Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
-			Handles.Adornee = Selection.Focus;
+			AttachHandles(Selection.Focus, true);
 		end);
 
 	-- Disable autofocus if not requested and on
@@ -544,8 +542,10 @@ function BindShortcutKeys()
 				return;
 			end;
 
-			-- Reset handles
-			SetAxes(MoveTool.Axes);
+			-- Reset handles if not dragging
+			if not Dragging then
+				SetAxes(MoveTool.Axes);
+			end;
 
 			-- Stop snapping point tracking if it was enabled
 			SnapTracking.StopTracking();
@@ -565,6 +565,11 @@ function StartSnapping()
 	-- Hide any handles or bounding boxes
 	AttachHandles(nil, true);
 	BoundingBox.ClearBoundingBox();
+
+	-- Avoid targeting snap points in selected parts while dragging
+	if Dragging then
+		SnapTracking.TargetBlacklist = Selection.Items;
+	end;
 
 	-- Start tracking the closest snapping point
 	SnapTracking.StartTracking(function (NewPoint)
@@ -596,7 +601,7 @@ function SetAxisPosition(Axis, Position)
 			Axis == 'X' and Position or Part.Position.X,
 			Axis == 'Y' and Position or Part.Position.Y,
 			Axis == 'Z' and Position or Part.Position.Z
-		) * CFrame.Angles(Part.CFrame:toEulerAnglesXYZ());
+		) * (Part.CFrame - Part.CFrame.p);
 
 	end;
 
@@ -885,23 +890,18 @@ function StartDragging(BasePart, InitialState, BasePoint)
 
 	-- Determine the base point and part for the dragging
 	local BasePart = BasePart or Core.Mouse.Target;
-	local BasePartOffset = BasePart.Position - Core.Mouse.Hit.p;
+	local BasePartOffset = -BasePart.CFrame:pointToObjectSpace(Core.Mouse.Hit.p);
 
 	-- Improve base point alignment for the given increment
 	BasePartOffset = Vector3.new(
-		GetIncrementMultiple(BasePartOffset.X, MoveTool.Increment),
-		GetIncrementMultiple(BasePartOffset.Y, MoveTool.Increment),
-		GetIncrementMultiple(BasePartOffset.Z, MoveTool.Increment)
-	);
-	BasePartOffset = Vector3.new(
-		math.abs(BasePartOffset.X) >= BasePart.Size.X / 2 and (BasePart.Size.X / 2 * (BasePartOffset.X > 0 and 1 or -1)) or BasePartOffset.X,
-		math.abs(BasePartOffset.Y) >= BasePart.Size.Y / 2 and (BasePart.Size.Y / 2 * (BasePartOffset.Y > 0 and 1 or -1)) or BasePartOffset.Y,
-		math.abs(BasePartOffset.Z) >= BasePart.Size.Z / 2 and (BasePart.Size.Z / 2 * (BasePartOffset.Z > 0 and 1 or -1)) or BasePartOffset.Z
+		math.clamp(GetIncrementMultiple(BasePartOffset.X, MoveTool.Increment), -BasePart.Size.X / 2, BasePart.Size.X / 2),
+		math.clamp(GetIncrementMultiple(BasePartOffset.Y, MoveTool.Increment), -BasePart.Size.Y / 2, BasePart.Size.Y / 2),
+		math.clamp(GetIncrementMultiple(BasePartOffset.Z, MoveTool.Increment), -BasePart.Size.Z / 2, BasePart.Size.Z / 2)
 	);
 
 	-- Use the given base point instead if any
 	if BasePoint then
-		BasePartOffset = BasePart.Position - BasePoint;
+		BasePartOffset = -BasePart.CFrame:pointToObjectSpace(BasePoint);
 	end;
 
 	-- Prepare snapping in case it is enabled, and make sure to override its default target selection
@@ -909,8 +909,8 @@ function StartDragging(BasePart, InitialState, BasePoint)
 	Connections.DragSnapping = PointSnapped:connect(function (SnappedPoint)
 
 		-- Align the selection's base point to the snapped point
-		local Rotation = SurfaceAlignment or CFrame.Angles(InitialState[BasePart].CFrame:toEulerAnglesXYZ());
-		BasePart.CFrame = CFrame.new(SnappedPoint + BasePartOffset) * Rotation;
+		local Rotation = SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p);
+		BasePart.CFrame = CFrame.new(SnappedPoint) * Rotation * CFrame.new(BasePartOffset);
 		TranslatePartsRelativeToPart(BasePart, InitialState);
 
 		-- Make sure we're not entering any unauthorized private areas
@@ -921,15 +921,58 @@ function StartDragging(BasePart, InitialState, BasePoint)
 
 	end);
 
+	-- Update cache of corner offsets for later crossthrough calculations
+	CornerOffsets = GetCornerOffsets(InitialState[BasePart].CFrame, InitialState);
+
 	-- Provide a callback to trigger alignment
 	TriggerAlignment = function ()
+
+		-- Trigger drag recalculation
 		DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions);
+
+		-- Trigger snapping recalculation
+		if SnapTracking.Enabled then
+			PointSnapped:fire(SnappedPoint);
+		end;
+
 	end;
 
 	-- Start up the dragging action
 	Connections.Drag = Core.Mouse.Move:connect(function ()
 		DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions);
 	end);
+
+end;
+
+-- Cache common functions to avoid unnecessary table lookups
+local TableInsert, NewVector3 = table.insert, Vector3.new;
+
+function GetCornerOffsets(Origin, InitialStates)
+	-- Calculates and returns the offset of every corner in the initial state from the origin CFrame
+
+	local CornerOffsets = {};
+
+	-- Get offset for origin point
+	local OriginOffset = Origin:inverse();
+
+	-- Go through each item in the initial state
+	for Item, State in pairs(InitialStates) do
+		local ItemCFrame = State.CFrame;
+		local SizeX, SizeY, SizeZ = Item.Size.X / 2, Item.Size.Y / 2, Item.Size.Z / 2;
+
+		-- Gather each corner
+		TableInsert(CornerOffsets, OriginOffset * (ItemCFrame * NewVector3(SizeX, SizeY, SizeZ)));
+		TableInsert(CornerOffsets, OriginOffset * (ItemCFrame * NewVector3(-SizeX, SizeY, SizeZ)));
+		TableInsert(CornerOffsets, OriginOffset * (ItemCFrame * NewVector3(SizeX, -SizeY, SizeZ)));
+		TableInsert(CornerOffsets, OriginOffset * (ItemCFrame * NewVector3(SizeX, SizeY, -SizeZ)));
+		TableInsert(CornerOffsets, OriginOffset * (ItemCFrame * NewVector3(-SizeX, SizeY, -SizeZ)));
+		TableInsert(CornerOffsets, OriginOffset * (ItemCFrame * NewVector3(-SizeX, -SizeY, SizeZ)));
+		TableInsert(CornerOffsets, OriginOffset * (ItemCFrame * NewVector3(SizeX, -SizeY, -SizeZ)));
+		TableInsert(CornerOffsets, OriginOffset * (ItemCFrame * NewVector3(-SizeX, -SizeY, -SizeZ)));
+	end;
+
+	-- Return the offsets
+	return CornerOffsets;
 
 end;
 
@@ -942,10 +985,7 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 
 	-- Don't consider other selected parts possible targets
 	local IgnoreList = Support.CloneTable(Selection.Items);
-	table.insert(IgnoreList, Core.Player and Core.Player.Character)
-
-	-- Save last target surface for change detection
-	local LastTargetNormal = TargetNormal;
+	table.insert(IgnoreList, Core.Player and Core.Player.Character);
 
 	-- Perform the mouse target search
 	Target, TargetPoint, TargetNormal = Workspace:FindPartOnRayWithIgnoreList(
@@ -953,10 +993,22 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 		IgnoreList
 	);
 
-	-- Reset any surface alignment if target surface changes
+	-- Reset any surface alignment and calculated crossthrough if target surface changes
 	if LastTargetNormal ~= TargetNormal then
 		SurfaceAlignment = nil;
+		CrossthroughCorrection = nil;
 	end;
+
+	-- Reset any calculated crossthrough if selection, drag offset, or surface alignment change
+	if (LastSelection ~= Selection.Items) or (LastBasePartOffset ~= BasePartOffset) or (LastSurfaceAlignment ~= SurfaceAlignment) then
+		CrossthroughCorrection = nil;
+	end;
+
+	-- Save last dragging options for change detection
+	LastSelection = Selection.Items;
+	LastBasePartOffset = BasePartOffset;
+	LastSurfaceAlignment = SurfaceAlignment;
+	LastTargetNormal = TargetNormal;
 
 	------------------------------------------------
 	-- Move the selection towards any snapped points
@@ -975,32 +1027,29 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	TargetPoint = GetAlignedTargetPoint(Target, TargetPoint, TargetNormal);
 
 	-- Move the parts towards their target destination
-	local Rotation = SurfaceAlignment or CFrame.Angles(InitialState[BasePart].CFrame:toEulerAnglesXYZ());
-	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * Rotation;
-	TranslatePartsRelativeToPart(BasePart, InitialState);
+	local Rotation = SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p);
+	local TargetCFrame = CFrame.new(TargetPoint) * Rotation * CFrame.new(BasePartOffset);
 
-	-- Check for the largest corner-target plane crossthrough we have to correct
-	local CrossthroughCorrection = 0;
-	local CornerCrossingMost;
-	for _, Part in pairs(Selection.Items) do
-		local Corners = Support.GetPartCorners(Part);
-		for _, Corner in pairs(Corners) do
+	-- Calculate crossthrough against target plane if necessary
+	if not CrossthroughCorrection then
+		CrossthroughCorrection = 0;
 
-			-- Calculate this corner's target plane crossthrough
-			local CornerCrossthrough = -(TargetPoint - Corner.p):Dot(TargetNormal);
-			CrossthroughCorrection = math.min(CrossthroughCorrection, CornerCrossthrough);
+		-- Calculate each corner's tentative position
+		for _, CornerOffset in pairs(CornerOffsets) do
+			local Corner = TargetCFrame * CornerOffset;
+
+			-- Calculate the corner's target plane crossthrough
+			local CornerCrossthrough = -(TargetPoint - Corner):Dot(TargetNormal);
 
 			-- Check if this corner crosses through the most
-			if CrossthroughCorrection == CornerCrossthrough then
-				CornerCrossingMost = Corner.p;
+			if CornerCrossthrough < CrossthroughCorrection then
+				CrossthroughCorrection = CornerCrossthrough;
 			end;
-
 		end;
 	end;
 
-	-- Retract the parts by the max. crossthrough amount
-	local Rotation = SurfaceAlignment or CFrame.Angles(InitialState[BasePart].CFrame:toEulerAnglesXYZ());
-	BasePart.CFrame = CFrame.new(TargetPoint + BasePartOffset) * Rotation - (TargetNormal * CrossthroughCorrection);
+	-- Move the selection, retracted by the max. crossthrough amount
+	BasePart.CFrame = TargetCFrame - (TargetNormal * CrossthroughCorrection);
 	TranslatePartsRelativeToPart(BasePart, InitialState);
 
 	----------------------------------------
@@ -1023,25 +1072,38 @@ function AlignSelectionToTarget()
 		return;
 	end;
 
-	-- Get target surface normal CFrame and its leftward direction
+	-- Get target surface normal as arbitrarily oriented CFrame
 	local TargetNormalCF = CFrame.new(Vector3.new(), TargetNormal);
-	local TargetNormalLeft = -TargetNormalCF.rightVector;
 
 	-- Use detected surface normal directly if not targeting a part
 	if not Target then
 		SurfaceAlignment = TargetNormalCF * CFrame.Angles(-math.pi / 2, 0, 0);
 
-	-- Align upward directions if targeting a part's front or back surface
-	elseif TargetNormal:isClose(Target.CFrame.lookVector, 0.000001) or TargetNormal:isClose(-Target.CFrame.lookVector, 0.000001) then
-		SurfaceAlignment = TargetNormalCF *
-			CFrame.Angles(0, 0, math.acos(TargetNormalLeft:Dot(Target.CFrame.upVector))) *
-			CFrame.Angles(-math.pi / 2, 0, 0);
-
-	-- Align forward directions if targeting any other part surface
+	-- For parts, calculate orientation based on the target surface, and the target part's orientation
 	else
-		SurfaceAlignment = TargetNormalCF *
-			CFrame.Angles(0, 0, math.pi - math.acos(TargetNormalLeft:Dot(Target.CFrame.lookVector))) *
-			CFrame.Angles(-math.pi / 2, 0, 0);
+
+		-- Set upward direction to match the target surface normal
+		local UpVector, LookVector, RightVector = TargetNormal;
+
+		-- Use target's rightward orientation for calculating orientation (when targeting forward or backward directions)
+		if TargetNormal:isClose(Target.CFrame.lookVector, 0.000001) or TargetNormal:isClose(-Target.CFrame.lookVector, 0.000001) then
+			LookVector = TargetNormal:Cross(Target.CFrame.rightVector).unit;
+			RightVector = LookVector:Cross(TargetNormal).unit;
+
+		-- Use target's forward orientation for calculating orientation (when targeting any other direction)
+		else
+			RightVector = Target.CFrame.lookVector:Cross(TargetNormal).unit;
+			LookVector = TargetNormal:Cross(RightVector).unit;
+		end;
+
+		-- Generate rotation matrix based on direction vectors
+		SurfaceAlignment = CFrame.new(
+			0, 0, 0,
+			RightVector.X, UpVector.X, -LookVector.X,
+			RightVector.Y, UpVector.Y, -LookVector.Y,
+			RightVector.Z, UpVector.Z, -LookVector.Z
+		);
+
 	end;
 
 	-- Trigger alignment
@@ -1052,39 +1114,98 @@ end;
 function GetAlignedTargetPoint(Target, TargetPoint, TargetNormal)
 	-- Returns the target point aligned to the nearest increment multiple
 
-	-- By default, use (0, 0, 0) as the alignment reference point
+	-- By default, use the center of the universe for alignment on all axes
 	local ReferencePoint = CFrame.new();
+	local PlaneAxes = Vector3.new(1, 1, 1);
 
-	-------------------------------------------------------------------------
-	-- Detect a part target's face being pointed at based on the given normal
-	-------------------------------------------------------------------------
+	-----------------------------------------------------------------------------
+	-- Detect appropriate reference points and plane axes for recognized surfaces
+	-----------------------------------------------------------------------------
 
 	-- Make sure the target is a part
 	if Target and Target:IsA 'BasePart' then
+		local Size = Target.Size / 2;
 
-		-- Get a front face's corner as a reference point
+		-- Calculate the direction of a wedge surface
+		local WedgeDirection = (Target.CFrame - Target.CFrame.p) *
+			CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.X), math.atan(Target.Size.Z / Target.Size.Y));
+
+		-- Calculate the direction of a corner part's Z-axis surface
+		local CornerDirectionZ = (Target.CFrame - Target.CFrame.p) *
+			CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.X), math.pi - math.atan(Target.Size.Z / Target.Size.Y));
+
+		-- Calculate the direction of a corner part's X-axis surface
+		local CornerDirectionX = (Target.CFrame - Target.CFrame.p) *
+			CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.Z), math.atan(Target.Size.Y / Target.Size.X)) *
+			CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.X), math.pi / 2) *
+			CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.Z), -math.pi / 2);
+
+		-- Get the right alignment reference point on a part's front surface
 		if TargetNormal:isClose(Target.CFrame.lookVector, 0.000001) then
-			ReferencePoint = Target.CFrame * CFrame.new(Target.Size.X / 2, Target.Size.Y / 2, -Target.Size.Z / 2);
+			ReferencePoint = Target.CFrame * CFrame.new(Size.X, Size.Y, -Size.Z);
+			PlaneAxes = Vector3.new(1, 1, 0);
 
-		-- Get a back face's corner as a reference point
-		elseif TargetNormal:isClose((Target.CFrame * CFrame.Angles(0, math.pi, 0)).lookVector, 0.000001) then
-			ReferencePoint = Target.CFrame * CFrame.new(-Target.Size.X / 2, Target.Size.Y / 2, Target.Size.Z / 2);
+		-- Get the right alignment reference point on a part's back surface
+		elseif TargetNormal:isClose(-Target.CFrame.lookVector, 0.000001) then
+			ReferencePoint = Target.CFrame * CFrame.new(-Size.X, Size.Y, Size.Z);
+			PlaneAxes = Vector3.new(1, 1, 0);
 
-		-- Get a left face's corner as a reference point
-		elseif TargetNormal:isClose((Target.CFrame * CFrame.Angles(0, math.pi / 2, 0)).lookVector, 0.000001) then
-			ReferencePoint = Target.CFrame * CFrame.new(-Target.Size.X / 2, Target.Size.Y / 2, Target.Size.Z / 2);
+		-- Get the right alignment reference point on a part's left surface
+		elseif TargetNormal:isClose(-Target.CFrame.rightVector, 0.000001) then
+			ReferencePoint = Target.CFrame * CFrame.new(-Size.X, Size.Y, -Size.Z);
+			PlaneAxes = Vector3.new(0, 1, 1);
 
-		-- Get a right face's corner as a reference point
-		elseif TargetNormal:isClose((Target.CFrame * CFrame.Angles(0, 3 * math.pi / 2, 0)).lookVector, 0.000001) then
-			ReferencePoint = Target.CFrame * CFrame.new(Target.Size.X / 2, Target.Size.Y / 2, Target.Size.Z / 2);
+		-- Get the right alignment reference point on a part's right surface
+		elseif TargetNormal:isClose(Target.CFrame.rightVector, 0.000001) then
+			ReferencePoint = Target.CFrame * CFrame.new(Size.X, Size.Y, Size.Z);
+			PlaneAxes = Vector3.new(0, 1, 1);
 
-		-- Get a top face's corner as a reference point
-		elseif TargetNormal:isClose((Target.CFrame * CFrame.Angles(math.pi / 2, 0, 0)).lookVector, 0.000001) then
-			ReferencePoint = Target.CFrame * CFrame.new(-Target.Size.X / 2, Target.Size.Y / 2, Target.Size.Z / 2);
+		-- Get the right alignment reference point on a part's upper surface
+		elseif TargetNormal:isClose(Target.CFrame.upVector, 0.000001) then
+			ReferencePoint = Target.CFrame * CFrame.new(Size.X, Size.Y, Size.Z);
+			PlaneAxes = Vector3.new(1, 0, 1);
 
-		-- Get a bottom face's corner as a reference point
-		elseif TargetNormal:isClose((Target.CFrame * CFrame.Angles(math.pi / 2, 0, 0)).lookVector * -1, 0.000001) then
-			ReferencePoint = Target.CFrame * CFrame.new(-Target.Size.X / 2, -Target.Size.Y / 2, Target.Size.Z / 2);
+		-- Get the right alignment reference point on a part's bottom surface
+		elseif TargetNormal:isClose(-Target.CFrame.upVector, 0.000001) then
+			ReferencePoint = Target.CFrame * CFrame.new(Size.X, -Size.Y, -Size.Z);
+			PlaneAxes = Vector3.new(1, 0, 1);
+
+		-- Get the right alignment reference point on wedged part surfaces
+		elseif TargetNormal:isClose(WedgeDirection.lookVector, 0.000001) then
+
+			-- Get reference point oriented to wedge plane
+			ReferencePoint = WedgeDirection *
+				CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.X), -math.pi / 2) +
+				(Target.CFrame * Vector3.new(Size.X, Size.Y, Size.Z));
+
+			-- Set plane offset axes
+			PlaneAxes = Vector3.new(1, 0, 1);
+
+		-- Get the right alignment reference point on the Z-axis surface of a corner part
+		elseif TargetNormal:isClose(CornerDirectionZ.lookVector, 0.000001) then
+
+			-- Get reference point oriented to wedged plane
+			ReferencePoint = CornerDirectionZ *
+				CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.X), -math.pi / 2) +
+				(Target.CFrame * Vector3.new(-Size.X, Size.Y, -Size.Z));
+
+			-- Set plane offset axes
+			PlaneAxes = Vector3.new(1, 0, 1);
+
+		-- Get the right alignment reference point on the X-axis surface of a corner part
+		elseif TargetNormal:isClose(CornerDirectionX.lookVector, 0.000001) then
+
+			-- Get reference point oriented to wedged plane
+			ReferencePoint = CornerDirectionX *
+				CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.X), -math.pi / 2) +
+				(Target.CFrame * Vector3.new(Size.X, Size.Y, -Size.Z));
+
+			-- Set plane offset axes
+			PlaneAxes = Vector3.new(1, 0, 1);
+
+		-- Return an unaligned point for unrecognized surfaces
+		else
+			return TargetPoint;
 		end;
 
 	end;
@@ -1093,17 +1214,19 @@ function GetAlignedTargetPoint(Target, TargetPoint, TargetNormal)
 	-- Calculate the aligned target point
 	-------------------------------------
 
-	-- Align the target point to an increment multiple from the reference point
-	local AlignedTargetPoint = ReferencePoint:pointToObjectSpace(TargetPoint);
-	AlignedTargetPoint = Vector3.new(
-		GetIncrementMultiple(AlignedTargetPoint.X, MoveTool.Increment),
-		GetIncrementMultiple(AlignedTargetPoint.Y, MoveTool.Increment),
-		GetIncrementMultiple(AlignedTargetPoint.Z, MoveTool.Increment)
-	);
-	AlignedTargetPoint = (ReferencePoint * CFrame.new(AlignedTargetPoint)).p;
+	-- Get target point offset from reference point
+	local ReferencePointOffset = ReferencePoint:inverse() * CFrame.new(TargetPoint);
+
+	-- Align target point on increment grid from reference point along the plane axes
+	local AlignedTargetPoint = ReferencePoint * (Vector3.new(
+		GetIncrementMultiple(ReferencePointOffset.X, MoveTool.Increment),
+		GetIncrementMultiple(ReferencePointOffset.Y, MoveTool.Increment),
+		GetIncrementMultiple(ReferencePointOffset.Z, MoveTool.Increment)
+	) * PlaneAxes);
 
 	-- Return the aligned target point
 	return AlignedTargetPoint;
+
 end;
 
 function GetIncrementMultiple(Number, Increment)

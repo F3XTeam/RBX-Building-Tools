@@ -182,9 +182,9 @@ function UpdateUI()
 	-- Identify common angles across axes
 	local XVariations, YVariations, ZVariations = {}, {}, {};
 	for _, Part in pairs(Selection.Items) do
-		table.insert(XVariations, Support.Round(Part.Rotation.X, 3));
-		table.insert(YVariations, Support.Round(Part.Rotation.Y, 3));
-		table.insert(ZVariations, Support.Round(Part.Rotation.Z, 3));
+		table.insert(XVariations, Support.Round(Part.Orientation.X, 3));
+		table.insert(YVariations, Support.Round(Part.Orientation.Y, 3));
+		table.insert(ZVariations, Support.Round(Part.Orientation.Z, 3));
 	end;
 	local CommonX = Support.IdentifyCommonItem(XVariations);
 	local CommonY = Support.IdentifyCommonItem(YVariations);
@@ -232,20 +232,18 @@ function SetPivot(PivotMode)
 
 	-- For last mode, use focused part handles
 	elseif PivotMode == 'Last' then
-		AttachHandles(Selection.Focus, true);
+		AttachHandles(CustomPivotPoint and Handles.Adornee or Selection.Focus, true);
 	end;
 
 end;
 
-local Handles;
-
 function AttachHandles(Part, Autofocus)
 	-- Creates and attaches handles to `Part`, and optionally automatically attaches to the focused part
-	
+
 	-- Enable autofocus if requested and not already on
 	if Autofocus and not Connections.AutofocusHandle then
 		Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
-			Handles.Adornee = Selection.Focus;
+			AttachHandles(Selection.Focus, true);
 		end);
 
 	-- Disable autofocus if not requested and on
@@ -619,10 +617,10 @@ function StartSnapping()
 		ClearConnection 'SelectSnappedPivot';
 
 		-- Disable custom pivot point mode when the handles attach elsewhere
-		Connections.DisableCustomPivotPoint = Handles.Changed:connect(function (Property)
+		DisableCustomPivotPoint = Handles.Changed:Connect(function (Property)
 			if Property == 'Adornee' then
 				CustomPivotPoint = false;
-				ClearConnection 'DisableCustomPivotPoint';
+				DisableCustomPivotPoint:Disconnect();
 			end;
 		end);
 

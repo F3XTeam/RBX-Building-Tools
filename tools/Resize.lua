@@ -215,8 +215,6 @@ function SetDirections(DirectionMode)
 
 end;
 
-local Handles;
-
 -- Directions of resizing for each handle's dragged face
 local AxisSizeMultipliers = {
 	[Enum.NormalId.Top] = Vector3.new(0, 1, 0);
@@ -251,15 +249,15 @@ function ShowHandles()
 	-- Creates and automatically attaches handles to the currently focused part
 
 	-- Autofocus handles on latest focused part
-	Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
-		Handles.Adornee = Selection.Focus;
-	end);
+	if not Connections.AutofocusHandle then
+		Connections.AutofocusHandle = Selection.FocusChanged:connect(ShowHandles);
+	end;
 
 	-- If handles already exist, only show them
 	if Handles then
 		Handles.Adornee = Selection.Focus;
 		Handles.Visible = true;
-		Handles.Parent = Core.UIContainer;
+		Handles.Parent = Selection.Focus and Core.UIContainer or nil;
 		return;
 	end;
 
@@ -433,8 +431,26 @@ function ResizePartsByFace(Face, Distance, Directions, InitialStates)
 	-- Resize each part
 	for Part, InitialState in pairs(InitialStates) do
 
-		-- Perform the size change
-		Part.Size = InitialState.Size + IncrementVector;
+		-- Perform the size change depending on shape
+		if Part:IsA 'Part' then
+
+			-- Resize spheres on all axes
+			if Part.Shape == Enum.PartType.Ball then
+				Part.Size = InitialState.Size + Vector3.new(Distance, Distance, Distance);
+
+			-- Resize cylinders on both Y & Z axes for circle sides
+			elseif Part.Shape == Enum.PartType.Cylinder and AxisName ~= 'X' then
+				Part.Size = InitialState.Size + Vector3.new(0, Distance, Distance);
+
+			-- Resize block parts and cylinder lengths normally
+			else
+				Part.Size = InitialState.Size + IncrementVector;
+			end;
+
+		-- Perform the size change normally on all other parts
+		else
+			Part.Size = InitialState.Size + IncrementVector;
+		end;
 
 		-- Offset the part when resizing in the normal, one direction
 		if Directions == 'Normal' then
