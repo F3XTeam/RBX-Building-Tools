@@ -156,14 +156,27 @@ end;
 
 Enabling = RbxUtility.CreateSignal();
 Disabling = RbxUtility.CreateSignal();
+Enabled = RbxUtility.CreateSignal();
+Disabled = RbxUtility.CreateSignal();
 
 function Enable(Mouse)
 
+	-- Ensure tool is disabled or disabling, and not already enabling
+	if (IsEnabled and not IsDisabling) or IsEnabling then
+		return;
+
+	-- If tool is disabling, enable it once fully disabled
+	elseif IsDisabling then
+		Disabled:Wait();
+		return Enable(Mouse);
+	end;
+
+	-- Indicate that tool is enabling
+	IsEnabling = true;
+	Enabling:Fire();
+
 	-- Update the core mouse
 	getfenv(0).Mouse = Mouse;
-
-	-- Fire event
-	Enabling:fire();
 
 	-- Use default mouse behavior
 	UserInputService.MouseBehavior = Enum.MouseBehavior.Default;
@@ -196,12 +209,28 @@ function Enable(Mouse)
 	-- Equip current tool
 	EquipTool(CurrentTool or require(Tool.Tools.MoveTool));
 
+	-- Indicate that tool is now enabled
+	IsEnabled = true;
+	IsEnabling = false;
+	Enabled:Fire();
+
 end;
 
 function Disable()
 
-	-- Fire event
-	Disabling:fire();
+	-- Ensure tool is enabled or enabling, and not already disabling
+	if (not IsEnabled and not IsEnabling) or IsDisabling then
+		return;
+
+	-- If tool is enabling, disable it once fully enabled
+	elseif IsEnabling then
+		Enabled:Wait();
+		return Disable();
+	end;
+
+	-- Indicate that tool is now disabling
+	IsDisabling = true;
+	Disabling:Fire();
 
 	-- Reenable mouse lock option in tool mode
 	if Mode == 'Tool' then
@@ -221,6 +250,11 @@ function Disable()
 
 	-- Clear temporary connections
 	ClearConnections();
+
+	-- Indicate that tool is now disabled
+	IsEnabled = false;
+	IsDisabling = false;
+	Disabled:Fire();
 
 end;
 
