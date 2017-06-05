@@ -232,7 +232,7 @@ function SetPivot(PivotMode)
 
 	-- For last mode, use focused part handles
 	elseif PivotMode == 'Last' then
-		AttachHandles(Selection.Focus, true);
+		AttachHandles(CustomPivotPoint and Handles.Adornee or Selection.Focus, true);
 	end;
 
 end;
@@ -617,10 +617,10 @@ function StartSnapping()
 		ClearConnection 'SelectSnappedPivot';
 
 		-- Disable custom pivot point mode when the handles attach elsewhere
-		Connections.DisableCustomPivotPoint = Handles.Changed:connect(function (Property)
+		DisableCustomPivotPoint = Handles.Changed:Connect(function (Property)
 			if Property == 'Adornee' then
 				CustomPivotPoint = false;
-				ClearConnection 'DisableCustomPivotPoint';
+				DisableCustomPivotPoint:Disconnect();
 			end;
 		end);
 
