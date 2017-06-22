@@ -404,8 +404,8 @@ function ResizePartsByFace(Face, Distance, Directions, InitialStates)
 		-- Calculate target size for this resize
 		local TargetSize = InitialState.Size[AxisName] + Distance;
 
-		-- If target size is under 0.2, note if it's the shortest size
-		if TargetSize < 0.199999 and (not ShortestSize or (ShortestSize and TargetSize < ShortestSize)) then
+		-- If target size is under 0.05, note if it's the shortest size
+		if TargetSize < 0.049999 and (not ShortestSize or (ShortestSize and TargetSize < ShortestSize)) then
 			ShortestSize, ShortestPart = TargetSize, Part;
 
 		-- If target size is over 2048, note if it's the longest size
@@ -418,7 +418,7 @@ function ResizePartsByFace(Face, Distance, Directions, InitialStates)
 	-- Return adjustment for undersized parts (snap to lowest possible valid increment multiple)
 	if ShortestSize then
 		local InitialSize = InitialStates[ShortestPart].Size[AxisName];
-		local TargetSize = InitialSize - ResizeTool.Increment * tonumber((tostring((InitialSize - 0.2) / ResizeTool.Increment):gsub('%..+', '')));
+		local TargetSize = InitialSize - ResizeTool.Increment * tonumber((tostring((InitialSize - 0.05) / ResizeTool.Increment):gsub('%..+', '')));
 		return false, Distance + TargetSize - ShortestSize;
 	end;
 
