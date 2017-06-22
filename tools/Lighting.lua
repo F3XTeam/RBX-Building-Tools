@@ -129,7 +129,8 @@ function EnableLightSettingsUI(LightSettingsUI)
 	ColorPicker.MouseButton1Click:connect(function ()
 		Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
 			Support.IdentifyCommonProperty(GetLights(LightType), 'Color') or Color3.new(1, 1, 1),
-			function (Color) SetColor(LightType, Color) end
+			function (Color) SetColor(LightType, Color) end,
+			Core.Targeting.CancelSelecting
 		);
 	end);
 

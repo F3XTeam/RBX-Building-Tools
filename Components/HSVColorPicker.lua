@@ -10,7 +10,7 @@ local Component = Cheer.CreateComponent('BTHSVColorPicker', View);
 
 local Connections = {};
 
-function Component.Start(InitialColor, Callback)
+function Component.Start(InitialColor, Callback, SelectionPreventionCallback)
 
 	-- Show the UI
 	View.Visible = true;
@@ -44,6 +44,9 @@ function Component.Start(InitialColor, Callback)
 	Cheer.Bind(View.OkButton, { function () View:Destroy(); return Color3.fromHSV(#Hue, #Saturation, #Brightness) end }, Callback);
 	Cheer.Bind(View.CancelButton, function () View:Destroy() end);
 
+	-- Store reference to selection prevention callback
+	Component.SelectionPreventionCallback = SelectionPreventionCallback;
+
 	-- Clear connections when the component is removed
 	Cheer.Bind(Component.OnRemove, ClearConnections);
 
@@ -56,6 +59,7 @@ function StartTrackingMouse(TrackingType)
 		return;
 	end;
 
+	-- Watch mouse movement and adjust current color
 	Connections.MouseTracking = Support.AddUserInputListener('Changed', 'MouseMovement', true, function (Input)
 
 		-- Track for hue-saturation
@@ -69,6 +73,11 @@ function StartTrackingMouse(TrackingType)
 		end;
 
 	end);
+
+	-- Prevent selection if a callback to do so is provided
+	if Component.SelectionPreventionCallback then
+		Component.SelectionPreventionCallback();
+	end;
 
 end;
 
