@@ -1355,7 +1355,7 @@ Actions = {
 		local Response = HttpService:JSONDecode(
 			HttpService:PostAsync(
 				'http://f3xteam.com/bt/export',
-				HttpService:JSONEncode { data = SerializedBuildData, version = 2, userId = (Player and Player.UserId) },
+				HttpService:JSONEncode { data = SerializedBuildData, version = 3, userId = (Player and Player.UserId) },
 				Enum.HttpContentType.ApplicationJson,
 				true
 			)
