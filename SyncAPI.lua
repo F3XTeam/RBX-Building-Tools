@@ -451,7 +451,7 @@ Actions = {
 		for Part, Change in pairs(ChangeSet) do
 
 			-- Set the part's color
-			Part.BrickColor = Change.Color;
+			Part.Color = Change.Color;
 
 			-- If this part is a union, set its UsePartColor state
 			if Part.ClassName == 'UnionOperation' then
@@ -1355,7 +1355,7 @@ Actions = {
 		local Response = HttpService:JSONDecode(
 			HttpService:PostAsync(
 				'http://f3xteam.com/bt/export',
-				HttpService:JSONEncode { data = SerializedBuildData, version = 2, userId = (Player and Player.UserId) },
+				HttpService:JSONEncode { data = SerializedBuildData, version = 3, userId = (Player and Player.UserId) },
 				Enum.HttpContentType.ApplicationJson,
 				true
 			)

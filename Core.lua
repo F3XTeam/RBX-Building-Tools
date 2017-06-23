@@ -499,87 +499,20 @@ if Mode == 'Tool' then
 	AssignHotkey({ 'RightControl', 'X' }, DeleteSelection);
 end;
 
-function PrismSelect()
-	-- Selects parts in the currently selected parts
-
-	-- Ensure parts are selected
-	if #Selection.Items == 0 then
-		return;
-	end;
-
-	-- Get region for selection items and find potential parts
-	local Extents = require(Tool.BoundingBoxModule).CalculateExtents(Selection.Items, nil, true);
-	local Region = Region3.new(Extents.Min, Extents.Max);
-	local PotentialParts = Workspace:FindPartsInRegion3WithIgnoreList(Region, Selection.Items, math.huge);
-
-	-- Enable collision on all potential parts
-	local OriginalState = {};
-	for _, PotentialPart in pairs(PotentialParts) do
-		OriginalState[PotentialPart] = { Anchored = PotentialPart.Anchored, CanCollide = PotentialPart.CanCollide };
-		PotentialPart.Anchored = true;
-		PotentialPart.CanCollide = true;
-	end;
-
-	local Parts = {};
-
-	-- Find all parts intersecting with selection
-	for _, Part in pairs(Selection.Items) do
-		local TouchingParts = Part:GetTouchingParts();
-		for _, TouchingPart in pairs(TouchingParts) do
-			if not Selection.IsSelected(TouchingPart) then
-				Parts[TouchingPart] = true;
-			end;
-		end;
-	end;
-
-	-- Restore all potential parts' original states
-	for PotentialPart, State in pairs(OriginalState) do
-		PotentialPart.CanCollide = State.CanCollide;
-		PotentialPart.Anchored = State.Anchored;
-	end;
-
-	-- Delete the selection parts
-	DeleteSelection();
-
-	-- Select all found parts
-	Selection.Replace(Support.Keys(Parts), true);
-
-end;
-
 -- Assign hotkeys for prism selection
-AssignHotkey({ 'LeftShift', 'K' }, PrismSelect);
-AssignHotkey({ 'RightShift', 'K' }, PrismSelect);
+AssignHotkey({ 'LeftShift', 'K' }, Targeting.PrismSelect);
+AssignHotkey({ 'RightShift', 'K' }, Targeting.PrismSelect);
 
 -- If in-game, enable ctrl hotkeys for prism selection
 if Mode == 'Tool' then
-	AssignHotkey({ 'LeftControl', 'K' }, PrismSelect);
-	AssignHotkey({ 'RightControl', 'K' }, PrismSelect);
-end;
-
-function SelectSiblings(ReplaceSelection)
-	-- Selects all parts under the same parent as the focused part
-
-	-- Ensure there is a focused item and its parent is not Workspace
-	if not Selection.Focus or Selection.Focus.Parent == Workspace then
-		return;
-	end;
-
-	-- Get the focused item's siblings
-	local Siblings = Support.GetAllDescendants(Selection.Focus.Parent);
-
-	-- Add to or replace selection
-	if ReplaceSelection then
-		Selection.Replace(Siblings, true);
-	else
-		Selection.Add(Siblings, true);
-	end;
-
+	AssignHotkey({ 'LeftControl', 'K' }, Targeting.PrismSelect);
+	AssignHotkey({ 'RightControl', 'K' }, Targeting.PrismSelect);
 end;
 
 -- Assign hotkeys for sibling selection
-AssignHotkey({ 'LeftBracket' }, Support.Call(SelectSiblings, true));
-AssignHotkey({ 'LeftShift', 'LeftBracket' }, Support.Call(SelectSiblings, false));
-AssignHotkey({ 'RightShift', 'LeftBracket' }, Support.Call(SelectSiblings, false));
+AssignHotkey({ 'LeftBracket' }, Support.Call(Targeting.SelectSiblings, false, true));
+AssignHotkey({ 'LeftShift', 'LeftBracket' }, Support.Call(Targeting.SelectSiblings, false, false));
+AssignHotkey({ 'RightShift', 'LeftBracket' }, Support.Call(Targeting.SelectSiblings, false, false));
 
 -- Assign hotkeys for selection clearing
 AssignHotkey({ 'LeftShift', 'R' }, Support.Call(Selection.Clear, true));
@@ -587,8 +520,8 @@ AssignHotkey({ 'RightShift', 'R' }, Support.Call(Selection.Clear, true));
 
 -- If in-game, enable ctrl hotkeys for sibling selection & selection clearing
 if Mode == 'Tool' then
-	AssignHotkey({ 'LeftControl', 'LeftBracket' }, Support.Call(SelectSiblings, false));
-	AssignHotkey({ 'RightControl', 'LeftBracket' }, Support.Call(SelectSiblings, false));
+	AssignHotkey({ 'LeftControl', 'LeftBracket' }, Support.Call(Targeting.SelectSiblings, false, false));
+	AssignHotkey({ 'RightControl', 'LeftBracket' }, Support.Call(Targeting.SelectSiblings, false, false));
 	AssignHotkey({ 'LeftControl', 'R' }, Support.Call(Selection.Clear, true));
 	AssignHotkey({ 'RightControl', 'R' }, Support.Call(Selection.Clear, true));
 end;

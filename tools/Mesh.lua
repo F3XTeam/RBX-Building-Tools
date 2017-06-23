@@ -142,7 +142,8 @@ function ShowUI()
 	VertexColorInput.MouseButton1Click:connect(function ()
 		Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
 			VectorToColor(Support.IdentifyCommonProperty(GetMeshes(), 'VertexColor')) or Color3.new(1, 1, 1),
-			function (Color) SetProperty('VertexColor', ColorToVector(Color)) end
+			function (Color) SetProperty('VertexColor', ColorToVector(Color)) end,
+			Core.Targeting.CancelSelecting
 		);
 	end);
 

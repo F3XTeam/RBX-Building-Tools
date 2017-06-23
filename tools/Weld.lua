@@ -225,6 +225,11 @@ end;
 function EnableFocusHighlighting()
 	-- Enables automatic highlighting of the focused part in the selection
 
+	-- Only enable focus highlighting in tool mode
+	if Core.Mode ~= 'Tool' then
+		return;
+	end;
+
 	-- Reset all outline colors
 	Core.Selection.RecolorOutlines(Core.Selection.Color);
 

@@ -484,7 +484,8 @@ function SyncInputToProperty(Property, DecorationType, InputType, Input)
 		Input.MouseButton1Click:connect(function ()
 			Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
 				Support.IdentifyCommonProperty(GetDecorations(DecorationType), Property) or Color3.new(0, 0, 1),
-				function (Color) SetProperty(DecorationType, Property, Color) end
+				function (Color) SetProperty(DecorationType, Property, Color) end,
+				Core.Targeting.CancelSelecting
 			);
 		end);
 

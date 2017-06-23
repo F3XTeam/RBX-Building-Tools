@@ -65,12 +65,45 @@ function Component.StartFadeTimer(Override)
 
 end;
 
+function Component.StartShowTimer(SectionName)
+	-- Creates timer to show content after hovering for over half a second
+
+	-- Only override current section if also triggered by hover
+	if Component.LastTrigger == 'Click' then
+		return;
+	end;
+
+	-- Generate unique trigger ID
+	local TriggerId = HttpService:GenerateGUID();
+
+	-- Register timer
+	Component.CurrentShowTimer = TriggerId;
+
+	-- Start timer
+	Delay(0.25, function ()
+		if Component.CurrentShowTimer == TriggerId then
+			Component.ShowSection(SectionName, 'Hover');
+			Component.StartFadeTimer();
+		end;
+	end);
+
+end;
+
 function Component.ProcessHover(Tool, SectionName)
 
 	-- Only override current section if also triggered by hover
 	if Component.LastTrigger == 'Click' then
 		return;
 	end;
+
+	wait();
+
+	-- Start a show timer
+	Component.StartShowTimer(SectionName);
+
+end;
+
+function Component.ShowSection(SectionName, TriggerType)
 
 	-- Hide any current section
 	Component.HideCurrentSection();
@@ -80,7 +113,7 @@ function Component.ProcessHover(Tool, SectionName)
 
 	-- Set new current section
 	Component.CurrentSection = Section;
-	Component.LastTrigger = 'Hover';
+	Component.LastTrigger = TriggerType;
 
 	-- Show the new section
 	Section.Visible = true;
@@ -88,6 +121,9 @@ function Component.ProcessHover(Tool, SectionName)
 end;
 
 function Component.ProcessUnhover(Tool, SectionName)
+
+	-- Clear any other show timer
+	Component.CurrentShowTimer = nil;
 
 	-- Only override current section if triggered by a hover
 	if Component.LastTrigger == 'Click' then
@@ -106,18 +142,8 @@ end;
 
 function Component.ProcessClick(Tool, SectionName)
 
-	-- Hide any current section
-	Component.HideCurrentSection();
-
-	-- Get section
-	local Section = Component.GetSection(SectionName);
-
-	-- Set new current section
-	Component.CurrentSection = Section;
-	Component.LastTrigger = 'Click';
-
 	-- Show the new section
-	Section.Visible = true;
+	Component.ShowSection(SectionName, 'Click');
 
 	-- Disappear after 2 seconds unless overridden
 	Component.StartFadeTimer();

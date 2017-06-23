@@ -25,7 +25,8 @@ local GUI;
 ------------------------------------------
 RbxUtility = LoadLibrary( 'RbxUtility' );
 Services.ContentProvider:Preload( bt_logo );
-Serialization = require(script.SerializationModule);
+SerializationV2 = require(script.SerializationModule2);
+SerializationV3 = require(script.SerializationModule3);
 
 ------------------------------------------
 -- Define functions that are depended-upon
@@ -595,7 +596,22 @@ end;]];
 	elseif creation_data.Version == 2 then
 
 		-- Inflate the build data
-		local Parts = Serialization.InflateBuildData(creation_data);
+		local Parts = SerializationV2.InflateBuildData(creation_data);
+
+		-- Parent the build into the export container
+		for _, Part in pairs(Parts) do
+			Part.Parent = Container;
+		end;
+
+		-- Finalize the import
+		Container:MakeJoints();
+		Services.Selection:Set { Container };
+
+	-- Parse builds with serialization format version 3
+	elseif creation_data.Version == 3 then
+
+		-- Inflate the build data
+		local Parts = SerializationV3.InflateBuildData(creation_data);
 
 		-- Parent the build into the export container
 		for _, Part in pairs(Parts) do
