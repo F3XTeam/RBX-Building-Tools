@@ -12,25 +12,26 @@ function TargetingModule.EnableTargeting()
 
 	-- Get core API
 	local Core = GetCore();
+	local Connections = Core.Connections;
 
-	-- Get current mouse
-	Mouse = GetCore().Mouse;
+	-- Create reference to mouse
+	Mouse = Core.Mouse;
 
 	-- Listen for target changes
-	Core.Connections.Targeting = Mouse.Move:connect(TargetingModule.UpdateTarget);
+	Connections.Targeting = Mouse.Move:connect(TargetingModule.UpdateTarget);
 
 	-- Listen for target clicks
-	Core.Connections.Selecting = Mouse.Button1Up:connect(TargetingModule.SelectTarget);
+	Connections.Selecting = Mouse.Button1Up:connect(TargetingModule.SelectTarget);
 
 	-- Listen for 2D selection
-	Core.Connections.RectSelectionStarted = Mouse.Button1Down:connect(TargetingModule.StartRectangleSelecting);
-	Core.Connections.RectSelectionFinished = Support.AddUserInputListener('Ended', 'MouseButton1', true, TargetingModule.FinishRectangleSelecting);
+	Connections.RectSelectionStarted = Mouse.Button1Down:connect(TargetingModule.StartRectangleSelecting);
+	Connections.RectSelectionFinished = Support.AddUserInputListener('Ended', 'MouseButton1', true, TargetingModule.FinishRectangleSelecting);
 
 	-- Hide target box when tool is unequipped
-	Core.Connections.HideTargetBoxOnDisable = Core.Disabling:connect(TargetingModule.HighlightTarget);
+	Connections.HideTargetBoxOnDisable = Core.Disabling:connect(TargetingModule.HighlightTarget);
 
 	-- Cancel any ongoing selection when tool is unequipped
-	Core.Connections.CancelSelectionOnDisable = Core.Disabling:connect(TargetingModule.CancelRectangleSelecting);
+	Connections.CancelSelectionOnDisable = Core.Disabling:connect(TargetingModule.CancelRectangleSelecting);
 
 end;
 
@@ -51,11 +52,14 @@ end;
 
 function TargetingModule.HighlightTarget(Target)
 
+	-- Get core API
+	local Core = GetCore();
+
 	-- Create target box
 	if not TargetBox then
 		TargetBox = Create 'SelectionBox' {
 			Name = 'BTTargetOutline',
-			Parent = GetCore().UIContainer,
+			Parent = Core.UIContainer,
 			LineThickness = 0.025,
 			Transparency = 0.5,
 			Color = BrickColor.new 'Institutional white'
@@ -63,7 +67,7 @@ function TargetingModule.HighlightTarget(Target)
 	end;
 
 	-- Focus on target
-	TargetBox.Parent = Target and GetCore().UIContainer or nil;
+	TargetBox.Parent = Target and Core.UIContainer or nil;
 	TargetBox.Adornee = Target;
 
 end;
@@ -115,6 +119,7 @@ function TargetingModule.StartRectangleSelecting()
 	-- Mark where rectangle selection started
 	RectangleSelectStart = Vector2.new(Mouse.X, Mouse.Y);
 
+	-- Track mouse while rectangle selecting
 	GetCore().Connections.WatchRectangleSelection = Mouse.Move:connect(function ()
 
 		-- If rectangle selecting, update rectangle
@@ -138,11 +143,14 @@ function TargetingModule.UpdateSelectionRectangle()
 		return;
 	end;
 
+	-- Get core API
+	local Core = GetCore();
+
 	-- Create selection rectangle
 	if not SelectionRectangle then
 		SelectionRectangle = Create 'Frame' {
 			Name = 'SelectionRectangle',
-			Parent = GetCore().UI,
+			Parent = Core.UI,
 			BackgroundColor3 = Color3.fromRGB(100, 100, 100),
 			BorderColor3 = Color3.new(0, 0, 0),
 			BackgroundTransparency = 0.5,
@@ -160,7 +168,7 @@ function TargetingModule.UpdateSelectionRectangle()
 	);
 
 	-- Update size and position
-	SelectionRectangle.Parent = GetCore().UI;
+	SelectionRectangle.Parent = Core.UI;
 	SelectionRectangle.Position = UDim2.new(0, StartPoint.X, 0, StartPoint.Y);
 	SelectionRectangle.Size = UDim2.new(0, EndPoint.X - StartPoint.X, 0, EndPoint.Y - StartPoint.Y);
 
@@ -245,8 +253,11 @@ end;
 
 TargetingModule.TargetChanged:connect(function (Target)
 
+	-- Get core API
+	local Core = GetCore();
+
 	-- Hide target box if no/unselectable target
-	if not Target or not GetCore().IsSelectable(Target) or GetCore().Selection.IsSelected(Target) then
+	if not Target or not Core.IsSelectable(Target) or Core.Selection.IsSelected(Target) then
 		TargetingModule.HighlightTarget(nil);
 
 	-- Show target outline if target is selectable
