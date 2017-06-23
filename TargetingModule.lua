@@ -279,6 +279,56 @@ function TargetingModule.FinishRectangleSelecting()
 
 end;
 
+function TargetingModule.PrismSelect()
+	-- Selects parts in the currently selected parts
+
+	-- Ensure parts are selected
+	if #Selection.Items == 0 then
+		return;
+	end;
+
+	-- Get core API
+	local Core = GetCore();
+
+	-- Get region for selection items and find potential parts
+	local Extents = require(Core.Tool.BoundingBoxModule).CalculateExtents(Selection.Items, nil, true);
+	local Region = Region3.new(Extents.Min, Extents.Max);
+	local PotentialParts = Workspace:FindPartsInRegion3WithIgnoreList(Region, Selection.Items, math.huge);
+
+	-- Enable collision on all potential parts
+	local OriginalState = {};
+	for _, PotentialPart in pairs(PotentialParts) do
+		OriginalState[PotentialPart] = { Anchored = PotentialPart.Anchored, CanCollide = PotentialPart.CanCollide };
+		PotentialPart.Anchored = true;
+		PotentialPart.CanCollide = true;
+	end;
+
+	local Parts = {};
+
+	-- Find all parts intersecting with selection
+	for _, Part in pairs(Selection.Items) do
+		local TouchingParts = Part:GetTouchingParts();
+		for _, TouchingPart in pairs(TouchingParts) do
+			if not Selection.IsSelected(TouchingPart) then
+				Parts[TouchingPart] = true;
+			end;
+		end;
+	end;
+
+	-- Restore all potential parts' original states
+	for PotentialPart, State in pairs(OriginalState) do
+		PotentialPart.CanCollide = State.CanCollide;
+		PotentialPart.Anchored = State.Anchored;
+	end;
+
+	-- Delete the selection parts
+	Core.DeleteSelection();
+
+	-- Select all found parts
+	Selection.Replace(Support.Keys(Parts), true);
+
+end;
+
 TargetingModule.TargetChanged:connect(function (Target)
 
 	-- Get core API
