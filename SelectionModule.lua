@@ -139,11 +139,17 @@ end;
 function Selection.Replace(Items, RegisterHistory)
 	-- Replaces the current selection with the given new items
 
-	-- Clear current selection
-	Selection.Clear(RegisterHistory);
+	-- Save old selection reference for history
+	local OldSelection = Selection.Items;
 
-	-- Select new items
-	Selection.Add(Items, RegisterHistory);
+	-- Clear current selection and select new items
+	Selection.Clear(false);
+	Selection.Add(Items, false);
+
+	-- Create a history record for this selection change, if requested
+	if RegisterHistory then
+		TrackSelectionChange(OldSelection);
+	end;
 
 end;
 
