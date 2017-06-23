@@ -10,7 +10,7 @@ local Component = Cheer.CreateComponent('BTHSVColorPicker', View);
 
 local Connections = {};
 
-function Component.Start(InitialColor, Callback, SelectionPreventionCallback)
+function Component.Start(InitialColor, Callback, SelectionPreventionCallback, PreviewCallback)
 
 	-- Show the UI
 	View.Visible = true;
@@ -42,10 +42,11 @@ function Component.Start(InitialColor, Callback, SelectionPreventionCallback)
 
 	-- Connect OK/Cancel buttons
 	Cheer.Bind(View.OkButton, { function () View:Destroy(); return Color3.fromHSV(#Hue, #Saturation, #Brightness) end }, Callback);
-	Cheer.Bind(View.CancelButton, function () View:Destroy() end);
+	Cheer.Bind(View.CancelButton, function () if PreviewCallback then PreviewCallback() end; View:Destroy(); end);
 
-	-- Store reference to selection prevention callback
+	-- Store reference to callbacks
 	Component.SelectionPreventionCallback = SelectionPreventionCallback;
+	Component.PreviewCallback = PreviewCallback;
 
 	-- Clear connections when the component is removed
 	Cheer.Bind(Component.OnRemove, ClearConnections);
@@ -98,8 +99,14 @@ end;
 function UpdateDisplay()
 	-- Updates the display based on the current color
 
+	-- Get current color
+	local CurrentColor = Color3.fromHSV(#Hue, #Saturation, #Brightness);
+
 	-- Update the color display
-	View.ColorDisplay.BackgroundColor3 = Color3.fromHSV(#Hue, #Saturation, #Brightness);
+	View.ColorDisplay.BackgroundColor3 = CurrentColor;
+	View.HueOption.Bar.BackgroundColor3 = CurrentColor;
+	View.SaturationOption.Bar.BackgroundColor3 = CurrentColor;
+	View.BrightnessOption.Bar.BackgroundColor3 = CurrentColor;
 
 	-- Update the interactive color picker
 	View.HueSaturation.Cursor.Position = UDim2.new(
@@ -108,11 +115,16 @@ function UpdateDisplay()
 	);
 
 	-- Update the interactive brightness picker
-	View.Brightness.ColorBG.BackgroundColor3 = Color3.fromHSV(#Hue, #Saturation, 1);
+	View.Brightness.ColorBG.BackgroundColor3 = CurrentColor;
 	View.Brightness.Cursor.Position = UDim2.new(
 		View.Brightness.Cursor.Position.X.Scale, View.Brightness.Cursor.Position.X.Offset,
 		1 - #Brightness, View.Brightness.Cursor.Position.Y.Offset
 	);
+
+	-- Update the preview if enabled
+	if Component.PreviewCallback then
+		Component.PreviewCallback(CurrentColor);
+	end;
 
 end;
 
