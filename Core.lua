@@ -556,30 +556,10 @@ if Mode == 'Tool' then
 	AssignHotkey({ 'RightControl', 'K' }, PrismSelect);
 end;
 
-function SelectSiblings(ReplaceSelection)
-	-- Selects all parts under the same parent as the focused part
-
-	-- Ensure there is a focused item and its parent is not Workspace
-	if not Selection.Focus or Selection.Focus.Parent == Workspace then
-		return;
-	end;
-
-	-- Get the focused item's siblings
-	local Siblings = Support.GetAllDescendants(Selection.Focus.Parent);
-
-	-- Add to or replace selection
-	if ReplaceSelection then
-		Selection.Replace(Siblings, true);
-	else
-		Selection.Add(Siblings, true);
-	end;
-
-end;
-
 -- Assign hotkeys for sibling selection
-AssignHotkey({ 'LeftBracket' }, Support.Call(SelectSiblings, true));
-AssignHotkey({ 'LeftShift', 'LeftBracket' }, Support.Call(SelectSiblings, false));
-AssignHotkey({ 'RightShift', 'LeftBracket' }, Support.Call(SelectSiblings, false));
+AssignHotkey({ 'LeftBracket' }, Support.Call(Targeting.SelectSiblings, false, true));
+AssignHotkey({ 'LeftShift', 'LeftBracket' }, Support.Call(Targeting.SelectSiblings, false, false));
+AssignHotkey({ 'RightShift', 'LeftBracket' }, Support.Call(Targeting.SelectSiblings, false, false));
 
 -- Assign hotkeys for selection clearing
 AssignHotkey({ 'LeftShift', 'R' }, Support.Call(Selection.Clear, true));
@@ -587,8 +567,8 @@ AssignHotkey({ 'RightShift', 'R' }, Support.Call(Selection.Clear, true));
 
 -- If in-game, enable ctrl hotkeys for sibling selection & selection clearing
 if Mode == 'Tool' then
-	AssignHotkey({ 'LeftControl', 'LeftBracket' }, Support.Call(SelectSiblings, false));
-	AssignHotkey({ 'RightControl', 'LeftBracket' }, Support.Call(SelectSiblings, false));
+	AssignHotkey({ 'LeftControl', 'LeftBracket' }, Support.Call(Targeting.SelectSiblings, false, false));
+	AssignHotkey({ 'RightControl', 'LeftBracket' }, Support.Call(Targeting.SelectSiblings, false, false));
 	AssignHotkey({ 'LeftControl', 'R' }, Support.Call(Selection.Clear, true));
 	AssignHotkey({ 'RightControl', 'R' }, Support.Call(Selection.Clear, true));
 end;

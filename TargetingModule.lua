@@ -23,6 +23,11 @@ function TargetingModule.EnableTargeting()
 	-- Listen for target clicks
 	Connections.Selecting = Mouse.Button1Up:connect(TargetingModule.SelectTarget);
 
+	-- Listen for sibling selection middle clicks
+	Connections.SiblingSelecting = Support.AddUserInputListener('Began', 'MouseButton3', true, function ()
+		TargetingModule.SelectSiblings(Mouse.Target, not Selection.Multiselecting);
+	end);
+
 	-- Listen for 2D selection
 	Connections.RectSelectionStarted = Mouse.Button1Down:connect(TargetingModule.StartRectangleSelecting);
 	Connections.RectSelectionFinished = Support.AddUserInputListener('Ended', 'MouseButton1', true, TargetingModule.FinishRectangleSelecting);
@@ -105,6 +110,29 @@ function TargetingModule.SelectTarget()
 	-- Replace selection if not multiselecting
 	else
 		Selection.Replace({ Target }, true);
+	end;
+
+end;
+
+function TargetingModule.SelectSiblings(Part, ReplaceSelection)
+	-- Selects all parts under the same parent as `Part`
+
+	-- If a part is not specified, assume the currently focused part
+	local Part = Part or Selection.Focus;
+
+	-- Ensure the part exists and its parent is not Workspace
+	if not Part or Part.Parent == Workspace then
+		return;
+	end;
+
+	-- Get the focused item's siblings
+	local Siblings = Support.GetAllDescendants(Part.Parent);
+
+	-- Add to or replace selection
+	if ReplaceSelection then
+		Selection.Replace(Siblings, true);
+	else
+		Selection.Add(Siblings, true);
 	end;
 
 end;
