@@ -83,7 +83,7 @@ function ShowUI()
 
 				-- Recolor the selection when the button is clicked
 				Button.MouseButton1Click:connect(function ()
-					SetColor(BrickColor.new(Button.Name));
+					SetColor(BrickColor.new(Button.Name).Color);
 				end);
 
 				-- Register the button
@@ -94,7 +94,17 @@ function ShowUI()
 	end;
 
 	-- Paint selection when current color indicator is clicked
-	PaintTool.UI.LastColor.MouseButton1Click:connect(PaintParts);
+	PaintTool.UI.Controls.LastColorButton.MouseButton1Click:connect(PaintParts);
+
+	-- Enable color picker button
+	PaintTool.UI.Controls.ColorPickerButton.MouseButton1Click:connect(function ()
+		Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
+			Support.IdentifyCommonProperty(Selection.Items, 'Color') or Color3.new(1, 1, 1),
+			SetColor,
+			Core.Targeting.CancelSelecting,
+			PreviewColor
+		);
+	end);
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
@@ -136,10 +146,14 @@ function UpdateUI()
 
 	-- Indicate the variety of colors in the selection
 	for _, Part in pairs(Selection.Items) do
-		if PaletteButtons[Part.BrickColor.Name] then
+		if PaletteButtons[Part.BrickColor.Name] and Part.Color == Part.BrickColor.Color then
 			PaletteButtons[Part.BrickColor.Name].Text = '+';
 		end;
 	end;
+
+	-- Update the color picker button's background
+	local CommonColor = Support.IdentifyCommonProperty(Selection.Items, 'Color');
+	PaintTool.UI.Controls.ColorPickerButton.ImageColor3 = CommonColor or PaintTool.BrickColor or Color3.new(1, 0, 0);
 
 end;
 
@@ -149,15 +163,20 @@ function SetColor(Color)
 	-- Set the color option
 	PaintTool.BrickColor = Color;
 
+	-- Use BrickColor name if color matches one
+	local EquivalentBrickColor = BrickColor.new(Color);
+	local RGBText = ('(%d, %d, %d)'):format(Color.r * 255, Color.g * 255, Color.b * 255);
+	local ColorText = (EquivalentBrickColor.Color == Color) and EquivalentBrickColor.Name or RGBText;
+
 	-- Shortcuts to color indicators
-	local ColorLabel = PaintTool.UI.LastColor.ColorName;
+	local ColorLabel = PaintTool.UI.Controls.LastColorButton.ColorName;
 	local ColorSquare = ColorLabel.ColorSquare;
 
 	-- Update the indicators
 	ColorLabel.Visible = true;
-	ColorLabel.Text = Color.Name;
-	ColorSquare.BackgroundColor3 = Color.Color;
-	ColorSquare.Position = UDim2.new(1, -ColorLabel.TextBounds.X - 16, 0.2, 1);
+	ColorLabel.Text = ColorText;
+	ColorSquare.BackgroundColor3 = Color;
+	ColorSquare.Position = UDim2.new(1, -ColorLabel.TextBounds.X - 18, 0.2, 1);
 
 	-- Paint currently selected parts
 	PaintParts();
@@ -177,7 +196,7 @@ function PaintParts()
 
 	-- Change the color of the parts locally
 	for _, Part in pairs(Selection.Items) do
-		Part.BrickColor = PaintTool.BrickColor;
+		Part.Color = PaintTool.BrickColor;
 
 		-- Allow part coloring for unions
 		if Part.ClassName == 'UnionOperation' then
@@ -187,6 +206,52 @@ function PaintParts()
 
 	-- Register changes
 	RegisterChange();
+
+end;
+
+function PreviewColor(Color)
+	-- Previews the given color on the selection
+
+	-- Reset colors to initial state if previewing is over
+	if not Color and InitialState then
+		for Part, State in pairs(InitialState) do
+
+			-- Reset part color
+			Part.Color = State.Color;
+
+			-- Update union coloring options
+			if Part.ClassName == 'UnionOperation' then
+				Part.UsePartColor = State.UsePartColor;
+			end;
+		end;
+
+		-- Clear initial state
+		InitialState = nil;
+
+		-- Skip rest of function
+		return;
+
+	-- Ensure valid color is given
+	elseif not Color then
+		return;
+
+	-- Save initial state if first time previewing
+	elseif not InitialState then
+		InitialState = {};
+		for _, Part in pairs(Selection.Items) do
+			InitialState[Part] = { Color = Part.Color, UsePartColor = (Part.ClassName == 'UnionOperation') and Part.UsePartColor or nil };
+		end;
+	end;
+
+	-- Apply preview color
+	for _, Part in pairs(Selection.Items) do
+		Part.Color = Color;
+
+		-- Enable union coloring
+		if Part.ClassName == 'UnionOperation' then
+			Part.UsePartColor = true;
+		end;
+	end;
 
 end;
 
@@ -224,7 +289,7 @@ function BindShortcutKeys()
 
 			-- Set the current color to that of the current mouse target (if any)
 			if Core.Mouse.Target then
-				SetColor(Core.Mouse.Target.BrickColor);
+				SetColor(Core.Mouse.Target.Color);
 			end;
 
 		end;
@@ -295,7 +360,7 @@ function TrackChange()
 
 	-- Collect the selection's initial state
 	for _, Part in pairs(HistoryRecord.Parts) do
-		HistoryRecord.BeforeColor[Part] = Part.BrickColor;
+		HistoryRecord.BeforeColor[Part] = Part.Color;
 
 		-- If this part is a union, collect its UsePartColor state
 		if Part.ClassName == 'UnionOperation' then
@@ -316,8 +381,8 @@ function RegisterChange()
 	-- Collect the selection's final state
 	local Changes = {};
 	for _, Part in pairs(HistoryRecord.Parts) do
-		HistoryRecord.AfterColor[Part] = Part.BrickColor;
-		table.insert(Changes, { Part = Part, Color = Part.BrickColor, UnionColoring = true });
+		HistoryRecord.AfterColor[Part] = Part.Color;
+		table.insert(Changes, { Part = Part, Color = Part.Color, UnionColoring = true });
 	end;
 
 	-- Send the change to the server
