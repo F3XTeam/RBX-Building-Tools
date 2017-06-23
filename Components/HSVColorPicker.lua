@@ -40,8 +40,23 @@ function Component.Start(InitialColor, Callback, SelectionPreventionCallback, Pr
 	Connections.TrackBrightness = Support.AddGuiInputListener(View.Brightness, 'Began', 'MouseButton1', true, Support.Call(StartTrackingMouse, 'B'));
 	Connections.StopTrackingMouse = Support.AddUserInputListener('Ended', 'MouseButton1', true, StopTrackingMouse);
 
-	-- Connect OK/Cancel buttons
-	Cheer.Bind(View.OkButton, { function () View:Destroy(); return Color3.fromHSV(#Hue, #Saturation, #Brightness) end }, Callback);
+	-- Connect OK button to finish color picking
+	Cheer.Bind(View.OkButton, function ()
+
+		-- Clear any preview
+		if PreviewCallback then
+			PreviewCallback();
+		end;
+
+		-- Remove the UI
+		View:Destroy();
+
+		-- Return the selected color
+		Callback(Color3.fromHSV(#Hue, #Saturation, #Brightness));
+
+	end);
+
+	-- Connect cancel button to clear preview and remove UI
 	Cheer.Bind(View.CancelButton, function () if PreviewCallback then PreviewCallback() end; View:Destroy(); end);
 
 	-- Store reference to callbacks
