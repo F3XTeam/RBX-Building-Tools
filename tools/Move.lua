@@ -1127,7 +1127,7 @@ function GetAlignedTargetPoint(Target, TargetPoint, TargetNormal)
 	-----------------------------------------------------------------------------
 
 	-- Make sure the target is a part
-	if Target and Target:IsA 'BasePart' then
+	if Target and Target:IsA 'BasePart' and Target.ClassName ~= 'Terrain' then
 		local Size = Target.Size / 2;
 
 		-- Calculate the direction of a wedge surface
