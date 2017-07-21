@@ -888,8 +888,12 @@ function StartDragging(BasePart, InitialState, BasePoint)
 		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 	end;
 
-	-- Determine the base point and part for the dragging
-	local BasePart = BasePart or Core.Mouse.Target;
+	-- Ensure a base part is provided
+	if not BasePart then
+		return;
+	end;
+
+	-- Determine the base point for dragging
 	local BasePartOffset = -BasePart.CFrame:pointToObjectSpace(Core.Mouse.Hit.p);
 
 	-- Improve base point alignment for the given increment
