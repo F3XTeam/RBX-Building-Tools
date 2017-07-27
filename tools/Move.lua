@@ -758,6 +758,9 @@ function EnableDragging()
 	-- Pay attention to when the user intends to start dragging
 	Connections.DragStart = Core.Mouse.Button1Down:connect(function ()
 
+		-- Get mouse target
+		local TargetPart = Core.Mouse.Target;
+
 		-- Make sure this click was not to select
 		if Selection.Multiselecting then
 			return;
@@ -767,18 +770,18 @@ function EnableDragging()
 		local IsSnapping = UserInputService:IsKeyDown(Enum.KeyCode.R) and #Selection.Items > 0;
 
 		-- Make sure target is draggable, unless snapping is ongoing
-		if not Core.IsSelectable(Core.Mouse.Target) and not IsSnapping then
+		if not Core.IsSelectable(TargetPart) and not IsSnapping then
 			return;
 		end;
 
-		-- Select the target if it's not selected, and snapping is not ongoing
-		if not Selection.IsSelected(Core.Mouse.Target) and not IsSnapping then
-			Selection.Replace({ Core.Mouse.Target }, true);
-		end;
-
-		-- Mark where dragging began
+		-- Initialize dragging detection data
+		DragStartTarget = IsSnapping and Selection.Focus or TargetPart;
 		DragStart = Vector2.new(Core.Mouse.X, Core.Mouse.Y);
-		DragStartTarget = IsSnapping and Selection.Focus or Core.Mouse.Target;
+
+		-- Select the target if it's not selected, and snapping is not ongoing
+		if not Selection.IsSelected(TargetPart) and not IsSnapping then
+			Selection.Replace({ TargetPart }, true);
+		end;
 
 		-- Watch for potential dragging
 		Connections.WatchForDrag = Core.Mouse.Move:connect(function ()
@@ -799,38 +802,38 @@ function EnableDragging()
 
 	end);
 
-	-- Clear dragging-start watchers once mouse is released
-	Connections.DragEnd = Support.AddUserInputListener('Ended', 'MouseButton1', true, function ()
-
-		-- Clear dragging-start data
-		DragStart = nil;
-		DragStartTarget = nil;
-
-		-- Disconnect dragging-start listeners
-		ClearConnection 'WatchForDrag';
-
-	end);
-
 end;
 
 -- Catch whenever the user finishes dragging
 UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
-
-	-- Make sure dragging is active
-	if not Dragging then
-		return;
-	end;
 
 	-- Make sure this was button 1 being released
 	if InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1 then
 		return;
 	end;
 
-	-- Reset normal axes option state
-	SetAxes(MoveTool.Axes);
+	-- Clean up dragging detection listeners and data
+	if DragStart then
 
-	-- Finish dragging
-	FinishDragging();
+		-- Clear dragging detection data
+		DragStart = nil;
+		DragStartTarget = nil;
+
+		-- Disconnect dragging initiation listeners
+		ClearConnection 'WatchForDrag';
+
+	end;
+
+	-- Reset from drag mode if dragging
+	if Dragging then
+
+		-- Reset normal axes option state
+		SetAxes(MoveTool.Axes);
+
+		-- Finalize the dragging operation
+		FinishDragging();
+
+	end;
 
 end);
 
@@ -873,6 +876,11 @@ end;
 function StartDragging(BasePart, InitialState, BasePoint)
 	-- Begins dragging the selection
 
+	-- Ensure dragging is not already ongoing
+	if Dragging then
+		return;
+	end;
+
 	-- Indicate that we're dragging
 	Dragging = true;
 
@@ -888,8 +896,12 @@ function StartDragging(BasePart, InitialState, BasePoint)
 		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
 	end;
 
-	-- Determine the base point and part for the dragging
-	local BasePart = BasePart or Core.Mouse.Target;
+	-- Ensure a base part is provided
+	if not BasePart then
+		return;
+	end;
+
+	-- Determine the base point for dragging
 	local BasePartOffset = -BasePart.CFrame:pointToObjectSpace(Core.Mouse.Hit.p);
 
 	-- Improve base point alignment for the given increment
@@ -1123,7 +1135,7 @@ function GetAlignedTargetPoint(Target, TargetPoint, TargetNormal)
 	-----------------------------------------------------------------------------
 
 	-- Make sure the target is a part
-	if Target and Target:IsA 'BasePart' then
+	if Target and Target:IsA 'BasePart' and Target.ClassName ~= 'Terrain' then
 		local Size = Target.Size / 2;
 
 		-- Calculate the direction of a wedge surface

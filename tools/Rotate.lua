@@ -644,10 +644,10 @@ function SetAxisAngle(Axis, Angle)
 	for Part, State in pairs(InitialStates) do
 
 		-- Set the part's new CFrame
-		Part.CFrame = CFrame.new(Part.Position) * CFrame.Angles(
-			Axis == 'X' and Angle or math.rad(Part.Rotation.X),
-			Axis == 'Y' and Angle or math.rad(Part.Rotation.Y),
-			Axis == 'Z' and Angle or math.rad(Part.Rotation.Z)
+		Part.CFrame = CFrame.new(Part.Position) * CFrame.fromOrientation(
+			Axis == 'X' and Angle or math.rad(Part.Orientation.X),
+			Axis == 'Y' and Angle or math.rad(Part.Orientation.Y),
+			Axis == 'Z' and Angle or math.rad(Part.Orientation.Z)
 		);
 
 	end;

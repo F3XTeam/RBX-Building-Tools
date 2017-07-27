@@ -422,22 +422,18 @@ function CloneSelection()
 
 end;
 
+ConfirmationSound = Create 'Sound' {
+	Name = 'BTActionCompletionSound';
+	Pitch = 1.5;
+	SoundId = Assets.ActionCompletionSound;
+	Volume = 1;
+};
+
 function PlayConfirmationSound()
 	-- Plays a confirmation beep sound
 
-	-- Create the sound
-	local Sound = Create 'Sound' {
-		Name = 'BTActionCompletionSound';
-		Pitch = 1.5;
-		SoundId = Assets.ActionCompletionSound;
-		Volume = 1;
-		Parent = SoundService;
-		PlayOnRemove = true;
-	};
-
-	-- Trigger playing
-	Sound:Play();
-	Sound:Destroy();
+	-- Trigger the sound locally
+	SoundService:PlayLocalSound(ConfirmationSound);
 
 end;
 
