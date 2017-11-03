@@ -31,8 +31,5 @@ You can also:
   -  Undo and redo any changes you make (Shift + Z, Shift + Y)
   -  Switch between tools using hotkeys
 
-## Contributing
-Check out [the wiki](https://github.com/F3XTeam/ROBLOX-Building-Tools/wiki) for info on contributing.
-
 ---
 Designed and built by [the F3X team](http://www.roblox.com/Groups/Group.aspx?gid=831895).
