@@ -897,7 +897,7 @@ function StartDragging(BasePart, InitialState, BasePoint)
 	end;
 
 	-- Ensure a base part is provided
-	if not BasePart then
+	if not BasePart or not InitialState[BasePart] then
 		return;
 	end;
 
