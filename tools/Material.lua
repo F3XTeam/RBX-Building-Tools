@@ -68,6 +68,7 @@ local Materials = {
 	[Enum.Material.Slate] = 'Slate';
 	[Enum.Material.Wood] = 'Wood';
 	[Enum.Material.WoodPlanks] = 'Wood Planks';
+	[Enum.Material.Glass] = 'Glass';
 };
 
 function ShowUI()
