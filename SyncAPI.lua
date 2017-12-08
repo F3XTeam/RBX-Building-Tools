@@ -79,6 +79,8 @@ Actions = {
 
 		-- Create the part
 		local NewPart = Support.CreatePart(PartType);
+		NewPart.TopSurface = Enum.SurfaceType.Smooth;
+		NewPart.BottomSurface = Enum.SurfaceType.Smooth;
 
 		-- Position the part
 		NewPart.CFrame = Position;
