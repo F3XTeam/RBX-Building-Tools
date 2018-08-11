@@ -41,7 +41,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -67,8 +67,8 @@ function ShowUI()
 	UI.Visible = true;
 
 	-- Hook up the buttons
-	UI.Interface.WeldButton.MouseButton1Click:connect(CreateWelds);
-	UI.Interface.BreakWeldsButton.MouseButton1Click:connect(BreakWelds);
+	UI.Interface.WeldButton.MouseButton1Click:Connect(CreateWelds);
+	UI.Interface.BreakWeldsButton.MouseButton1Click:Connect(BreakWelds);
 
 end;
 
@@ -143,9 +143,6 @@ function CreateWelds()
 
 	-- Update the UI with the number of welds created
 	UI.Changes.Text.Text = ('created %s weld%s'):format(#Welds, #Welds == 1 and '' or 's');
-
-	-- Play a confirmation sound
-	Core.PlayConfirmationSound();
 
 	-- Put together the history record
 	local HistoryRecord = {
@@ -239,7 +236,7 @@ function EnableFocusHighlighting()
 	end;
 
 	-- Recolor future focused items
-	Connections.FocusHighlighting = Selection.FocusChanged:connect(function (FocusedItem)
+	Connections.FocusHighlighting = Selection.FocusChanged:Connect(function (FocusedItem)
 
 		-- Reset all outline colors
 		Core.Selection.RecolorOutlines(Core.Selection.Color);

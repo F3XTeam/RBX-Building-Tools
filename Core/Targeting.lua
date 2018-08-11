@@ -1,11 +1,14 @@
+local Tool = script.Parent.Parent
+local Selection = require(script.Parent.Selection);
+
 -- Libraries
-RbxUtility = LoadLibrary 'RbxUtility';
-Create = RbxUtility.Create;
-Support = require(script.Parent.SupportLibrary);
-Selection = require(script.Parent.SelectionModule);
+local Libraries = Tool:WaitForChild 'Libraries'
+local Support = require(Libraries:WaitForChild 'SupportLibrary')
+local Signal = require(Libraries:WaitForChild 'Signal')
+local Make = require(Libraries:WaitForChild 'Make')
 
 TargetingModule = {};
-TargetingModule.TargetChanged = RbxUtility.CreateSignal();
+TargetingModule.TargetChanged = Signal.new()
 
 function TargetingModule.EnableTargeting()
 	-- 	Begin targeting parts from the mouse
@@ -18,10 +21,10 @@ function TargetingModule.EnableTargeting()
 	Mouse = Core.Mouse;
 
 	-- Listen for target changes
-	Connections.Targeting = Mouse.Move:connect(TargetingModule.UpdateTarget);
+	Connections.Targeting = Mouse.Move:Connect(TargetingModule.UpdateTarget);
 
 	-- Listen for target clicks
-	Connections.Selecting = Mouse.Button1Up:connect(TargetingModule.SelectTarget);
+	Connections.Selecting = Mouse.Button1Up:Connect(TargetingModule.SelectTarget);
 
 	-- Listen for sibling selection middle clicks
 	Connections.SiblingSelecting = Support.AddUserInputListener('Began', 'MouseButton3', true, function ()
@@ -29,14 +32,14 @@ function TargetingModule.EnableTargeting()
 	end);
 
 	-- Listen for 2D selection
-	Connections.RectSelectionStarted = Mouse.Button1Down:connect(TargetingModule.StartRectangleSelecting);
+	Connections.RectSelectionStarted = Mouse.Button1Down:Connect(TargetingModule.StartRectangleSelecting);
 	Connections.RectSelectionFinished = Support.AddUserInputListener('Ended', 'MouseButton1', true, TargetingModule.FinishRectangleSelecting);
 
 	-- Hide target box when tool is unequipped
-	Connections.HideTargetBoxOnDisable = Core.Disabling:connect(TargetingModule.HighlightTarget);
+	Connections.HideTargetBoxOnDisable = Core.Disabling:Connect(TargetingModule.HighlightTarget);
 
 	-- Cancel any ongoing selection when tool is unequipped
-	Connections.CancelSelectionOnDisable = Core.Disabling:connect(TargetingModule.CancelRectangleSelecting);
+	Connections.CancelSelectionOnDisable = Core.Disabling:Connect(TargetingModule.CancelRectangleSelecting);
 
 end;
 
@@ -51,7 +54,7 @@ function TargetingModule.UpdateTarget()
 	Target = Mouse.Target;
 
 	-- Fire events
-	TargetingModule.TargetChanged:fire(Mouse.Target);
+	TargetingModule.TargetChanged:Fire(Mouse.Target);
 
 end;
 
@@ -62,7 +65,7 @@ function TargetingModule.HighlightTarget(Target)
 
 	-- Create target box
 	if not TargetBox then
-		TargetBox = Create 'SelectionBox' {
+		TargetBox = Make 'SelectionBox' {
 			Name = 'BTTargetOutline',
 			Parent = Core.UIContainer,
 			LineThickness = 0.025,
@@ -126,7 +129,7 @@ function TargetingModule.SelectSiblings(Part, ReplaceSelection)
 	end;
 
 	-- Get the focused item's siblings
-	local Siblings = Support.GetAllDescendants(Part.Parent);
+	local Siblings = Part.Parent:GetDescendants();
 
 	-- Add to or replace selection
 	if ReplaceSelection then
@@ -148,7 +151,7 @@ function TargetingModule.StartRectangleSelecting()
 	RectangleSelectStart = Vector2.new(Mouse.X, Mouse.Y);
 
 	-- Track mouse while rectangle selecting
-	GetCore().Connections.WatchRectangleSelection = Mouse.Move:connect(function ()
+	GetCore().Connections.WatchRectangleSelection = Mouse.Move:Connect(function ()
 
 		-- If rectangle selecting, update rectangle
 		if RectangleSelecting then
@@ -176,7 +179,7 @@ function TargetingModule.UpdateSelectionRectangle()
 
 	-- Create selection rectangle
 	if not SelectionRectangle then
-		SelectionRectangle = Create 'Frame' {
+		SelectionRectangle = Make 'Frame' {
 			Name = 'SelectionRectangle',
 			Parent = Core.UI,
 			BackgroundColor3 = Color3.fromRGB(100, 100, 100),
@@ -213,7 +216,7 @@ function TargetingModule.CancelRectangleSelecting()
 	-- Clear rectangle selection watcher
 	local Connections = GetCore().Connections;
 	if Connections.WatchRectangleSelection then
-		Connections.WatchRectangleSelection:disconnect();
+		Connections.WatchRectangleSelection:Disconnect();
 		Connections.WatchRectangleSelection = nil;
 	end;
 
@@ -255,7 +258,7 @@ function TargetingModule.FinishRectangleSelecting()
 	local SelectableItems = {};
 
 	-- Find items that lie within the rectangle
-	for _, Part in pairs(Support.GetAllDescendants(Workspace)) do
+	for _, Part in pairs(Workspace:GetDescendants()) do
 		if Part:IsA 'BasePart' then
 			local ScreenPoint, OnScreen = Workspace.CurrentCamera:WorldToScreenPoint(Part.Position);
 			if OnScreen then
@@ -291,7 +294,7 @@ function TargetingModule.PrismSelect()
 	local Core = GetCore();
 
 	-- Get region for selection items and find potential parts
-	local Extents = require(Core.Tool.BoundingBoxModule).CalculateExtents(Selection.Items, nil, true);
+	local Extents = require(Core.Tool.Core.BoundingBox).CalculateExtents(Selection.Items, nil, true);
 	local Region = Region3.new(Extents.Min, Extents.Max);
 	local PotentialParts = Workspace:FindPartsInRegion3WithIgnoreList(Region, Selection.Items, math.huge);
 
@@ -329,7 +332,7 @@ function TargetingModule.PrismSelect()
 
 end;
 
-TargetingModule.TargetChanged:connect(function (Target)
+TargetingModule.TargetChanged:Connect(function (Target)
 
 	-- Get core API
 	local Core = GetCore();
@@ -346,7 +349,7 @@ TargetingModule.TargetChanged:connect(function (Target)
 end);
 
 function GetCore()
-	return require(script.Parent.Core);
+	return require(script.Parent);
 end;
 
 return TargetingModule;

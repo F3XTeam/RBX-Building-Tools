@@ -1,6 +1,6 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
-SnapTracking = require(Tool.SnappingModule);
+SnapTracking = require(Tool.Core.Snapping);
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -50,7 +50,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -63,7 +63,7 @@ function ClearConnection(ConnectionKey)
 
 	-- Disconnect the connection if it exists
 	if Connection then
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -93,16 +93,16 @@ function ShowUI()
 
 	-- Add functionality to the directions option switch
 	local DirectionsSwitch = ResizeTool.UI.DirectionsOption;
-	DirectionsSwitch.Normal.Button.MouseButton1Down:connect(function ()
+	DirectionsSwitch.Normal.Button.MouseButton1Down:Connect(function ()
 		SetDirections('Normal');
 	end);
-	DirectionsSwitch.Both.Button.MouseButton1Down:connect(function ()
+	DirectionsSwitch.Both.Button.MouseButton1Down:Connect(function ()
 		SetDirections('Both');
 	end);
 
 	-- Add functionality to the increment input
 	local IncrementInput = ResizeTool.UI.IncrementOption.Increment.TextBox;
-	IncrementInput.FocusLost:connect(function (EnterPressed)
+	IncrementInput.FocusLost:Connect(function (EnterPressed)
 		ResizeTool.Increment = tonumber(IncrementInput.Text) or ResizeTool.Increment;
 		IncrementInput.Text = Support.Round(ResizeTool.Increment, 4);
 	end);
@@ -111,19 +111,19 @@ function ShowUI()
 	local XInput = ResizeTool.UI.Info.SizeInfo.X.TextBox;
 	local YInput = ResizeTool.UI.Info.SizeInfo.Y.TextBox;
 	local ZInput = ResizeTool.UI.Info.SizeInfo.Z.TextBox;
-	XInput.FocusLost:connect(function (EnterPressed)
+	XInput.FocusLost:Connect(function (EnterPressed)
 		local NewSize = tonumber(XInput.Text);
 		if NewSize then
 			SetAxisSize('X', NewSize);
 		end;
 	end);
-	YInput.FocusLost:connect(function (EnterPressed)
+	YInput.FocusLost:Connect(function (EnterPressed)
 		local NewSize = tonumber(YInput.Text);
 		if NewSize then
 			SetAxisSize('Y', NewSize);
 		end;
 	end);
-	ZInput.FocusLost:connect(function (EnterPressed)
+	ZInput.FocusLost:Connect(function (EnterPressed)
 		local NewSize = tonumber(ZInput.Text);
 		if NewSize then
 			SetAxisSize('Z', NewSize);
@@ -250,7 +250,7 @@ function ShowHandles()
 
 	-- Autofocus handles on latest focused part
 	if not Connections.AutofocusHandle then
-		Connections.AutofocusHandle = Selection.FocusChanged:connect(ShowHandles);
+		Connections.AutofocusHandle = Selection.FocusChanged:Connect(ShowHandles);
 	end;
 
 	-- If handles already exist, only show them
@@ -275,7 +275,7 @@ function ShowHandles()
 
 	local AreaPermissions;
 
-	Handles.MouseButton1Down:connect(function ()
+	Handles.MouseButton1Down:Connect(function ()
 
 		-- Prevent selection
 		Core.Targeting.CancelSelecting();
@@ -300,7 +300,7 @@ function ShowHandles()
 	-- Update parts when the handles are moved
 	------------------------------------------
 
-	Handles.MouseDrag:connect(function (Face, Distance)
+	Handles.MouseDrag:Connect(function (Face, Distance)
 
 		-- Only resize if handle is enabled
 		if not HandleResizing then
@@ -472,7 +472,7 @@ function BindShortcutKeys()
 	-- Enables useful shortcut keys for this tool
 
 	-- Track user input while this tool is equipped
-	table.insert(Connections, UserInputService.InputBegan:connect(function (InputInfo, GameProcessedEvent)
+	table.insert(Connections, UserInputService.InputBegan:Connect(function (InputInfo, GameProcessedEvent)
 
 		-- Make sure this is an intentional event
 		if GameProcessedEvent then
@@ -541,7 +541,7 @@ function BindShortcutKeys()
 	end));
 
 	-- Track ending user input while this tool is equipped
-	table.insert(Connections, UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
+	table.insert(Connections, UserInputService.InputEnded:Connect(function (InputInfo, GameProcessedEvent)
 
 		-- Make sure this is an intentional event
 		if GameProcessedEvent then
@@ -811,7 +811,7 @@ function StartSnapping()
 	SnapTracking.StartTracking(function (NewPoint)
 		if NewPoint and NewPoint.p ~= SnappedPoint then
 			SnappedPoint = NewPoint.p;
-			PointSnapped:fire(NewPoint.p);
+			PointSnapped:Fire(NewPoint.p);
 		end;
 	end);
 
@@ -932,7 +932,7 @@ function StartSnapping()
 				SnapTracking.StartTracking(function (NewPoint)
 					if NewPoint and NewPoint.p ~= SnappedPoint then
 						SnappedPoint = NewPoint.p;
-						PointSnapped:fire(NewPoint.p);
+						PointSnapped:Fire(NewPoint.p);
 					end;
 				end);
 
@@ -941,7 +941,7 @@ function StartSnapping()
 		end);
 
 		-- Listen for when a new point is snapped
-		Connections.Snap = PointSnapped:connect(function (SnappedPoint)
+		Connections.Snap = PointSnapped:Connect(function (SnappedPoint)
 
 			-- Resize to snap point if in the destination stage of snapping
 			if SnappingStage == 'Destination' then

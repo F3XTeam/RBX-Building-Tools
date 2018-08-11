@@ -41,7 +41,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -74,10 +74,10 @@ function ShowUI()
 	local UnanchorButton = UI.Status.Unanchored.Button;
 
 	-- Enable the anchor status switch
-	AnchorButton.MouseButton1Click:connect(function ()
+	AnchorButton.MouseButton1Click:Connect(function ()
 		SetProperty('Anchored', true);
 	end);
-	UnanchorButton.MouseButton1Click:connect(function ()
+	UnanchorButton.MouseButton1Click:Connect(function ()
 		SetProperty('Anchored', false);
 	end);
 
@@ -158,7 +158,7 @@ function BindShortcutKeys()
 	-- Enables useful shortcut keys for this tool
 
 	-- Track user input while this tool is equipped
-	table.insert(Connections, UserInputService.InputBegan:connect(function (InputInfo, GameProcessedEvent)
+	table.insert(Connections, UserInputService.InputBegan:Connect(function (InputInfo, GameProcessedEvent)
 
 		-- Make sure this is an intentional event
 		if GameProcessedEvent then

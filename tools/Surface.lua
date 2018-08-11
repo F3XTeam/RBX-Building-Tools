@@ -47,7 +47,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -232,7 +232,7 @@ function EnableSurfaceSelection()
 	-- Allows the player to select surfaces by clicking on them
 
 	-- Watch out for clicks on selected parts
-	Connections.SurfaceSelection = Selection.FocusChanged:connect(function (Part)
+	Connections.SurfaceSelection = Selection.FocusChanged:Connect(function (Part)
 		if Selection.IsSelected(Core.Mouse.Target) then
 
 			-- Set the surface option to the target surface

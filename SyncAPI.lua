@@ -4,13 +4,10 @@ Tool = SyncAPI.Parent;
 Player = nil;
 
 -- Libraries
-RbxUtility = LoadLibrary 'RbxUtility';
-Support = require(Tool.SupportLibrary);
-Security = require(Tool.SecurityModule);
-RegionModule = require(Tool['Region by AxisAngle']);
-Serialization = require(Tool.SerializationModule);
-Create = RbxUtility.Create;
-CreateSignal = RbxUtility.CreateSignal;
+Security = require(Tool.Core.Security);
+RegionModule = require(Tool.Libraries.Region);
+Support = require(Tool.Libraries.SupportLibrary);
+Serialization = require(Tool.Libraries.SerializationV3);
 
 -- Import services
 Support.ImportServices();
@@ -78,9 +75,7 @@ Actions = {
 		-- Creates a new part based on `PartType`
 
 		-- Create the part
-		local NewPart = Support.CreatePart(PartType);
-		NewPart.TopSurface = Enum.SurfaceType.Smooth;
-		NewPart.BottomSurface = Enum.SurfaceType.Smooth;
+		local NewPart = CreatePart(PartType);
 
 		-- Position the part
 		NewPart.CFrame = Position;
@@ -1347,7 +1342,7 @@ Actions = {
 		-- Get all descendants of the parts
 		local Items = Support.CloneTable(Parts);
 		for _, Part in pairs(Parts) do
-			Support.ConcatTable(Items, Support.GetAllDescendants(Part));
+			Support.ConcatTable(Items, Part:GetDescendants());
 		end;
 
 		-- After confirming permissions, serialize parts
@@ -1541,6 +1536,57 @@ function PreserveJoints(Part, Whitelist)
 	return Joints;
 
 end;
+
+function CreatePart(PartType)
+	-- Creates and returns new part based on `PartType` with sensible defaults
+
+	local NewPart
+
+	if PartType == 'Normal' then
+		NewPart = Instance.new('Part')
+		NewPart.Size = Vector3.new(4, 1, 2)
+
+	elseif PartType == 'Truss' then
+		NewPart = Instance.new('TrussPart')
+
+	elseif PartType == 'Wedge' then
+		NewPart = Instance.new('WedgePart')
+		NewPart.Size = Vector3.new(4, 1, 2)
+
+	elseif PartType == 'Corner' then
+		NewPart = Instance.new('CornerWedgePart')
+
+	elseif PartType == 'Cylinder' then
+		NewPart = Instance.new('Part')
+		NewPart.Shape = 'Cylinder'
+		NewPart.Size = Vector3.new(2, 2, 2)
+
+	elseif PartType == 'Ball' then
+		NewPart = Instance.new('Part')
+		NewPart.Shape = 'Ball'
+
+	elseif PartType == 'Seat' then
+		NewPart = Instance.new('Seat')
+		NewPart.Size = Vector3.new(4, 1, 2)
+
+	elseif PartType == 'Vehicle Seat' then
+		NewPart = Instance.new('VehicleSeat')
+		NewPart.Size = Vector3.new(4, 1, 2)
+
+	elseif PartType == 'Spawn' then
+		NewPart = Instance.new('SpawnLocation')
+		NewPart.Size = Vector3.new(4, 1, 2)
+	end
+
+	-- Make part surfaces smooth
+	NewPart.TopSurface = Enum.SurfaceType.Smooth;
+	NewPart.BottomSurface = Enum.SurfaceType.Smooth;
+
+	-- Make sure the part is anchored
+	NewPart.Anchored = true
+
+	return NewPart
+end
 
 -- Keep current player updated in tool mode
 if ToolMode == 'Tool' then

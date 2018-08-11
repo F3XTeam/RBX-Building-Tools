@@ -1,0 +1,58 @@
+{
+  "name": "RBX-Building-Tools",
+  "servePort": 8000,
+  "partitions": {
+    "core": {
+      "path": "Core",
+      "target": "StarterPack.Building Tools.Core"
+    },
+    "tools": {
+      "path": "Tools",
+      "target": "StarterPack.Building Tools.Tools"
+    },
+    "initializer": {
+      "path": "Initializer.client.lua",
+      "target": "StarterPack.Building Tools.Initializer"
+    },
+    "sync/api": {
+      "path": "SyncAPI.lua",
+      "target": "StarterPack.Building Tools.SyncAPI.SyncModule"
+    },
+    "sync/local-endpoint": {
+      "path": "Support/LocalAPIEndpoint.client.lua",
+      "target": "StarterPack.Building Tools.SyncAPI.LocalEndpoint"
+    },
+    "sync/server-endpoint": {
+      "path": "Support/ServerAPIEndpoint.server.lua",
+      "target": "StarterPack.Building Tools.SyncAPI.ServerEndpoint.ServerEndpoint"
+    },
+    "libraries": {
+      "path": "Libraries",
+      "target": "StarterPack.Building Tools.Libraries"
+    },
+    "libraries/roact": {
+      "path": "Modules/Roact/lib",
+      "target": "StarterPack.Building Tools.Libraries.Roact"
+    },
+    "assets": {
+      "path": "Support/Assets.lua",
+      "target": "StarterPack.Building Tools.Assets"
+    },
+    "autoupdating": {
+      "path": "AutomaticUpdating.server.lua",
+      "target": "StarterPack.Building Tools.AutomaticUpdating"
+    },
+    "replication/counter": {
+      "path": "Support/DescendantCounter.server.lua",
+      "target": "StarterPack.Building Tools.Loaded.DescendantCount.DescendantCounter"
+    },
+    "replication/listener": {
+      "path": "Support/ReplicationListener.client.lua",
+      "target": "StarterPack.Building Tools.Loaded.ReplicationListener"
+    },
+    "filtering": {
+      "path": "Support/FilterModeEnabler.server.lua",
+      "target": "StarterPack.Building Tools.FilterMode.FilterModeEnabler"
+    }
+  }
+}

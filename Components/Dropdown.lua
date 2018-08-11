@@ -55,7 +55,7 @@ function Component.Draw(Options, CurrentOption, Callback)
 		local Button = View.OptionButton:Clone();
 		Button.Parent = View.Options;
 		Button.OptionLabel.Text = Option:upper();
-		Button.MouseButton1Click:connect(function ()
+		Button.MouseButton1Click:Connect(function ()
 			Callback(Option);
 			Component.SetOption(Option);
 			Component.Toggle();

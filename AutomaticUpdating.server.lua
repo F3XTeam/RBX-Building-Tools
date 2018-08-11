@@ -62,7 +62,7 @@ if NewTool then
 	Tool.Parent = nil;
 
 	-- Remove the tool again if anything attempts to reparent it
-	Tool.Changed:connect(function (Property)
+	Tool.Changed:Connect(function (Property)
 		if Property == 'Parent' and Tool.Parent then
 			wait(0.05);
 			Tool.Parent = nil;

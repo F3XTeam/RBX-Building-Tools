@@ -41,7 +41,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -84,12 +84,12 @@ function EnableSurfaceClickSelection(LightType)
 
 	-- Clear out any existing connection
 	if Connections.SurfaceClickSelection then
-		Connections.SurfaceClickSelection:disconnect();
+		Connections.SurfaceClickSelection:Disconnect();
 		Connections.SurfaceClickSelection = nil;
 	end;
 
 	-- Add the new click connection
-	Connections.SurfaceClickSelection = UserInputService.InputEnded:connect(function (Input, GameProcessedEvent)
+	Connections.SurfaceClickSelection = UserInputService.InputEnded:Connect(function (Input, GameProcessedEvent)
 		if not GameProcessedEvent and Input.UserInputType == Enum.UserInputType.MouseButton1 and Selection.IsSelected(Core.Mouse.Target) then
 			SetSurface(LightType, Core.Mouse.TargetSurface);
 		end;
@@ -116,17 +116,17 @@ function EnableLightSettingsUI(LightSettingsUI)
 	local ShowButton = LightSettingsUI.ArrowButton;
 
 	-- Enable range input
-	RangeInput.FocusLost:connect(function ()
+	RangeInput.FocusLost:Connect(function ()
 		SetRange(LightType, tonumber(RangeInput.Text));
 	end);
 
 	-- Enable brightness input
-	BrightnessInput.FocusLost:connect(function ()
+	BrightnessInput.FocusLost:Connect(function ()
 		SetBrightness(LightType, tonumber(BrightnessInput.Text));
 	end);
 
 	-- Enable color input
-	ColorPicker.MouseButton1Click:connect(function ()
+	ColorPicker.MouseButton1Click:Connect(function ()
 		Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
 			Support.IdentifyCommonProperty(GetLights(LightType), 'Color') or Color3.new(1, 1, 1),
 			function (Color) SetColor(LightType, Color) end,
@@ -135,22 +135,22 @@ function EnableLightSettingsUI(LightSettingsUI)
 	end);
 
 	-- Enable shadows input
-	ShadowsCheckbox.MouseButton1Click:connect(function ()
+	ShadowsCheckbox.MouseButton1Click:Connect(function ()
 		ToggleShadows(LightType);
 	end);
 
 	-- Enable light addition button
-	AddButton.MouseButton1Click:connect(function ()
+	AddButton.MouseButton1Click:Connect(function ()
 		AddLights(LightType);
 	end);
 
 	-- Enable light removal button
-	RemoveButton.MouseButton1Click:connect(function ()
+	RemoveButton.MouseButton1Click:Connect(function ()
 		RemoveLights(LightType);
 	end);
 
 	-- Enable light options UI show button
-	ShowButton.MouseButton1Click:connect(function ()
+	ShowButton.MouseButton1Click:Connect(function ()
 		OpenLightOptions(LightType);
 	end);
 
@@ -165,7 +165,7 @@ function EnableLightSettingsUI(LightSettingsUI)
 
 		-- Enable angle input
 		local AngleInput = Options.AngleOption.Input.TextBox;
-		AngleInput.FocusLost:connect(function ()
+		AngleInput.FocusLost:Connect(function ()
 			SetAngle(LightType, tonumber(AngleInput.Text));
 		end);
 

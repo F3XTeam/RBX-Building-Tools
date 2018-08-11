@@ -1,5 +1,5 @@
 -- Libraries
-Core = require(script.Parent.Core);
+Core = require(script.Parent);
 Support = Core.Support;
 
 SnapTracking = {};
@@ -229,7 +229,7 @@ function SnapTracking.StopTracking()
 	end;
 
 	-- Stop tracking the mouse and its proximity to snapping points
-	SnapTracking.MouseTracking:disconnect();
+	SnapTracking.MouseTracking:Disconnect();
 	SnapTracking.MouseTracking = nil;
 
 	-- Clear the point marker UI from the screen

@@ -10,15 +10,15 @@ Mode = Plugin and 'Plugin' or 'Tool';
 -- Load tool completely
 local Indicator = Tool:WaitForChild 'Loaded';
 while not Indicator.Value do
-	Indicator.Changed:wait();
+	Indicator.Changed:Wait();
 end;
 
 -- Libraries
-Security = require(Tool.SecurityModule);
-History = require(Tool.HistoryModule);
-Selection = require(Tool.SelectionModule);
-Targeting = require(Tool.TargetingModule);
-Region = require(Tool['Region by AxisAngle']);
+Security = require(script.Security);
+History = require(script.History);
+Selection = require(script.Selection);
+Targeting = require(script.Targeting);
+Region = require(Tool.Libraries.Region);
 RbxUtility = LoadLibrary 'RbxUtility';
 Create = RbxUtility.Create;
 
@@ -56,7 +56,7 @@ function EquipTool(Tool)
 	CurrentTool.Equipped = true;
 
 	-- Fire relevant events
-	ToolChanged:fire(Tool);
+	ToolChanged:Fire(Tool);
 
 	-- Equip the tool
 	Tool.Equip();
@@ -68,7 +68,7 @@ function RecolorHandle(Color)
 end;
 
 -- Theme UI to current tool
-ToolChanged:connect(function (Tool)
+ToolChanged:Connect(function (Tool)
 	coroutine.wrap(RecolorHandle)(Tool.Color);
 	coroutine.wrap(Selection.RecolorOutlines)(Tool.Color);
 end);
@@ -207,7 +207,7 @@ function Enable(Mouse)
 	Selection.EnableMultiselectionHotkeys();
 
 	-- Equip current tool
-	EquipTool(CurrentTool or require(Tool.Tools.MoveTool));
+	EquipTool(CurrentTool or require(Tool.Tools.Move));
 
 	-- Indicate that tool is now enabled
 	IsEnabled = true;
@@ -265,7 +265,7 @@ Connections = {};
 function ClearConnections()
 	-- Clears and disconnects temporary connections
 	for Index, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[Index] = nil;
 	end;
 end;
@@ -302,7 +302,7 @@ if Mode == 'Plugin' then
 	);
 
 	-- Connect the button to the system
-	PluginButton.Click:connect(function ()
+	PluginButton.Click:Connect(function ()
 		PluginEnabled = not PluginEnabled;
 		PluginButton:SetActive(PluginEnabled);
 
@@ -316,20 +316,20 @@ if Mode == 'Plugin' then
 	end);
 
 	-- Disable the tool upon plugin deactivation
-	Plugin.Deactivation:connect(Disable);
+	Plugin.Deactivation:Connect(Disable);
 
 	-- Sync Studio selection to internal selection
-	Selection.Changed:connect(function ()
+	Selection.Changed:Connect(function ()
 		SelectionService:Set(Selection.Items);
 	end);
 
 	-- Sync internal selection to Studio selection on enabling
-	Enabling:connect(function ()
+	Enabling:Connect(function ()
 		Selection.Replace(SelectionService:Get());
 	end);
 
 	-- Roughly sync Studio history to internal history (API lacking necessary functionality)
-	History.Changed:connect(function ()
+	History.Changed:Connect(function ()
 		ChangeHistoryService:SetWaypoint 'Building Tools by F3X';
 	end);
 
@@ -339,8 +339,8 @@ elseif Mode == 'Tool' then
 	UIContainer = Player:WaitForChild 'PlayerGui';
 
 	-- Connect the tool to the system
-	Tool.Equipped:connect(Enable);
-	Tool.Unequipped:connect(Disable);
+	Tool.Equipped:Connect(Enable);
+	Tool.Unequipped:Connect(Disable);
 
 	-- Disable the tool if not parented
 	if not Tool.Parent then
@@ -348,7 +348,7 @@ elseif Mode == 'Tool' then
 	end;
 
 	-- Disable the tool automatically if not equipped or in backpack
-	Tool.AncestryChanged:connect(function (Item, Parent)
+	Tool.AncestryChanged:Connect(function (Item, Parent)
 		if not Parent or not (Parent:IsA 'Backpack' or (Parent:IsA 'Model' and Players:GetPlayerFromCharacter(Parent))) then
 			Disable();
 		end;
@@ -414,26 +414,8 @@ function CloneSelection()
 	-- Select the clones
 	Selection.Replace(Clones);
 
-	-- Play a confirmation sound
-	PlayConfirmationSound();
-
 	-- Flash the outlines of the new parts
 	coroutine.wrap(Selection.FlashOutlines)();
-
-end;
-
-ConfirmationSound = Create 'Sound' {
-	Name = 'BTActionCompletionSound';
-	Pitch = 1.5;
-	SoundId = Assets.ActionCompletionSound;
-	Volume = 1;
-};
-
-function PlayConfirmationSound()
-	-- Plays a confirmation beep sound
-
-	-- Trigger the sound locally
-	SoundService:PlayLocalSound(ConfirmationSound);
 
 end;
 
@@ -566,7 +548,6 @@ function ExportSelection()
 	-- Display creation ID on success
 	:Then(function (CreationId)
 		Dialog.SetResult(CreationId);
-		PlayConfirmationSound();
 		print('[Building Tools by F3X] Uploaded Export:', CreationId);
 	end)
 

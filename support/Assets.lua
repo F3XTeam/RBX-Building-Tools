@@ -1,7 +1,6 @@
 Assets = {
 	DarkSlantedRectangle	= 'rbxassetid://127774197';
 	LightSlantedRectangle	= 'rbxassetid://127772502';
-	ActionCompletionSound	= 'rbxassetid://99666917';
 	ExpandArrow				= 'rbxassetid://134367382';
 	UndoActiveDecal			= 'rbxassetid://141741408';
 	UndoInactiveDecal		= 'rbxassetid://142074557';

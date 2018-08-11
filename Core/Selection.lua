@@ -1,7 +1,10 @@
+local Tool = script.Parent.Parent
+local History = require(script.Parent.History)
+
 -- Libraries
-local RbxUtility = LoadLibrary 'RbxUtility';
-local History = require(script.Parent.HistoryModule);
-local Support = require(script.Parent.SupportLibrary);
+local Libraries = Tool:WaitForChild 'Libraries'
+local Support = require(Libraries:WaitForChild 'SupportLibrary')
+local Signal = require(Libraries:WaitForChild 'Signal')
 
 -- Core selection system
 Selection = {};
@@ -12,11 +15,11 @@ Selection.Color = BrickColor.new 'Cyan';
 Selection.Multiselecting = false;
 
 -- Events to listen to selection changes
-Selection.ItemsAdded = RbxUtility.CreateSignal();
-Selection.ItemsRemoved = RbxUtility.CreateSignal();
-Selection.FocusChanged = RbxUtility.CreateSignal();
-Selection.Cleared = RbxUtility.CreateSignal();
-Selection.Changed = RbxUtility.CreateSignal();
+Selection.ItemsAdded = Signal.new()
+Selection.ItemsRemoved = Signal.new()
+Selection.FocusChanged = Signal.new()
+Selection.Cleared = Signal.new()
+Selection.Changed = Signal.new()
 
 -- Item existence listeners
 local Listeners = {};
@@ -55,7 +58,7 @@ function Selection.Add(Items, RegisterHistory)
 		Selection.ItemIndex[Item] = true;
 
 		-- Deselect items that are destroyed
-		Listeners[Item] = Item.AncestryChanged:connect(function (Object, Parent)
+		Listeners[Item] = Item.AncestryChanged:Connect(function (Object, Parent)
 			if Parent == nil then
 				Selection.Remove({ Item });
 			end;
@@ -75,8 +78,8 @@ function Selection.Add(Items, RegisterHistory)
 	CreateSelectionBoxes(SelectableItems);
 
 	-- Fire relevant events
-	Selection.ItemsAdded:fire(SelectableItems);
-	Selection.Changed:fire();
+	Selection.ItemsAdded:Fire(SelectableItems);
+	Selection.Changed:Fire();
 
 end;
 
@@ -103,7 +106,7 @@ function Selection.Remove(Items, RegisterHistory)
 		Selection.ItemIndex[Item] = nil;
 
 		-- Stop tracking item's parent
-		Listeners[Item]:disconnect();
+		Listeners[Item]:Disconnect();
 		Listeners[Item] = nil;
 
 	end;
@@ -120,8 +123,8 @@ function Selection.Remove(Items, RegisterHistory)
 	end;
 
 	-- Fire relevant events
-	Selection.ItemsRemoved:fire(DeselectableItems);
-	Selection.Changed:fire();
+	Selection.ItemsRemoved:Fire(DeselectableItems);
+	Selection.Changed:Fire();
 
 end;
 
@@ -132,7 +135,7 @@ function Selection.Clear(RegisterHistory)
 	Selection.Remove(Selection.Items, RegisterHistory);
 
 	-- Fire relevant events
-	Selection.Cleared:fire();
+	Selection.Cleared:Fire();
 
 end;
 
@@ -165,7 +168,7 @@ function Selection.SetFocus(Item)
 	Selection.Focus = Item;
 
 	-- Fire relevant events
-	Selection.FocusChanged:fire(Item);
+	Selection.FocusChanged:Fire(Item);
 
 end;
 
@@ -184,11 +187,11 @@ function FocusOnLastSelectedPart()
 end;
 
 -- Listen for changes to the selection and keep the focus updated
-Selection.Changed:connect(FocusOnLastSelectedPart);
+Selection.Changed:Connect(FocusOnLastSelectedPart);
 
 function GetCore()
 	-- Returns the core API
-	return require(script.Parent.Core);
+	return require(script.Parent);
 end;
 
 function CreateSelectionBoxes(Items)
@@ -302,7 +305,7 @@ function Selection.EnableOutlines()
 	end;
 
 	-- Hide outlines when tool is disabled
-	GetCore().Connections.HideOutlinesOnDisable = GetCore().Disabling:connect(Selection.HideOutlines);
+	GetCore().Connections.HideOutlinesOnDisable = GetCore().Disabling:Connect(Selection.HideOutlines);
 
 end;
 

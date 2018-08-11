@@ -4,9 +4,10 @@ HttpService = Game:GetService 'HttpService';
 Workspace = Game:GetService 'Workspace';
 
 -- References
-Tool = script.Parent;
-Support = require(Tool:WaitForChild 'SupportLibrary');
-RegionModule = require(Tool:WaitForChild 'Region by AxisAngle');
+Tool = script.Parent.Parent
+Libraries = Tool:WaitForChild 'Libraries'
+Support = require(Libraries:WaitForChild 'SupportLibrary')
+RegionModule = require(Libraries:WaitForChild 'Region')
 
 -- Initialize the security module
 Security = {};
@@ -22,12 +23,12 @@ Security.AllowedLocations = { Workspace };
 
 -- Track the enabling of areas
 Security.Areas = Workspace:FindFirstChild('[Private Building Areas]');
-Workspace.ChildAdded:connect(function (Child)
+Workspace.ChildAdded:Connect(function (Child)
 	if not Security.Areas and Child.Name == '[Private Building Areas]' then
 		Security.Areas = Child;
 	end;
 end);
-Workspace.ChildRemoved:connect(function (Child)
+Workspace.ChildRemoved:Connect(function (Child)
 	if Security.Areas and Child.Name == '[Private Building Areas]' then
 		Security.Areas = nil;
 	end;

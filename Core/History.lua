@@ -1,5 +1,8 @@
+local Tool = script.Parent.Parent
+
 -- Libraries
-local RbxUtility = LoadLibrary 'RbxUtility';
+local Libraries = Tool:WaitForChild 'Libraries'
+local Signal = require(Libraries:WaitForChild 'Signal')
 
 History = {
 
@@ -10,7 +13,7 @@ History = {
 	Index = 0,
 
 	-- History change event
-	Changed = RbxUtility.CreateSignal()
+	Changed = Signal.new()
 
 };
 
@@ -30,7 +33,7 @@ function History.Undo()
 	History.Index = History.Index - 1;
 
 	-- Fire the Changed event
-	History.Changed:fire();
+	History.Changed:Fire();
 
 end;
 
@@ -50,7 +53,7 @@ function History.Redo()
 	Record:Apply();
 
 	-- Fire the Changed event
-	History.Changed:fire();
+	History.Changed:Fire();
 
 end;
 
@@ -69,7 +72,7 @@ function History.Add(Record)
 	end;
 
 	-- Fire the Changed event
-	History.Changed:fire();
+	History.Changed:Fire();
 
 end;
 

@@ -1,7 +1,8 @@
 Serialization = {};
 
 -- Import services
-Support = require(script.Parent.SupportLibrary);
+local Tool = script.Parent.Parent
+local Support = require(Tool.Libraries.SupportLibrary);
 Support.ImportServices();
 
 local Types = {
@@ -56,7 +57,7 @@ function Serialization.SerializeModel(Items)
 	local Keys = Support.FlipTable(Items);
 
 	local Data = {};
-	Data.Version = 2;
+	Data.Version = 3;
 	Data.Items = {};
 
 	-- Serialize each item in the model
@@ -71,36 +72,38 @@ function Serialization.SerializeModel(Items)
 			Datum[5] = Item.Size.Y;
 			Datum[6] = Item.Size.Z;
 			Support.ConcatTable(Datum, { Item.CFrame:components() });
-			Datum[19] = Item.BrickColor.Number;
-			Datum[20] = Item.Material.Value;
-			Datum[21] = Item.Anchored and 1 or 0;
-			Datum[22] = Item.CanCollide and 1 or 0;
-			Datum[23] = Item.Reflectance;
-			Datum[24] = Item.Transparency;
-			Datum[25] = Item.TopSurface.Value;
-			Datum[26] = Item.BottomSurface.Value;
-			Datum[27] = Item.FrontSurface.Value;
-			Datum[28] = Item.BackSurface.Value;
-			Datum[29] = Item.LeftSurface.Value;
-			Datum[30] = Item.RightSurface.Value;
+			Datum[19] = Item.Color.r;
+			Datum[20] = Item.Color.g;
+			Datum[21] = Item.Color.b;
+			Datum[22] = Item.Material.Value;
+			Datum[23] = Item.Anchored and 1 or 0;
+			Datum[24] = Item.CanCollide and 1 or 0;
+			Datum[25] = Item.Reflectance;
+			Datum[26] = Item.Transparency;
+			Datum[27] = Item.TopSurface.Value;
+			Datum[28] = Item.BottomSurface.Value;
+			Datum[29] = Item.FrontSurface.Value;
+			Datum[30] = Item.BackSurface.Value;
+			Datum[31] = Item.LeftSurface.Value;
+			Datum[32] = Item.RightSurface.Value;
 			Data.Items[Index] = Datum;
 		end;
 
 		if Item.ClassName == 'Part' then
 			local Datum = Data.Items[Index];
-			Datum[31] = Item.Shape.Value;
+			Datum[33] = Item.Shape.Value;
 		end;
 
 		if Item.ClassName == 'VehicleSeat' then
 			local Datum = Data.Items[Index];
-			Datum[31] = Item.MaxSpeed;
-			Datum[32] = Item.Torque;
-			Datum[33] = Item.TurnSpeed;
+			Datum[33] = Item.MaxSpeed;
+			Datum[34] = Item.Torque;
+			Datum[35] = Item.TurnSpeed;
 		end;
 
 		if Item.ClassName == 'TrussPart' then
 			local Datum = Data.Items[Index];
-			Datum[31] = Item.Style.Value;
+			Datum[33] = Item.Style.Value;
 		end;
 
 		if Item.ClassName == 'SpecialMesh' then
@@ -258,18 +261,18 @@ function Serialization.InflateBuildData(Data)
 			local Item = Instance.new(Support.FindTableOccurrence(Types, Datum[1]));
 			Item.Size = Vector3.new(unpack(Support.Slice(Datum, 4, 6)));
 			Item.CFrame = CFrame.new(unpack(Support.Slice(Datum, 7, 18)));
-			Item.BrickColor = BrickColor.new(Datum[19]);
-			Item.Material = Datum[20];
-			Item.Anchored = Datum[21] == 1;
-			Item.CanCollide = Datum[22] == 1;
-			Item.Reflectance = Datum[23];
-			Item.Transparency = Datum[24];
-			Item.TopSurface = Datum[25];
-			Item.BottomSurface = Datum[26];
-			Item.FrontSurface = Datum[27];
-			Item.BackSurface = Datum[28];
-			Item.LeftSurface = Datum[29];
-			Item.RightSurface = Datum[30];
+			Item.Color = Color3.new(Datum[19], Datum[20], Datum[21]);
+			Item.Material = Datum[22];
+			Item.Anchored = Datum[23] == 1;
+			Item.CanCollide = Datum[24] == 1;
+			Item.Reflectance = Datum[25];
+			Item.Transparency = Datum[26];
+			Item.TopSurface = Datum[27];
+			Item.BottomSurface = Datum[28];
+			Item.FrontSurface = Datum[29];
+			Item.BackSurface = Datum[30];
+			Item.LeftSurface = Datum[31];
+			Item.RightSurface = Datum[32];
 
 			-- Register the part
 			Instances[Index] = Item;
@@ -278,21 +281,21 @@ function Serialization.InflateBuildData(Data)
 		-- Inflate specific Part properties
 		if Datum[1] == Types.Part then
 			local Item = Instances[Index];
-			Item.Shape = Datum[31];
+			Item.Shape = Datum[33];
 		end;
 
 		-- Inflate specific VehicleSeat properties
 		if Datum[1] == Types.VehicleSeat then
 			local Item = Instances[Index];
-			Item.MaxSpeed = Datum[31];
-			Item.Torque = Datum[32];
-			Item.TurnSpeed = Datum[33];
+			Item.MaxSpeed = Datum[33];
+			Item.Torque = Datum[34];
+			Item.TurnSpeed = Datum[35];
 		end;
 
 		-- Inflate specific TrussPart properties
 		if Datum[1] == Types.TrussPart then
 			local Item = Instances[Index];
-			Item.Style = Datum[31];
+			Item.Style = Datum[33];
 		end;
 
 		-- Inflate SpecialMesh instances

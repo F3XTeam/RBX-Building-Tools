@@ -45,7 +45,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -82,7 +82,7 @@ function ShowUI()
 			if Button.ClassName == 'TextButton' then
 
 				-- Recolor the selection when the button is clicked
-				Button.MouseButton1Click:connect(function ()
+				Button.MouseButton1Click:Connect(function ()
 					SetColor(BrickColor.new(Button.Name).Color);
 				end);
 
@@ -94,10 +94,10 @@ function ShowUI()
 	end;
 
 	-- Paint selection when current color indicator is clicked
-	PaintTool.UI.Controls.LastColorButton.MouseButton1Click:connect(PaintParts);
+	PaintTool.UI.Controls.LastColorButton.MouseButton1Click:Connect(PaintParts);
 
 	-- Enable color picker button
-	PaintTool.UI.Controls.ColorPickerButton.MouseButton1Click:connect(function ()
+	PaintTool.UI.Controls.ColorPickerButton.MouseButton1Click:Connect(function ()
 		Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
 			Support.IdentifyCommonProperty(Selection.Items, 'Color') or Color3.new(1, 1, 1),
 			SetColor,
@@ -259,7 +259,7 @@ function BindShortcutKeys()
 	-- Enables useful shortcut keys for this tool
 
 	-- Track user input while this tool is equipped
-	table.insert(Connections, UserInputService.InputBegan:connect(function (InputInfo, GameProcessedEvent)
+	table.insert(Connections, UserInputService.InputBegan:Connect(function (InputInfo, GameProcessedEvent)
 
 		-- Make sure this is an intentional event
 		if GameProcessedEvent then
@@ -302,7 +302,7 @@ function EnableClickPainting()
 	-- Allows the player to paint parts by clicking on them
 
 	-- Watch out for clicks on selected parts
-	Connections.ClickPainting = Selection.FocusChanged:connect(function (Part)
+	Connections.ClickPainting = Selection.FocusChanged:Connect(function (Part)
 		if Selection.IsSelected(Core.Mouse.Target) then
 
 			-- Paint the selected parts
