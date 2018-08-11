@@ -3,6 +3,10 @@ Core = require(Tool.Core);
 SnapTracking = require(Tool.Core.Snapping);
 BoundingBox = require(Tool.Core.BoundingBox);
 
+-- Libraries
+local Libraries = Tool:WaitForChild 'Libraries'
+local Signal = require(Libraries:WaitForChild 'Signal')
+
 -- Import relevant references
 Selection = Core.Selection;
 Create = Core.Create;
@@ -557,7 +561,7 @@ function BindShortcutKeys()
 end;
 
 -- Event that fires when new point comes into focus while snapping
-local PointSnapped = Core.RbxUtility.CreateSignal();
+local PointSnapped = Signal.new()
 
 function StartSnapping()
 	-- Starts tracking snap points nearest to the mouse

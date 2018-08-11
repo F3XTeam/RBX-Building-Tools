@@ -2,6 +2,10 @@ Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 SnapTracking = require(Tool.Core.Snapping);
 
+-- Libraries
+local Libraries = Tool:WaitForChild 'Libraries'
+local Signal = require(Libraries:WaitForChild 'Signal')
+
 -- Import relevant references
 Selection = Core.Selection;
 Create = Core.Create;
@@ -790,7 +794,7 @@ function GetIncrementMultiple(Number, Increment)
 end;
 
 -- Event that fires when a new point is snapped
-PointSnapped = Core.RbxUtility.CreateSignal();
+PointSnapped = Signal.new()
 
 function StartSnapping()
 

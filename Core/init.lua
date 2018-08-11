@@ -19,8 +19,7 @@ History = require(script.History);
 Selection = require(script.Selection);
 Targeting = require(script.Targeting);
 Region = require(Tool.Libraries.Region);
-RbxUtility = LoadLibrary 'RbxUtility';
-Create = RbxUtility.Create;
+Signal = require(Tool.Libraries.Signal)
 
 -- Load additional libraries
 while not _G.GetLibraries do wait() end
@@ -40,7 +39,7 @@ Assets = require(Tool.Assets);
 ContentProvider:PreloadAsync(Support.Values(Assets));
 
 -- Core events
-ToolChanged = RbxUtility.CreateSignal();
+ToolChanged = Signal.new()
 
 function EquipTool(Tool)
 	-- Equips and switches to the given tool
@@ -154,10 +153,10 @@ function EnableHotkeys()
 
 end;
 
-Enabling = RbxUtility.CreateSignal();
-Disabling = RbxUtility.CreateSignal();
-Enabled = RbxUtility.CreateSignal();
-Disabled = RbxUtility.CreateSignal();
+Enabling = Signal.new()
+Disabling = Signal.new()
+Enabled = Signal.new()
+Disabled = Signal.new()
 
 function Enable(Mouse)
 
@@ -279,9 +278,8 @@ function InitializeUI()
 	end;
 
 	-- Create the root UI
-	UI = Create 'ScreenGui' {
-		Name = 'Building Tools by F3X (UI)'
-	};
+	UI = Instance.new('ScreenGui')
+	UI.Name = 'Building Tools by F3X (UI)'
 
 	-- Set up dock
 	Dock = Cheer(Tool.Interfaces.Dock, UI).Start(getfenv(0));
