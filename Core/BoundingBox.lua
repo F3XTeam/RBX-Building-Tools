@@ -25,7 +25,7 @@ function BoundingBoxModule.StartBoundingBox(HandleAttachmentCallback)
 	BoundingBoxEnabled = true;
 
 	-- Create the box
-	BoundingBox = Core.Create 'Part' {
+	BoundingBox = Core.Make 'Part' {
 		Name = 'BTBoundingBox';
 		CanCollide = false;
 		Transparency = 1;

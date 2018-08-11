@@ -5,10 +5,10 @@ SnapTracking = require(Tool.Core.Snapping);
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
 local Signal = require(Libraries:WaitForChild 'Signal')
+local Make = require(Libraries:WaitForChild 'Make')
 
 -- Import relevant references
 Selection = Core.Selection;
-Create = Core.Create;
 Support = Core.Support;
 Security = Core.Security;
 Support.ImportServices();
@@ -266,7 +266,7 @@ function ShowHandles()
 	end;
 
 	-- Create the handles
-	Handles = Create 'Handles' {
+	Handles = Make 'Handles' {
 		Name = 'BTResizingHandles';
 		Color = ResizeTool.Color;
 		Parent = Core.UIContainer;

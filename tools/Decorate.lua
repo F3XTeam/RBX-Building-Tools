@@ -3,7 +3,6 @@ Core = require(Tool.Core);
 
 -- Import relevant references
 Selection = Core.Selection;
-Create = Core.Create;
 Support = Core.Support;
 Security = Core.Security;
 Support.ImportServices();

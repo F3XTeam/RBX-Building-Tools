@@ -6,10 +6,10 @@ BoundingBox = require(Tool.Core.BoundingBox);
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
 local Signal = require(Libraries:WaitForChild 'Signal')
+local Make = require(Libraries:WaitForChild 'Make')
 
 -- Import relevant references
 Selection = Core.Selection;
-Create = Core.Create;
 Support = Core.Support;
 Security = Core.Security;
 Support.ImportServices();
@@ -280,7 +280,7 @@ function AttachHandles(Part, Autofocus)
 	end;
 
 	-- Create the handles
-	Handles = Create 'Handles' {
+	Handles = Make 'Handles' {
 		Name = 'BTMovementHandles';
 		Color = MoveTool.Color;
 		Parent = Core.UIContainer;

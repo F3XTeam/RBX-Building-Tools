@@ -13,21 +13,19 @@ while not Indicator.Value do
 	Indicator.Changed:Wait();
 end;
 
--- Libraries
-Security = require(script.Security);
-History = require(script.History);
-Selection = require(script.Selection);
-Targeting = require(script.Targeting);
-Region = require(Tool.Libraries.Region);
-Signal = require(Tool.Libraries.Signal)
+-- Modules
+Security = require(script.Security)
+History = require(script.History)
+Selection = require(script.Selection)
+Targeting = require(script.Targeting)
 
--- Load additional libraries
-while not _G.GetLibraries do wait() end
-Support, Cheer, Try = _G.GetLibraries(
-	'F3X/SupportLibrary@^1.0.0',
-	'F3X/Cheer@^0.0.0',
-	'F3X/Try@~1.0.0'
-);
+-- Libraries
+Region = require(Tool.Libraries.Region)
+Signal = require(Tool.Libraries.Signal)
+Support = require(Tool.Libraries.SupportLibrary)
+Cheer = require(Tool.Libraries.Cheer)
+Try = require(Tool.Libraries.Try)
+Make = require(Tool.Libraries.Make)
 
 -- References
 Support.ImportServices();

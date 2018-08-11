@@ -3,9 +3,12 @@ Core = require(Tool.Core);
 SnapTracking = require(Tool.Core.Snapping);
 BoundingBox = require(Tool.Core.BoundingBox);
 
+-- Libraries
+local Libraries = Tool:WaitForChild 'Libraries'
+local Make = require(Libraries:WaitForChild 'Make')
+
 -- Import relevant references
 Selection = Core.Selection;
-Create = Core.Create;
 Support = Core.Support;
 Security = Core.Security;
 Support.ImportServices();
@@ -260,7 +263,7 @@ function AttachHandles(Part, Autofocus)
 	end;
 
 	-- Create the handles
-	Handles = Create 'ArcHandles' {
+	Handles = Make 'ArcHandles' {
 		Name = 'BTRotationHandles';
 		Color = RotateTool.Color;
 		Parent = Core.UIContainer;
