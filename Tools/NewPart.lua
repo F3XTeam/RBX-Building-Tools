@@ -1,6 +1,9 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 
+-- Services
+local ContextActionService = game:GetService 'ContextActionService'
+
 -- Import relevant references
 Selection = Core.Selection;
 Support = Core.Support;
@@ -39,6 +42,7 @@ function NewPartTool.Unequip()
 	-- Clear unnecessary resources
 	HideUI();
 	ClearConnections();
+	ContextActionService:UnbindAction('BT: Create part')
 
 end;
 
@@ -107,35 +111,28 @@ end;
 function EnableClickCreation()
 	-- Allows the user to click anywhere and create a new part
 
-	-- Listen for clicks
-	Connections.ClickCreationListener = UserInputService.InputBegan:Connect(function (Input, GameProcessedEvent)
+	local function CreateAtTarget(Action, State, Input)
 
-		-- Make sure this is an intentional event
-		if GameProcessedEvent then
-			return;
-		end;
+		-- Drag new parts
+		if State.Name == 'Begin' then
+			DragNewParts = true
+			Core.Targeting.CancelSelecting()
 
-		-- Make sure this was button 1 being released
-		if Input.UserInputType ~= Enum.UserInputType.MouseButton1 then
-			return;
-		end;
+			-- Create new part
+			CreatePart(NewPartTool.Type)
 
-		-- Enable new part dragging
-		DragNewParts = true;
-		Core.Targeting.CancelSelecting();
+		-- Disable dragging on release
+		elseif State.Name == 'End' then
+			DragNewParts = nil
+		end
 
-		-- Create the part
-		CreatePart(NewPartTool.Type);
+	end
 
-	end);
-
-	-- Listen for click releases
-	Connections.ClickReleaseListener = Support.AddUserInputListener('Ended', 'MouseButton1', true, function ()
-
-		-- Cancel dragging new parts if mouse button is released
-		DragNewParts = false;
-
-	end);
+	-- Register input handler
+	ContextActionService:BindAction('BT: Create part', CreateAtTarget, false,
+		Enum.UserInputType.MouseButton1,
+		Enum.UserInputType.Touch
+	)
 
 end;
 
