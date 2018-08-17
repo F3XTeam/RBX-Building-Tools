@@ -1,4 +1,4 @@
-local Tool = script.Parent;
+local Tool = script.Parent.Parent;
 
 function IsVersionOutdated(Version)
 	-- Returns whether the given version of Building Tools is out of date

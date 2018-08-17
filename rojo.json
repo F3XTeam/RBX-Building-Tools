@@ -40,7 +40,7 @@
     },
     "autoupdating": {
       "path": "AutomaticUpdating.server.lua",
-      "target": "StarterPack.Building Tools.AutomaticUpdating"
+      "target": "StarterPack.Building Tools.AutoUpdate.AutomaticUpdating"
     },
     "replication/counter": {
       "path": "Support/DescendantCounter.server.lua",
