@@ -53,6 +53,10 @@
     "filtering": {
       "path": "Support/FilterModeEnabler.server.lua",
       "target": "StarterPack.Building Tools.FilterMode.FilterModeEnabler"
+    },
+    "version": {
+      "path": "Version.model.json",
+      "target": "StarterPack.Building Tools.Version"
     }
   }
 }

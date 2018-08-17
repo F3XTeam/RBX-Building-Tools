@@ -1,0 +1,10 @@
+{
+    "Name": "Version",
+    "ClassName": "StringValue",
+    "Properties": {
+        "Value": {
+            "Type": "String",
+            "Value": "3.0.0"
+        }
+    }
+}
