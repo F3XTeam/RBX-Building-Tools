@@ -80,7 +80,6 @@ function ShowUI()
 		File = Enum.MeshType.FileMesh,
 		Head = Enum.MeshType.Head,
 		Sphere = Enum.MeshType.Sphere,
-		Trapezoid = Enum.MeshType.Torso,
 		Wedge = Enum.MeshType.Wedge
 	};
 
