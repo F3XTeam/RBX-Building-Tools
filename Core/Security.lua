@@ -199,7 +199,7 @@ function Security.ArePartsViolatingAreas(Parts, Player, ExemptPartial, AreaPermi
 	AreaPermissions = AreaPermissions or {};
 
 	-- Check which areas the parts are in
-	local Areas, AreaMap = Security.GetSelectionAreas(Parts, not ExemptPartial and not Security.AllowPublicBuilding);
+	local Areas, RegionMap = Security.GetSelectionAreas(Parts, true);
 
 	-- Check authorization for each relevant area
 	for _, Area in pairs(Areas) do
@@ -214,9 +214,21 @@ function Security.ArePartsViolatingAreas(Parts, Player, ExemptPartial, AreaPermi
 			return true;
 		end;
 
-		-- If authorized, and partial violations are exempt, call off any violation
+		-- If authorized and partial violations are allowed, check if all parts match area
 		if ExemptPartial and AreaPermissions[Area] then
-			return false;
+
+			-- Get parts matched to this area
+			for Region, RegionParts in pairs(RegionMap) do
+				if Region.Area == Area then
+
+					-- If all parts are on this authorized area, call off any violation
+					if Support.CountKeys(Parts) == #RegionParts then
+						return false
+					end
+
+				end
+			end
+
 		end;
 
 	end;
@@ -230,11 +242,11 @@ function Security.ArePartsViolatingAreas(Parts, Player, ExemptPartial, AreaPermi
 		return true;
 
 	-- If in authorized areas, determine violation based on public building policy compliance
-	elseif AreaMap and not Security.AllowPublicBuilding then
+	elseif RegionMap and not Security.AllowPublicBuilding then
 
 		-- Check area residence of each part's corner
 		local PartCornerCompliance = {};
-		for AreaRegion, Parts in pairs(AreaMap) do
+		for AreaRegion, Parts in pairs(RegionMap) do
 			for _, Part in pairs(Parts) do
 				PartCornerCompliance[Part] = PartCornerCompliance[Part] or 0;
 
@@ -281,6 +293,7 @@ function Security.GetSelectionAreas(Selection, ReturnMap)
 			Area.CFrame * CFrame.new(0, Security.AreaHeight / 2 - Area.Size.Y / 2, 0),
 			Vector3.new(Area.Size.X, Security.AreaHeight + Area.Size.Y, Area.Size.Z)
 		);
+		Region.Area = Area
 		local ContainedParts = Region:CastParts(Selection);
 
 		-- If parts are in this area, remember the area
