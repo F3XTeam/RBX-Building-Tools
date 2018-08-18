@@ -3,6 +3,10 @@ Core = require(Tool.Core);
 SnapTracking = require(Tool.Core.Snapping);
 BoundingBox = require(Tool.Core.BoundingBox);
 
+-- Services
+local ContextActionService = game:GetService 'ContextActionService'
+local Workspace = game:GetService 'Workspace'
+
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
 local Signal = require(Libraries:WaitForChild 'Signal')
@@ -49,6 +53,9 @@ function MoveTool.Unequip()
 	if Dragging then
 		FinishDragging();
 	end;
+
+	-- Disable dragging
+	ContextActionService:UnbindAction 'BT: Start dragging'
 
 	-- Clear unnecessary resources
 	HideUI();
@@ -281,11 +288,11 @@ function AttachHandles(Part, Autofocus)
 
 	-- Create the handles
 	Handles = Make 'Handles' {
-		Name = 'BTMovementHandles';
-		Color = MoveTool.Color;
-		Parent = Core.UIContainer;
-		Adornee = Part;
-	};
+		Name = 'BTMovementHandles',
+		Color = MoveTool.Color,
+		Parent = Core.UIContainer,
+		Adornee = Part
+	}
 
 	------------------------------------------------------
 	-- Prepare for moving parts when the handle is clicked
@@ -299,7 +306,7 @@ function AttachHandles(Part, Autofocus)
 		Core.Targeting.CancelSelecting();
 
 		-- Indicate dragging via handles
-		HandleDragging = true;
+		HandleDragging = true
 
 		-- Freeze bounding box extents while dragging
 		if BoundingBox.GetBoundingBox() then
@@ -358,36 +365,61 @@ function AttachHandles(Part, Autofocus)
 
 end;
 
--- Finalize changes to parts when the handle is let go
-Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
+local function HandleBubbleDragging(Action, State, Input)
 
-	-- Ensure handle dragging is ongoing
-	if not HandleDragging then
-		return;
-	end;
+	-- Check whether handles are enabled
+	local HandlesEnabled = Handles and Handles.Parent and Handles.Adornee and Handles.Visible
+
+	-- Check input if handles visible
+	if HandlesEnabled and (State.Name == 'Begin') then
+		local Adornee = Handles.Adornee
+		local Camera = Workspace.CurrentCamera
+
+		-- Sink input if dragging bubbles
+		for _, NormalId in pairs(Enum.NormalId:GetEnumItems()) do
+			local DirectionVector = Vector3.FromNormalId(NormalId)
+			local FaceOffset = CFrame.new(DirectionVector * (Adornee.Size / 2))
+			local BubbleOffset = CFrame.new(DirectionVector * 2.5)
+			local WorldPoint = (Adornee.CFrame * FaceOffset * BubbleOffset).p
+			local ScreenRay = Camera:ScreenPointToRay(Input.Position.X, Input.Position.Y)
+			if ScreenRay:Distance(WorldPoint) <= 0.75 then
+				return Enum.ContextActionResult.Sink
+			end
+		end
+
+		-- Ignore input if not dragging bubbles
+		return Enum.ContextActionResult.Pass
+	end
+
+	-- Ignore input if handles not being dragged
+	if not (HandleDragging and State.Name == 'End') then
+		return Enum.ContextActionResult.Pass
+	end
 
 	-- Disable dragging
-	HandleDragging = false;
-
-	-- Clear this connection to prevent it from firing again
-	ClearConnection 'HandleRelease';
+	HandleDragging = false
 
 	-- Make joints, restore original anchor and collision states
 	for Part, State in pairs(InitialState) do
-		Part:MakeJoints();
-		Core.RestoreJoints(State.Joints);
-		Part.CanCollide = State.CanCollide;
-		Part.Anchored = State.Anchored;
-	end;
+		Part:MakeJoints()
+		Core.RestoreJoints(State.Joints)
+		Part.CanCollide = State.CanCollide
+		Part.Anchored = State.Anchored
+	end
 
-	-- Register the change
-	RegisterChange();
+	-- Register change
+	RegisterChange()
 
-	-- Resume normal bounding box updating
-	BoundingBox.RecalculateStaticExtents();
-	BoundingBox.ResumeMonitoring();
+	-- Resume bounding box updates
+	BoundingBox.RecalculateStaticExtents()
+	BoundingBox.ResumeMonitoring()
+end
 
-end);
+-- Finalize changes to parts when the handle is let go
+ContextActionService:BindAction('BT: Bubble dragging', HandleBubbleDragging, false,
+	Enum.UserInputType.MouseButton1,
+	Enum.UserInputType.Touch
+)
 
 function HideHandles()
 	-- Hides the resizing handles
@@ -759,87 +791,102 @@ end;
 function EnableDragging()
 	-- Enables part dragging
 
-	-- Pay attention to when the user intends to start dragging
-	Connections.DragStart = Core.Mouse.Button1Down:Connect(function ()
+	local function HandleDragStart(Action, State, Input)
+		if State.Name ~= 'Begin' then
+			return Enum.ContextActionResult.Pass
+		end
 
 		-- Get mouse target
-		local TargetPart = Core.Mouse.Target;
-
-		-- Make sure this click was not to select
+		local TargetPart = Core.Mouse.Target
 		if Selection.Multiselecting then
-			return;
-		end;
+			return Enum.ContextActionResult.Pass
+		end
 
-		-- Check whether the user is snapping
-		local IsSnapping = UserInputService:IsKeyDown(Enum.KeyCode.R) and #Selection.Items > 0;
-
-		-- Make sure target is draggable, unless snapping is ongoing
+		-- Make sure target is draggable, unless snapping
+		local IsSnapping = UserInputService:IsKeyDown(Enum.KeyCode.R) and #Selection.Items > 0
 		if not Core.IsSelectable(TargetPart) and not IsSnapping then
-			return;
-		end;
+			return Enum.ContextActionResult.Pass
+		end
 
 		-- Initialize dragging detection data
-		DragStartTarget = IsSnapping and Selection.Focus or TargetPart;
-		DragStart = Vector2.new(Core.Mouse.X, Core.Mouse.Y);
+		DragStartTarget = IsSnapping and Selection.Focus or TargetPart
+		DragStart = Vector2.new(Core.Mouse.X, Core.Mouse.Y)
 
-		-- Select the target if it's not selected, and snapping is not ongoing
+		-- Select unselected target, if not snapping
 		if not Selection.IsSelected(TargetPart) and not IsSnapping then
-			Selection.Replace({ TargetPart }, true);
-		end;
+			Selection.Replace({ TargetPart }, true)
+		end
 
-		-- Watch for potential dragging
-		Connections.WatchForDrag = Core.Mouse.Move:Connect(function ()
+		local function HandlePotentialDragStart(Action, State, Input)
+			if State.Name ~= 'Change' then
+				return Enum.ContextActionResult.Pass
+			end
 
 			-- Trigger dragging if the mouse is moved over 2 pixels
 			if DragStart and (Vector2.new(Core.Mouse.X, Core.Mouse.Y) - DragStart).magnitude >= 2 then
 
 				-- Prepare for dragging
-				BoundingBox.ClearBoundingBox();
-				SetUpDragging(DragStartTarget, SnapTracking.Enabled and SnappedPoint or nil);
+				BoundingBox.ClearBoundingBox()
+				SetUpDragging(DragStartTarget, SnapTracking.Enabled and SnappedPoint or nil)
 
-				-- Disable watching for potential dragging
-				ClearConnection 'WatchForDrag';
+				-- Stop watching for potential dragging
+				ContextActionService:UnbindAction 'BT: Watch for dragging'
 
-			end;
+			end
 
-		end);
+			-- Pass input
+			return Enum.ContextActionResult.Pass
+		end
+	
+		-- Watch for potential dragging
+		ContextActionService:BindAction('BT: Watch for dragging', HandlePotentialDragStart, false,
+			Enum.UserInputType.MouseMovement,
+			Enum.UserInputType.Touch
+		)
+	end
 
-	end);
+	-- Pay attention to when the user intends to start dragging
+	ContextActionService:BindAction('BT: Start dragging', HandleDragStart, false,
+		Enum.UserInputType.MouseButton1,
+		Enum.UserInputType.Touch
+	)
 
 end;
 
--- Catch whenever the user finishes dragging
-UserInputService.InputEnded:Connect(function (InputInfo, GameProcessedEvent)
+local function HandleDragEnd(Action, State, Input)
+	if State.Name ~= 'End' then
+		return Enum.ContextActionResult.Pass
+	end
 
-	-- Make sure this was button 1 being released
-	if InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1 then
-		return;
-	end;
-
-	-- Clean up dragging detection listeners and data
-	if DragStart then
-
-		-- Clear dragging detection data
-		DragStart = nil;
-		DragStartTarget = nil;
-
-		-- Disconnect dragging initiation listeners
-		ClearConnection 'WatchForDrag';
-
-	end;
+	-- Clear drag detection data
+	DragStart = nil
+	DragStartTarget = nil
+	ContextActionService:UnbindAction 'BT: Watch for dragging'
 
 	-- Reset from drag mode if dragging
 	if Dragging then
 
-		-- Reset normal axes option state
-		SetAxes(MoveTool.Axes);
+		-- Reset axes
+		SetAxes(MoveTool.Axes)
 
 		-- Finalize the dragging operation
-		FinishDragging();
+		FinishDragging()
 
-	end;
+		-- Consume input
+		return Enum.ContextActionResult.Sink
 
-end);
+	end
+
+	-- Pass input if not dragging
+	return Enum.ContextActionResult.Pass
+
+end
+
+-- Catch whenever the user finishes dragging
+ContextActionService:BindAction('BT: Finish dragging', HandleDragEnd, false,
+	Enum.UserInputType.MouseButton1,
+	Enum.UserInputType.Touch
+)
 
 function SetUpDragging(BasePart, BasePoint)
 	-- Sets up and initiates dragging based on the given base part
@@ -953,10 +1000,19 @@ function StartDragging(BasePart, InitialState, BasePoint)
 
 	end;
 
-	-- Start up the dragging action
-	Connections.Drag = Core.Mouse.Move:Connect(function ()
-		DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions);
-	end);
+	local function HandleDragChange(Action, State, Input)
+		if State.Name == 'Change' then
+			DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
+		else
+			return Enum.ContextActionResult.Pass
+		end
+	end
+
+	-- Start up the dragging 
+	ContextActionService:BindAction('BT: Dragging', HandleDragChange, false,
+		Enum.UserInputType.MouseMovement,
+		Enum.UserInputType.Touch
+	)
 
 end;
 
@@ -1302,7 +1358,7 @@ function FinishDragging()
 	SurfaceAlignment = nil;
 
 	-- Stop the dragging action
-	ClearConnection 'Drag';
+	ContextActionService:UnbindAction 'BT: Dragging';
 
 	-- Stop, clean up snapping point tracking
 	SnapTracking.StopTracking();
