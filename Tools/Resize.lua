@@ -2,6 +2,10 @@ Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 SnapTracking = require(Tool.Core.Snapping);
 
+-- Services
+local ContextActionService = game:GetService 'ContextActionService'
+local Workspace = game:GetService 'Workspace'
+
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
 local Signal = require(Libraries:WaitForChild 'Signal')
@@ -339,14 +343,36 @@ function ShowHandles()
 
 end;
 
+local function HandleBubbleResizing(Action, State, Input)
 
--- Finalize changes to parts when the handle is let go
-Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
+	-- Check whether handles are enabled
+	local HandlesEnabled = Handles and Handles.Parent and Handles.Adornee and Handles.Visible
 
-	-- Ensure handle resizing is ongoing
-	if not HandleResizing then
-		return;
-	end;
+	-- Check input if handles visible
+	if HandlesEnabled and (State.Name == 'Begin') then
+		local Adornee = Handles.Adornee
+		local Camera = Workspace.CurrentCamera
+
+		-- Sink input if dragging bubbles
+		for _, NormalId in pairs(Enum.NormalId:GetEnumItems()) do
+			local DirectionVector = Vector3.FromNormalId(NormalId)
+			local FaceOffset = CFrame.new(DirectionVector * (Adornee.Size / 2))
+			local BubbleOffset = CFrame.new(DirectionVector * 2.5)
+			local WorldPoint = (Adornee.CFrame * FaceOffset * BubbleOffset).p
+			local ScreenRay = Camera:ScreenPointToRay(Input.Position.X, Input.Position.Y)
+			if ScreenRay:Distance(WorldPoint) <= 0.75 then
+				return Enum.ContextActionResult.Sink
+			end
+		end
+
+		-- Ignore input if not dragging bubbles
+		return Enum.ContextActionResult.Pass
+	end
+
+	-- Ignore input if handles not being dragged
+	if not (HandleResizing and State.Name == 'End') then
+		return Enum.ContextActionResult.Pass
+	end
 
 	-- Disable resizing
 	HandleResizing = false;
@@ -367,7 +393,13 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 	-- Register the change
 	RegisterChange();
 
-end);
+end
+
+-- Finalize changes to parts when the handle is let go
+ContextActionService:BindAction('BT: Bubble resizing', HandleBubbleResizing, false,
+	Enum.UserInputType.MouseButton1,
+	Enum.UserInputType.Touch
+)
 
 function HideHandles()
 	-- Hides the resizing handles
