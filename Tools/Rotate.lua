@@ -637,7 +637,7 @@ function StartSnapping()
 		SnapTracking.StopTracking();
 
 		-- Attach the handles to a part at the snapped point
-		local Part = Create 'Part' {
+		local Part = Make 'Part' {
 			CFrame = SnappedPoint,
 			Size = Vector3.new(5, 1, 5)
 		};
