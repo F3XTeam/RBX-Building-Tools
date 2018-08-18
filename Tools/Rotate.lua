@@ -3,6 +3,10 @@ Core = require(Tool.Core);
 SnapTracking = require(Tool.Core.Snapping);
 BoundingBox = require(Tool.Core.BoundingBox);
 
+-- Services
+local ContextActionService = game:GetService 'ContextActionService'
+local Workspace = game:GetService 'Workspace'
+
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
 local Make = require(Libraries:WaitForChild 'Make')
@@ -354,13 +358,38 @@ function AttachHandles(Part, Autofocus)
 
 end;
 
--- Finalize changes to parts when the handle is let go
-Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
+local function HandleBubbleRotating(Action, State, Input)
 
-	-- Make sure rotating is ongoing
-	if not HandleRotating then
-		return;
-	end;
+	-- Check whether handles are enabled
+	local HandlesEnabled = Handles and Handles.Parent and Handles.Adornee and Handles.Visible
+
+	-- Check input if handles visible
+	if HandlesEnabled and (State.Name == 'Begin') then
+		local Adornee = Handles.Adornee
+		local Camera = Workspace.CurrentCamera
+		local Extents = Adornee.Size / 2
+		local Radius = math.max(Extents.X, Extents.Y, Extents.Z)
+
+		-- Sink input if dragging bubbles
+		for _, NormalId in pairs(Enum.NormalId:GetEnumItems()) do
+			local DirectionVector = Vector3.FromNormalId(NormalId)
+			local FaceOffset = CFrame.new(DirectionVector * Radius)
+			local BubbleOffset = CFrame.new(DirectionVector * 2.5)
+			local WorldPoint = (Adornee.CFrame * FaceOffset * BubbleOffset).p
+			local ScreenRay = Camera:ScreenPointToRay(Input.Position.X, Input.Position.Y)
+			if ScreenRay:Distance(WorldPoint) <= 0.75 then
+				return Enum.ContextActionResult.Sink
+			end
+		end
+
+		-- Ignore input if not dragging bubbles
+		return Enum.ContextActionResult.Pass
+	end
+
+	-- Ignore input if handles not being dragged
+	if not (HandleRotating and State.Name == 'End') then
+		return Enum.ContextActionResult.Pass
+	end
 
 	-- Prevent selection
 	Core.Targeting.CancelSelecting();
@@ -391,7 +420,13 @@ Support.AddUserInputListener('Ended', 'MouseButton1', true, function (Input)
 	BoundingBox.RecalculateStaticExtents();
 	BoundingBox.ResumeMonitoring();
 
-end);
+end
+
+-- Finalize changes to parts when the handle is let go
+ContextActionService:BindAction('BT: Bubble rotating', HandleBubbleRotating, false,
+	Enum.UserInputType.MouseButton1,
+	Enum.UserInputType.Touch
+)
 
 function HideHandles()
 	-- Hides the resizing handles
