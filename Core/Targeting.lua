@@ -82,6 +82,9 @@ end;
 
 function TargetingModule.SelectTarget()
 
+	-- Update target
+	TargetingModule.UpdateTarget()
+
 	-- Ensure target selection isn't cancelled
 	if SelectionCancelled then
 		SelectionCancelled = false;
