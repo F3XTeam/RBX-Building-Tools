@@ -1,5 +1,5 @@
-local Support = script.Parent:WaitForChild 'SupportLibrary'
-local Signal = script.Parent:WaitForChild 'Signal'
+local Support = require(script.Parent:WaitForChild 'SupportLibrary')
+local Signal = require(script.Parent:WaitForChild 'Signal')
 
 local Cheer = {};
 
