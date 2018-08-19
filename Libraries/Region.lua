@@ -279,8 +279,6 @@ end
 local setmetatable	=setmetatable
 local components	=CFrame.new().components
 local Workspace		=Workspace
-local BoxCast		=Workspace.FindPartsInRegion3WithIgnoreList
-local unpack		=unpack
 local type			=type
 local IsA			=game.IsA
 local r3			=Region3.new
@@ -308,17 +306,9 @@ end
 
 
 
-local function FindAllPartsInRegion3(Region3,Ignore)
-	local Ignore=type(Ignore)=="table" and Ignore or {Ignore}
-	local Last=#Ignore
-	repeat
-		local Parts=BoxCast(Workspace,Region3,Ignore,100)
-		local Start=#Ignore
-		for i=1,#Parts do
-			Ignore[Start+i]=Parts[i]
-		end
-	until #Parts<100;
-	return {unpack(Ignore,Last+1,#Ignore)}
+local function FindAllPartsInRegion3(Region3, Ignore)
+	local Ignore = (type(Ignore) == 'table') and Ignore or { Ignore }
+	return Workspace:FindPartsInRegion3WithIgnoreList(Region3, Ignore, math.huge)
 end
 
 
