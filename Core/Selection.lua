@@ -32,6 +32,34 @@ function Selection.IsSelected(Item)
 
 end;
 
+function Selection.GetParts()
+	-- Returns parts within the selection
+
+	local Parts = {}
+
+	-- Scan selection
+	for Item in pairs(Selection.ItemIndex) do
+
+		-- Collect parts in selection
+		if Item:IsA 'BasePart' then
+			Parts[#Parts + 1] = Item
+
+		-- Collect parts in selection descendants
+		else
+			local Items = Item:GetDescendants()
+			for _, Item in ipairs(Items) do
+				if Item:IsA 'BasePart' then
+					Parts[#Parts + 1] = Item
+				end
+			end
+		end
+	end
+
+	-- Return parts
+	return Parts
+
+end
+
 function Selection.Add(Items, RegisterHistory)
 	-- Adds the given items to the selection
 

@@ -14,8 +14,9 @@ Support.ImportServices();
 
 -- Default options
 Options = {
-	DefaultPartParent = Workspace
-};
+	DefaultPartParent = Workspace,
+	DisallowLocked = false
+}
 
 -- Keep track of created items in memory to not lose them in garbage collection
 CreatedInstances = {};
@@ -40,7 +41,7 @@ Actions = {
 		-- Clones the given parts
 
 		-- Make sure the given items are all parts
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -98,6 +99,167 @@ Actions = {
 		return NewPart;
 	end;
 
+	['CreateGroup'] = function (Type, Parent, Items)
+		-- Creates a new group of type `Type`
+
+		local ValidGroupTypes = {
+			Model = true,
+			Folder = true
+		}
+
+		-- Validate arguments
+		assert(ValidGroupTypes[Type], 'Invalid group type')
+		assert(typeof(Parent) == 'Instance', 'Invalid parent')
+		assert(Security.IsLocationAllowed(Parent), 'Permission denied for client')
+
+		-- Check if items selectable
+		if not CanModifyItems(Items) then
+			return
+		end
+
+		-- Check if parts intruding into private areas
+		local Parts = GetPartsFromSelection(Items)
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player)
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
+			return
+		end
+
+		-- Create group
+		local Group = Instance.new(Type)
+
+		-- Attach children
+		for _, Item in pairs(Items) do
+			Item.Parent = Group
+		end
+
+		-- Return group
+		Group.Parent = Parent
+		return Group
+
+	end,
+
+	['Ungroup'] = function (Groups)
+
+		-- Validate arguments
+		assert(type(Groups) == 'table', 'Invalid groups')
+
+		-- Check if items modifiable
+		if not CanModifyItems(Groups) then
+			return
+		end
+
+		-- Check if parts intruding into private areas
+		local Parts = GetPartsFromSelection(Groups)
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player)
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
+			return
+		end
+
+		local Results = {}
+
+		-- Check each group
+		for Key, Group in ipairs(Groups) do
+			assert(typeof(Group) == 'Instance', 'Invalid group')
+
+			-- Track group children
+			local Children = {}
+			Results[Key] = Children
+
+			-- Unpack group children into parent
+			local NewParent = Group.Parent
+			for _, Child in pairs(Group:GetChildren()) do
+				LastParents[Child] = Group
+				Children[#Children + 1] = Child
+				Child.Parent = NewParent
+			end
+
+			-- Track removing group
+			LastParents[Group] = Group.Parent
+			CreatedInstances[Group] = Group
+
+			-- Remove group
+			Group.Parent = nil
+		end
+
+		return Results
+	end,
+
+	['SetParent'] = function (Items, Parent)
+
+		-- Validate arguments
+		assert(type(Items) == 'table', 'Invalid items')
+		assert(type(Parent) == 'table' or typeof(Parent) == 'Instance', 'Invalid parent')
+
+		-- Check if items modifiable
+		if not CanModifyItems(Items) then
+			return
+		end
+
+		-- Check if parts intruding into private areas
+		local Parts = GetPartsFromSelection(Items)
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player)
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
+			return
+		end
+
+		-- Move each item to different parent
+		if type(Parent) == 'table' then
+			for Key, Item in pairs(Items) do
+				local Parent = Parent[Key]
+
+				-- Check if parent allowed
+				assert(Security.IsLocationAllowed(Parent), 'Permission denied for client')
+
+				-- Move item
+				Item.Parent = Parent
+			end
+
+		-- Move to single parent
+		elseif typeof(Parent) == 'Instance' then
+			assert(Security.IsLocationAllowed(Parent), 'Permission denied for client')
+
+			-- Reparent items
+			for _, Item in pairs(Items) do
+				Item.Parent = Parent
+			end
+		end
+
+	end,
+
+	['SetName'] = function (Items, Name)
+
+		-- Validate arguments
+		assert(type(Items) == 'table', 'Invalid items')
+		assert(type(Name) == 'table' or type(Name) == 'string', 'Invalid name')
+
+		-- Check if items modifiable
+		if not CanModifyItems(Items) then
+			return
+		end
+
+		-- Check if parts intruding into private areas
+		local Parts = GetPartsFromSelection(Items)
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player)
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
+			return
+		end
+
+		-- Rename each item to a different name
+		if type(Name) == 'table' then
+			for Key, Item in pairs(Items) do
+				local Name = Name[Key]
+				Item.Name = Name
+			end
+
+		-- Rename to single name
+		elseif type(Name) == 'string' then
+			for _, Item in pairs(Items) do
+				Item.Name = Name
+			end
+		end
+
+	end,
+
 	['Remove'] = function (Objects)
 		-- Removes the given objects
 
@@ -122,7 +284,7 @@ Actions = {
 		end;
 
 		-- Ensure relevant parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -174,7 +336,7 @@ Actions = {
 		end;
 
 		-- Ensure relevant parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -215,7 +377,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -286,7 +448,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -353,7 +515,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -424,7 +586,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -471,7 +633,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -515,7 +677,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -575,7 +737,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -650,7 +812,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -710,7 +872,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -788,7 +950,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -840,7 +1002,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -907,7 +1069,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -968,7 +1130,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -1036,7 +1198,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -1075,7 +1237,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -1114,7 +1276,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -1153,7 +1315,7 @@ Actions = {
 		-- Creates welds for the given parts to the target part
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -1217,7 +1379,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -1277,7 +1439,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -1327,7 +1489,7 @@ Actions = {
 		end;
 
 		-- Ensure parts are selectable
-		if not ArePartsSelectable(Parts) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -1441,22 +1603,89 @@ Actions = {
 
 	end;
 
-};
+	['SetLocked'] = function (Items, Locked)
+		-- Locks or unlocks the specified parts
 
-function ArePartsSelectable(Parts)
-	-- Returns whether the parts are selectable
+		-- Validate arguments
+		assert(type(Items) == 'table', 'Invalid items')
+		assert(type(Locked) == 'table' or type(Locked) == 'boolean', 'Invalid lock state')
 
-	-- Check whether each part is selectable
-	for _, Part in pairs(Parts) do
-		if not Part:IsA 'BasePart' or Part.Locked then
-			return false;
-		end;
-	end;
+		-- Check if items modifiable
+		if not CanModifyItems(Items) then
+			return
+		end
 
-	-- Return true if all parts are selectable
-	return true;
+		-- Check if parts intruding into private areas
+		local Parts = GetPartsFromSelection(Items)
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player)
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
+			return
+		end
 
-end;
+		-- Set each item to a different lock state
+		if type(Locked) == 'table' then
+			for Key, Item in pairs(Items) do
+				local Locked = Locked[Key]
+				Item.Locked = Locked
+			end
+
+		-- Set to single lock state
+		elseif type(Locked) == 'boolean' then
+			for _, Item in pairs(Items) do
+				Item.Locked = Locked
+			end
+		end
+
+	end
+
+}
+
+function CanModifyItems(Items)
+	-- Returns whether the items can be modified
+
+	-- Check each item
+	for _, Item in pairs(Items) do
+
+		-- Catch items that cannot be reached
+		local ItemAllowed = Security.IsItemAllowed(Item)
+		local LastParentKnown = LastParents[Item]
+		if not (ItemAllowed or LastParentKnown) then
+			return false
+		end
+
+		-- Catch locked parts
+		if Options.DisallowLocked and (Item:IsA 'BasePart') and Item.Locked then
+			return false
+		end
+
+	end
+
+	-- Return true if all items modifiable
+	return true
+
+end
+
+function GetPartsFromSelection(Selection)
+	local Parts = {}
+
+	-- Get parts from selection
+	for _, Item in pairs(Selection) do
+		if Item:IsA 'BasePart' then
+			Parts[#Parts + 1] = Item
+
+		-- Get parts within other items
+		else
+			for _, Descendant in pairs(Item:GetDescendants()) do
+				if Descendant:IsA 'BasePart' then
+					Parts[#Parts + 1] = Descendant
+				end
+			end
+		end
+	end
+
+	-- Return parts
+	return Parts
+end
 
 -- References to reduce indexing time
 local GetConnectedParts = Instance.new('Part').GetConnectedParts;

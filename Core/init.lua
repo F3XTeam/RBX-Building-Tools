@@ -26,6 +26,8 @@ Support = require(Tool.Libraries.SupportLibrary)
 Cheer = require(Tool.Libraries.Cheer)
 Try = require(Tool.Libraries.Try)
 Make = require(Tool.Libraries.Make)
+local Roact = require(Tool.Libraries:WaitForChild 'Roact')
+local Janitor = require(Tool.Libraries:WaitForChild 'Janitor')
 
 -- References
 Support.ImportServices();
@@ -33,8 +35,7 @@ SyncAPI = Tool.SyncAPI;
 Player = Players.LocalPlayer;
 
 -- Preload assets
-Assets = require(Tool.Assets);
-ContentProvider:PreloadAsync(Support.Values(Assets));
+Assets = require(Tool.Assets)
 
 -- Core events
 ToolChanged = Signal.new()
@@ -282,7 +283,74 @@ function InitializeUI()
 	-- Set up dock
 	Dock = Cheer(Tool.Interfaces.Dock, UI).Start(getfenv(0));
 
+	-- Clean up UI on tool teardown
+	UIJanitor = Janitor.new()
+	Tool.AncestryChanged:Connect(function (Item, Parent)
+		if Parent == nil then
+			UIJanitor:Cleanup()
+		end
+	end)
+
+	-- Register explorer button on dock
+	ExplorerDockButton = Dock.AddSelectionButton(Assets.ExplorerDockIcon, 'EXPLORER\n(Shift + H)')
+	ExplorerDockButton.Activated:Connect(ToggleExplorer)
+	ExplorerDockButton.ImageTransparency = 0.66
+
 end;
+
+local UIElements = Tool:WaitForChild 'UI'
+local ExplorerTemplate = require(UIElements:WaitForChild 'Explorer')
+
+function ToggleExplorer()
+	if not ExplorerVisible then
+		OpenExplorer()
+	else
+		CloseExplorer()
+	end
+end
+
+function OpenExplorer()
+
+	-- Ensure explorer not already open
+	if ExplorerHandle then
+		return
+	end
+
+	-- Initialize explorer
+	Explorer = Roact.createElement(ExplorerTemplate, {
+		Selection = Selection,
+		History = History,
+		Scope = Workspace,
+		SyncAPI = SyncAPI,
+		Close = CloseExplorer
+	})
+
+	-- Mount explorer
+	ExplorerHandle = Roact.mount(Explorer, UI, 'Explorer')
+	ExplorerVisible = true
+
+	-- Unmount explorer on tool cleanup
+	UIJanitor:Add(Support.Call(Roact.unmount, ExplorerHandle), true, 'Explorer')
+
+	-- Update dock
+	ExplorerDockButton.ImageTransparency = 0
+
+end
+
+function CloseExplorer()
+
+	-- Clean up explorer
+	ExplorerHandle = UIJanitor:Remove('Explorer')
+	ExplorerVisible = nil
+
+	-- Update dock
+	ExplorerDockButton.ImageTransparency = 0.66
+
+end
+
+-- Register explorer pane toggling hotkeys
+AssignHotkey({ 'LeftShift', 'H' }, ToggleExplorer)
+AssignHotkey({ 'RightShift', 'H' }, ToggleExplorer)
 
 -- Enable tool or plugin
 if Mode == 'Plugin' then
@@ -500,11 +568,110 @@ if Mode == 'Tool' then
 	AssignHotkey({ 'RightControl', 'R' }, Support.Call(Selection.Clear, true));
 end;
 
+function GroupSelection()
+	-- Groups the selected items
+
+	-- Create history record
+	local HistoryRecord = {
+		Items = Support.CloneTable(Selection.Items),
+		CurrentParents = Support.GetListMembers(Selection.Items, 'Parent')
+	}
+
+	function HistoryRecord:Unapply()
+		SyncAPI:Invoke('SetParent', self.Items, self.CurrentParents)
+		SyncAPI:Invoke('Remove', { self.NewParent })
+		Selection.Replace(self.Items)
+	end
+
+	function HistoryRecord:Apply()
+		SyncAPI:Invoke('UndoRemove', { self.NewParent })
+		SyncAPI:Invoke('SetParent', self.Items, self.NewParent)
+		Selection.Replace({ self.NewParent })
+	end
+
+	-- Perform group creation
+	local Focus = Selection.Focus
+	HistoryRecord.NewParent = SyncAPI:Invoke('CreateGroup', 'Model',
+		Focus and Focus.Parent or Selection.Scope,
+		HistoryRecord.Items
+	)
+
+	-- Register history record
+	History.Add(HistoryRecord)
+
+	-- Select new group
+	Selection.Replace({ HistoryRecord.NewParent })
+
+end
+
+function UngroupSelection()
+	-- Ungroups the selected groups
+
+	-- Create history record
+	local HistoryRecord = {
+		Selection = Selection.Items
+	}
+
+	function HistoryRecord:Unapply()
+		SyncAPI:Invoke('UndoRemove', self.Groups)
+
+		-- Reparent children
+		for GroupId, Items in ipairs(self.GroupChildren) do
+			spawn(function ()
+				SyncAPI:Invoke('SetParent', Items, self.Groups[GroupId])
+			end)
+		end
+
+		-- Reselect groups
+		Selection.Replace(self.Selection)
+	end
+
+	function HistoryRecord:Apply()
+
+		-- Get groups from selection
+		self.Groups = {}
+		for _, Item in ipairs(self.Selection) do
+			if Item:IsA 'Model' or Item:IsA 'Folder' then
+				self.Groups[#self.Groups + 1] = Item
+			end
+		end
+
+		-- Perform ungrouping
+		self.GroupParents = Support.GetListMembers(self.Groups, 'Parent')
+		self.GroupChildren = SyncAPI:Invoke('Ungroup', self.Groups)
+
+		-- Get unpacked children
+		local UnpackedChildren = Support.CloneTable(self.Selection)
+		for GroupId, Children in pairs(self.GroupChildren) do
+			for _, Child in ipairs(Children) do
+				UnpackedChildren[#UnpackedChildren + 1] = Child
+			end
+		end
+
+		-- Select unpacked items
+		Selection.Replace(UnpackedChildren)
+
+	end
+
+	-- Perform action
+	HistoryRecord:Apply()
+
+	-- Register history record
+	History.Add(HistoryRecord)
+
+end
+
+-- Assign grouping hotkeys
+AssignHotkey({ 'LeftShift', 'G' }, GroupSelection)
+AssignHotkey({ 'RightShift', 'G' }, GroupSelection)
+AssignHotkey({ 'LeftShift', 'U' }, UngroupSelection)
+AssignHotkey({ 'RightShift', 'U' }, UngroupSelection)
+
 function IsSelectable(Object)
 	-- Returns whether `Object` can be selected
 
 	-- Check if `Object` exists, is not locked, and is not ignored
-	if not Object or not Object.Parent or not Object:IsA 'BasePart' or Object.Locked or IsIgnored(Object) then
+	if not Object or not Object.Parent or (Object:IsA 'BasePart' and Object.Locked) then
 		return false;
 	end;
 
@@ -515,15 +682,6 @@ function IsSelectable(Object)
 
 	-- If no checks fail, `Object` is selectable
 	return Object;
-
-end;
-
-function IsIgnored(Object)
-	-- TODO: Add ignoring capability
-end;
-
-function SetParent(Parent)
-	-- Sets the current default parent for parts
 
 end;
 

@@ -388,17 +388,17 @@ end;
 function SupportLibrary.GetListMembers(List, MemberName)
 	-- Gets the given member for each object in the given list table
 
-	local Members = {};
+	local Members = {}
 
 	-- Collect the member values for each item in the list
-	for _, Item in pairs(List) do
-		table.insert(Members, Item[MemberName]);
-	end;
+	for Key, Item in ipairs(List) do
+		Members[Key] = Item[MemberName]
+	end
 
 	-- Return the members
-	return Members;
+	return Members
 
-end;
+end
 
 function SupportLibrary.AddUserInputListener(InputState, InputType, CatchAll, Callback)
 	-- Connects to the given user input event and takes care of standard boilerplate code

@@ -160,21 +160,35 @@ function Security.IsItemAllowed(Item)
 	-- Returns whether instance `Item` can be accessed
 
 	-- Ensure `Item` is a part or a model
-	if not Item:IsA 'BasePart' and not Item:IsA 'Model' then
-		return false;
-	end;
+	if not (Item:IsA 'BasePart' or Item:IsA 'Model' or Item:IsA 'Folder') then
+		return false
+	end
 
 	-- Check if `Item` descendants from any allowed location
 	for _, AllowedLocation in pairs(Security.AllowedLocations) do
 		if Item:IsDescendantOf(AllowedLocation) then
-			return true;
-		end;
-	end;
+			return true
+		end
+	end
 
 	-- Deny if `Item` is not a descendant of any allowed location
-	return false;
+	return false
 
-end;
+end
+
+function Security.IsLocationAllowed(Location)
+	-- Returns whether location `Location` can be accessed
+
+	-- Check if within allowed locations
+	for _, AllowedLocation in pairs(Security.AllowedLocations) do
+		if (AllowedLocation == Location) or Location:IsDescendantOf(AllowedLocation) then
+			return true
+		end
+	end
+
+	-- Deny if not within allowed locations
+	return false
+end
 
 function Security.AreAreasEnabled()
 	-- Returns whether areas are enabled

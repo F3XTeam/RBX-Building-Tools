@@ -57,6 +57,10 @@
     "version": {
       "path": "Version.model.json",
       "target": "StarterPack.Building Tools.Version"
+    },
+    "ui": {
+      "path": "UI",
+      "target": "StarterPack.Building Tools.UI"
     }
   }
 }
