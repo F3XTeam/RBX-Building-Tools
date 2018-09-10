@@ -1003,9 +1003,8 @@ function StartDragging(BasePart, InitialState, BasePoint)
 	local function HandleDragChange(Action, State, Input)
 		if State.Name == 'Change' then
 			DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
-		else
-			return Enum.ContextActionResult.Pass
 		end
+		return Enum.ContextActionResult.Pass
 	end
 
 	-- Start up the dragging 
