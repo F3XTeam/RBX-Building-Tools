@@ -144,7 +144,7 @@ function UpdateUI()
 	end;
 
 	-- Only show and identify current surface type if selection is not empty
-	if #Selection.Items == 0 then
+	if #Selection.Parts == 0 then
 		SurfaceTypeDropdown.SetOption('');
 		return;
 	end;
@@ -155,7 +155,7 @@ function UpdateUI()
 
 	-- Collect all different surface types in selection
 	local SurfaceTypeVariations = {};
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 
 		-- Search for variations on all surfaces if all surfaces are selected
 		if SurfaceTool.Surface == 'All' then
@@ -204,7 +204,7 @@ function SetSurfaceType(SurfaceType)
 	TrackChange();
 
 	-- Change the surface of the parts locally
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 
 		-- Change all surfaces if all selected
 		if SurfaceTool.Surface == 'All' then
@@ -246,7 +246,7 @@ function TrackChange()
 
 	-- Start the record
 	HistoryRecord = {
-		Parts = Support.CloneTable(Selection.Items);
+		Parts = Support.CloneTable(Selection.Parts);
 		BeforeSurfaces = {};
 		AfterSurfaces = {};
 

@@ -119,7 +119,7 @@ function UpdateUI()
 			RemoveButton.Visible = false;
 
 		-- If only some selected parts have decorations
-		elseif #Decorations < #Selection.Items then
+		elseif #Decorations < #Selection.Parts then
 
 			-- Show both add and remove buttons
 			AddButton.Visible = true;
@@ -128,7 +128,7 @@ function UpdateUI()
 			RemoveButton.Position = UDim2.new(1, -AddButton.AbsoluteSize.X - 5 - RemoveButton.AbsoluteSize.X - 2, 0, 3);
 
 		-- If all selected parts have decorations
-		elseif #Decorations == #Selection.Items then
+		elseif #Decorations == #Selection.Parts then
 
 			-- Show remove button
 			RemoveButton.Visible = true;
@@ -212,7 +212,7 @@ function GetDecorations(DecorationType)
 	local Decorations = {};
 
 	-- Get any decorations from any selected parts
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 		table.insert(Decorations, Support.GetChildOfClass(Part, DecorationType));
 	end;
 
@@ -530,7 +530,7 @@ function AddDecorations(DecorationType)
 	local Changes = {};
 
 	-- Go through the selection
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 
 		-- Make sure this part doesn't already have a decoration
 		if not Support.GetChildOfClass(Part, DecorationType) then

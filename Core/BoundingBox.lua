@@ -84,20 +84,20 @@ function BoundingBoxModule.UpdateBoundingBox()
 	end;
 
 	-- If the bounding box is inactive, and should now be active, update it
-	if InactiveBoundingBox and #Core.Selection.Items > 0 then
+	if InactiveBoundingBox and #Core.Selection.Parts > 0 then
 		BoundingBox = InactiveBoundingBox;
 		InactiveBoundingBox = nil;
 		BoundingBoxHandleCallback(BoundingBox);
 
 	-- If the bounding box is active, and there are no parts, disable it
-	elseif BoundingBox and #Core.Selection.Items == 0 then
+	elseif BoundingBox and #Core.Selection.Parts == 0 then
 		InactiveBoundingBox = BoundingBox;
 		BoundingBox = nil;
 		BoundingBoxHandleCallback(BoundingBox);
 		return;
 
 	-- Don't try to update the bounding box if there are no parts
-	elseif #Core.Selection.Items == 0 then
+	elseif #Core.Selection.Parts == 0 then
 		return;
 	end;
 
@@ -108,7 +108,7 @@ function BoundingBoxModule.UpdateBoundingBox()
 	end;
 
 	-- Update the bounding box
-	local BoundingBoxSize, BoundingBoxCFrame = BoundingBoxModule.CalculateExtents(Core.Selection.Items, BoundingBoxModule.StaticExtents);
+	local BoundingBoxSize, BoundingBoxCFrame = BoundingBoxModule.CalculateExtents(Core.Selection.Parts, BoundingBoxModule.StaticExtents);
 	BoundingBox.Size = BoundingBoxSize;
 	BoundingBox.CFrame = BoundingBoxCFrame;
 
@@ -229,15 +229,15 @@ function StartAggregatingStaticParts()
 	-- Begins to look for and identify static parts
 
 	-- Add current qualifying parts to static parts index
-	AddStaticParts(Core.Selection.Items);
+	AddStaticParts(Core.Selection.Parts);
 
 	-- Watch for parts that become static
-	for Part in pairs(Core.Selection.ItemIndex) do
+	for _, Part in ipairs(Core.Selection.Parts) do
 		AddPotentialPartMonitor(Part);
 	end;
 
 	-- Watch newly selected parts
-	table.insert(StaticPartAggregators, Core.Selection.ItemsAdded:Connect(function (Parts)
+	table.insert(StaticPartAggregators, Core.Selection.PartsAdded:Connect(function (Parts)
 
 		-- Add qualifying parts to static parts index
 		AddStaticParts(Parts);
@@ -250,7 +250,7 @@ function StartAggregatingStaticParts()
 	end));
 
 	-- Remove deselected parts from static parts index
-	table.insert(StaticPartAggregators, Core.Selection.ItemsRemoved:Connect(function (Parts)
+	table.insert(StaticPartAggregators, Core.Selection.PartsRemoved:Connect(function (Parts)
 		RemoveStaticParts(Parts);
 		for _, Part in pairs(Parts) do
 			if PotentialPartMonitors[Part] then
@@ -324,7 +324,7 @@ function BoundingBoxModule.ResumeMonitoring()
 	end;
 
 	-- Start potential part monitors
-	for Part in pairs(Core.Selection.ItemIndex) do
+	for _, Part in ipairs(Core.Selection.Parts) do
 		AddPotentialPartMonitor(Part);
 	end;
 

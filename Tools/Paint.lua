@@ -98,7 +98,7 @@ function ShowUI()
 	-- Enable color picker button
 	PaintTool.UI.Controls.ColorPickerButton.MouseButton1Click:Connect(function ()
 		Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
-			Support.IdentifyCommonProperty(Selection.Items, 'Color') or Color3.new(1, 1, 1),
+			Support.IdentifyCommonProperty(Selection.Parts, 'Color') or Color3.new(1, 1, 1),
 			SetColor,
 			Core.Targeting.CancelSelecting,
 			PreviewColor
@@ -144,14 +144,14 @@ function UpdateUI()
 	end;
 
 	-- Indicate the variety of colors in the selection
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 		if PaletteButtons[Part.BrickColor.Name] and Part.Color == Part.BrickColor.Color then
 			PaletteButtons[Part.BrickColor.Name].Text = '+';
 		end;
 	end;
 
 	-- Update the color picker button's background
-	local CommonColor = Support.IdentifyCommonProperty(Selection.Items, 'Color');
+	local CommonColor = Support.IdentifyCommonProperty(Selection.Parts, 'Color');
 	PaintTool.UI.Controls.ColorPickerButton.ImageColor3 = CommonColor or PaintTool.BrickColor or Color3.new(1, 0, 0);
 
 end;
@@ -194,7 +194,7 @@ function PaintParts()
 	TrackChange();
 
 	-- Change the color of the parts locally
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 		Part.Color = PaintTool.BrickColor;
 
 		-- Allow part coloring for unions
@@ -237,13 +237,13 @@ function PreviewColor(Color)
 	-- Save initial state if first time previewing
 	elseif not InitialState then
 		InitialState = {};
-		for _, Part in pairs(Selection.Items) do
+		for _, Part in pairs(Selection.Parts) do
 			InitialState[Part] = { Color = Part.Color, UsePartColor = (Part.ClassName == 'UnionOperation') and Part.UsePartColor or nil };
 		end;
 	end;
 
 	-- Apply preview color
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 		Part.Color = Color;
 
 		-- Enable union coloring
@@ -316,7 +316,7 @@ function TrackChange()
 
 	-- Start the record
 	HistoryRecord = {
-		Parts = Support.CloneTable(Selection.Items);
+		Parts = Support.CloneTable(Selection.Parts);
 		BeforeColor = {};
 		BeforeUnionColoring = {};
 		AfterColor = {};

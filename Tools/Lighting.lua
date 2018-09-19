@@ -194,7 +194,7 @@ function GetLights(LightType)
 	local Lights = {};
 
 	-- Get any lights from any selected parts
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 		table.insert(Lights, Support.GetChildOfClass(Part, LightType));
 	end;
 
@@ -372,7 +372,7 @@ function UpdateUI()
 			RemoveButton.Visible = false;
 
 		-- If only some selected parts have lights
-		elseif #Lights < #Selection.Items then
+		elseif #Lights < #Selection.Parts then
 
 			-- Show both add and remove buttons
 			AddButton.Visible = true;
@@ -381,7 +381,7 @@ function UpdateUI()
 			RemoveButton.Position = UDim2.new(1, -AddButton.AbsoluteSize.X - 5 - RemoveButton.AbsoluteSize.X - 2, 0, 3);
 
 		-- If all selected parts have lights
-		elseif #Lights == #Selection.Items then
+		elseif #Lights == #Selection.Parts then
 
 			-- Show remove button
 			RemoveButton.Visible = true;
@@ -466,7 +466,7 @@ function AddLights(LightType)
 	local Changes = {};
 
 	-- Go through the selection
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 
 		-- Make sure this part doesn't already have a light
 		if not Support.GetChildOfClass(Part, LightType) then

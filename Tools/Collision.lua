@@ -94,7 +94,7 @@ function UpdateUI()
 	end;
 
 	-- Check the common collision status of selection
-	local Collision = Support.IdentifyCommonProperty(Selection.Items, 'CanCollide');
+	local Collision = Support.IdentifyCommonProperty(Selection.Parts, 'CanCollide');
 
 	-- Update the collision option switch
 	if Collision == true then
@@ -138,7 +138,7 @@ function SetProperty(Property, Value)
 	TrackChange();
 
 	-- Go through each part
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 
 		-- Store the state of the part before modification
 		table.insert(HistoryRecord.Before, { Part = Part, [Property] = Part[Property] });
@@ -190,7 +190,7 @@ function ToggleCollision()
 	-- Toggles the collision status of the selection
 
 	-- Change the collision status to the opposite of the common collision status
-	SetProperty('CanCollide', not Support.IdentifyCommonProperty(Selection.Items, 'CanCollide'));
+	SetProperty('CanCollide', not Support.IdentifyCommonProperty(Selection.Parts, 'CanCollide'));
 
 end;
 

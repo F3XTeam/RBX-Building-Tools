@@ -151,7 +151,7 @@ function SetProperty(Property, Value)
 	TrackChange();
 
 	-- Go through each part
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 
 		-- Store the state of the part before modification
 		table.insert(HistoryRecord.Before, { Part = Part, [Property] = Part[Property] });
@@ -259,7 +259,7 @@ function UpdateUI()
 	-----------------------
 
 	-- Figure out the necessary UI layout
-	if #Selection.Items == 0 then
+	if #Selection.Parts == 0 then
 		ChangeLayout(Layouts.EmptySelection);
 		return;
 
@@ -269,9 +269,9 @@ function UpdateUI()
 	end;
 
 	-- Get the common properties
-	local Material = Support.IdentifyCommonProperty(Selection.Items, 'Material');
-	local Transparency = Support.IdentifyCommonProperty(Selection.Items, 'Transparency');
-	local Reflectance = Support.IdentifyCommonProperty(Selection.Items, 'Reflectance');
+	local Material = Support.IdentifyCommonProperty(Selection.Parts, 'Material');
+	local Transparency = Support.IdentifyCommonProperty(Selection.Parts, 'Transparency');
+	local Reflectance = Support.IdentifyCommonProperty(Selection.Parts, 'Reflectance');
 
 	-- Update the material dropdown
 	MaterialDropdown.SetOption(Material and Materials[Material] or '*');

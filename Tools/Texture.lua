@@ -173,7 +173,7 @@ function GetTextures(TextureType, Face)
 	local Textures = {};
 
 	-- Get any textures from any selected parts
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 		for _, Child in pairs(Part:GetChildren()) do
 
 			-- If this child is texture we're looking for, collect it
@@ -277,7 +277,7 @@ function UpdateUI()
 	local PluralTextureType = TextureTool.Type .. 's';
 
 	-- Figure out the necessary UI layout
-	if #Selection.Items == 0 then
+	if #Selection.Parts == 0 then
 		ChangeLayout(Layouts.EmptySelection);
 		return;
 
@@ -287,11 +287,11 @@ function UpdateUI()
 		return;
 
 	-- When only some selected items have textures
-	elseif #Selection.Items ~= #Textures then
+	elseif #Selection.Parts ~= #Textures then
 		ChangeLayout(Layouts['Some' .. PluralTextureType]);
 
 	-- When all selected items have textures
-	elseif #Selection.Items == #Textures then
+	elseif #Selection.Parts == #Textures then
 		ChangeLayout(Layouts['All' .. PluralTextureType]);
 	end;
 
@@ -462,7 +462,7 @@ function AddTextures(TextureType, Face)
 	local Changes = {};
 
 	-- Go through the selection
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 
 		-- Make sure this part doesn't already have a texture of the same type
 		local HasTextures;

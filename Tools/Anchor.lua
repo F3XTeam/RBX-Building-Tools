@@ -94,7 +94,7 @@ function UpdateUI()
 	end;
 
 	-- Check the common anchor status of selection
-	local Anchored = Support.IdentifyCommonProperty(Selection.Items, 'Anchored');
+	local Anchored = Support.IdentifyCommonProperty(Selection.Parts, 'Anchored');
 
 	-- Update the anchor option switch
 	if Anchored == true then
@@ -138,7 +138,7 @@ function SetProperty(Property, Value)
 	TrackChange();
 
 	-- Go through each part
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 
 		-- Store the state of the part before modification
 		table.insert(HistoryRecord.Before, { Part = Part, [Property] = Part[Property] });
@@ -190,7 +190,7 @@ function ToggleAnchors()
 	-- Toggles the anchor status of the selection
 
 	-- Change the anchor status to the opposite of the common anchor status
-	SetProperty('Anchored', not Support.IdentifyCommonProperty(Selection.Items, 'Anchored'));
+	SetProperty('Anchored', not Support.IdentifyCommonProperty(Selection.Parts, 'Anchored'));
 
 end;
 

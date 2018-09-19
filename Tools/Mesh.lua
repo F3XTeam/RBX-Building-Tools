@@ -247,19 +247,19 @@ function UpdateUI()
 		DisplayedItems = { AddButton };
 
 	-- Each selected part has a mesh, including a file mesh
-	elseif #Meshes == #Selection.Items and FileMeshInSelection then
+	elseif #Meshes == #Selection.Parts and FileMeshInSelection then
 		DisplayedItems = { MeshTool.UI.TypeOption, MeshTool.UI.ScaleOption, MeshTool.UI.OffsetOption, MeshIdInput.Parent, TextureIdInput.Parent, VertexColorIndicator.Parent, RemoveButton };
 
 	-- Each selected part has a mesh
-	elseif #Meshes == #Selection.Items and not FileMeshInSelection then
+	elseif #Meshes == #Selection.Parts and not FileMeshInSelection then
 		DisplayedItems = { MeshTool.UI.TypeOption, MeshTool.UI.ScaleOption, MeshTool.UI.OffsetOption, RemoveButton };
 
 	-- Only some selected parts have meshes, including a file mesh
-	elseif #Meshes ~= #Selection.Items and FileMeshInSelection then
+	elseif #Meshes ~= #Selection.Parts and FileMeshInSelection then
 		DisplayedItems = { AddButton, MeshTool.UI.TypeOption, MeshTool.UI.ScaleOption, MeshTool.UI.OffsetOption, MeshIdInput.Parent, TextureIdInput.Parent, VertexColorIndicator.Parent, RemoveButton };
 
 	-- Only some selected parts have meshes
-	elseif #Meshes ~= #Selection.Items and not FileMeshInSelection then
+	elseif #Meshes ~= #Selection.Parts and not FileMeshInSelection then
 		DisplayedItems = { AddButton, MeshTool.UI.TypeOption, MeshTool.UI.ScaleOption, MeshTool.UI.OffsetOption, RemoveButton };
 
 	end;
@@ -291,7 +291,7 @@ function GetMeshes()
 	local Meshes = {};
 
 	-- Get any meshes from any selected parts
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 		table.insert(Meshes, Support.GetChildOfClass(Part, 'SpecialMesh'));
 	end;
 
@@ -401,7 +401,7 @@ function AddMeshes()
 	local Changes = {};
 
 	-- Go through the selection
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 
 		-- Make sure this part doesn't already have a mesh
 		if not Support.GetChildOfClass(Part, 'SpecialMesh') then

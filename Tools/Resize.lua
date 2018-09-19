@@ -168,7 +168,7 @@ function UpdateUI()
 	end;
 
 	-- Only show and calculate selection info if it's not empty
-	if #Selection.Items == 0 then
+	if #Selection.Parts == 0 then
 		ResizeTool.UI.Info.Visible = false;
 		ResizeTool.UI.Size = UDim2.new(0, 245, 0, 90);
 		return;
@@ -183,7 +183,7 @@ function UpdateUI()
 
 	-- Identify common sizes across axes
 	local XVariations, YVariations, ZVariations = {}, {}, {};
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 		table.insert(XVariations, Support.Round(Part.Size.X, 3));
 		table.insert(YVariations, Support.Round(Part.Size.Y, 3));
 		table.insert(ZVariations, Support.Round(Part.Size.Z, 3));
@@ -299,7 +299,7 @@ function ShowHandles()
 
 		-- Cache area permissions information
 		if Core.Mode == 'Tool' then
-			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
 		end;
 
 	end);
@@ -332,7 +332,7 @@ function ShowHandles()
 		end;
 
 		-- Make sure we're not entering any unauthorized private areas
-		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
 			for Part, State in pairs(InitialState) do
 				Part.Size = State.Size;
 				Part.CFrame = State.CFrame;
@@ -629,10 +629,10 @@ function SetAxisSize(Axis, Size)
 	end;
 
 	-- Cache up permissions for all private areas
-	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
 
 	-- Revert changes if player is not authorized to resize parts towards the end destination
-	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
 		for Part, State in pairs(InitialStates) do
 			Part.Size = State.Size;
 			Part.CFrame = State.CFrame;
@@ -683,10 +683,10 @@ function NudgeSelectionByFace(Face)
 	end;
 
 	-- Cache up permissions for all private areas
-	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
 
 	-- Revert changes if player is not authorized to resize parts towards the end destination
-	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
 		for Part, State in pairs(InitialState) do
 			Part.Size = State.Size;
 			Part.CFrame = State.CFrame;
@@ -709,7 +709,7 @@ function TrackChange()
 
 	-- Start the record
 	HistoryRecord = {
-		Parts = Support.CloneTable(Selection.Items);
+		Parts = Support.CloneTable(Selection.Parts);
 		BeforeSize = {};
 		AfterSize = {};
 		BeforeCFrame = {};
@@ -790,7 +790,7 @@ function PreparePartsForResizing()
 	local InitialState = {};
 
 	-- Stop parts from moving, and capture the initial state of the parts
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 		InitialState[Part] = { Anchored = Part.Anchored, CanCollide = Part.CanCollide, Size = Part.Size, CFrame = Part.CFrame };
 		Part.Anchored = true;
 		Part.CanCollide = false;
@@ -861,7 +861,7 @@ function StartSnapping()
 		SnappingStartTarget = SnapTracking.Target;
 		SnappingStartDirections = GetFaceOffsetsFromCorner(SnappingStartTarget, SnappingStartPoint);
 		SnappingStartSelectionState = PreparePartsForResizing();
-		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
 
 		-- Pause snapping
 		SnapTracking.StopTracking();
@@ -1015,7 +1015,7 @@ function StartSnapping()
 				end;
 
 				-- Make sure we're not entering any unauthorized private areas
-				if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+				if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
 					for Part, State in pairs(SnappingStartSelectionState) do
 						Part.Size = State.Size;
 						Part.CFrame = State.CFrame;
