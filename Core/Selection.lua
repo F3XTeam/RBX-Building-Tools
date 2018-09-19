@@ -5,24 +5,27 @@ local History = require(script.Parent.History)
 local Libraries = Tool:WaitForChild 'Libraries'
 local Support = require(Libraries:WaitForChild 'SupportLibrary')
 local Signal = require(Libraries:WaitForChild 'Signal')
+local Maid = require(Libraries:WaitForChild 'Maid')
 
 -- Core selection system
-Selection = {};
-Selection.Items = {};
-Selection.ItemIndex = {};
-Selection.Outlines = {};
-Selection.Color = BrickColor.new 'Cyan';
-Selection.Multiselecting = false;
+Selection = {}
+Selection.Items = {}
+Selection.ItemIndex = {}
+Selection.Parts = {}
+Selection.PartIndex = {}
+Selection.Outlines = {}
+Selection.Color = BrickColor.new 'Cyan'
+Selection.Multiselecting = false
+Selection.Maid = Maid.new()
 
 -- Events to listen to selection changes
 Selection.ItemsAdded = Signal.new()
 Selection.ItemsRemoved = Signal.new()
+Selection.PartsAdded = Signal.new()
+Selection.PartsRemoved = Signal.new()
 Selection.FocusChanged = Signal.new()
 Selection.Cleared = Signal.new()
 Selection.Changed = Signal.new()
-
--- Item existence listeners
-local Listeners = {};
 
 function Selection.IsSelected(Item)
 	-- Returns whether `Item` is selected or not
@@ -32,32 +35,22 @@ function Selection.IsSelected(Item)
 
 end;
 
-function Selection.GetParts()
-	-- Returns parts within the selection
+local function CollectParts(Item, Table)
+	-- Adds parts found in `Item` to `Table`
 
-	local Parts = {}
+	-- Collect parts
+	if Item:IsA 'BasePart' then
+		Table[#Table + 1] = Item
 
-	-- Scan selection
-	for Item in pairs(Selection.ItemIndex) do
-
-		-- Collect parts in selection
-		if Item:IsA 'BasePart' then
-			Parts[#Parts + 1] = Item
-
-		-- Collect parts in selection descendants
-		else
-			local Items = Item:GetDescendants()
-			for _, Item in ipairs(Items) do
-				if Item:IsA 'BasePart' then
-					Parts[#Parts + 1] = Item
-				end
+	-- Collect parts inside of groups
+	elseif Item:IsA 'Model' or Item:IsA 'Folder' then
+		local Items = Item:GetDescendants()
+		for _, Item in ipairs(Items) do
+			if Item:IsA 'BasePart' then
+				Table[#Table + 1] = Item
 			end
 		end
 	end
-
-	-- Return parts
-	return Parts
-
 end
 
 function Selection.Add(Items, RegisterHistory)
@@ -79,20 +72,53 @@ function Selection.Add(Items, RegisterHistory)
 
 	local OldSelection = Selection.Items;
 
+	-- Track parts in new selection
+	local Parts = {}
+
 	-- Go through the valid new selection items
 	for _, Item in pairs(SelectableItems) do
 
 		-- Add each valid item to the selection
 		Selection.ItemIndex[Item] = true;
 
-		-- Deselect items that are destroyed
-		Listeners[Item] = Item.AncestryChanged:Connect(function (Object, Parent)
-			if Parent == nil then
-				Selection.Remove({ Item });
-			end;
-		end);
+		-- Create maid for cleaning up item listeners
+		local ItemMaid = Maid.new()
+		Selection.Maid[Item] = ItemMaid
 
-	end;
+		-- Deselect items that are destroyed
+		ItemMaid.RemovalListener = Item.AncestryChanged:Connect(function (Object, Parent)
+			if Parent == nil then
+				Selection.Remove({ Item })
+			end
+		end)
+
+		-- Collect parts within item
+		CollectParts(Item, Parts)
+
+		-- Listen for new parts in groups
+		local IsGroup = Item:IsA 'Model' or Item:IsA 'Folder' or nil
+		ItemMaid.NewParts = IsGroup and Item.DescendantAdded:Connect(function (Descendant)
+			if Descendant:IsA 'BasePart' then
+				local NewRefCount = (Selection.PartIndex[Descendant] or 0) + 1
+				Selection.PartIndex[Descendant] = NewRefCount
+				Selection.Parts = Support.Keys(Selection.PartIndex)
+				if NewRefCount == 1 then
+					Selection.PartsAdded:Fire { Descendant }
+				end
+			end
+		end)
+		ItemMaid.RemovingParts = IsGroup and Item.DescendantRemoving:Connect(function (Descendant)
+			if Selection.PartIndex[Descendant] then
+				local NewRefCount = (Selection.PartIndex[Descendant] or 0) - 1
+				Selection.PartIndex[Descendant] = (NewRefCount > 0) and NewRefCount or nil
+				if NewRefCount == 0 then
+					Selection.Parts = Support.Keys(Selection.PartIndex)
+					Selection.PartsRemoved:Fire { Descendant }
+				end
+			end
+		end)
+
+	end
 
 	-- Update selected item list
 	Selection.Items = Support.Keys(Selection.ItemIndex);
@@ -104,6 +130,22 @@ function Selection.Add(Items, RegisterHistory)
 
 	-- Create selection boxes for the selection
 	CreateSelectionBoxes(SelectableItems);
+
+	-- Register references to new parts
+	local NewParts = {}
+	for _, Part in pairs(Parts) do
+		local NewRefCount = (Selection.PartIndex[Part] or 0) + 1
+		Selection.PartIndex[Part] = NewRefCount
+		if NewRefCount == 1 then
+			NewParts[#NewParts + 1] = Part
+		end
+	end
+
+	-- Update parts list
+	if #NewParts > 0 then
+		Selection.Parts = Support.Keys(Selection.PartIndex)
+		Selection.PartsAdded:Fire(NewParts)
+	end
 
 	-- Fire relevant events
 	Selection.ItemsAdded:Fire(SelectableItems);
@@ -127,15 +169,20 @@ function Selection.Remove(Items, RegisterHistory)
 
 	local OldSelection = Selection.Items;
 
+	-- Track parts in removing selection
+	local Parts = {}
+
 	-- Go through the valid deselectable items
 	for _, Item in pairs(DeselectableItems) do
 
 		-- Remove item from selection
 		Selection.ItemIndex[Item] = nil;
 
-		-- Stop tracking item's parent
-		Listeners[Item]:Disconnect();
-		Listeners[Item] = nil;
+		-- Stop tracking item's parts
+		Selection.Maid[Item] = nil
+
+		-- Get parts associated with item
+		CollectParts(Item, Parts)
 
 	end;
 
@@ -149,6 +196,22 @@ function Selection.Remove(Items, RegisterHistory)
 	if RegisterHistory and #DeselectableItems > 0 then
 		TrackSelectionChange(OldSelection);
 	end;
+
+	-- Clear references to removing parts
+	local RemovingParts = {}
+	for _, Part in pairs(Parts) do
+		local NewRefCount = (Selection.PartIndex[Part] or 0) - 1
+		Selection.PartIndex[Part] = (NewRefCount > 0) and NewRefCount or nil
+		if NewRefCount == 0 then
+			RemovingParts[#RemovingParts + 1] = Part
+		end
+	end
+
+	-- Update parts list
+	if #RemovingParts > 0 then
+		Selection.Parts = Support.Keys(Selection.PartIndex)
+		Selection.PartsRemoved:Fire(RemovingParts)
+	end
 
 	-- Fire relevant events
 	Selection.ItemsRemoved:Fire(DeselectableItems);

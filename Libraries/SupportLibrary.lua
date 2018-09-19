@@ -400,11 +400,16 @@ function SupportLibrary.GetListMembers(List, MemberName)
 
 end
 
-function SupportLibrary.AddUserInputListener(InputState, InputType, CatchAll, Callback)
+function SupportLibrary.AddUserInputListener(InputState, InputTypeFilter, CatchAll, Callback)
 	-- Connects to the given user input event and takes care of standard boilerplate code
 
-	-- Turn the given `InputType` string into a proper enum
-	local InputType = Enum.UserInputType[InputType];
+	-- Create input type whitelist
+	local InputTypes = {}
+	if type(InputTypeFilter) == 'string' then
+		InputTypes[InputTypeFilter] = true
+	elseif type(InputTypeFilter) == 'table' then
+		InputTypes = SupportLibrary.FlipTable(InputTypeFilter)
+	end
 
 	-- Create a UserInputService listener based on the given `InputState`
 	return Game:GetService('UserInputService')['Input' .. InputState]:Connect(function (Input, GameProcessedEvent)
@@ -415,7 +420,7 @@ function SupportLibrary.AddUserInputListener(InputState, InputType, CatchAll, Ca
 		end;
 
 		-- Make sure this is the right input type
-		if Input.UserInputType ~= InputType then
+		if not InputTypes[Input.UserInputType.Name] then
 			return;
 		end;
 
@@ -538,13 +543,13 @@ end;
 
 function SupportLibrary.Call(Function, ...)
 	-- Returns a callback to `Function` with the given arguments
-	local Args = { ... };
+	local Args = { ... }
 	return function (...)
 		return Function(unpack(
-			SupportLibrary.ConcatTable(SupportLibrary.CloneTable(Args), { ... })
-		));
-	end;
-end;
+			SupportLibrary.ConcatTable({}, Args, { ... })
+		))
+	end
+end
 
 function SupportLibrary.Trim(String)
 	-- Returns a trimmed version of `String` (adapted from code from lua-users)
@@ -705,5 +710,26 @@ function SupportLibrary.ReverseTable(Table)
 	return ReversedTable;
 
 end;
+
+function SupportLibrary.CreateConsecutiveCallDeferrer(MaxInterval)
+	-- Returns a callback for determining whether to execute consecutive calls
+
+	local LastCallTime
+	local function ShouldExecuteCall()
+
+		-- Mark latest call time
+		local CallTime = tick()
+		LastCallTime = CallTime
+
+		-- Indicate whether call still latest
+		wait(MaxInterval)
+		return LastCallTime == CallTime
+
+	end
+
+	-- Return callback
+	return ShouldExecuteCall
+
+end
 
 return SupportLibrary;
