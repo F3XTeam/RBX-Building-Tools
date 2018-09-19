@@ -183,7 +183,7 @@ function UpdateUI()
 	end;
 
 	-- Only show and calculate selection info if it's not empty
-	if #Selection.Items == 0 then
+	if #Selection.Parts == 0 then
 		MoveTool.UI.Info.Visible = false;
 		MoveTool.UI.Size = UDim2.new(0, 245, 0, 90);
 		return;
@@ -198,7 +198,7 @@ function UpdateUI()
 
 	-- Identify common positions across axes
 	local XVariations, YVariations, ZVariations = {}, {}, {};
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 		table.insert(XVariations, Support.Round(Part.Position.X, 3));
 		table.insert(YVariations, Support.Round(Part.Position.Y, 3));
 		table.insert(ZVariations, Support.Round(Part.Position.Z, 3));
@@ -279,20 +279,11 @@ function AttachHandles(Part, Autofocus)
 	end;
 
 	-- Just attach and show the handles if they already exist
-	if Handles then
-		Handles.Adornee = Part;
-		Handles.Visible = true;
-		Handles.Parent = Part and Core.UIContainer or nil;
-		return;
-	end;
-
-	-- Create the handles
-	Handles = Make 'Handles' {
-		Name = 'BTMovementHandles',
-		Color = MoveTool.Color,
-		Parent = Core.UIContainer,
-		Adornee = Part
-	}
+	if MoveTool.Handles then
+		MoveTool.Handles:BlacklistObstacle(BoundingBox.GetBoundingBox())
+		MoveTool.Handles:SetAdornee(Part)
+		return
+	end
 
 	------------------------------------------------------
 	-- Prepare for moving parts when the handle is clicked
@@ -300,7 +291,7 @@ function AttachHandles(Part, Autofocus)
 
 	local AreaPermissions;
 
-	Handles.MouseButton1Down:Connect(function ()
+	local function OnHandleDragStart()
 
 		-- Prevent selection
 		Core.Targeting.CancelSelecting();
@@ -310,28 +301,28 @@ function AttachHandles(Part, Autofocus)
 
 		-- Freeze bounding box extents while dragging
 		if BoundingBox.GetBoundingBox() then
-			InitialExtentsSize, InitialExtentsCFrame = BoundingBox.CalculateExtents(Core.Selection.Items, BoundingBox.StaticExtents);
+			InitialExtentsSize, InitialExtentsCFrame = BoundingBox.CalculateExtents(Selection.Parts, BoundingBox.StaticExtents);
 			BoundingBox.PauseMonitoring();
 		end;
 
 		-- Stop parts from moving, and capture the initial state of the parts
-		InitialState = PreparePartsForDragging();
+		InitialState, InitialFocusCFrame = PreparePartsForDragging()
 
 		-- Track the change
 		TrackChange();
 
 		-- Cache area permissions information
 		if Core.Mode == 'Tool' then
-			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
 		end;
 
-	end);
+	end
 
 	------------------------------------------
 	-- Update parts when the handles are moved
 	------------------------------------------
 
-	Handles.MouseDrag:Connect(function (Face, Distance)
+	local function OnHandleDrag(Face, Distance)
 
 		-- Only drag if handle is enabled
 		if not HandleDragging then
@@ -342,10 +333,10 @@ function AttachHandles(Part, Autofocus)
 		Distance = GetIncrementMultiple(Distance, MoveTool.Increment);
 
 		-- Move the parts along the selected axes by the calculated distance
-		MovePartsAlongAxesByFace(Face, Distance, MoveTool.Axes, Selection.Focus, InitialState);
+		MovePartsAlongAxesByFace(Face, Distance, InitialState, InitialFocusCFrame)
 
 		-- Make sure we're not entering any unauthorized private areas
-		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
 			Selection.Focus.CFrame = InitialState[Selection.Focus].CFrame;
 			TranslatePartsRelativeToPart(Selection.Focus, InitialState);
 			Distance = 0;
@@ -361,120 +352,96 @@ function AttachHandles(Part, Autofocus)
 			BoundingBox.GetBoundingBox().CFrame = InitialExtentsCFrame + (AxisMultipliers[Face] * Distance);
 		end;
 
-	end);
+	end
 
-end;
-
-local function HandleBubbleDragging(Action, State, Input)
-
-	-- Check whether handles are enabled
-	local HandlesEnabled = Handles and Handles.Parent and Handles.Adornee and Handles.Visible
-
-	-- Check input if handles visible
-	if HandlesEnabled and (State.Name == 'Begin') then
-		local Adornee = Handles.Adornee
-		local Camera = Workspace.CurrentCamera
-
-		-- Sink input if dragging bubbles
-		for _, NormalId in pairs(Enum.NormalId:GetEnumItems()) do
-			local DirectionVector = Vector3.FromNormalId(NormalId)
-			local FaceOffset = CFrame.new(DirectionVector * (Adornee.Size / 2))
-			local BubbleOffset = CFrame.new(DirectionVector * 2.5)
-			local WorldPoint = (Adornee.CFrame * FaceOffset * BubbleOffset).p
-			local ScreenRay = Camera:ScreenPointToRay(Input.Position.X, Input.Position.Y)
-			if ScreenRay:Distance(WorldPoint) <= 0.75 then
-				return Enum.ContextActionResult.Sink
-			end
+	local function OnHandleDragEnd()
+		if not HandleDragging then
+			return
 		end
 
-		-- Ignore input if not dragging bubbles
-		return Enum.ContextActionResult.Pass
+		-- Disable dragging
+		HandleDragging = false
+
+		-- Make joints, restore original anchor and collision states
+		for Part, State in pairs(InitialState) do
+			Part:MakeJoints()
+			Core.RestoreJoints(State.Joints)
+			Part.CanCollide = State.CanCollide
+			Part.Anchored = State.Anchored
+		end
+
+		-- Register change
+		RegisterChange()
+
+		-- Resume bounding box updates
+		BoundingBox.RecalculateStaticExtents()
+		BoundingBox.ResumeMonitoring()
+
 	end
 
-	-- Ignore input if handles not being dragged
-	if not (HandleDragging and State.Name == 'End') then
-		return Enum.ContextActionResult.Pass
-	end
+	-- Create the handles
+	local Handles = require(Libraries:WaitForChild 'Handles')
+	MoveTool.Handles = Handles.new({
+		Color = MoveTool.Color.Color,
+		Parent = Core.UIContainer,
+		Adornee = Part,
+		ObstacleBlacklist = { BoundingBox.GetBoundingBox() },
+		OnDragStart = OnHandleDragStart,
+		OnDrag = OnHandleDrag,
+		OnDragEnd = OnHandleDragEnd
+	})
 
-	-- Disable dragging
-	HandleDragging = false
-
-	-- Make joints, restore original anchor and collision states
-	for Part, State in pairs(InitialState) do
-		Part:MakeJoints()
-		Core.RestoreJoints(State.Joints)
-		Part.CanCollide = State.CanCollide
-		Part.Anchored = State.Anchored
-	end
-
-	-- Register change
-	RegisterChange()
-
-	-- Resume bounding box updates
-	BoundingBox.RecalculateStaticExtents()
-	BoundingBox.ResumeMonitoring()
 end
-
--- Finalize changes to parts when the handle is let go
-ContextActionService:BindAction('BT: Bubble dragging', HandleBubbleDragging, false,
-	Enum.UserInputType.MouseButton1,
-	Enum.UserInputType.Touch
-)
 
 function HideHandles()
 	-- Hides the resizing handles
 
 	-- Make sure handles exist and are visible
-	if not Handles or not Handles.Visible then
+	if not MoveTool.Handles then
 		return;
 	end;
 
 	-- Hide the handles
-	Handles.Visible = false;
-	Handles.Parent = nil;
+	MoveTool.Handles = MoveTool.Handles:Destroy()
 
 	-- Disable handle autofocus
 	ClearConnection 'AutofocusHandle';
 
 end;
 
-function MovePartsAlongAxesByFace(Face, Distance, Axes, BasePart, InitialStates)
+function MovePartsAlongAxesByFace(Face, Distance, InitialStates, InitialFocusCFrame)
 	-- Moves the given parts in `InitialStates`, along the given axis mode, in the given face direction, by the given distance
 
-	-- Get the axis multiplier for this face
-	local AxisMultiplier = AxisMultipliers[Face];
+	-- Calculate the shift along the direction of the face
+	local Shift = Vector3.FromNormalId(Face) * Distance
 
-	-- Get starting state for `BasePart`
-	local InitialBasePartState = InitialStates[BasePart];
+	-- Move along global axes
+	if MoveTool.Axes == 'Global' then
+		for Part, InitialState in pairs(InitialStates) do
+			Part.CFrame = InitialState.CFrame + Shift
+		end
 
-	-- Move each part
-	for Part, InitialState in pairs(InitialStates) do
+	-- Move along individual items' axes
+	elseif MoveTool.Axes == 'Local' then
+		for Part, InitialState in pairs(InitialStates) do
+			Part.CFrame = InitialState.CFrame * CFrame.new(Shift)
+		end
 
-		-- Move along standard axes
-		if Axes == 'Global' then
-			Part.CFrame = InitialState.CFrame + (Distance * AxisMultiplier);
+	-- Move along focused item's axes
+	elseif MoveTool.Axes == 'Last' then
 
-		-- Move along item's axes
-		elseif Axes == 'Local' then
-			Part.CFrame = InitialState.CFrame * CFrame.new(Distance * AxisMultiplier);
+		-- Calculate focused item's position
+		local FocusCFrame = InitialFocusCFrame * CFrame.new(Shift)
 
-		-- Move along focused part's axes
-		elseif Axes == 'Last' then
+		-- Move parts based on initial offset from focus
+		for Part, InitialState in pairs(InitialStates) do
+			local FocusOffset = InitialFocusCFrame:toObjectSpace(InitialState.CFrame)
+			Part.CFrame = FocusCFrame * FocusOffset
+		end
 
-			-- Calculate the focused part's position
-			local RelativeTo = InitialBasePartState.CFrame * CFrame.new(Distance * AxisMultiplier);
+	end
 
-			-- Calculate how far apart we should be from the focused part
-			local Offset = InitialBasePartState.CFrame:toObjectSpace(InitialState.CFrame);
-
-			-- Move relative to the focused part by this part's offset from it
-			Part.CFrame = RelativeTo * Offset;
-
-		end;
-
-	end;
-
-end;
+end
 
 function BindShortcutKeys()
 	-- Enables useful shortcut keys for this tool
@@ -642,10 +609,10 @@ function SetAxisPosition(Axis, Position)
 	end;
 
 	-- Cache up permissions for all private areas
-	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
 
 	-- Revert changes if player is not authorized to move parts to target destination
-	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
 		for Part, State in pairs(InitialStates) do
 			Part.CFrame = State.CFrame;
 		end;
@@ -680,10 +647,10 @@ function NudgeSelectionByFace(Face)
 	TrackChange();
 
 	-- Prepare parts to be moved
-	local InitialState = PreparePartsForDragging();
+	local InitialState, InitialFocusCFrame = PreparePartsForDragging()
 
 	-- Perform the movement
-	MovePartsAlongAxesByFace(Face, NudgeAmount, MoveTool.Axes, Selection.Focus, InitialState);
+	MovePartsAlongAxesByFace(Face, NudgeAmount, InitialState, InitialFocusCFrame)
 
 	-- Update the "distance moved" indicator
 	if MoveTool.UI then
@@ -691,10 +658,10 @@ function NudgeSelectionByFace(Face)
 	end;
 
 	-- Cache up permissions for all private areas
-	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
 
 	-- Revert changes if player is not authorized to move parts to target destination
-	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
 		for Part, State in pairs(InitialState) do
 			Part.CFrame = State.CFrame;
 		end;
@@ -717,7 +684,7 @@ function TrackChange()
 
 	-- Start the record
 	HistoryRecord = {
-		Parts = Support.CloneTable(Selection.Items);
+		Parts = Support.CloneTable(Selection.Parts);
 		BeforeCFrame = {};
 		AfterCFrame = {};
 
@@ -908,10 +875,10 @@ function PreparePartsForDragging()
 	local InitialState = {};
 
 	-- Get index of parts
-	local PartIndex = Support.FlipTable(Selection.Items);
+	local PartIndex = Support.FlipTable(Selection.Parts)
 
 	-- Stop parts from moving, and capture the initial state of the parts
-	for _, Part in pairs(Selection.Items) do
+	for _, Part in pairs(Selection.Parts) do
 		InitialState[Part] = { Anchored = Part.Anchored, CanCollide = Part.CanCollide, CFrame = Part.CFrame };
 		Part.Anchored = true;
 		Part.CanCollide = false;
@@ -921,7 +888,15 @@ function PreparePartsForDragging()
 		Part.RotVelocity = Vector3.new();
 	end;
 
-	return InitialState;
+	-- Get initial state of focused item
+	local InitialFocusCFrame
+	if Selection.Focus:IsA 'BasePart' then
+		InitialFocusCFrame = Selection.Focus.CFrame
+	elseif Selection.Focus:IsA 'Model' then
+		InitialFocusCFrame = Selection.Focus:GetModelCFrame()
+	end
+
+	return InitialState, InitialFocusCFrame
 end;
 
 function StartDragging(BasePart, InitialState, BasePoint)
@@ -944,7 +919,7 @@ function StartDragging(BasePart, InitialState, BasePoint)
 	-- Cache area permissions information
 	local AreaPermissions;
 	if Core.Mode == 'Tool' then
-		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Items), Core.Player);
+		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
 	end;
 
 	-- Ensure a base part is provided
@@ -977,7 +952,7 @@ function StartDragging(BasePart, InitialState, BasePoint)
 		TranslatePartsRelativeToPart(BasePart, InitialState);
 
 		-- Make sure we're not entering any unauthorized private areas
-		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
 			BasePart.CFrame = InitialState[BasePart].CFrame;
 			TranslatePartsRelativeToPart(BasePart, InitialState);
 		end;
@@ -1128,7 +1103,7 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	----------------------------------------
 
 	-- Make sure we're not entering any unauthorized private areas
-	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Items, Core.Player, false, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
 		BasePart.CFrame = InitialState[BasePart].CFrame;
 		TranslatePartsRelativeToPart(BasePart, InitialState);
 	end;
