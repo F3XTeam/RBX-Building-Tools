@@ -285,13 +285,9 @@ function AttachHandles(Part, Autofocus)
 		return
 	end
 
-	------------------------------------------------------
-	-- Prepare for moving parts when the handle is clicked
-	------------------------------------------------------
-
-	local AreaPermissions;
-
+	local AreaPermissions
 	local function OnHandleDragStart()
+		-- Prepare for moving parts when the handle is clicked
 
 		-- Prevent selection
 		Core.Targeting.CancelSelecting();
@@ -318,11 +314,8 @@ function AttachHandles(Part, Autofocus)
 
 	end
 
-	------------------------------------------
-	-- Update parts when the handles are moved
-	------------------------------------------
-
 	local function OnHandleDrag(Face, Distance)
+		-- Update parts when the handles are moved
 
 		-- Only drag if handle is enabled
 		if not HandleDragging then
@@ -376,7 +369,6 @@ function AttachHandles(Part, Autofocus)
 		-- Resume bounding box updates
 		BoundingBox.RecalculateStaticExtents()
 		BoundingBox.ResumeMonitoring()
-
 	end
 
 	-- Create the handles
