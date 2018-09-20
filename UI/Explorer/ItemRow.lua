@@ -26,8 +26,8 @@ function ItemRow:GetParts()
     if Object:IsA 'BasePart' then
         return { Object }
 
-    -- Return descendant parts for model
-    elseif Object:IsA 'Model' then
+    -- Return descendant parts for other items
+    else
         local Parts = {}
         for _, Part in pairs(Object:GetDescendants()) do
             if Part:IsA 'BasePart' then
