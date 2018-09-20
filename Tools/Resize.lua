@@ -262,28 +262,14 @@ function ShowHandles()
 	end;
 
 	-- If handles already exist, only show them
-	if Handles then
-		Handles.Adornee = Selection.Focus;
-		Handles.Visible = true;
-		Handles.Parent = Selection.Focus and Core.UIContainer or nil;
-		return;
-	end;
+	if ResizeTool.Handles then
+		ResizeTool.Handles:SetAdornee(Selection.Focus)
+		return
+	end
 
-	-- Create the handles
-	Handles = Make 'Handles' {
-		Name = 'BTResizingHandles';
-		Color = ResizeTool.Color;
-		Parent = Core.UIContainer;
-		Adornee = Selection.Focus;
-	};
-
-	--------------------------------------------------------
-	-- Prepare for resizing parts when the handle is clicked
-	--------------------------------------------------------
-
-	local AreaPermissions;
-
-	Handles.MouseButton1Down:Connect(function ()
+	local AreaPermissions
+	local function OnHandleDragStart()
+		-- Prepare for resizing parts when the handle is clicked
 
 		-- Prevent selection
 		Core.Targeting.CancelSelecting();
@@ -302,13 +288,10 @@ function ShowHandles()
 			AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
 		end;
 
-	end);
+	end
 
-	------------------------------------------
-	-- Update parts when the handles are moved
-	------------------------------------------
-
-	Handles.MouseDrag:Connect(function (Face, Distance)
+	local function OnHandleDrag(Face, Distance)
+		-- Update parts when the handles are moved
 
 		-- Only resize if handle is enabled
 		if not HandleResizing then
@@ -339,79 +322,53 @@ function ShowHandles()
 			end;
 		end;
 
-	end);
+	end
 
-end;
-
-local function HandleBubbleResizing(Action, State, Input)
-
-	-- Check whether handles are enabled
-	local HandlesEnabled = Handles and Handles.Parent and Handles.Adornee and Handles.Visible
-
-	-- Check input if handles visible
-	if HandlesEnabled and (State.Name == 'Begin') then
-		local Adornee = Handles.Adornee
-		local Camera = Workspace.CurrentCamera
-
-		-- Sink input if dragging bubbles
-		for _, NormalId in pairs(Enum.NormalId:GetEnumItems()) do
-			local DirectionVector = Vector3.FromNormalId(NormalId)
-			local FaceOffset = CFrame.new(DirectionVector * (Adornee.Size / 2))
-			local BubbleOffset = CFrame.new(DirectionVector * 2.5)
-			local WorldPoint = (Adornee.CFrame * FaceOffset * BubbleOffset).p
-			local ScreenRay = Camera:ScreenPointToRay(Input.Position.X, Input.Position.Y)
-			if ScreenRay:Distance(WorldPoint) <= 0.75 then
-				return Enum.ContextActionResult.Sink
-			end
+	local function OnHandleDragEnd()
+		if not HandleResizing then
+			return
 		end
 
-		-- Ignore input if not dragging bubbles
-		return Enum.ContextActionResult.Pass
+		-- Disable resizing
+		HandleResizing = false;
+
+		-- Prevent selection
+		Core.Targeting.CancelSelecting();
+
+		-- Make joints, restore original anchor and collision states
+		for Part, State in pairs(InitialState) do
+			Part:MakeJoints();
+			Part.CanCollide = State.CanCollide;
+			Part.Anchored = State.Anchored;
+		end;
+
+		-- Register the change
+		RegisterChange();
 	end
 
-	-- Ignore input if handles not being dragged
-	if not (HandleResizing and State.Name == 'End') then
-		return Enum.ContextActionResult.Pass
-	end
+	-- Create the handles
+	local Handles = require(Libraries:WaitForChild 'Handles')
+	ResizeTool.Handles = Handles.new({
+		Color = ResizeTool.Color.Color,
+		Parent = Core.UIContainer,
+		Adornee = Selection.Focus,
+		OnDragStart = OnHandleDragStart,
+		OnDrag = OnHandleDrag,
+		OnDragEnd = OnHandleDragEnd
+	})
 
-	-- Disable resizing
-	HandleResizing = false;
-
-	-- Prevent selection
-	Core.Targeting.CancelSelecting();
-
-	-- Clear this connection to prevent it from firing again
-	ClearConnection 'HandleRelease';
-
-	-- Make joints, restore original anchor and collision states
-	for Part, State in pairs(InitialState) do
-		Part:MakeJoints();
-		Part.CanCollide = State.CanCollide;
-		Part.Anchored = State.Anchored;
-	end;
-
-	-- Register the change
-	RegisterChange();
-
-end
-
--- Finalize changes to parts when the handle is let go
-ContextActionService:BindAction('BT: Bubble resizing', HandleBubbleResizing, false,
-	Enum.UserInputType.MouseButton1,
-	Enum.UserInputType.Touch
-)
+end;
 
 function HideHandles()
 	-- Hides the resizing handles
 
 	-- Make sure handles exist and are visible
-	if not Handles or not Handles.Visible then
+	if not ResizeTool.Handles then
 		return;
 	end;
 
 	-- Hide the handles
-	Handles.Visible = false;
-	Handles.Parent = nil;
+	ResizeTool.Handles = ResizeTool.Handles:Destroy()
 
 	-- Clear unnecessary resources
 	ClearConnection 'AutofocusHandle';
