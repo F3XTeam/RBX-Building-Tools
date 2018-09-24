@@ -53,7 +53,7 @@ function Handles.new(Options)
         -- Create handle dot
         local HandleDot = Handle:Clone()
         HandleDot.Active = false
-        HandleDot.Size = UDim2.new(0, 2, 0, 2)
+        HandleDot.Size = UDim2.new(0, 4, 0, 4)
         HandleDot.Position = UDim2.new(0.5, 0, 0.5, 0)
         HandleDot.Parent = Handle
         HandleDot.ZIndex = 0
@@ -179,10 +179,8 @@ function Handles:Resume()
     -- Allow handles to run
     self.Running = true
 
-    -- Update each handle
+    -- Keep handle positions updated
     for Side, Handle in pairs(self.Handles) do
-
-        -- Keep handle position updated
         local UnitVector = Vector3.FromNormalId(Side)
         coroutine.wrap(function ()
             while self.Running do
@@ -190,21 +188,20 @@ function Handles:Resume()
                 RunService.RenderStepped:Wait()
             end
         end)()
-
-        -- Ignore character whenever character enters first person
-        coroutine.wrap(function ()
-            while self.Running do
-                local FirstPerson = IsFirstPerson(self.Camera)
-                local Character = Players.LocalPlayer.Character
-                if Character then
-                    self.ObstacleBlacklistIndex[Character] = FirstPerson and true or nil
-                    self.ObstacleBlacklist = Support.Keys(self.ObstacleBlacklistIndex)
-                end
-                wait(0.2)
-            end
-        end)()
-
     end
+
+    -- Ignore character whenever character enters first person
+    coroutine.wrap(function ()
+        while self.Running do
+            local FirstPerson = IsFirstPerson(self.Camera)
+            local Character = Players.LocalPlayer.Character
+            if Character then
+                self.ObstacleBlacklistIndex[Character] = FirstPerson and true or nil
+                self.ObstacleBlacklist = Support.Keys(self.ObstacleBlacklistIndex)
+            end
+            wait(0.2)
+        end
+    end)()
 
     -- Show UI
     self.Gui.Enabled = true
