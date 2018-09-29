@@ -31,6 +31,7 @@ function BoundingBoxModule.StartBoundingBox(HandleAttachmentCallback)
 		Transparency = 1;
 		Anchored = true;
 		Locked = true;
+		Parent = Core.UI;
 	};
 
 	-- Make the mouse ignore it
