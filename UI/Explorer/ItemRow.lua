@@ -6,7 +6,6 @@ local UserInputService = game:GetService 'UserInputService'
 -- Libraries
 local Support = require(Libraries:WaitForChild 'SupportLibrary')
 local Roact = require(Libraries:WaitForChild 'Roact')
-local Janitor = require(Libraries:WaitForChild 'Janitor')
 
 -- Roact
 local new = Roact.createElement

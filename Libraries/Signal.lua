@@ -1,187 +1,70 @@
--- Connection-based Events via wrapped BindableEvents
--- @author Validark
--- @original https://gist.github.com/Anaminus/afd813efc819bad8e560caea28942010
+--- Lua-side duplication of the API of events on Roblox objects.
+-- Signals are needed for to ensure that for local events objects are passed by
+-- reference rather than by value where possible, as the BindableEvent objects
+-- always pass signal arguments by value, meaning tables will be deep copied.
+-- Roblox's deep copy method parses to a non-lua table compatable format.
+-- @classmod Signal
 
--- These hold references to metatables for after we lock __metatable to a string
-local Signals = setmetatable({}, {__mode = "kv"})
-local PseudoConnections = setmetatable({}, {__mode = "kv"})
+local Signal = {}
+Signal.__index = Signal
+Signal.ClassName = "Signal"
 
-local Event = {}
+--- Constructs a new signal.
+-- @constructor Signal.new()
+-- @treturn Signal
+function Signal.new()
+	local self = setmetatable({}, Signal)
 
-function Event:Connect(Function, Arg)
-	return Signals[self]:Connect(Function, Arg)
-end
-
-function Event:Wait()
-	return Signals[self]:Wait()
-end
-
-local Signal = {
-	__index = {
-		NextId = 0; -- Holds the next Arguments ID
-		YieldingThreads = 0; -- Number of Threads waiting on the signal
-	}
-}
-
-local function GetArguments(self, Id)
-	local Arguments = self.Arguments[Id]
-	local ThreadsRemaining = Arguments.NumConnectionsAndThreads - 1
-
-	if ThreadsRemaining == 0 then
-		self.Arguments[Id] = nil
-	else
-		Arguments.NumConnectionsAndThreads = ThreadsRemaining
-	end
-
-	return unpack(Arguments, 1, Arguments.n)
-end
-
-local function Destruct(self)
-	local ConstructorData = self.ConstructorData
-	if self.Destructor and ConstructorData then
-		self:Destructor(unpack(ConstructorData, 1, ConstructorData.n))
-		self.ConstructorData = nil
-	end
-end
-
-local function pack(...) -- This is useful because trailing nil's on the stack may be preserved
-	return {n = select("#", ...), ...}
-end
-
-local function Disconnect(self)
-	self = PseudoConnections[self]
-
-	if self.Connection then
-		self.Connection:Disconnect()
-		self.Connection = nil
-	end
-
-	local Signal = self.Signal
-
-	if Signal then
-		self.Connected = false
-		local Connections = Signal.Connections
-		local NumConnections = #Connections
-
-		for i = 1, NumConnections do
-			if Connections[i] == self then
-				table.remove(Connections, i)
-				break
-			end
-		end
-
-		if NumConnections == 0 then
-			Destruct(Signal)
-		end
-		self.Signal = nil
-	end
-end
-
-local function PseudoConnection__index(self, i)
-	if i == "Disconnect" then
-		return Disconnect
-	elseif i == "Connected" then
-		return PseudoConnections[self].Connected
-	else
-		BadIndex(self, i, "RBXScriptConnection")
-	end
-end
-
-local function RBXScriptConnectionToString()
-	return "RBXScriptConnection"
-end
-
-local function RBXScriptSignalToString()
-	return "RBXScriptSignal"
-end
-
-function Signal.new(Constructor, Destructor)
-	local self = setmetatable({
-		Bindable = Instance.new("BindableEvent"); -- Dispatches scheduler-compatible Threads
-		Arguments = {}; -- Holds arguments for pending listener functions and Threads: [Id] = {#Connections + YieldingThreads, arguments}
-		Connections = {}; -- SignalConnections connected to the signal
-		Constructor = Constructor; -- Constructor function
-		Destructor = Destructor; -- Destructor function
-		Event = newproxy(true); -- Event interface which can only access Connect() and Wait()
-	}, Signal)
-
-	local EventMt = getmetatable(self.Event)
-	EventMt.__index = Event
-	EventMt.__metatable = "The metatable is locked"
-	EventMt.__type = "RBXScriptSignal"
-	EventMt.__tostring = RBXScriptSignalToString
-	Signals[self.Event] = self
+	self._bindableEvent = Instance.new("BindableEvent")
+	self._argData = nil
+	self._argCount = nil -- Prevent edge case of :Fire("A", nil) --> "A" instead of "A", nil
 
 	return self
 end
 
-function Signal.__index:Connect(Function, Arg)
-	local NumConnections = #self.Connections
+--- Fire the event with the given arguments. All handlers will be invoked. Handlers follow
+-- Roblox signal conventions.
+-- @param ... Variable arguments to pass to handler
+-- @treturn nil
+function Signal:Fire(...)
+	self._argData = {...}
+	self._argCount = select("#", ...)
+	self._bindableEvent:Fire()
+	self._argData = nil
+	self._argCount = nil
+end
 
-	if NumConnections == 0 and self.Constructor and not self.ConstructorData then
-		self.ConstructorData = pack(self:Constructor())
+--- Connect a new handler to the event. Returns a connection object that can be disconnected.
+-- @tparam function handler Function handler called with arguments passed when `:Fire(...)` is called
+-- @treturn Connection Connection object that can be disconnected
+function Signal:Connect(handler)
+	if not (type(handler) == "function") then
+		error(("connect(%s)"):format(typeof(handler)), 2)
 	end
 
-	local Connection = newproxy(true)
-	local ConnectionMt = getmetatable(Connection)
-	ConnectionMt.Connected = true
-	ConnectionMt.__metatable = "The metatable is locked"
-	ConnectionMt.__type = "RBXScriptConnection"
-	ConnectionMt.__tostring = RBXScriptConnectionToString
-	ConnectionMt.__index = PseudoConnection__index
-	ConnectionMt.Signal = self
-	ConnectionMt.Connection = self.Bindable.Event:Connect(function(Id)
-		if Arg then
-			Function(Arg, GetArguments(self, Id))
-		else
-			Function(GetArguments(self, Id))
-		end
+	return self._bindableEvent.Event:Connect(function()
+		handler(unpack(self._argData, 1, self._argCount))
 	end)
-
-	PseudoConnections[Connection] = ConnectionMt
-	self.Connections[NumConnections + 1] = ConnectionMt
-	return Connection
 end
 
-function Signal.__index:Fire(...)
-	local Id = self.NextId
-	local Stack = pack(...)
-	local NumConnectionsAndThreads = #self.Connections + self.YieldingThreads
-
-	Stack.NumConnectionsAndThreads = NumConnectionsAndThreads
-
-	self.NextId = Id + 1
-	self.Arguments[Id] = Stack
-	self.YieldingThreads = nil
-
-	if NumConnectionsAndThreads > 0 then
-		self.Bindable:Fire(Id)
-	end
+--- Wait for fire to be called, and return the arguments it was given.
+-- @treturn ... Variable arguments from connection
+function Signal:Wait()
+	self._bindableEvent.Event:Wait()
+	assert(self._argData, "Missing arg data, likely due to :TweenSize/Position corrupting threadrefs.")
+	return unpack(self._argData, 1, self._argCount)
 end
 
-function Signal.__index:Wait()
-	self.YieldingThreads = self.YieldingThreads + 1
-	return GetArguments(self, self.Bindable.Event:Wait())
-end
-
-function Signal.__index:Destroy()
-	Destruct(self)
-
-	self.Bindable = self.Bindable:Destroy()
-	local Connections = self.Connections
-
-	for i = #Connections, 1, -1 do
-		local Connection = Connections[i]
-		Connection.Connected = false
-		Connection.Signal = nil
-		Connection.Connection = nil
-		Connections[i] = nil
+--- Disconnects all connected events to the signal. Voids the signal as unusable.
+-- @treturn nil
+function Signal:Destroy()
+	if self._bindableEvent then
+		self._bindableEvent:Destroy()
+		self._bindableEvent = nil
 	end
 
-	self.YieldingThreads = nil
-	self.Arguments = nil
-	self.Connections = nil
-	setmetatable(self, nil)
+	self._argData = nil
+	self._argCount = nil
 end
 
 return Signal

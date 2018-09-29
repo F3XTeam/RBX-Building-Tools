@@ -27,7 +27,7 @@ Cheer = require(Tool.Libraries.Cheer)
 Try = require(Tool.Libraries.Try)
 Make = require(Tool.Libraries.Make)
 local Roact = require(Tool.Libraries:WaitForChild 'Roact')
-local Janitor = require(Tool.Libraries:WaitForChild 'Janitor')
+local Maid = require(Tool.Libraries:WaitForChild 'Maid')
 
 -- References
 Support.ImportServices();
@@ -284,10 +284,10 @@ function InitializeUI()
 	Dock = Cheer(Tool.Interfaces.Dock, UI).Start(getfenv(0));
 
 	-- Clean up UI on tool teardown
-	UIJanitor = Janitor.new()
+	UIMaid = Maid.new()
 	Tool.AncestryChanged:Connect(function (Item, Parent)
 		if Parent == nil then
-			UIJanitor:Cleanup()
+			UIMaid:Destroy()
 		end
 	end)
 
@@ -330,7 +330,7 @@ function OpenExplorer()
 	ExplorerVisible = true
 
 	-- Unmount explorer on tool cleanup
-	UIJanitor:Add(Support.Call(Roact.unmount, ExplorerHandle), true, 'Explorer')
+	UIMaid.Explorer = Support.Call(Roact.unmount, ExplorerHandle)
 
 	-- Update dock
 	ExplorerDockButton.ImageTransparency = 0
@@ -340,7 +340,8 @@ end
 function CloseExplorer()
 
 	-- Clean up explorer
-	ExplorerHandle = UIJanitor:Remove('Explorer')
+	UIMaid.Explorer = nil
+	ExplorerHandle = nil
 	ExplorerVisible = nil
 
 	-- Update dock

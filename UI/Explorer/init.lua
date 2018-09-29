@@ -6,7 +6,7 @@ local RunService = game:GetService 'RunService'
 -- Libraries
 local Support = require(Libraries:WaitForChild 'SupportLibrary')
 local Roact = require(Libraries:WaitForChild 'Roact')
-local Janitor = require(Libraries:WaitForChild 'Janitor')
+local Maid = require(Libraries:WaitForChild 'Maid')
 local Signal = require(Libraries:WaitForChild 'Signal')
 
 -- Roact
@@ -45,8 +45,8 @@ end
 
 function Explorer:didMount()
 
-    -- Create janitor for cleanup on unmount
-    self.Janitor = Janitor.new()
+    -- Create maid for cleanup on unmount
+    self.Maid = Maid.new()
     
     -- Build initial tree
     spawn(function ()
@@ -55,36 +55,28 @@ function Explorer:didMount()
     
     -- Listen for new and removing items
     local Scope = self.props.Scope
-    local AddListener = Scope.DescendantAdded:Connect(function (Item)
+    self.Maid.Add = Scope.DescendantAdded:Connect(function (Item)
         self:UpdateTree()
     end)
-    local RemoveListener = Scope.DescendantRemoving:Connect(function (Item)
+    self.Maid.Remove = Scope.DescendantRemoving:Connect(function (Item)
         self:UpdateTree()
     end)
-    
-    -- Disconnect new and removing item listeners on unmount
-    self.Janitor:Add(AddListener, 'Disconnect')
-    self.Janitor:Add(RemoveListener, 'Disconnect')
 
     -- Listen for selected items
     local Selection = self.props.Selection
-    local SelectionListener = Selection.ItemsAdded:Connect(function (Items)
+    self.Maid.Select = Selection.ItemsAdded:Connect(function (Items)
         self:UpdateSelection(Items)
     end)
-    local DeselectionListener = Selection.ItemsRemoved:Connect(function (Items)
+    self.Maid.Deselect = Selection.ItemsRemoved:Connect(function (Items)
         self:UpdateSelection(Items)
     end)
-
-    -- Disconnect selection listeners on unmount
-    self.Janitor:Add(SelectionListener, 'Disconnect')
-    self.Janitor:Add(DeselectionListener, 'Disconnect')
 
 end
 
 function Explorer:willUnmount()
 
     -- Clean up resources
-    self.Janitor:Cleanup()
+    self.Maid:Destroy()
 
 end
 
@@ -143,7 +135,7 @@ function Explorer:UpdateTree()
                 IdMap[Object] = nil
 
                 -- Clean up resources
-                self.Janitor:Remove(ItemId)
+                self.Maid[ItemId] = nil
 
                 -- Update parent child counter
                 local ParentId = Item.Parent and self.IdMap[Item.Parent]
@@ -225,9 +217,9 @@ function Explorer:BuildItemState(Item, Scope, Order, Changes, State)
     -- Check if item is a part
     local IsPart = Item:IsA 'BasePart'
 
-    -- Create janitor for cleanup when item is removed
-    local ItemJanitor = Janitor.new()
-    self.Janitor:Add(ItemJanitor, 'Cleanup', ItemId)
+    -- Create maid for cleanup when item is removed
+    local ItemMaid = Maid.new()
+    self.Maid[ItemId] = ItemMaid
 
     -- Prepare item state
     local ItemState = {
@@ -268,7 +260,7 @@ function Explorer:BuildItemState(Item, Scope, Order, Changes, State)
     self:PropagateLock(ItemState, Changes, State)
 
     -- Listen to name changes
-    local NameListener = Item:GetPropertyChangedSignal('Name'):Connect(function ()
+    ItemMaid.Name = Item:GetPropertyChangedSignal('Name'):Connect(function ()
 
         -- Queue change
         self:QueueUpdate('Name', Item)
@@ -294,7 +286,7 @@ function Explorer:BuildItemState(Item, Scope, Order, Changes, State)
     end)
 
     -- Listen to parent changes
-    local ParentListener = Item:GetPropertyChangedSignal('Parent'):Connect(function ()
+    ItemMaid.Parent = Item:GetPropertyChangedSignal('Parent'):Connect(function ()
         if not Item.Parent then
             return
         end
@@ -321,13 +313,9 @@ function Explorer:BuildItemState(Item, Scope, Order, Changes, State)
         self:UpdateTree()
     end)
 
-    -- Disconnect listeners on removal
-    ItemJanitor:Add(NameListener, 'Disconnect')
-    ItemJanitor:Add(ParentListener, 'Disconnect')
-
     -- Attach part-specific listeners
     if IsPart then
-        local LockListener = Item:GetPropertyChangedSignal('Locked'):Connect(function ()
+        ItemMaid.Locked = Item:GetPropertyChangedSignal('Locked'):Connect(function ()
 
             -- Queue change
             self:QueueUpdate('Lock', Item)
@@ -348,9 +336,6 @@ function Explorer:BuildItemState(Item, Scope, Order, Changes, State)
             end)
 
         end)
-
-        -- Disconnect listeners on removal
-        ItemJanitor:Add(LockListener, 'Disconnect')
     end
 
     -- Indicate that item state was created
