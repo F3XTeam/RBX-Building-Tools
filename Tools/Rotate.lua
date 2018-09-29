@@ -239,7 +239,7 @@ function SetPivot(PivotMode)
 
 	-- For last mode, use focused part handles
 	elseif PivotMode == 'Last' then
-		AttachHandles(CustomPivotPoint and Handles.Adornee or Selection.Focus, true);
+		AttachHandles(CustomPivotPoint and (RotateTool.Handles and RotateTool.Handles.Adornee) or Selection.Focus, true);
 	end;
 
 end;
@@ -258,29 +258,19 @@ function AttachHandles(Part, Autofocus)
 		ClearConnection 'AutofocusHandle';
 	end;
 
+	-- Clear previous pivot point
+	CustomPivotPoint = nil
+
 	-- Just attach and show the handles if they already exist
-	if Handles then
-		Handles.Adornee = Part;
-		Handles.Visible = true;
-		Handles.Parent = Part and Core.UIContainer or nil;
-		return;
-	end;
+	if RotateTool.Handles then
+		RotateTool.Handles:BlacklistObstacle(BoundingBox.GetBoundingBox())
+		RotateTool.Handles:SetAdornee(Part)
+		return
+	end
 
-	-- Create the handles
-	Handles = Make 'ArcHandles' {
-		Name = 'BTRotationHandles';
-		Color = RotateTool.Color;
-		Parent = Core.UIContainer;
-		Adornee = Part;
-	};
-
-	--------------------------------------------------------
-	-- Prepare for rotating parts when the handle is clicked
-	--------------------------------------------------------
-
-	local AreaPermissions;
-
-	Handles.MouseButton1Down:Connect(function ()
+	local AreaPermissions
+	local function OnHandleDragStart()
+		-- Prepare for rotating parts when the handle is clicked
 
 		-- Prevent selection
 		Core.Targeting.CancelSelecting();
@@ -290,7 +280,7 @@ function AttachHandles(Part, Autofocus)
 
 		-- Freeze bounding box extents while rotating
 		if BoundingBox.GetBoundingBox() then
-			InitialExtentsSize, InitialExtentsCFrame = BoundingBox.CalculateExtents(Core.Selection.Parts, BoundingBox.StaticExtents);
+			InitialExtentsSize, InitialExtentsCFrame = BoundingBox.CalculateExtents(Selection.Parts, BoundingBox.StaticExtents)
 			BoundingBox.PauseMonitoring();
 		end;
 
@@ -311,16 +301,17 @@ function AttachHandles(Part, Autofocus)
 
 		-- Set the pivot point to the center of the focused part if in Last mode
 		elseif RotateTool.Pivot == 'Last' and not CustomPivotPoint then
-			PivotPoint = InitialState[Selection.Focus].CFrame;
+			if Selection.Focus:IsA 'BasePart' then
+				PivotPoint = Selection.Focus.CFrame
+			elseif Selection.Focus:IsA 'Model' then
+				PivotPoint = Selection.Focus:GetModelCFrame()
+			end
 		end;
 
-	end);
+	end
 
-	------------------------------------------
-	-- Update parts when the handles are moved
-	------------------------------------------
-
-	Handles.MouseDrag:Connect(function (Axis, Rotation)
+	local function OnHandleDrag(Axis, Rotation)
+		-- Update parts when the handles are moved
 
 		-- Only rotate if handle is enabled
 		if not HandleRotating then
@@ -354,91 +345,67 @@ function AttachHandles(Part, Autofocus)
 			RotateTool.UI.Changes.Text.Text = 'rotated ' .. DisplayedRotation .. ' degrees';
 		end;
 
-	end);
+	end
 
-end;
-
-local function HandleBubbleRotating(Action, State, Input)
-
-	-- Check whether handles are enabled
-	local HandlesEnabled = Handles and Handles.Parent and Handles.Adornee and Handles.Visible
-
-	-- Check input if handles visible
-	if HandlesEnabled and (State.Name == 'Begin') then
-		local Adornee = Handles.Adornee
-		local Camera = Workspace.CurrentCamera
-		local Extents = Adornee.Size / 2
-		local Radius = math.max(Extents.X, Extents.Y, Extents.Z)
-
-		-- Sink input if dragging bubbles
-		for _, NormalId in pairs(Enum.NormalId:GetEnumItems()) do
-			local DirectionVector = Vector3.FromNormalId(NormalId)
-			local FaceOffset = CFrame.new(DirectionVector * Radius)
-			local BubbleOffset = CFrame.new(DirectionVector * 2.5)
-			local WorldPoint = (Adornee.CFrame * FaceOffset * BubbleOffset).p
-			local ScreenRay = Camera:ScreenPointToRay(Input.Position.X, Input.Position.Y)
-			if ScreenRay:Distance(WorldPoint) <= 0.75 then
-				return Enum.ContextActionResult.Sink
-			end
+	local function OnHandleDragEnd()
+		if not HandleRotating then
+			return
 		end
 
-		-- Ignore input if not dragging bubbles
-		return Enum.ContextActionResult.Pass
+		-- Prevent selection
+		Core.Targeting.CancelSelecting();
+
+		-- Disable rotating
+		HandleRotating = false;
+
+		-- Clear this connection to prevent it from firing again
+		ClearConnection 'HandleRelease';
+
+		-- Clear change indicator states
+		HandleDirection = nil;
+		HandleFirstAngle = nil;
+		LastDisplayedRotation = nil;
+
+		-- Make joints, restore original anchor and collision states
+		for Part, State in pairs(InitialState) do
+			Part:MakeJoints();
+			Core.RestoreJoints(State.Joints);
+			Part.CanCollide = State.CanCollide;
+			Part.Anchored = State.Anchored;
+		end;
+
+		-- Register the change
+		RegisterChange();
+
+		-- Resume normal bounding box updating
+		BoundingBox.RecalculateStaticExtents();
+		BoundingBox.ResumeMonitoring();
+
 	end
 
-	-- Ignore input if handles not being dragged
-	if not (HandleRotating and State.Name == 'End') then
-		return Enum.ContextActionResult.Pass
-	end
-
-	-- Prevent selection
-	Core.Targeting.CancelSelecting();
-
-	-- Disable rotating
-	HandleRotating = false;
-
-	-- Clear this connection to prevent it from firing again
-	ClearConnection 'HandleRelease';
-
-	-- Clear change indicator states
-	HandleDirection = nil;
-	HandleFirstAngle = nil;
-	LastDisplayedRotation = nil;
-
-	-- Make joints, restore original anchor and collision states
-	for Part, State in pairs(InitialState) do
-		Part:MakeJoints();
-		Core.RestoreJoints(State.Joints);
-		Part.CanCollide = State.CanCollide;
-		Part.Anchored = State.Anchored;
-	end;
-
-	-- Register the change
-	RegisterChange();
-
-	-- Resume normal bounding box updating
-	BoundingBox.RecalculateStaticExtents();
-	BoundingBox.ResumeMonitoring();
-
+	-- Create the handles
+	local ArcHandles = require(Libraries:WaitForChild 'ArcHandles')
+	RotateTool.Handles = ArcHandles.new({
+		Color = RotateTool.Color.Color,
+		Parent = Core.UIContainer,
+		Adornee = Part,
+		ObstacleBlacklist = { BoundingBox.GetBoundingBox() },
+		OnDragStart = OnHandleDragStart,
+		OnDrag = OnHandleDrag,
+		OnDragEnd = OnHandleDragEnd
+	})
 end
-
--- Finalize changes to parts when the handle is let go
-ContextActionService:BindAction('BT: Bubble rotating', HandleBubbleRotating, false,
-	Enum.UserInputType.MouseButton1,
-	Enum.UserInputType.Touch
-)
 
 function HideHandles()
 	-- Hides the resizing handles
 
 	-- Make sure handles exist and are visible
-	if not Handles or not Handles.Visible then
+	if not RotateTool.Handles then
 		return;
 	end;
 
 	-- Hide the handles
-	Handles.Visible = false;
-	Handles.Parent = nil;
+	RotateTool.Handles = RotateTool.Handles:Destroy()
 
 	-- Disable handle autofocus if enabled
 	ClearConnection 'AutofocusHandle';
@@ -654,14 +621,6 @@ function StartSnapping()
 		-- Disconnect snapped pivot point selection listener
 		ClearConnection 'SelectSnappedPivot';
 
-		-- Disable custom pivot point mode when the handles attach elsewhere
-		DisableCustomPivotPoint = Handles.Changed:Connect(function (Property)
-			if Property == 'Adornee' then
-				CustomPivotPoint = false;
-				DisableCustomPivotPoint:Disconnect();
-			end;
-		end);
-
 	end);
 
 end;
@@ -743,7 +702,11 @@ function NudgeSelectionByAxis(Axis, Direction)
 
 	-- Set the pivot point to the center of the focused part if in Last mode
 	elseif RotateTool.Pivot == 'Last' and not CustomPivotPoint then
-		PivotPoint = InitialState[Selection.Focus].CFrame;
+		if Selection.Focus:IsA 'BasePart' then
+			PivotPoint = Selection.Focus.CFrame
+		elseif Selection.Focus:IsA 'Model' then
+			PivotPoint = Selection.Focus:GetModelCFrame()
+		end
 	end;
 
 	-- Perform the rotation
