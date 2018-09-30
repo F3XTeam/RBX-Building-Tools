@@ -43,40 +43,60 @@ function Explorer:init()
     end
 end
 
-function Explorer:didMount()
+function Explorer:didUpdate(previousProps, previousState)
 
-    -- Create maid for cleanup on unmount
-    self.Maid = Maid.new()
-    
+    -- Trigger a scope change if prop changes
+    if previousProps.Scope ~= self.props.Scope then
+        self:UpdateScope(self.props.Scope)
+    end
+
+end
+
+function Explorer:UpdateScope(Scope)
+
+    -- Create maid for cleanup
+    self.ScopeMaid = Maid.new()
+
     -- Build initial tree
     spawn(function ()
         self:UpdateTree()
     end)
-    
+
     -- Listen for new and removing items
     local Scope = self.props.Scope
-    self.Maid.Add = Scope.DescendantAdded:Connect(function (Item)
+    self.ScopeMaid.Add = Scope.DescendantAdded:Connect(function (Item)
         self:UpdateTree()
     end)
-    self.Maid.Remove = Scope.DescendantRemoving:Connect(function (Item)
+    self.ScopeMaid.Remove = Scope.DescendantRemoving:Connect(function (Item)
         self:UpdateTree()
     end)
 
     -- Listen for selected items
     local Selection = self.props.Selection
-    self.Maid.Select = Selection.ItemsAdded:Connect(function (Items)
+    self.ScopeMaid.Select = Selection.ItemsAdded:Connect(function (Items)
         self:UpdateSelection(Items)
     end)
-    self.Maid.Deselect = Selection.ItemsRemoved:Connect(function (Items)
+    self.ScopeMaid.Deselect = Selection.ItemsRemoved:Connect(function (Items)
         self:UpdateSelection(Items)
     end)
+
+end
+
+function Explorer:didMount()
+
+    -- Create maid for cleanup on unmount
+    self.ItemMaid = Maid.new()
+
+    -- Set scope
+    self:UpdateScope(self.props.Scope)
 
 end
 
 function Explorer:willUnmount()
 
     -- Clean up resources
-    self.Maid:Destroy()
+    self.ScopeMaid:Destroy()
+    self.ItemMaid:Destroy()
 
 end
 
@@ -135,7 +155,7 @@ function Explorer:UpdateTree()
                 IdMap[Object] = nil
 
                 -- Clean up resources
-                self.Maid[ItemId] = nil
+                self.ItemMaid[ItemId] = nil
 
                 -- Update parent child counter
                 local ParentId = Item.Parent and self.IdMap[Item.Parent]
@@ -219,7 +239,7 @@ function Explorer:BuildItemState(Item, Scope, Order, Changes, State)
 
     -- Create maid for cleanup when item is removed
     local ItemMaid = Maid.new()
-    self.Maid[ItemId] = ItemMaid
+    self.ItemMaid[ItemId] = ItemMaid
 
     -- Prepare item state
     local ItemState = {

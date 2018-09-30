@@ -773,7 +773,7 @@ function EnableDragging()
 
 		-- Select unselected target, if not snapping
 		if not Selection.IsSelected(TargetPart) and not IsSnapping then
-			Selection.Replace({ TargetPart }, true)
+			Core.Targeting.SelectTarget(true)
 		end
 
 		local function HandlePotentialDragStart(Action, State, Input)

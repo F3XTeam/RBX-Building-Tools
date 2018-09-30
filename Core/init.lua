@@ -320,7 +320,7 @@ function OpenExplorer()
 	Explorer = Roact.createElement(ExplorerTemplate, {
 		Selection = Selection,
 		History = History,
-		Scope = Workspace,
+		Scope = Targeting.Scope,
 		SyncAPI = SyncAPI,
 		Close = CloseExplorer
 	})
@@ -331,6 +331,11 @@ function OpenExplorer()
 
 	-- Unmount explorer on tool cleanup
 	UIMaid.Explorer = Support.Call(Roact.unmount, ExplorerHandle)
+	UIMaid.ExplorerScope = Targeting.ScopeChanged:Connect(function (Scope)
+		local UpdatedProps = Support.Merge({}, Explorer.props, { Scope = Scope })
+		local UpdatedExplorer = Roact.createElement(ExplorerTemplate, UpdatedProps)
+		ExplorerHandle = Roact.reconcile(ExplorerHandle, UpdatedExplorer)
+	end)
 
 	-- Update dock
 	ExplorerDockButton.ImageTransparency = 0
@@ -341,6 +346,7 @@ function CloseExplorer()
 
 	-- Clean up explorer
 	UIMaid.Explorer = nil
+	UIMaid.ExplorerScope = nil
 	ExplorerHandle = nil
 	ExplorerVisible = nil
 

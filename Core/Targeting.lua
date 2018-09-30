@@ -1,4 +1,6 @@
 local Tool = script.Parent.Parent
+local Workspace = game:GetService 'Workspace'
+local UserInputService = game:GetService 'UserInputService'
 local Selection = require(script.Parent.Selection);
 
 -- Libraries
@@ -8,7 +10,9 @@ local Signal = require(Libraries:WaitForChild 'Signal')
 local Make = require(Libraries:WaitForChild 'Make')
 
 TargetingModule = {};
+TargetingModule.Scope = Workspace
 TargetingModule.TargetChanged = Signal.new()
+TargetingModule.ScopeChanged = Signal.new()
 
 function TargetingModule.EnableTargeting()
 	-- 	Begin targeting parts from the mouse
@@ -43,18 +47,37 @@ function TargetingModule.EnableTargeting()
 
 end;
 
+function TargetingModule.SetScope(Scope)
+	if TargetingModule.Scope ~= Scope then
+		TargetingModule.Scope = Scope
+		TargetingModule.ScopeChanged:Fire(Scope)
+	end
+end
+
+function TargetingModule.FindTargetInScope(Target)
+	local ScopeItem = Target
+
+	-- Search for ancestor of target directly within scope
+	while ScopeItem and (ScopeItem.Parent ~= TargetingModule.Scope) do
+		ScopeItem = ScopeItem.Parent
+	end
+
+	-- Return item ancestor within scope
+	return ScopeItem
+end
+
 function TargetingModule.UpdateTarget()
 
 	-- Ensure target has changed
-	if Target == Mouse.Target then
+	if (Target == Mouse.Target) or (Target and Mouse.Target and Mouse.Target:IsDescendantOf(Target)) then
 		return;
 	end;
 
 	-- Update target
-	Target = Mouse.Target;
+	Target = TargetingModule.FindTargetInScope(Mouse.Target)
 
 	-- Fire events
-	TargetingModule.TargetChanged:Fire(Mouse.Target);
+	TargetingModule.TargetChanged:Fire(Target);
 
 end;
 
@@ -86,7 +109,7 @@ function TargetingModule.SelectTarget()
 	TargetingModule.UpdateTarget()
 
 	-- Ensure target selection isn't cancelled
-	if SelectionCancelled then
+	if not Force and SelectionCancelled then
 		SelectionCancelled = false;
 		return;
 	end;
@@ -127,7 +150,7 @@ function TargetingModule.SelectSiblings(Part, ReplaceSelection)
 	local Part = Part or Selection.Focus;
 
 	-- Ensure the part exists and its parent is not Workspace
-	if not Part or Part.Parent == Workspace then
+	if not Part or Part.Parent == TargetingModule.Scope then
 		return;
 	end;
 
@@ -261,7 +284,7 @@ function TargetingModule.FinishRectangleSelecting()
 	local SelectableItems = {};
 
 	-- Find items that lie within the rectangle
-	for _, Part in pairs(Workspace:GetDescendants()) do
+	for _, Part in pairs(TargetingModule.Scope:GetDescendants()) do
 		if Part:IsA 'BasePart' then
 			local ScreenPoint, OnScreen = Workspace.CurrentCamera:WorldToScreenPoint(Part.Position);
 			if OnScreen then
