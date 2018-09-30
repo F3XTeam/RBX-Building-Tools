@@ -6,6 +6,8 @@ local Libraries = Tool:WaitForChild 'Libraries'
 local Support = require(Libraries:WaitForChild 'SupportLibrary')
 local Signal = require(Libraries:WaitForChild 'Signal')
 local Maid = require(Libraries:WaitForChild 'Maid')
+local Make = require(Libraries:WaitForChild 'Make')
+local InstancePool = require(Libraries:WaitForChild 'InstancePool')
 
 -- Core selection system
 Selection = {}
@@ -80,6 +82,7 @@ function Selection.Add(Items, RegisterHistory)
 
 		-- Add each valid item to the selection
 		Selection.ItemIndex[Item] = true;
+		CreateSelectionBoxes(Item)
 
 		-- Create maid for cleaning up item listeners
 		local ItemMaid = Maid.new()
@@ -128,9 +131,6 @@ function Selection.Add(Items, RegisterHistory)
 		TrackSelectionChange(OldSelection);
 	end;
 
-	-- Create selection boxes for the selection
-	CreateSelectionBoxes(SelectableItems);
-
 	-- Register references to new parts
 	local NewParts = {}
 	for _, Part in pairs(Parts) do
@@ -177,6 +177,7 @@ function Selection.Remove(Items, RegisterHistory)
 
 		-- Remove item from selection
 		Selection.ItemIndex[Item] = nil;
+		RemoveSelectionBoxes(Item)
 
 		-- Stop tracking item's parts
 		Selection.Maid[Item] = nil
@@ -185,9 +186,6 @@ function Selection.Remove(Items, RegisterHistory)
 		CollectParts(Item, Parts)
 
 	end;
-
-	-- Remove selection boxes from deselected items
-	RemoveSelectionBoxes(DeselectableItems);
 
 	-- Update selected item list
 	Selection.Items = Support.Keys(Selection.ItemIndex);
@@ -285,74 +283,95 @@ function GetCore()
 	return require(script.Parent);
 end;
 
-function CreateSelectionBoxes(Items)
-	-- Creates a SelectionBox for each given item
+local function GetTargetableChildren(Item, Table)
+	local Table = Table or {}
 
-	-- Get the core API
-	local Core = GetCore();
+	-- Search for targetable items recursively
+	for _, Item in pairs(Item:GetChildren()) do
+		if Item:IsA 'Part' or Item:IsA 'Model' then
+			Table[#Table + 1] = Item
+		elseif Item:IsA 'Folder' then
+			GetTargetableChildren(Item, Table)
+		end
+	end
+
+	-- Return targetable items
+	return Table
+end
+
+-- Create target box pool
+local SelectionBoxPool = InstancePool.new(60, function ()
+	return Make 'SelectionBox' {
+		Name = 'BTSelectionBox',
+		Parent = GetCore().UI,
+		LineThickness = 0.025,
+		Transparency = 0.5,
+		Color = Selection.Color
+	}
+end)
+
+-- Define target box cleanup routine
+function SelectionBoxPool.Cleanup(SelectionBox)
+	SelectionBox.Adornee = nil
+	SelectionBox.Visible = nil
+end
+
+function CreateSelectionBoxes(Item)
+	-- Creates selection boxes for the given item
 
 	-- Only create selection boxes if in tool mode
-	if Core.Mode ~= 'Tool' then
-		return;
-	end;
-
-	-- Track new selection boxes
-	local SelectionBoxes = {};
-
-	-- Create an outline for each part
-	for _, Item in pairs(Items) do
-
-		-- Avoid duplicate selection boxes
-		if not Selection.Outlines[Item] then
-
-			-- Create the selection box
-			local SelectionBox = Instance.new 'SelectionBox';
-			SelectionBox.Name = 'BTSelectionBox';
-			SelectionBox.Color = Selection.Color;
-			SelectionBox.Adornee = Item;
-			SelectionBox.LineThickness = 0.025;
-			SelectionBox.Transparency = 0.5;
-
-			-- Register the outline
-			Selection.Outlines[Item] = SelectionBox;
-			table.insert(SelectionBoxes, SelectionBox);
-
-		end;
-
-	end;
-
-	-- Parent the selection boxes
-	for _, SelectionBox in pairs(SelectionBoxes) do
-		SelectionBox.Parent = Core.UIContainer;
-	end;
-
-end;
-
-function RemoveSelectionBoxes(Items)
-	-- Removes the given item's selection box
-
-	-- Only proceed if in tool mode
 	if GetCore().Mode ~= 'Tool' then
 		return;
 	end;
 
-	-- Remove each item's outline
-	for _, Item in pairs(Items) do
+	-- Ensure selection boxes don't already exist for item
+	if Selection.Outlines[Item] then
+		return
+	end
 
-		-- Get the item's selection box
-		local SelectionBox = Selection.Outlines[Item];
+	-- Get targetable items
+	local Items = Support.FlipTable { Item }
+	if Item:IsA 'Folder' or Item:IsA 'Tool' then
+		Items = Support.FlipTable(GetTargetableChildren(Item))
+	end
 
-		-- Remove the selection box if found
-		if SelectionBox then
-			SelectionBox:Destroy();
-		end;
+	-- Create selection box for each targetable item
+	local SelectionBoxes = {}
+	for Item in pairs(Items) do
 
-		-- Deregister the selection box
-		Selection.Outlines[Item] = nil;
+		-- Create the selection box
+		local SelectionBox = SelectionBoxPool:Get()
+		SelectionBox.Adornee = Item
+		SelectionBox.Visible = true
 
-	end;
+		-- Register the outline
+		SelectionBoxes[Item] = SelectionBox
+
+	end
+
+	-- Register selection boxes for this item
+	Selection.Outlines[Item] = SelectionBoxes
 
 end;
+
+function RemoveSelectionBoxes(Item)
+	-- Removes the given item's selection boxes
+
+	-- Only proceed if outlines exist for item
+	local SelectionBoxes = Selection.Outlines[Item]
+	if not SelectionBoxes then
+		return
+	end
+
+	-- Remove each item's outline
+	for _, SelectionBox in pairs(SelectionBoxes) do
+		SelectionBoxPool:Release(SelectionBox)
+	end
+
+	-- Clear list of outlines for item
+	Selection.Outlines[Item] = nil
+
+end
 
 function Selection.RecolorOutlines(Color)
 	-- Updates selection outline colors
@@ -361,7 +380,7 @@ function Selection.RecolorOutlines(Color)
 	Selection.Color = Color;
 
 	-- Recolor existing outlines
-	for _, Outline in pairs(Selection.Outlines) do
+	for Outline in pairs(SelectionBoxPool.All) do
 		Outline.Color = Selection.Color;
 	end;
 
@@ -374,7 +393,7 @@ function Selection.FlashOutlines()
 	for Transparency = 1, 0.5, -0.1 do
 
 		-- Update each outline
-		for _, Outline in pairs(Selection.Outlines) do
+		for Outline in pairs(SelectionBoxPool.InUse) do
 			Outline.Transparency = Transparency;
 		end;
 
@@ -382,21 +401,6 @@ function Selection.FlashOutlines()
 		wait(0.1);
 
 	end;
-
-end;
-
-function Selection.EnableOutlines()
-	-- Shows selection outlines
-
-	local UIContainer = GetCore().UIContainer;
-
-	-- Show each outline
-	for _, Outline in pairs(Selection.Outlines) do
-		Outline.Parent = UIContainer;
-	end;
-
-	-- Hide outlines when tool is disabled
-	GetCore().Connections.HideOutlinesOnDisable = GetCore().Disabling:Connect(Selection.HideOutlines);
 
 end;
 
@@ -436,15 +440,39 @@ function Selection.EnableMultiselectionHotkeys()
 
 end;
 
+function Selection.EnableOutlines()
+	-- Enables selection outlines
+
+	-- Create outlines for each item
+	for Item in pairs(Selection.ItemIndex) do
+		CreateSelectionBoxes(Item)
+	end
+end
+
 function Selection.HideOutlines()
 	-- Hides selection outlines
 
-	-- Hide each outline
-	for _, Outline in pairs(Selection.Outlines) do
-		Outline.Parent = nil;
-	end;
+	-- Remove every item's outlines
+	for Item in pairs(Selection.Outlines) do
+		RemoveSelectionBoxes(Item)
+	end
+end
 
-end;
+function Selection.GetVisibleFocusItem()
+	-- Returns a visible item representing the selection focus
+
+	-- Return focus if it's visible
+	if Selection.Focus:IsA 'BasePart' or Selection.Focus:IsA 'Model' then
+		return Selection.Focus
+
+	-- Return first visible item within focus if not visible itself
+	elseif Selection.Focus then
+		return Selection.Focus:FindFirstChildWhichIsA('BasePart') or
+			Selection.Focus:FindFirstChildWhichIsA('Model') or
+			Selection.Focus:FindFirstChildWhichIsA('BasePart', true) or
+			Selection.Focus:FindFirstChildWhichIsA('Model', true)
+	end
+end
 
 function TrackSelectionChange(OldSelection)
 	-- Registers a history record for a change in the selection

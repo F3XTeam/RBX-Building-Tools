@@ -8,6 +8,7 @@ local Libraries = Tool:WaitForChild 'Libraries'
 local Support = require(Libraries:WaitForChild 'SupportLibrary')
 local Signal = require(Libraries:WaitForChild 'Signal')
 local Make = require(Libraries:WaitForChild 'Make')
+local InstancePool = require(Libraries:WaitForChild 'InstancePool')
 
 TargetingModule = {};
 TargetingModule.Scope = Workspace
@@ -81,29 +82,65 @@ function TargetingModule.UpdateTarget()
 
 end;
 
+local function GetTargetableChildren(Item, Table)
+	local Table = Table or {}
+
+	-- Search for targetable items recursively
+	for _, Item in pairs(Item:GetChildren()) do
+		if Item:IsA 'Part' or Item:IsA 'Model' then
+			Table[#Table + 1] = Item
+		elseif Item:IsA 'Folder' then
+			GetTargetableChildren(Item, Table)
+		end
+	end
+
+	-- Return targetable items
+	return Table
+end
+
+-- Create target box pool
+local TargetBoxPool = InstancePool.new(60, function ()
+	return Make 'SelectionBox' {
+		Name = 'BTTargetBox',
+		Parent = GetCore().UI,
+		LineThickness = 0.025,
+		Transparency = 0.5,
+		Color = BrickColor.new 'Institutional white'
+	}
+end)
+
+-- Define target box cleanup routine
+function TargetBoxPool.Cleanup(TargetBox)
+	TargetBox.Adornee = nil
+	TargetBox.Visible = nil
+end
+
 function TargetingModule.HighlightTarget(Target)
 
-	-- Get core API
-	local Core = GetCore();
+	-- Clear previous target boxes
+	TargetBoxPool:ReleaseAll()
 
-	-- Create target box
-	if not TargetBox then
-		TargetBox = Make 'SelectionBox' {
-			Name = 'BTTargetOutline',
-			Parent = Core.UIContainer,
-			LineThickness = 0.025,
-			Transparency = 0.5,
-			Color = BrickColor.new 'Institutional white'
-		};
-	end;
+	-- Make sure target exists
+	if not Target then
+		return
+	end
 
-	-- Focus on target
-	TargetBox.Parent = Target and Core.UIContainer or nil;
-	TargetBox.Adornee = Target;
+	-- Get targetable items
+	local Items = Support.FlipTable { Target }
+	if Target:IsA 'Folder' then
+		Items = Support.FlipTable(GetTargetableChildren(Target))
+	end
+
+	-- Focus target boxes on target
+	for Target in pairs(Items) do
+		local TargetBox = TargetBoxPool:Get()
+		TargetBox.Adornee = Target
+		TargetBox.Visible = true
+	end
 
 end;
 
-function TargetingModule.SelectTarget()
+function TargetingModule.SelectTarget(Force)
 
 	-- Update target
 	TargetingModule.UpdateTarget()
