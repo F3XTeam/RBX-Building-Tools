@@ -86,7 +86,7 @@ function ArcHandles:CreateCircles()
     local CircleSliceAngle = 2 * math.pi / self.CircleSlices
 
     -- Set up each axis
-    for _, Axis in ipairs(Enum.Axis:GetEnumItems()) do
+    for _, Axis in pairs(Enum.Axis:GetEnumItems()) do
         local AxisColor = self.AxisColors[Axis.Name]
 
         -- Create container for circle
