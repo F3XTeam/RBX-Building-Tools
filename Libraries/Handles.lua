@@ -37,7 +37,7 @@ function Handles.new(Options)
     -- Generate a handle for each side
     self.Handles = {}
     self.HandleStates = {}
-    for _, Side in ipairs(Enum.NormalId:GetEnumItems()) do
+    for _, Side in pairs(Enum.NormalId:GetEnumItems()) do
 
         -- Create handle
         local Handle = Instance.new('ImageButton')
@@ -166,7 +166,7 @@ function Handles:Pause()
 end
 
 local function IsFirstPerson(Camera)
-    return (Camera.CFrame.p - Camera.Focus.p).magnitude <= 0.6
+    return (Camera.CFrame.Position - Camera.Focus.Position).Magnitude <= 0.6
 end
 
 function Handles:Resume()
@@ -270,19 +270,19 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
 
     -- Calculate CFrame of the handle's side
     local SideCFrame = AdorneeCFrame * CFrame.new(AdorneeSize * SideUnitVector / 2)
-    local SideNormal = (SideCFrame.p - AdorneeCFrame.p).unit
+    local SideNormal = (SideCFrame.Position - AdorneeCFrame.Position).Unit
 
     -- Get viewport position of adornee and the side the handle will be on
-    local AdorneeViewportPoint, AdorneeCameraDepth = WorldToViewportPoint(Camera, AdorneeCFrame.p)
-    local SideViewportPoint, SideCameraDepth, SideVisible = WorldToViewportPoint(Camera, SideCFrame.p)
+    local AdorneeViewportPoint, AdorneeCameraDepth = WorldToViewportPoint(Camera, AdorneeCFrame.Position)
+    local SideViewportPoint, SideCameraDepth, SideVisible = WorldToViewportPoint(Camera, SideCFrame.Position)
 
     -- Display handle if side is visible to the camera
     Handle.Visible = SideVisible
 
     -- Calculate handle size (12 px, or at least 0.5 studs)
-    local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * SideCameraDepth
+    local StudWidth = 2 * math.tan(0.01745329251994329577 * (Camera.FieldOfView) / 2) * SideCameraDepth
     local PixelsPerStud = Camera.ViewportSize.X / StudWidth
-    local HandleSize = math.max(12, 0.5 * PixelsPerStud)
+    local HandleSize = math.max(12, PixelsPerStud / 2)
     local SpacingSize = math.max(12, 1 * PixelsPerStud)
     Handle.Size = UDim2.new(0, HandleSize, 0, HandleSize)
 
@@ -299,7 +299,7 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
     local HandlePlaneNormal = (Handle.Name == 'Top' or Handle.Name == 'Bottom') and
         AdorneeCFrame.LookVector or
         AdorneeCFrame.UpVector
-    local HandleCameraDepth = (SideCFrame.p - HandleRay.Origin):Dot(HandlePlaneNormal) / HandleRay.Direction:Dot(HandlePlaneNormal)
+    local HandleCameraDepth = (SideCFrame.Position - HandleRay.Origin):Dot(HandlePlaneNormal) / HandleRay.Direction:Dot(HandlePlaneNormal)
     local HandleWorldPoint = (HandleCameraDepth * HandleRay.Direction) + HandleRay.Origin
 
     -- Save handle position
