@@ -100,10 +100,17 @@ function Explorer:willUnmount()
 
 end
 
+local function IsTargetable(Item)
+	return Item:IsA 'Model' or
+		Item:IsA 'BasePart' or
+		Item:IsA 'Tool' or
+		Item:IsA 'Accessory' or
+		Item:IsA 'Accoutrement'
+end
+
 function Explorer.IsItemIndexable(Item)
-    return (Item.ClassName == 'Model') or
-        (Item.ClassName == 'Folder') or
-        (Item:IsA 'BasePart' and Item.ClassName ~= 'Terrain')
+    return (IsTargetable(Item) and Item.ClassName ~= 'Terrain') or
+        Item:IsA 'Folder'
 end
 
 function Explorer:UpdateTree()

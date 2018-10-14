@@ -127,7 +127,11 @@ ItemRow.ClassIcons = {
     WedgePart = Vector2.new(2, 1),
     SpawnLocation = Vector2.new(6, 3),
     Model = Vector2.new(3, 1),
-    Folder = Vector2.new(8, 8)
+    Folder = Vector2.new(8, 8),
+    Tool = Vector2.new(8, 2),
+    Workspace = Vector2.new(10, 2),
+    Accessory = Vector2.new(3, 4),
+    Accoutrement = Vector2.new(3, 4)
 }
 
 function ItemRow:render()
