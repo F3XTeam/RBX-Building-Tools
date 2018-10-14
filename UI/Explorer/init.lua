@@ -144,6 +144,12 @@ function Explorer:UpdateTree()
                 end
                 OrderCounter = OrderCounter + 1
 
+                -- Update parents in case scope changed
+                local ParentId = self.IdMap[ItemState.Parent]
+                if not self.state[ParentId] then
+                    self:UpdateItemParent(Item, Changes, State)
+                end
+
             -- Introduce new items
             elseif self:BuildItemState(Item, self.props.Scope, OrderCounter, Changes, State) then
                 OrderCounter = OrderCounter + 1
