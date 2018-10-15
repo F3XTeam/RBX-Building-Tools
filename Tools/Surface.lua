@@ -231,8 +231,9 @@ function EnableSurfaceSelection()
 	-- Allows the player to select surfaces by clicking on them
 
 	-- Watch out for clicks on selected parts
-	Connections.SurfaceSelection = Selection.FocusChanged:Connect(function (Part)
-		if Selection.IsSelected(Core.Mouse.Target) then
+	Connections.SurfaceSelection = Selection.FocusChanged:Connect(function ()
+		local Target, ScopeTarget = Core.Targeting:UpdateTarget()
+		if Selection.IsSelected(ScopeTarget) then
 
 			-- Set the surface option to the target surface
 			SetSurface(Core.Mouse.TargetSurface.Name);
