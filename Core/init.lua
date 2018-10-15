@@ -45,7 +45,7 @@ function EquipTool(Tool)
 
 	-- Unequip current tool
 	if CurrentTool and CurrentTool.Equipped then
-		CurrentTool.Unequip();
+		CurrentTool:Unequip();
 		CurrentTool.Equipped = false;
 	end;
 
@@ -57,7 +57,7 @@ function EquipTool(Tool)
 	ToolChanged:Fire(Tool);
 
 	-- Equip the tool
-	Tool.Equip();
+	Tool:Equip();
 
 end;
 
@@ -242,7 +242,7 @@ function Disable()
 
 	-- Unequip current tool
 	if CurrentTool then
-		CurrentTool.Unequip();
+		CurrentTool:Unequip();
 		CurrentTool.Equipped = false;
 	end;
 
@@ -319,6 +319,7 @@ function OpenExplorer()
 	-- Initialize explorer
 	Explorer = Roact.createElement(ExplorerTemplate, {
 		Selection = Selection,
+		Targeting = Targeting,
 		History = History,
 		Scope = Targeting.Scope,
 		SyncAPI = SyncAPI,
