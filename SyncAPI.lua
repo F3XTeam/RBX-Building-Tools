@@ -139,8 +139,13 @@ Actions = {
 			Item.Parent = Group
 		end
 
-		-- Return group
+		-- Parent group
 		Group.Parent = Parent
+		if Type == 'Model' then
+			Group:MakeJoints()
+		end
+
+		-- Return the new group
 		return Group
 
 	end,
@@ -178,6 +183,7 @@ Actions = {
 				LastParents[Child] = Group
 				Children[#Children + 1] = Child
 				Child.Parent = NewParent
+				Child:MakeJoints()
 			end
 
 			-- Track removing group
