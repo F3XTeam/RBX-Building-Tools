@@ -181,8 +181,10 @@ function Enable(Mouse)
 
 	-- Disable mouse lock in tool mode
 	if Mode == 'Tool' then
-		SyncAPI:Invoke('SetMouseLockEnabled', false);
-	end;
+		coroutine.wrap(function ()
+			SyncAPI:Invoke('SetMouseLockEnabled', false)
+		end)()
+	end
 
 	-- Wait for UI to initialize asynchronously
 	while not UI do
@@ -232,8 +234,10 @@ function Disable()
 
 	-- Reenable mouse lock option in tool mode
 	if Mode == 'Tool' then
-		pcall(SyncAPI.Invoke, SyncAPI, 'SetMouseLockEnabled', true);
-	end;
+		coroutine.wrap(function ()
+			SyncAPI:Invoke('SetMouseLockEnabled', true)
+		end)()
+	end
 
 	-- Hide UI
 	if UI then
