@@ -440,7 +440,8 @@ function Explorer:GetStagedItemState(ItemId, Changes, State)
     local StagedItemState = ItemId and Changes[ItemId]
 
     -- Ensure item still exists
-    if not ItemId or (StagedItemState == Roact.None) then
+    if not ItemId or (StagedItemState == Roact.None) or
+        not (StagedItemState or State[ItemId]) then
         return
     end
 
@@ -573,6 +574,7 @@ function Explorer:render()
             Depth = Depth,
             Selection = props.Selection,
             History = props.History,
+            Targeting = props.Targeting,
             SyncAPI = props.SyncAPI,
             ToggleExpand = self._ToggleExpand
         }))

@@ -6,6 +6,7 @@ local UserInputService = game:GetService 'UserInputService'
 -- Libraries
 local Support = require(Libraries:WaitForChild 'SupportLibrary')
 local Roact = require(Libraries:WaitForChild 'Roact')
+local Maid = require(Libraries:WaitForChild 'Maid')
 
 -- Roact
 local new = Roact.createElement
@@ -93,11 +94,21 @@ end
 function ItemRow:HandleSelection()
     local props = self.props
     local Selection = props.Selection
+    local Targeting = props.Targeting
+
+    -- Check if scoping
+    local Scoping = UserInputService:IsKeyDown 'LeftAlt' or
+        UserInputService:IsKeyDown 'RightAlt'
+
+    -- Enter scope if requested
+    if Scoping then
+        Targeting:SetScope(props.Instance)
+        return
+    end
 
     -- Check if multiselecting
-    local PressedKeys = UserInputService:GetKeysPressed()
-    local Multiselecting = Support.IsInTable(Support.GetListMembers(PressedKeys, 'KeyCode'), Enum.KeyCode.LeftControl) or
-        Support.IsInTable(PressedKeys, Enum.KeyCode.RightControl)
+    local Multiselecting = UserInputService:IsKeyDown 'LeftControl' or
+        UserInputService:IsKeyDown 'RightControl'
 
     -- Perform selection
     if Multiselecting then
@@ -113,6 +124,31 @@ end
 
 function ItemRow:ToggleExpand()
     self.props.ToggleExpand(self.props.Id)
+end
+
+function ItemRow:init()
+    self.state = {}
+end
+
+function ItemRow:didMount()
+    self.Maid = Maid.new()
+
+    local Targeting = self.props.Targeting
+    local Item = self.props.Instance
+
+    -- Listen for targeting
+    self.Maid.TargetListener = Targeting.ScopeTargetChanged:Connect(function (ScopeTarget)
+        local IsTarget = self.state.Targeted
+        if (not IsTarget) and (ScopeTarget == Item) then
+            self:setState { Targeted = true }
+        elseif IsTarget and (ScopeTarget ~= Item) then
+            self:setState { Targeted = Roact.None }
+        end
+    end)
+end
+
+function ItemRow:willUnmount()
+    self.Maid = self.Maid:Destroy()
 end
 
 ItemRow.ClassIcons = {
@@ -196,10 +232,10 @@ function ItemRow:render()
                 Text = props.Name,
                 Size = 'WRAP_CONTENT',
                 [Roact.Event.FocusLost] = function (rbx, EnterPressed)
-                    if EnterPressed then
+                    if #rbx.Text > 0 then
                         self:SetName(rbx.Text)
-                        self:setState { EditingName = Roact.None }
                     end
+                    self:setState { EditingName = Roact.None }
                 end
             })
         })
@@ -260,13 +296,21 @@ function ItemRow:render()
         })
     })
 
+    -- Determine transparency from selection and targeting state
+    local Transparency = 1
+    if props.Selected then
+        Transparency = 1 - 0.15
+    elseif state.Targeted then
+        Transparency = 1 - 0.05
+    end
+
     -- Return button with contents
     return new(ImageButton, {
         LayoutOrder = props.Order,
         Size = UDim2.new(1, 0, 0, 18),
         AutoButtonColor = false,
         BackgroundColor3 = Color3.new(1, 1, 1),
-        BackgroundTransparency = props.Selected and (1 - 0.15) or 1,
+        BackgroundTransparency = Transparency,
         [Roact.Event.Activated] = function (rbx)
             self:HandleSelection()
         end
