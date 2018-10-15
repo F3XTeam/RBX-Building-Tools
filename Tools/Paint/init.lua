@@ -1,5 +1,11 @@
+
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
+
+-- Libraries
+local Libraries = Tool:WaitForChild 'Libraries'
+local Maid = require(Libraries:WaitForChild 'Maid')
+local PaintHistoryRecord = require(script:WaitForChild 'PaintHistoryRecord')
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -18,35 +24,27 @@ local PaintTool = {
 
 };
 
--- Container for temporary connections (disconnected automatically)
-local Connections = {};
-
-function PaintTool.Equip()
+function PaintTool:Equip()
 	-- Enables the tool's equipped functionality
+
+	-- Set up maid for cleanup
+	self.Maid = Maid.new()
 
 	-- Start up our interface
 	ShowUI();
-	BindShortcutKeys();
-	EnableClickPainting();
+	self:BindShortcutKeys()
+	self:EnableClickPainting()
 
 end;
 
-function PaintTool.Unequip()
+function PaintTool:Unequip()
 	-- Disables the tool's equipped functionality
 
-	-- Clear unnecessary resources
-	HideUI();
-	ClearConnections();
+	-- Hide UI
+	HideUI()
 
-end;
-
-function ClearConnections()
-	-- Clears out temporary connections
-
-	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:Disconnect();
-		Connections[ConnectionKey] = nil;
-	end;
+	-- Clean up resources
+	self.Maid = self.Maid:Destroy()
 
 end;
 
@@ -185,28 +183,22 @@ end;
 function PaintParts()
 	-- Recolors the selection with the selected color
 
-	-- Make sure a color has been selected
-	if not PaintTool.BrickColor then
-		return;
-	end;
+	-- Make sure painting is possible
+	if (not PaintTool.BrickColor) or (#Selection.Parts == 0) then
+		return
+	end
 
-	-- Track changes
-	TrackChange();
+	-- Create history record
+	local Record = PaintHistoryRecord.new()
+	Record.TargetColor = PaintTool.BrickColor
 
-	-- Change the color of the parts locally
-	for _, Part in pairs(Selection.Parts) do
-		Part.Color = PaintTool.BrickColor;
+	-- Perform action
+	Record:Apply(true)
 
-		-- Allow part coloring for unions
-		if Part.ClassName == 'UnionOperation' then
-			Part.UsePartColor = true;
-		end;
-	end;
+	-- Register history record
+	Core.History.Add(Record)
 
-	-- Register changes
-	RegisterChange();
-
-end;
+end
 
 function PreviewColor(Color)
 	-- Previews the given color on the selection
@@ -254,37 +246,19 @@ function PreviewColor(Color)
 
 end;
 
-function BindShortcutKeys()
+function PaintTool:BindShortcutKeys()
 	-- Enables useful shortcut keys for this tool
 
 	-- Track user input while this tool is equipped
-	table.insert(Connections, UserInputService.InputBegan:Connect(function (InputInfo, GameProcessedEvent)
+	self.Maid.Hotkeys = Support.AddUserInputListener('Began', 'Keyboard', false, function (Input)
 
-		-- Make sure this is an intentional event
-		if GameProcessedEvent then
-			return;
-		end;
-
-		-- Make sure this input is a key press
-		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
-			return;
-		end;
-
-		-- Make sure it wasn't pressed while typing
-		if UserInputService:GetFocusedTextBox() then
-			return;
-		end;
-
-		-- Check if the enter key was pressed
-		if InputInfo.KeyCode == Enum.KeyCode.Return or InputInfo.KeyCode == Enum.KeyCode.KeypadEnter then
-
-			-- Paint the selection with the current color
-			PaintParts();
-
-		end;
+		-- Paint selection if Enter is pressed
+		if (Input.KeyCode.Name == 'Return') or (Input.KeyCode.Name == 'KeypadEnter') then
+			return PaintParts()
+		end
 
 		-- Check if the R key was pressed, and it wasn't the selection clearing hotkey
-		if InputInfo.KeyCode == Enum.KeyCode.R and not Selection.Multiselecting then
+		if (Input.KeyCode.Name == 'R') and (not Selection.Multiselecting) then
 
 			-- Set the current color to that of the current mouse target (if any)
 			if Core.Mouse.Target then
@@ -293,103 +267,23 @@ function BindShortcutKeys()
 
 		end;
 
-	end));
+	end)
 
 end;
 
-function EnableClickPainting()
+function PaintTool:EnableClickPainting()
 	-- Allows the player to paint parts by clicking on them
 
 	-- Watch out for clicks on selected parts
-	Connections.ClickPainting = Selection.FocusChanged:Connect(function (Part)
-		if Selection.IsSelected(Core.Mouse.Target) then
+	self.Maid.ClickPainting = Selection.FocusChanged:Connect(function (Focus)
+		local Target, ScopeTarget = Core.Targeting:UpdateTarget()
+		if Selection.IsSelected(ScopeTarget) then
 
 			-- Paint the selected parts
 			PaintParts();
 
 		end;
 	end);
-
-end;
-
-function TrackChange()
-
-	-- Start the record
-	HistoryRecord = {
-		Parts = Support.CloneTable(Selection.Parts);
-		BeforeColor = {};
-		BeforeUnionColoring = {};
-		AfterColor = {};
-
-		Unapply = function (Record)
-			-- Reverts this change
-
-			-- Select the changed parts
-			Selection.Replace(Record.Parts);
-
-			-- Put together the change request
-			local Changes = {};
-			for _, Part in pairs(Record.Parts) do
-				table.insert(Changes, { Part = Part, Color = Record.BeforeColor[Part], UnionColoring = Record.BeforeUnionColoring[Part] });
-			end;
-
-			-- Send the change request
-			Core.SyncAPI:Invoke('SyncColor', Changes);
-
-		end;
-
-		Apply = function (Record)
-			-- Applies this change
-
-			-- Select the changed parts
-			Selection.Replace(Record.Parts);
-
-			-- Put together the change request
-			local Changes = {};
-			for _, Part in pairs(Record.Parts) do
-				table.insert(Changes, { Part = Part, Color = Record.AfterColor[Part], UnionColoring = true });
-			end;
-
-			-- Send the change request
-			Core.SyncAPI:Invoke('SyncColor', Changes);
-
-		end;
-
-	};
-
-	-- Collect the selection's initial state
-	for _, Part in pairs(HistoryRecord.Parts) do
-		HistoryRecord.BeforeColor[Part] = Part.Color;
-
-		-- If this part is a union, collect its UsePartColor state
-		if Part.ClassName == 'UnionOperation' then
-			HistoryRecord.BeforeUnionColoring[Part] = Part.UsePartColor;
-		end;
-	end;
-
-end;
-
-function RegisterChange()
-	-- Finishes creating the history record and registers it
-
-	-- Make sure there's an in-progress history record
-	if not HistoryRecord then
-		return;
-	end;
-
-	-- Collect the selection's final state
-	local Changes = {};
-	for _, Part in pairs(HistoryRecord.Parts) do
-		HistoryRecord.AfterColor[Part] = Part.Color;
-		table.insert(Changes, { Part = Part, Color = Part.Color, UnionColoring = true });
-	end;
-
-	-- Send the change to the server
-	Core.SyncAPI:Invoke('SyncColor', Changes);
-
-	-- Register the record and clear the staging
-	Core.History.Add(HistoryRecord);
-	HistoryRecord = nil;
 
 end;
 
