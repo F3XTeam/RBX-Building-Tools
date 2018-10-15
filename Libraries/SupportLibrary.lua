@@ -400,6 +400,21 @@ function SupportLibrary.GetListMembers(List, MemberName)
 
 end
 
+function SupportLibrary.GetMemberMap(List, MemberName)
+	-- Maps the given items' specified members to each item
+
+	local Map = {}
+
+	-- Collect member values
+	for Key, Item in ipairs(List) do
+		Map[Item] = Item[MemberName]
+	end
+
+	-- Return map
+	return Map
+
+end
+
 function SupportLibrary.AddUserInputListener(InputState, InputTypeFilter, CatchAll, Callback)
 	-- Connects to the given user input event and takes care of standard boilerplate code
 
