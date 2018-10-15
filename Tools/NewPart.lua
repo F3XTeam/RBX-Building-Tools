@@ -139,7 +139,7 @@ end;
 function CreatePart(Type)
 
 	-- Send the creation request to the server
-	local Part = Core.SyncAPI:Invoke('CreatePart', Type, CFrame.new(Core.Mouse.Hit.p));
+	local Part = Core.SyncAPI:Invoke('CreatePart', Type, CFrame.new(Core.Mouse.Hit.p), Core.Targeting.Scope)
 
 	-- Make sure the part creation succeeds
 	if not Part then

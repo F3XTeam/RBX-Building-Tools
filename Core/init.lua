@@ -443,6 +443,37 @@ if Mode == 'Tool' then
 	AssignHotkey({ 'RightControl', 'Y' }, History.Redo);
 end;
 
+local function GetDepthFromAncestor(Item, Ancestor)
+	-- Returns the depth of `Item` from `Ancestor`
+
+	local Depth = 0
+
+	-- Go through ancestry until reaching `Ancestor`
+	while Item ~= Ancestor do
+		Depth = Depth + 1
+		Item = Item.Parent
+	end
+
+	-- Return depth
+	return Depth
+end
+
+local function GetHighestParent(Items)
+	local HighestItem, HighestItemDepth
+
+	-- Calculate depth of each item & keep highest
+	for _, Item in ipairs(Items) do
+		local Depth = GetDepthFromAncestor(Item, game)
+		if (not HighestItemDepth) or (Depth < HighestItemDepth) then
+			HighestItem = Item
+			HighestItemDepth = Depth
+		end
+	end
+
+	-- Return parent of highest item
+	return HighestItem and HighestItem.Parent or nil
+end
+
 function CloneSelection()
 	-- Clones selected parts
 
@@ -452,7 +483,7 @@ function CloneSelection()
 	end;
 
 	-- Send the cloning request to the server
-	local Clones = SyncAPI:Invoke('Clone', Selection.Items);
+	local Clones = SyncAPI:Invoke('Clone', Selection.Items, GetHighestParent(Selection.Items))
 
 	-- Put together the history record
 	local HistoryRecord = {
@@ -597,9 +628,8 @@ function GroupSelection()
 	end
 
 	-- Perform group creation
-	local Focus = Selection.Focus
 	HistoryRecord.NewParent = SyncAPI:Invoke('CreateGroup', 'Model',
-		Focus and Focus.Parent or Selection.Scope,
+		GetHighestParent(HistoryRecord.Items),
 		HistoryRecord.Items
 	)
 

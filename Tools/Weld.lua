@@ -137,8 +137,13 @@ end;
 function CreateWelds()
 	-- Creates welds for every selected part to the focused part
 
+	-- Determine welding target
+	local WeldTarget = (Selection.Focus:IsA 'BasePart' and Selection.Focus) or
+		(Selection.Focus:IsA 'Model' and Selection.Focus.PrimaryPart) or
+		Selection.Focus:FindFirstChildWhichIsA('BasePart', true)
+
 	-- Send the change request to the server API
-	local Welds = Core.SyncAPI:Invoke('CreateWelds', Selection.Parts, Selection.Focus);
+	local Welds = Core.SyncAPI:Invoke('CreateWelds', Selection.Parts, WeldTarget)
 
 	-- Update the UI with the number of welds created
 	UI.Changes.Text.Text = ('created %s weld%s'):format(#Welds, #Welds == 1 and '' or 's');
@@ -231,7 +236,7 @@ function EnableFocusHighlighting()
 
 	-- Recolor current focused item
 	if Selection.Focus and (#Selection.Parts > 1) then
-		Core.Selection.Outlines[Selection.Focus].Color = BrickColor.new('Deep orange');
+		Core.Selection.RecolorOutline(Selection.Focus, BrickColor.new('Deep orange'))
 	end;
 
 	-- Recolor future focused items
@@ -242,7 +247,7 @@ function EnableFocusHighlighting()
 
 		-- Recolor newly focused item
 		if FocusedItem and (#Selection.Parts > 1) then
-			Core.Selection.Outlines[FocusedItem].Color = BrickColor.new('Deep orange');
+			Core.Selection.RecolorOutline(FocusedItem, BrickColor.new('Deep orange'))
 		end;
 
 	end);

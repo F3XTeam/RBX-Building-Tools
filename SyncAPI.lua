@@ -14,7 +14,6 @@ Support.ImportServices();
 
 -- Default options
 Options = {
-	DefaultPartParent = Workspace,
 	DisallowLocked = false
 }
 
@@ -37,8 +36,12 @@ Actions = {
 		Tool.Handle.BrickColor = NewColor;
 	end;
 
-	['Clone'] = function (Parts)
+	['Clone'] = function (Parts, Parent)
 		-- Clones the given parts
+
+		-- Validate requested parent
+		assert(typeof(Parent) == 'Instance', 'Invalid parent')
+		assert(Security.IsLocationAllowed(Parent), 'Permission denied for client')
 
 		-- Make sure the given items are all parts
 		if not CanModifyItems(Parts) then
@@ -60,7 +63,7 @@ Actions = {
 
 			-- Create the clone
 			local Clone = Part:Clone();
-			Clone.Parent = Options.DefaultPartParent;
+			Clone.Parent = Parent
 
 			-- Register the clone
 			table.insert(Clones, Clone);
@@ -72,8 +75,12 @@ Actions = {
 		return Clones;
 	end;
 
-	['CreatePart'] = function (PartType, Position)
+	['CreatePart'] = function (PartType, Position, Parent)
 		-- Creates a new part based on `PartType`
+
+		-- Validate requested parent
+		assert(typeof(Parent) == 'Instance', 'Invalid parent')
+		assert(Security.IsLocationAllowed(Parent), 'Permission denied for client')
 
 		-- Create the part
 		local NewPart = CreatePart(PartType);
@@ -90,7 +97,7 @@ Actions = {
 		end;
 
 		-- Parent the part
-		NewPart.Parent = Options.DefaultPartParent;
+		NewPart.Parent = Parent
 
 		-- Register the part
 		CreatedInstances[NewPart] = NewPart;
