@@ -123,7 +123,9 @@ function Handles.new(Options)
             end)
 
             -- Fire callback when dragging ends
-            DragMaid.Callback = coroutine.wrap(Options.OnDragEnd)
+            DragMaid.Callback = function ()
+                spawn(Options.OnDragEnd)
+            end
 
         end)
 
@@ -182,16 +184,16 @@ function Handles:Resume()
     -- Keep handle positions updated
     for Side, Handle in pairs(self.Handles) do
         local UnitVector = Vector3.FromNormalId(Side)
-        coroutine.wrap(function ()
+        spawn(function ()
             while self.Running do
                 self:UpdateHandle(Handle, UnitVector)
                 RunService.RenderStepped:Wait()
             end
-        end)()
+        end)
     end
 
     -- Ignore character whenever character enters first person
-    coroutine.wrap(function ()
+    spawn(function ()
         while self.Running do
             local FirstPerson = IsFirstPerson(self.Camera)
             local Character = Players.LocalPlayer.Character
@@ -201,7 +203,7 @@ function Handles:Resume()
             end
             wait(0.2)
         end
-    end)()
+    end)
 
     -- Show UI
     self.Gui.Enabled = true
