@@ -245,7 +245,7 @@ function SetAxes(AxisMode)
 
 	-- For local mode, use focused part handles
 	elseif AxisMode == 'Local' then
-		AttachHandles(Selection.Focus, true); 
+		AttachHandles(Selection.Focus, true);
 
 	-- For last mode, use focused part handles
 	elseif AxisMode == 'Last' then
@@ -330,9 +330,10 @@ function AttachHandles(Part, Autofocus)
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-			Selection.Focus.CFrame = InitialState[Selection.Focus].CFrame;
-			TranslatePartsRelativeToPart(Selection.Focus, InitialState);
-			Distance = 0;
+			local Part, InitialPartState = next(InitialState)
+			Part.CFrame = InitialPartState.CFrame
+			TranslatePartsRelativeToPart(Part, InitialState)
+			Distance = 0
 		end;
 
 		-- Update the "distance moved" indicator
@@ -772,8 +773,10 @@ function EnableDragging()
 		DragStart = Vector2.new(Core.Mouse.X, Core.Mouse.Y)
 
 		-- Select unselected target, if not snapping
-		if not Selection.IsSelected(TargetPart) and not IsSnapping then
+		local Target, ScopeTarget = Core.Targeting:UpdateTarget()
+		if not Selection.IsSelected(ScopeTarget) and not IsSnapping then
 			Core.Targeting.SelectTarget(true)
+			Core.Targeting.CancelSelecting()
 		end
 
 		local function HandlePotentialDragStart(Action, State, Input)
@@ -812,10 +815,8 @@ function EnableDragging()
 
 end;
 
-local function HandleDragEnd(Action, State, Input)
-	if State.Name ~= 'End' then
-		return Enum.ContextActionResult.Pass
-	end
+-- Catch whenever the user finishes dragging
+Support.AddUserInputListener('Ended', {'Touch', 'MouseButton1'}, true, function (Input)
 
 	-- Clear drag detection data
 	DragStart = nil
@@ -831,21 +832,9 @@ local function HandleDragEnd(Action, State, Input)
 		-- Finalize the dragging operation
 		FinishDragging()
 
-		-- Consume input
-		return Enum.ContextActionResult.Sink
-
 	end
 
-	-- Pass input if not dragging
-	return Enum.ContextActionResult.Pass
-
-end
-
--- Catch whenever the user finishes dragging
-ContextActionService:BindAction('BT: Finish dragging', HandleDragEnd, false,
-	Enum.UserInputType.MouseButton1,
-	Enum.UserInputType.Touch
-)
+end)
 
 function SetUpDragging(BasePart, BasePoint)
 	-- Sets up and initiates dragging based on the given base part
@@ -882,10 +871,11 @@ function PreparePartsForDragging()
 
 	-- Get initial state of focused item
 	local InitialFocusCFrame
-	if Selection.Focus:IsA 'BasePart' then
-		InitialFocusCFrame = Selection.Focus.CFrame
-	elseif Selection.Focus:IsA 'Model' then
-		InitialFocusCFrame = Selection.Focus:GetModelCFrame()
+	local Focus = Selection.Focus
+	if Focus:IsA 'BasePart' then
+		InitialFocusCFrame = Focus.CFrame
+	elseif Focus:IsA 'Model' then
+		InitialFocusCFrame = Focus:GetModelCFrame()
 	end
 
 	return InitialState, InitialFocusCFrame
