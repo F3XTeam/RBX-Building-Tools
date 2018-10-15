@@ -200,7 +200,7 @@ function Enable(Mouse)
 
 	-- Start systems
 	EnableHotkeys();
-	Targeting.EnableTargeting();
+	Targeting:EnableTargeting()
 	Selection.EnableOutlines();
 	Selection.EnableMultiselectionHotkeys();
 

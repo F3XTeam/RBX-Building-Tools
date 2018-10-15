@@ -45,7 +45,7 @@ local function CollectParts(Item, Table)
 		Table[#Table + 1] = Item
 
 	-- Collect parts inside of groups
-	elseif Item:IsA 'Model' or Item:IsA 'Folder' then
+	else
 		local Items = Item:GetDescendants()
 		for _, Item in ipairs(Items) do
 			if Item:IsA 'BasePart' then
@@ -99,7 +99,7 @@ function Selection.Add(Items, RegisterHistory)
 		CollectParts(Item, Parts)
 
 		-- Listen for new parts in groups
-		local IsGroup = Item:IsA 'Model' or Item:IsA 'Folder' or nil
+		local IsGroup = not Item:IsA 'BasePart' or nil
 		ItemMaid.NewParts = IsGroup and Item.DescendantAdded:Connect(function (Descendant)
 			if Descendant:IsA 'BasePart' then
 				local NewRefCount = (Selection.PartIndex[Descendant] or 0) + 1
@@ -148,8 +148,10 @@ function Selection.Add(Items, RegisterHistory)
 	end
 
 	-- Fire relevant events
-	Selection.ItemsAdded:Fire(SelectableItems);
-	Selection.Changed:Fire();
+	if #SelectableItems > 0 then
+		Selection.ItemsAdded:Fire(SelectableItems)
+		Selection.Changed:Fire()
+	end
 
 end;
 
@@ -212,8 +214,10 @@ function Selection.Remove(Items, RegisterHistory)
 	end
 
 	-- Fire relevant events
-	Selection.ItemsRemoved:Fire(DeselectableItems);
-	Selection.Changed:Fire();
+	if #DeselectableItems > 0 then
+		Selection.ItemsRemoved:Fire(DeselectableItems)
+		Selection.Changed:Fire()
+	end
 
 end;
 
@@ -234,9 +238,30 @@ function Selection.Replace(Items, RegisterHistory)
 	-- Save old selection reference for history
 	local OldSelection = Selection.Items;
 
-	-- Clear current selection and select new items
-	Selection.Clear(false);
-	Selection.Add(Items, false);
+	-- Find new items
+	local NewItems = {}
+	for _, Item in ipairs(Items) do
+		if not Selection.ItemIndex[Item] then
+			table.insert(NewItems, Item)
+		end
+	end
+
+	-- Find removing items
+	local RemovingItems = {}
+	local NewItemIndex = Support.FlipTable(Items)
+	for _, Item in ipairs(Selection.Items) do
+		if not NewItemIndex[Item] then
+			table.insert(RemovingItems, Item)
+		end
+	end
+
+	-- Update selection
+	if #RemovingItems > 0 then
+		Selection.Remove(RemovingItems, false)
+	end
+	if #NewItems > 0 then
+		Selection.Add(NewItems, false)
+	end
 
 	-- Create a history record for this selection change, if requested
 	if RegisterHistory then
@@ -245,21 +270,47 @@ function Selection.Replace(Items, RegisterHistory)
 
 end;
 
+local function IsVisible(Item)
+	return Item:IsA 'Model' or Item:IsA 'BasePart'
+end
+
+local function GetVisibleFocus(Item)
+	-- Returns a visible focus representing the item
+
+	-- Return nil if no focus
+	if not Item then
+		return nil
+	end
+
+	-- Return focus if it's visible
+	if IsVisible(Item) then
+		return Item
+
+	-- Return first visible item within focus if not visible itself
+	elseif Item then
+		return Item:FindFirstChildWhichIsA('BasePart') or
+			Item:FindFirstChildWhichIsA('Model') or
+			Item:FindFirstChildWhichIsA('BasePart', true) or
+			Item:FindFirstChildWhichIsA('Model', true)
+	end
+end
+
 function Selection.SetFocus(Item)
 	-- Selects `Item` as the focused selection item
 
-	-- Make sure the item is selected or is `nil`
-	if not Selection.IsSelected(Item) and Item ~= nil then
-		return;
-	end;
+	-- Ensure focus has changed
+	local Focus = GetVisibleFocus(Item)
+	if Selection.Focus == Focus then
+		return
+	end
 
-	-- Set the item as the focus
-	Selection.Focus = Item;
+	-- Set new focus item
+	Selection.Focus = Focus
 
 	-- Fire relevant events
-	Selection.FocusChanged:Fire(Item);
+	Selection.FocusChanged:Fire(Focus)
 
-end;
+end
 
 function FocusOnLastSelectedPart()
 	-- Sets the last part of the selection as the focus
@@ -283,19 +334,19 @@ function GetCore()
 	return require(script.Parent);
 end;
 
-local function GetTargetableChildren(Item, Table)
+local function GetVisibleChildren(Item, Table)
 	local Table = Table or {}
 
-	-- Search for targetable items recursively
+	-- Search for visible items recursively
 	for _, Item in pairs(Item:GetChildren()) do
-		if Item:IsA 'Part' or Item:IsA 'Model' then
+		if IsVisible(Item) then
 			Table[#Table + 1] = Item
-		elseif Item:IsA 'Folder' then
-			GetTargetableChildren(Item, Table)
+		else
+			GetVisibleChildren(Item, Table)
 		end
 	end
 
-	-- Return targetable items
+	-- Return visible items
 	return Table
 end
 
@@ -331,8 +382,8 @@ function CreateSelectionBoxes(Item)
 
 	-- Get targetable items
 	local Items = Support.FlipTable { Item }
-	if Item:IsA 'Folder' or Item:IsA 'Tool' then
-		Items = Support.FlipTable(GetTargetableChildren(Item))
+	if not IsVisible(Item) then
+		Items = Support.FlipTable(GetVisibleChildren(Item))
 	end
 
 	-- Create selection box for each targetable item
@@ -385,6 +436,21 @@ function Selection.RecolorOutlines(Color)
 	end;
 
 end;
+
+function Selection.RecolorOutline(Item, Color)
+	-- Updates outline colors for `Item`
+
+	-- Make sure `Item` has outlines
+	local Outlines = Selection.Outlines[Item]
+	if not Outlines then
+		return
+	end
+
+	-- Recolor all outlines for item
+	for VisibleItem, Outline in pairs(Outlines) do
+		Outline.Color = Color
+	end
+end
 
 function Selection.FlashOutlines()
 	-- Flashes selection outlines for emphasis
@@ -455,22 +521,6 @@ function Selection.HideOutlines()
 	-- Remove every item's outlines
 	for Item in pairs(Selection.Outlines) do
 		RemoveSelectionBoxes(Item)
-	end
-end
-
-function Selection.GetVisibleFocusItem()
-	-- Returns a visible item representing the selection focus
-
-	-- Return focus if it's visible
-	if Selection.Focus:IsA 'BasePart' or Selection.Focus:IsA 'Model' then
-		return Selection.Focus
-
-	-- Return first visible item within focus if not visible itself
-	elseif Selection.Focus then
-		return Selection.Focus:FindFirstChildWhichIsA('BasePart') or
-			Selection.Focus:FindFirstChildWhichIsA('Model') or
-			Selection.Focus:FindFirstChildWhichIsA('BasePart', true) or
-			Selection.Focus:FindFirstChildWhichIsA('Model', true)
 	end
 end
 

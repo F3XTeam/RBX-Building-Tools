@@ -1,6 +1,7 @@
 local Tool = script.Parent.Parent
 local Workspace = game:GetService 'Workspace'
 local UserInputService = game:GetService 'UserInputService'
+local ContextActionService = game:GetService 'ContextActionService'
 local Selection = require(script.Parent.Selection);
 
 -- Libraries
@@ -14,8 +15,9 @@ TargetingModule = {};
 TargetingModule.Scope = Workspace
 TargetingModule.TargetChanged = Signal.new()
 TargetingModule.ScopeChanged = Signal.new()
+TargetingModule.ScopeTargetChanged = Signal.new()
 
-function TargetingModule.EnableTargeting()
+function TargetingModule:EnableTargeting()
 	-- 	Begin targeting parts from the mouse
 
 	-- Get core API
@@ -26,75 +28,126 @@ function TargetingModule.EnableTargeting()
 	Mouse = Core.Mouse;
 
 	-- Listen for target changes
-	Connections.Targeting = Mouse.Move:Connect(TargetingModule.UpdateTarget);
+	Connections.Targeting = Mouse.Move:Connect(function ()
+		self:UpdateTarget(self.Scope)
+	end)
 
 	-- Listen for target clicks
-	Connections.Selecting = Mouse.Button1Up:Connect(TargetingModule.SelectTarget);
+	Connections.Selecting = Mouse.Button1Up:Connect(self.SelectTarget)
 
 	-- Listen for sibling selection middle clicks
 	Connections.SiblingSelecting = Support.AddUserInputListener('Began', 'MouseButton3', true, function ()
-		TargetingModule.SelectSiblings(Mouse.Target, not Selection.Multiselecting);
+		self.SelectSiblings(Mouse.Target, not Selection.Multiselecting)
 	end);
 
 	-- Listen for 2D selection
-	Connections.RectSelectionStarted = Mouse.Button1Down:Connect(TargetingModule.StartRectangleSelecting);
-	Connections.RectSelectionFinished = Support.AddUserInputListener('Ended', 'MouseButton1', true, TargetingModule.FinishRectangleSelecting);
+	Connections.RectSelectionStarted = Mouse.Button1Down:Connect(self.StartRectangleSelecting);
+	Connections.RectSelectionFinished = Support.AddUserInputListener('Ended', 'MouseButton1', true, self.FinishRectangleSelecting);
 
 	-- Hide target box when tool is unequipped
-	Connections.HideTargetBoxOnDisable = Core.Disabling:Connect(TargetingModule.HighlightTarget);
+	Connections.HideTargetBoxOnDisable = Core.Disabling:Connect(self.HighlightTarget);
 
 	-- Cancel any ongoing selection when tool is unequipped
-	Connections.CancelSelectionOnDisable = Core.Disabling:Connect(TargetingModule.CancelRectangleSelecting);
+	Connections.CancelSelectionOnDisable = Core.Disabling:Connect(self.CancelRectangleSelecting);
+
+	-- Enable direct selection
+	self:EnableDirectSelection()
 
 end;
 
-function TargetingModule.SetScope(Scope)
-	if TargetingModule.Scope ~= Scope then
-		TargetingModule.Scope = Scope
-		TargetingModule.ScopeChanged:Fire(Scope)
+function TargetingModule:SetScope(Scope)
+	if self.Scope ~= Scope then
+		self.Scope = Scope
+		self.ScopeChanged:Fire(Scope)
 	end
 end
 
-function TargetingModule.FindTargetInScope(Target)
-	local ScopeItem = Target
+local function IsVisible(Item)
+	return Item:IsA 'Model' or Item:IsA 'BasePart'
+end
+
+local function IsTargetable(Item)
+	return Item:IsA 'Model' or
+		Item:IsA 'BasePart' or
+		Item:IsA 'Tool' or
+		Item:IsA 'Accessory' or
+		Item:IsA 'Accoutrement'
+end
+
+function TargetingModule.FindTargetInScope(Target, Scope)
 
 	-- Search for ancestor of target directly within scope
-	while ScopeItem and (ScopeItem.Parent ~= TargetingModule.Scope) do
-		ScopeItem = ScopeItem.Parent
+	local TargetChain = { Target }
+	while Target and (Target.Parent ~= Scope) do
+		table.insert(TargetChain, 1, Target.Parent)
+		Target = Target.Parent
 	end
 
-	-- Return item ancestor within scope
-	return ScopeItem
-end
-
-function TargetingModule.UpdateTarget()
-
-	-- Ensure target has changed
-	if (Target == Mouse.Target) or (Target and Mouse.Target and Mouse.Target:IsDescendantOf(Target)) then
-		return;
-	end;
-
-	-- Update target
-	Target = TargetingModule.FindTargetInScope(Mouse.Target)
-
-	-- Fire events
-	TargetingModule.TargetChanged:Fire(Target);
-
-end;
-
-local function GetTargetableChildren(Item, Table)
-	local Table = Table or {}
-
-	-- Search for targetable items recursively
-	for _, Item in pairs(Item:GetChildren()) do
-		if Item:IsA 'Part' or Item:IsA 'Model' then
-			Table[#Table + 1] = Item
-		elseif Item:IsA 'Folder' then
-			GetTargetableChildren(Item, Table)
+	-- Return targetable ancestor closest to scope
+	for Index, Target in ipairs(TargetChain) do
+		if IsTargetable(Target) then
+			return Target
 		end
 	end
 
-	-- Return targetable items
+end
+
+function TargetingModule:UpdateTarget(Scope, Force)
+	local Scope = Scope or self.Scope
+
+	-- Get target
+	local NewTarget = Mouse.Target
+	local NewScopeTarget = self.FindTargetInScope(NewTarget, Scope)
+	
+	-- Register whether target has changed
+	if (self.LastTarget == NewTarget) and (not Force) then
+		return NewTarget, NewScopeTarget
+	else
+		self.LastTarget = NewTarget
+		self.TargetChanged:Fire(NewTarget)
+	end
+
+	-- Make sure target is selectable
+	local Core = GetCore()
+	if not Core.IsSelectable(NewTarget) then
+		self.HighlightTarget(nil)
+		self.LastTarget = nil
+		self.LastScopeTarget = nil
+		self.TargetChanged:Fire(nil)
+		self.ScopeTargetChanged:Fire(nil)
+		return
+	end
+
+	-- Register whether scope target has changed
+	if (self.LastScopeTarget == NewScopeTarget) and (not Force) then
+		return NewTarget, NewScopeTarget
+	else
+		self.LastScopeTarget = NewScopeTarget
+		self.ScopeTargetChanged:Fire(NewScopeTarget)
+	end
+
+	-- Update scope target highlight
+	if not Core.Selection.IsSelected(NewScopeTarget) then
+		self.HighlightTarget(NewScopeTarget)
+	end
+
+	-- Return new targets
+	return NewTarget, NewScopeTarget
+end
+
+local function GetVisibleChildren(Item, Table)
+	local Table = Table or {}
+
+	-- Search for visible items recursively
+	for _, Item in pairs(Item:GetChildren()) do
+		if IsVisible(Item) then
+			Table[#Table + 1] = Item
+		else
+			GetVisibleChildren(Item, Table)
+		end
+	end
+
+	-- Return visible items
 	return Table
 end
 
@@ -127,8 +180,8 @@ function TargetingModule.HighlightTarget(Target)
 
 	-- Get targetable items
 	local Items = Support.FlipTable { Target }
-	if Target:IsA 'Folder' then
-		Items = Support.FlipTable(GetTargetableChildren(Target))
+	if not IsVisible(Target) then
+		Items = Support.FlipTable(GetVisibleChildren(Target))
 	end
 
 	-- Focus target boxes on target
@@ -140,10 +193,21 @@ function TargetingModule.HighlightTarget(Target)
 
 end;
 
-function TargetingModule.SelectTarget(Force)
+local function IsAncestorSelected(Item)
+	while Item and (Item ~= TargetingModule.Scope) do
+		if Selection.IsSelected(Item) then
+			return true
+		else
+			Item = Item.Parent
+		end
+	end
+end
+
+function TargetingModule.SelectTarget(Force, Scope)
+	local Scope = Scope or TargetingModule.Scope
 
 	-- Update target
-	TargetingModule.UpdateTarget()
+	local Target, ScopeTarget = TargetingModule:UpdateTarget(Scope, true)
 
 	-- Ensure target selection isn't cancelled
 	if not Force and SelectionCancelled then
@@ -152,8 +216,8 @@ function TargetingModule.SelectTarget(Force)
 	end;
 
 	-- Focus on clicked, selected item
-	if not Selection.Multiselecting and Selection.IsSelected(Target) then
-		Selection.SetFocus(Target);
+	if not Selection.Multiselecting and (Selection.IsSelected(ScopeTarget) or IsAncestorSelected(ScopeTarget)) then
+		Selection.SetFocus(ScopeTarget)
 		return;
 	end;
 
@@ -164,19 +228,21 @@ function TargetingModule.SelectTarget(Force)
 	end;
 
 	-- Unselect clicked, selected item if multiselection is enabled
-	if Selection.Multiselecting and Selection.IsSelected(Target) then
-		Selection.Remove({ Target }, true);
-		return;
-	end;
+	if Selection.Multiselecting and Selection.IsSelected(ScopeTarget) then
+		Selection.Remove({ ScopeTarget }, true)
+		return
+	end
 
 	-- Add to selection if multiselecting
 	if Selection.Multiselecting then
-		Selection.Add({ Target }, true);
+		Selection.Add({ ScopeTarget }, true)
+		Selection.SetFocus(ScopeTarget)
 
 	-- Replace selection if not multiselecting
 	else
-		Selection.Replace({ Target }, true);
-	end;
+		Selection.Replace({ ScopeTarget }, true)
+		Selection.SetFocus(ScopeTarget)
+	end
 
 end;
 
@@ -329,18 +395,21 @@ function TargetingModule.FinishRectangleSelecting()
 				local RightCheck = ScreenPoint.X <= EndPoint.X;
 				local TopCheck = ScreenPoint.Y >= StartPoint.Y;
 				local BottomCheck = ScreenPoint.Y <= EndPoint.Y;
-				table.insert(SelectableItems, (LeftCheck and RightCheck and TopCheck and BottomCheck) and Part or nil);
+				if LeftCheck and RightCheck and TopCheck and BottomCheck then
+					local ScopeTarget = TargetingModule.FindTargetInScope(Part, TargetingModule.Scope)
+					SelectableItems[ScopeTarget] = true
+				end
 			end;
 		end;
 	end;
 
 	-- Add to selection if multiselecting
 	if Selection.Multiselecting then
-		Selection.Add(SelectableItems, true);
+		Selection.Add(Support.Keys(SelectableItems), true)
 
 	-- Replace selection if not multiselecting
 	else
-		Selection.Replace(SelectableItems, true);
+		Selection.Replace(Support.Keys(SelectableItems), true)
 	end;
 
 end;
@@ -395,21 +464,100 @@ function TargetingModule.PrismSelect()
 
 end;
 
-TargetingModule.TargetChanged:Connect(function (Target)
+function TargetingModule:EnableDirectSelection()
+	-- Enables the direct selection interface
 
-	-- Get core API
-	local Core = GetCore();
+	-- Set up state
+	local Scoping = false
+	local InitialScope = nil
 
-	-- Hide target box if no/unselectable target
-	if not Target or not Core.IsSelectable(Target) or Core.Selection.IsSelected(Target) then
-		TargetingModule.HighlightTarget(nil);
+	local function HandleScopeInput(Action, State, Input)
+		if State.Name == 'Begin' then
+			local IsAltPressed = UserInputService:IsKeyDown 'LeftAlt' or
+				UserInputService:IsKeyDown 'RightAlt'
+			local IsShiftPressed = UserInputService:IsKeyDown 'LeftShift' or
+				UserInputService:IsKeyDown 'RightShift'
 
-	-- Show target outline if target is selectable
-	else
-		TargetingModule.HighlightTarget(Target);
-	end;
+			-- If Alt is pressed, begin scoping
+			if (not Scoping) and (Input.KeyCode.Name:match 'Alt') then
+				Scoping = self.Scope
+				InitialScope = self.Scope
 
-end);
+				-- Set new scope to current scope target
+				local Target, ScopeTarget = self:UpdateTarget(self.Scope, true)
+				if Target ~= ScopeTarget then
+					self:SetScope(ScopeTarget or self.Scope)
+					self:UpdateTarget(self.Scope, true)
+					Scoping = self.Scope
+				end
+
+			-- If Alt-Shift-Z is pressed, exit current scope
+			elseif Scoping and IsAltPressed and IsShiftPressed and (Input.KeyCode.Name == 'Z') then
+				local NewScope = self.Scope.Parent or InitialScope
+				if GetCore().Security.IsLocationAllowed(NewScope) then
+					self:SetScope(NewScope)
+					self:UpdateTarget(self.Scope, true)
+					Scoping = self.Scope
+				end
+				return Enum.ContextActionResult.Sink
+
+			-- If Alt-Z is pressed, enter scope of current target
+			elseif Scoping and IsAltPressed and (Input.KeyCode.Name == 'Z') then
+				local Target, ScopeTarget = self:UpdateTarget(self.Scope, true)
+				if Target ~= ScopeTarget then
+					self:SetScope(ScopeTarget or self.Scope)
+					self:UpdateTarget(self.Scope, true)
+					Scoping = self.Scope
+				end
+				return Enum.ContextActionResult.Sink
+
+			-- If Alt-F is pressed, stay in current scope
+			elseif Scoping and IsAltPressed and (Input.KeyCode.Name == 'F') then
+				Scoping = true
+				return Enum.ContextActionResult.Sink
+			end
+
+		-- Disable scoping on Alt release
+		elseif State.Name == 'End' then
+			if Scoping and (Input.KeyCode.Name:match 'Alt') then
+				if self.Scope == Scoping then
+					self:SetScope(InitialScope)
+				end
+				self:UpdateTarget(self.Scope, true)
+				Scoping = nil
+				InitialScope = nil
+			end
+		end
+
+		-- If window focus changes, reset and disable scoping
+		if Scoping and Input.UserInputType.Name == 'Focus' then
+			if self.Scope == Scoping then
+				self:SetScope(InitialScope)
+			end
+			self:UpdateTarget(self.Scope, true)
+			Scoping = nil
+			InitialScope = nil
+		end
+
+		-- Pass all non-sunken input to next handler
+		return Enum.ContextActionResult.Pass
+	end
+
+	-- Enable scoping interface
+	ContextActionService:BindAction('BT: Scope', HandleScopeInput, false,
+		Enum.KeyCode.LeftAlt,
+		Enum.KeyCode.RightAlt,
+		Enum.KeyCode.Z,
+		Enum.KeyCode.F,
+		Enum.UserInputType.Focus
+	)
+
+	-- Disable scoping interface when tool disables
+	GetCore().Disabling:Connect(function ()
+		ContextActionService:UnbindAction('BT: Scope')
+	end)
+
+end
 
 function GetCore()
 	return require(script.Parent);
