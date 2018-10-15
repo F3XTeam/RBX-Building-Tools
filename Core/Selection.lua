@@ -66,7 +66,7 @@ function Selection.Add(Items, RegisterHistory)
 	for _, Item in pairs(Items) do
 
 		-- Make sure each item is valid and not already selected
-		if Core.IsSelectable(Item) and not Selection.ItemIndex[Item] then
+		if Item.Parent and (not Selection.ItemIndex[Item]) then
 			table.insert(SelectableItems, Item);
 		end;
 

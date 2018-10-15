@@ -362,6 +362,7 @@ function TargetingModule.CancelSelecting()
 end;
 
 function TargetingModule.FinishRectangleSelecting()
+	local Core = GetCore()
 
 	local RectangleSelecting = RectangleSelecting;
 	local RectangleSelectStart = RectangleSelectStart;
@@ -395,7 +396,7 @@ function TargetingModule.FinishRectangleSelecting()
 				local RightCheck = ScreenPoint.X <= EndPoint.X;
 				local TopCheck = ScreenPoint.Y >= StartPoint.Y;
 				local BottomCheck = ScreenPoint.Y <= EndPoint.Y;
-				if LeftCheck and RightCheck and TopCheck and BottomCheck then
+				if (LeftCheck and RightCheck and TopCheck and BottomCheck) and Core.IsSelectable(Part) then
 					local ScopeTarget = TargetingModule.FindTargetInScope(Part, TargetingModule.Scope)
 					SelectableItems[ScopeTarget] = true
 				end
