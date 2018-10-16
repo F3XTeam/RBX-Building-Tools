@@ -2,6 +2,8 @@ local Root = script.Parent.Parent
 local Libraries = Root:WaitForChild 'Libraries'
 local UI = Root:WaitForChild 'UI'
 
+local RunService = game:GetService("RunService")
+
 -- Libraries
 local Support = require(Libraries:WaitForChild 'SupportLibrary')
 local Roact = require(Libraries:WaitForChild 'Roact')
@@ -18,18 +20,18 @@ function LoadingSpinner:init()
 end
 
 function LoadingSpinner:didMount()
-    coroutine.wrap(function ()
-        self.Running = true
-        while self.Running and self.instance.current do
-            local Spinner = self.instance.current
-            Spinner.Rotation = (Spinner.Rotation + 12) % 360
-            wait(0.01)
-        end
-    end)()
+	coroutine.wrap(function()
+		self.Running = true
+		while self.Running and self.instance.current do
+			local Spinner = self.instance.current
+			Spinner.Rotation = (Spinner.Rotation + 12) % 360
+			RunService.RenderStepped:Wait()
+		end
+	end)()
 end
 
 function LoadingSpinner:willUnmount()
-    self.Running = nil
+	self.Running = nil
 end
 
 function LoadingSpinner:render()
