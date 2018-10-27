@@ -7,7 +7,7 @@ _G[Tool] = { Plugin = Plugin };
 -- Load tool completely before proceeding
 local Indicator = Tool:WaitForChild 'Loaded';
 while not Indicator.Value do
-	Indicator.Changed:wait();
+	Indicator.Changed:Wait();
 end;
 
 -- Initialize the core

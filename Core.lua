@@ -10,7 +10,7 @@ Mode = Plugin and 'Plugin' or 'Tool';
 -- Load tool completely
 local Indicator = Tool:WaitForChild 'Loaded';
 while not Indicator.Value do
-	Indicator.Changed:wait();
+	Indicator.Changed:Wait();
 end;
 
 -- Libraries

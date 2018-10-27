@@ -36,7 +36,7 @@ function Component.Start(Core)
 
 	-- Destroy notifications container on tool unequip
 	Spawn(function ()
-		Core.Disabling:wait();
+		Core.Disabling:Wait();
 		View:Destroy();
 	end);
 
