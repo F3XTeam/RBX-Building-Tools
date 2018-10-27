@@ -53,7 +53,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -66,7 +66,7 @@ function ClearConnection(ConnectionKey)
 
 	-- Disconnect the connection if it exists
 	if Connections[ConnectionKey] then
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -96,19 +96,19 @@ function ShowUI()
 
 	-- Add functionality to the pivot option switch
 	local PivotSwitch = RotateTool.UI.PivotOption;
-	PivotSwitch.Center.Button.MouseButton1Down:connect(function ()
+	PivotSwitch.Center.Button.MouseButton1Down:Connect(function ()
 		SetPivot('Center');
 	end);
-	PivotSwitch.Local.Button.MouseButton1Down:connect(function ()
+	PivotSwitch.Local.Button.MouseButton1Down:Connect(function ()
 		SetPivot('Local');
 	end);
-	PivotSwitch.Last.Button.MouseButton1Down:connect(function ()
+	PivotSwitch.Last.Button.MouseButton1Down:Connect(function ()
 		SetPivot('Last');
 	end);
 
 	-- Add functionality to the increment input
 	local IncrementInput = RotateTool.UI.IncrementOption.Increment.TextBox;
-	IncrementInput.FocusLost:connect(function (EnterPressed)
+	IncrementInput.FocusLost:Connect(function (EnterPressed)
 		RotateTool.Increment = tonumber(IncrementInput.Text) or RotateTool.Increment;
 		IncrementInput.Text = Support.Round(RotateTool.Increment, 4);
 	end);
@@ -117,19 +117,19 @@ function ShowUI()
 	local XInput = RotateTool.UI.Info.RotationInfo.X.TextBox;
 	local YInput = RotateTool.UI.Info.RotationInfo.Y.TextBox;
 	local ZInput = RotateTool.UI.Info.RotationInfo.Z.TextBox;
-	XInput.FocusLost:connect(function (EnterPressed)
+	XInput.FocusLost:Connect(function (EnterPressed)
 		local NewAngle = tonumber(XInput.Text);
 		if NewAngle then
 			SetAxisAngle('X', NewAngle);
 		end;
 	end);
-	YInput.FocusLost:connect(function (EnterPressed)
+	YInput.FocusLost:Connect(function (EnterPressed)
 		local NewAngle = tonumber(YInput.Text);
 		if NewAngle then
 			SetAxisAngle('Y', NewAngle);
 		end;
 	end);
-	ZInput.FocusLost:connect(function (EnterPressed)
+	ZInput.FocusLost:Connect(function (EnterPressed)
 		local NewAngle = tonumber(ZInput.Text);
 		if NewAngle then
 			SetAxisAngle('Z', NewAngle);
@@ -242,7 +242,7 @@ function AttachHandles(Part, Autofocus)
 
 	-- Enable autofocus if requested and not already on
 	if Autofocus and not Connections.AutofocusHandle then
-		Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
+		Connections.AutofocusHandle = Selection.FocusChanged:Connect(function ()
 			AttachHandles(Selection.Focus, true);
 		end);
 
@@ -273,7 +273,7 @@ function AttachHandles(Part, Autofocus)
 
 	local AreaPermissions;
 
-	Handles.MouseButton1Down:connect(function ()
+	Handles.MouseButton1Down:Connect(function ()
 
 		-- Prevent selection
 		Core.Targeting.CancelSelecting();
@@ -313,7 +313,7 @@ function AttachHandles(Part, Autofocus)
 	-- Update parts when the handles are moved
 	------------------------------------------
 
-	Handles.MouseDrag:connect(function (Axis, Rotation)
+	Handles.MouseDrag:Connect(function (Axis, Rotation)
 
 		-- Only rotate if handle is enabled
 		if not HandleRotating then
@@ -495,7 +495,7 @@ function BindShortcutKeys()
 	-- Enables useful shortcut keys for this tool
 
 	-- Track user input while this tool is equipped
-	table.insert(Connections, UserInputService.InputBegan:connect(function (InputInfo, GameProcessedEvent)
+	table.insert(Connections, UserInputService.InputBegan:Connect(function (InputInfo, GameProcessedEvent)
 
 		-- Make sure this is an intentional event
 		if GameProcessedEvent then
@@ -585,7 +585,7 @@ function StartSnapping()
 	end);
 
 	-- Select the snapped pivot point upon clicking
-	Connections.SelectSnappedPivot = Core.Mouse.Button1Down:connect(function ()
+	Connections.SelectSnappedPivot = Core.Mouse.Button1Down:Connect(function ()
 
 		-- Disable unintentional selection
 		Core.Targeting.CancelSelecting();

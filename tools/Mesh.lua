@@ -40,7 +40,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -98,15 +98,15 @@ function ShowUI()
 	local XScaleInput = MeshTool.UI.ScaleOption.XInput.TextBox;
 	local YScaleInput = MeshTool.UI.ScaleOption.YInput.TextBox;
 	local ZScaleInput = MeshTool.UI.ScaleOption.ZInput.TextBox;
-	XScaleInput.FocusLost:connect(function (EnterPressed)
+	XScaleInput.FocusLost:Connect(function (EnterPressed)
 		local NewScale = tonumber(XScaleInput.Text);
 		SetAxisScale('X', NewScale);
 	end);
-	YScaleInput.FocusLost:connect(function (EnterPressed)
+	YScaleInput.FocusLost:Connect(function (EnterPressed)
 		local NewScale = tonumber(YScaleInput.Text);
 		SetAxisScale('Y', NewScale);
 	end);
-	ZScaleInput.FocusLost:connect(function (EnterPressed)
+	ZScaleInput.FocusLost:Connect(function (EnterPressed)
 		local NewScale = tonumber(ZScaleInput.Text);
 		SetAxisScale('Z', NewScale);
 	end);
@@ -115,31 +115,31 @@ function ShowUI()
 	local XOffsetInput = MeshTool.UI.OffsetOption.XInput.TextBox;
 	local YOffsetInput = MeshTool.UI.OffsetOption.YInput.TextBox;
 	local ZOffsetInput = MeshTool.UI.OffsetOption.ZInput.TextBox;
-	XOffsetInput.FocusLost:connect(function (EnterPressed)
+	XOffsetInput.FocusLost:Connect(function (EnterPressed)
 		local NewOffset = tonumber(XOffsetInput.Text);
 		SetAxisOffset('X', NewOffset);
 	end);
-	YOffsetInput.FocusLost:connect(function (EnterPressed)
+	YOffsetInput.FocusLost:Connect(function (EnterPressed)
 		local NewOffset = tonumber(YOffsetInput.Text);
 		SetAxisOffset('Y', NewOffset);
 	end);
-	ZOffsetInput.FocusLost:connect(function (EnterPressed)
+	ZOffsetInput.FocusLost:Connect(function (EnterPressed)
 		local NewOffset = tonumber(ZOffsetInput.Text);
 		SetAxisOffset('Z', NewOffset);
 	end);
 
 	-- Enable the mesh ID input
-	MeshIdInput.FocusLost:connect(function (EnterPressed)
+	MeshIdInput.FocusLost:Connect(function (EnterPressed)
 		SetMeshId(ParseAssetId(MeshIdInput.Text));
 	end);
 
 	-- Enable the texture ID input
-	TextureIdInput.FocusLost:connect(function (EnterPressed)
+	TextureIdInput.FocusLost:Connect(function (EnterPressed)
 		SetTextureId(ParseAssetId(TextureIdInput.Text));
 	end);
 
 	-- Enable the vertex color/tint option
-	VertexColorInput.MouseButton1Click:connect(function ()
+	VertexColorInput.MouseButton1Click:Connect(function ()
 		Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
 			VectorToColor(Support.IdentifyCommonProperty(GetMeshes(), 'VertexColor')) or Color3.new(1, 1, 1),
 			function (Color) SetProperty('VertexColor', ColorToVector(Color)) end,
@@ -148,10 +148,10 @@ function ShowUI()
 	end);
 
 	-- Enable the mesh adding button
-	AddButton.Button.MouseButton1Click:connect(function ()
+	AddButton.Button.MouseButton1Click:Connect(function ()
 		AddMeshes();
 	end);
-	RemoveButton.Button.MouseButton1Click:connect(function ()
+	RemoveButton.Button.MouseButton1Click:Connect(function ()
 		RemoveMeshes();
 	end);
 

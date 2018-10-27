@@ -18,10 +18,10 @@ function TargetingModule.EnableTargeting()
 	Mouse = Core.Mouse;
 
 	-- Listen for target changes
-	Connections.Targeting = Mouse.Move:connect(TargetingModule.UpdateTarget);
+	Connections.Targeting = Mouse.Move:Connect(TargetingModule.UpdateTarget);
 
 	-- Listen for target clicks
-	Connections.Selecting = Mouse.Button1Up:connect(TargetingModule.SelectTarget);
+	Connections.Selecting = Mouse.Button1Up:Connect(TargetingModule.SelectTarget);
 
 	-- Listen for sibling selection middle clicks
 	Connections.SiblingSelecting = Support.AddUserInputListener('Began', 'MouseButton3', true, function ()
@@ -29,14 +29,14 @@ function TargetingModule.EnableTargeting()
 	end);
 
 	-- Listen for 2D selection
-	Connections.RectSelectionStarted = Mouse.Button1Down:connect(TargetingModule.StartRectangleSelecting);
+	Connections.RectSelectionStarted = Mouse.Button1Down:Connect(TargetingModule.StartRectangleSelecting);
 	Connections.RectSelectionFinished = Support.AddUserInputListener('Ended', 'MouseButton1', true, TargetingModule.FinishRectangleSelecting);
 
 	-- Hide target box when tool is unequipped
-	Connections.HideTargetBoxOnDisable = Core.Disabling:connect(TargetingModule.HighlightTarget);
+	Connections.HideTargetBoxOnDisable = Core.Disabling:Connect(TargetingModule.HighlightTarget);
 
 	-- Cancel any ongoing selection when tool is unequipped
-	Connections.CancelSelectionOnDisable = Core.Disabling:connect(TargetingModule.CancelRectangleSelecting);
+	Connections.CancelSelectionOnDisable = Core.Disabling:Connect(TargetingModule.CancelRectangleSelecting);
 
 end;
 
@@ -148,7 +148,7 @@ function TargetingModule.StartRectangleSelecting()
 	RectangleSelectStart = Vector2.new(Mouse.X, Mouse.Y);
 
 	-- Track mouse while rectangle selecting
-	GetCore().Connections.WatchRectangleSelection = Mouse.Move:connect(function ()
+	GetCore().Connections.WatchRectangleSelection = Mouse.Move:Connect(function ()
 
 		-- If rectangle selecting, update rectangle
 		if RectangleSelecting then
@@ -213,7 +213,7 @@ function TargetingModule.CancelRectangleSelecting()
 	-- Clear rectangle selection watcher
 	local Connections = GetCore().Connections;
 	if Connections.WatchRectangleSelection then
-		Connections.WatchRectangleSelection:disconnect();
+		Connections.WatchRectangleSelection:Disconnect();
 		Connections.WatchRectangleSelection = nil;
 	end;
 
@@ -329,7 +329,7 @@ function TargetingModule.PrismSelect()
 
 end;
 
-TargetingModule.TargetChanged:connect(function (Target)
+TargetingModule.TargetChanged:Connect(function (Target)
 
 	-- Get core API
 	local Core = GetCore();

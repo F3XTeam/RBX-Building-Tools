@@ -186,7 +186,7 @@ function AddStaticPartMonitor(Part)
 	end;
 
 	-- Start monitoring part for changes
-	StaticPartMonitors[Part] = Part.Changed:connect(function (Property)
+	StaticPartMonitors[Part] = Part.Changed:Connect(function (Property)
 
 		-- Trigger static extent recalculations on position or size changes
 		if Property == 'CFrame' or Property == 'Size' then
@@ -212,7 +212,7 @@ function RemoveStaticParts(Parts)
 
 		-- Clean up the part's change monitors
 		if StaticPartMonitors[Part] then
-			StaticPartMonitors[Part]:disconnect();
+			StaticPartMonitors[Part]:Disconnect();
 			StaticPartMonitors[Part] = nil;
 		end;
 
@@ -238,7 +238,7 @@ function StartAggregatingStaticParts()
 	end;
 
 	-- Watch newly selected parts
-	table.insert(StaticPartAggregators, Core.Selection.ItemsAdded:connect(function (Parts)
+	table.insert(StaticPartAggregators, Core.Selection.ItemsAdded:Connect(function (Parts)
 
 		-- Add qualifying parts to static parts index
 		AddStaticParts(Parts);
@@ -251,11 +251,11 @@ function StartAggregatingStaticParts()
 	end));
 
 	-- Remove deselected parts from static parts index
-	table.insert(StaticPartAggregators, Core.Selection.ItemsRemoved:connect(function (Parts)
+	table.insert(StaticPartAggregators, Core.Selection.ItemsRemoved:Connect(function (Parts)
 		RemoveStaticParts(Parts);
 		for _, Part in pairs(Parts) do
 			if PotentialPartMonitors[Part] then
-				PotentialPartMonitors[Part]:disconnect();
+				PotentialPartMonitors[Part]:Disconnect();
 				PotentialPartMonitors[Part] = nil;
 			end;
 		end;
@@ -280,7 +280,7 @@ function AddPotentialPartMonitor(Part)
 	end;
 
 	-- Create anchored state change monitor
-	PotentialPartMonitors[Part] = Part.Changed:connect(function (Property)
+	PotentialPartMonitors[Part] = Part.Changed:Connect(function (Property)
 		if Property == 'Anchored' and Part.Anchored then
 			AddStaticParts { Part };
 		end;
@@ -293,13 +293,13 @@ function BoundingBoxModule.PauseMonitoring()
 
 	-- Disconnect all potential part monitors
 	for Part, Monitor in pairs(PotentialPartMonitors) do
-		Monitor:disconnect();
+		Monitor:Disconnect();
 		PotentialPartMonitors[Part] = nil;
 	end;
 
 	-- Disconnect all static part monitors
 	for Part, Monitor in pairs(StaticPartMonitors) do
-		Monitor:disconnect();
+		Monitor:Disconnect();
 		StaticPartMonitors[Part] = nil;
 	end;
 
@@ -341,19 +341,19 @@ function StopAggregatingStaticParts()
 
 	-- Disconnect all aggregators
 	for AggregatorKey, Aggregator in pairs(StaticPartAggregators) do
-		Aggregator:disconnect();
+		Aggregator:Disconnect();
 		StaticPartAggregators[AggregatorKey] = nil;
 	end;
 
 	-- Remove all static part monitors
 	for MonitorKey, Monitor in pairs(StaticPartMonitors) do
-		Monitor:disconnect();
+		Monitor:Disconnect();
 		StaticPartMonitors[MonitorKey] = nil;
 	end;
 
 	-- Remove all potential part monitors
 	for MonitorKey, Monitor in pairs(PotentialPartMonitors) do
-		Monitor:disconnect();
+		Monitor:Disconnect();
 		PotentialPartMonitors[MonitorKey] = nil;
 	end;
 

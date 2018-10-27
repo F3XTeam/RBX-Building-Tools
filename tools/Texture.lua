@@ -49,7 +49,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -88,10 +88,10 @@ function ShowUI()
 	local RepeatYInput = UI.RepeatOption.YInput.TextBox;
 
 	-- Enable the texture type switch
-	DecalModeButton.MouseButton1Click:connect(function ()
+	DecalModeButton.MouseButton1Click:Connect(function ()
 		SetTextureType 'Decal';
 	end);
-	TextureModeButton.MouseButton1Click:connect(function ()
+	TextureModeButton.MouseButton1Click:Connect(function ()
 		SetTextureType 'Texture';
 	end);
 
@@ -102,7 +102,7 @@ function ShowUI()
 	end);
 
 	-- Enable the image ID input
-	ImageIdInput.FocusLost:connect(function (EnterPressed)
+	ImageIdInput.FocusLost:Connect(function (EnterPressed)
 		SetTextureId(TextureTool.Type, TextureTool.Face, ParseAssetId(ImageIdInput.Text));
 	end);
 
@@ -112,10 +112,10 @@ function ShowUI()
 	SyncInputToProperty('StudsPerTileV', RepeatYInput);
 
 	-- Enable the texture adding button
-	AddButton.Button.MouseButton1Click:connect(function ()
+	AddButton.Button.MouseButton1Click:Connect(function ()
 		AddTextures(TextureTool.Type, TextureTool.Face);
 	end);
-	RemoveButton.Button.MouseButton1Click:connect(function ()
+	RemoveButton.Button.MouseButton1Click:Connect(function ()
 		RemoveTextures(TextureTool.Type, TextureTool.Face);
 	end);
 
@@ -128,7 +128,7 @@ function SyncInputToProperty(Property, Input)
 	-- Enables `Input` to change the given property
 
 	-- Enable inputs
-	Input.FocusLost:connect(function ()
+	Input.FocusLost:Connect(function ()
 		SetProperty(TextureTool.Type, TextureTool.Face, Property, tonumber(Input.Text));
 	end);
 
@@ -139,12 +139,12 @@ function EnableSurfaceClickSelection()
 
 	-- Clear out any existing connection
 	if Connections.SurfaceClickSelection then
-		Connections.SurfaceClickSelection:disconnect();
+		Connections.SurfaceClickSelection:Disconnect();
 		Connections.SurfaceClickSelection = nil;
 	end;
 
 	-- Add the new click connection
-	Connections.SurfaceClickSelection = UserInputService.InputEnded:connect(function (Input, GameProcessedEvent)
+	Connections.SurfaceClickSelection = UserInputService.InputEnded:Connect(function (Input, GameProcessedEvent)
 		if not GameProcessedEvent and Input.UserInputType == Enum.UserInputType.MouseButton1 and Selection.IsSelected(Core.Mouse.Target) then
 			SetFace(Core.Mouse.TargetSurface);
 		end;

@@ -40,7 +40,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -134,7 +134,7 @@ function SyncInputToProperty(Property, Input)
 	-- Enables `Input` to change the given property
 
 	-- Enable inputs
-	Input.FocusLost:connect(function ()
+	Input.FocusLost:Connect(function ()
 		SetProperty(Property, tonumber(Input.Text));
 	end);
 

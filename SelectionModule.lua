@@ -55,7 +55,7 @@ function Selection.Add(Items, RegisterHistory)
 		Selection.ItemIndex[Item] = true;
 
 		-- Deselect items that are destroyed
-		Listeners[Item] = Item.AncestryChanged:connect(function (Object, Parent)
+		Listeners[Item] = Item.AncestryChanged:Connect(function (Object, Parent)
 			if Parent == nil then
 				Selection.Remove({ Item });
 			end;
@@ -103,7 +103,7 @@ function Selection.Remove(Items, RegisterHistory)
 		Selection.ItemIndex[Item] = nil;
 
 		-- Stop tracking item's parent
-		Listeners[Item]:disconnect();
+		Listeners[Item]:Disconnect();
 		Listeners[Item] = nil;
 
 	end;
@@ -184,7 +184,7 @@ function FocusOnLastSelectedPart()
 end;
 
 -- Listen for changes to the selection and keep the focus updated
-Selection.Changed:connect(FocusOnLastSelectedPart);
+Selection.Changed:Connect(FocusOnLastSelectedPart);
 
 function GetCore()
 	-- Returns the core API
@@ -302,7 +302,7 @@ function Selection.EnableOutlines()
 	end;
 
 	-- Hide outlines when tool is disabled
-	GetCore().Connections.HideOutlinesOnDisable = GetCore().Disabling:connect(Selection.HideOutlines);
+	GetCore().Connections.HideOutlinesOnDisable = GetCore().Disabling:Connect(Selection.HideOutlines);
 
 end;
 

@@ -40,7 +40,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -341,17 +341,17 @@ function EnableOptionsUI(SettingsUI)
 	end;
 
 	-- Enable decoration addition button
-	AddButton.MouseButton1Click:connect(function ()
+	AddButton.MouseButton1Click:Connect(function ()
 		AddDecorations(DecorationType);
 	end);
 
 	-- Enable decoration removal button
-	RemoveButton.MouseButton1Click:connect(function ()
+	RemoveButton.MouseButton1Click:Connect(function ()
 		RemoveDecorations(DecorationType);
 	end);
 
 	-- Enable decoration options UI show button
-	ShowButton.MouseButton1Click:connect(function ()
+	ShowButton.MouseButton1Click:Connect(function ()
 		OpenOptions(DecorationType);
 	end);
 
@@ -481,7 +481,7 @@ function SyncInputToProperty(Property, DecorationType, InputType, Input)
 
 	-- Enable inputs
 	if InputType == 'Color' then
-		Input.MouseButton1Click:connect(function ()
+		Input.MouseButton1Click:Connect(function ()
 			Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
 				Support.IdentifyCommonProperty(GetDecorations(DecorationType), Property) or Color3.new(0, 0, 1),
 				function (Color) SetProperty(DecorationType, Property, Color) end,
@@ -491,7 +491,7 @@ function SyncInputToProperty(Property, DecorationType, InputType, Input)
 
 	-- Enable number inputs
 	elseif InputType == 'Number' then
-		Input.FocusLost:connect(function ()
+		Input.FocusLost:Connect(function ()
 			SetProperty(DecorationType, Property, tonumber(Input.Text));
 		end);
 

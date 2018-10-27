@@ -280,7 +280,7 @@ function showGUI( message, ok_text )
 		Size = UDim2.new( 0, 256, 0, 256 );
 		ZIndex = 2;
 	};
-	GUI.Changed:connect( function ( property )
+	GUI.Changed:Connect( function ( property )
 		if property == 'AbsoluteSize' then
 			Logo.Position = UDim2.new( 0, GUI.AbsoluteSize.x / 2 - 128, 0, 0 );
 		end;
@@ -299,7 +299,7 @@ function hideGUI()
 
 end;
 
-Launcher.Click:connect( function ()
+Launcher.Click:Connect( function ()
 	if SoloMode then
 		showGUI( 'Use regular Studio to import.', 'Sure' );
 	else

@@ -47,7 +47,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -109,7 +109,7 @@ function EnableClickCreation()
 	-- Allows the user to click anywhere and create a new part
 
 	-- Listen for clicks
-	Connections.ClickCreationListener = UserInputService.InputBegan:connect(function (Input, GameProcessedEvent)
+	Connections.ClickCreationListener = UserInputService.InputBegan:Connect(function (Input, GameProcessedEvent)
 
 		-- Make sure this is an intentional event
 		if GameProcessedEvent then

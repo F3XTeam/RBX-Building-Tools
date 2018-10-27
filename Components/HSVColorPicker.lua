@@ -106,7 +106,7 @@ function StopTrackingMouse()
 	end;
 
 	-- Disable any current tracking
-	Connections.MouseTracking:disconnect();
+	Connections.MouseTracking:Disconnect();
 	Connections.MouseTracking = nil;
 
 end;
@@ -147,7 +147,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 

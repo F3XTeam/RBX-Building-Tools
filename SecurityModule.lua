@@ -22,12 +22,12 @@ Security.AllowedLocations = { Workspace };
 
 -- Track the enabling of areas
 Security.Areas = Workspace:FindFirstChild('[Private Building Areas]');
-Workspace.ChildAdded:connect(function (Child)
+Workspace.ChildAdded:Connect(function (Child)
 	if not Security.Areas and Child.Name == '[Private Building Areas]' then
 		Security.Areas = Child;
 	end;
 end);
-Workspace.ChildRemoved:connect(function (Child)
+Workspace.ChildRemoved:Connect(function (Child)
 	if Security.Areas and Child.Name == '[Private Building Areas]' then
 		Security.Areas = nil;
 	end;

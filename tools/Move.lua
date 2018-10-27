@@ -59,7 +59,7 @@ function ClearConnections()
 	-- Clears out temporary connections
 
 	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -72,7 +72,7 @@ function ClearConnection(ConnectionKey)
 
 	-- Disconnect the connection if it exists
 	if Connections[ConnectionKey] then
-		Connection:disconnect();
+		Connection:Disconnect();
 		Connections[ConnectionKey] = nil;
 	end;
 
@@ -102,19 +102,19 @@ function ShowUI()
 
 	-- Add functionality to the axes option switch
 	local AxesSwitch = MoveTool.UI.AxesOption;
-	AxesSwitch.Global.Button.MouseButton1Down:connect(function ()
+	AxesSwitch.Global.Button.MouseButton1Down:Connect(function ()
 		SetAxes('Global');
 	end);
-	AxesSwitch.Local.Button.MouseButton1Down:connect(function ()
+	AxesSwitch.Local.Button.MouseButton1Down:Connect(function ()
 		SetAxes('Local');
 	end);
-	AxesSwitch.Last.Button.MouseButton1Down:connect(function ()
+	AxesSwitch.Last.Button.MouseButton1Down:Connect(function ()
 		SetAxes('Last');
 	end);
 
 	-- Add functionality to the increment input
 	local IncrementInput = MoveTool.UI.IncrementOption.Increment.TextBox;
-	IncrementInput.FocusLost:connect(function (EnterPressed)
+	IncrementInput.FocusLost:Connect(function (EnterPressed)
 		MoveTool.Increment = tonumber(IncrementInput.Text) or MoveTool.Increment;
 		IncrementInput.Text = Support.Round(MoveTool.Increment, 4);
 	end);
@@ -123,19 +123,19 @@ function ShowUI()
 	local XInput = MoveTool.UI.Info.Center.X.TextBox;
 	local YInput = MoveTool.UI.Info.Center.Y.TextBox;
 	local ZInput = MoveTool.UI.Info.Center.Z.TextBox;
-	XInput.FocusLost:connect(function (EnterPressed)
+	XInput.FocusLost:Connect(function (EnterPressed)
 		local NewPosition = tonumber(XInput.Text);
 		if NewPosition then
 			SetAxisPosition('X', NewPosition);
 		end;
 	end);
-	YInput.FocusLost:connect(function (EnterPressed)
+	YInput.FocusLost:Connect(function (EnterPressed)
 		local NewPosition = tonumber(YInput.Text);
 		if NewPosition then
 			SetAxisPosition('Y', NewPosition);
 		end;
 	end);
-	ZInput.FocusLost:connect(function (EnterPressed)
+	ZInput.FocusLost:Connect(function (EnterPressed)
 		local NewPosition = tonumber(ZInput.Text);
 		if NewPosition then
 			SetAxisPosition('Z', NewPosition);
@@ -258,7 +258,7 @@ function AttachHandles(Part, Autofocus)
 
 	-- Enable autofocus if requested and not already on
 	if Autofocus and not Connections.AutofocusHandle then
-		Connections.AutofocusHandle = Selection.FocusChanged:connect(function ()
+		Connections.AutofocusHandle = Selection.FocusChanged:Connect(function ()
 			AttachHandles(Selection.Focus, true);
 		end);
 
@@ -289,7 +289,7 @@ function AttachHandles(Part, Autofocus)
 
 	local AreaPermissions;
 
-	Handles.MouseButton1Down:connect(function ()
+	Handles.MouseButton1Down:Connect(function ()
 
 		-- Prevent selection
 		Core.Targeting.CancelSelecting();
@@ -320,7 +320,7 @@ function AttachHandles(Part, Autofocus)
 	-- Update parts when the handles are moved
 	------------------------------------------
 
-	Handles.MouseDrag:connect(function (Face, Distance)
+	Handles.MouseDrag:Connect(function (Face, Distance)
 
 		-- Only drag if handle is enabled
 		if not HandleDragging then
@@ -444,7 +444,7 @@ function BindShortcutKeys()
 	-- Enables useful shortcut keys for this tool
 
 	-- Track user input while this tool is equipped
-	table.insert(Connections, UserInputService.InputBegan:connect(function (InputInfo, GameProcessedEvent)
+	table.insert(Connections, UserInputService.InputBegan:Connect(function (InputInfo, GameProcessedEvent)
 
 		-- Make sure this is an intentional event
 		if GameProcessedEvent then
@@ -522,7 +522,7 @@ function BindShortcutKeys()
 	end));
 
 	-- Track ending user input while this tool is equipped
-	table.insert(Connections, UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
+	table.insert(Connections, UserInputService.InputEnded:Connect(function (InputInfo, GameProcessedEvent)
 
 		-- Make sure this is an intentional event
 		if GameProcessedEvent then
@@ -756,7 +756,7 @@ function EnableDragging()
 	-- Enables part dragging
 
 	-- Pay attention to when the user intends to start dragging
-	Connections.DragStart = Core.Mouse.Button1Down:connect(function ()
+	Connections.DragStart = Core.Mouse.Button1Down:Connect(function ()
 
 		-- Get mouse target
 		local TargetPart = Core.Mouse.Target;
@@ -784,7 +784,7 @@ function EnableDragging()
 		end;
 
 		-- Watch for potential dragging
-		Connections.WatchForDrag = Core.Mouse.Move:connect(function ()
+		Connections.WatchForDrag = Core.Mouse.Move:Connect(function ()
 
 			-- Trigger dragging if the mouse is moved over 2 pixels
 			if DragStart and (Vector2.new(Core.Mouse.X, Core.Mouse.Y) - DragStart).magnitude >= 2 then
@@ -805,7 +805,7 @@ function EnableDragging()
 end;
 
 -- Catch whenever the user finishes dragging
-UserInputService.InputEnded:connect(function (InputInfo, GameProcessedEvent)
+UserInputService.InputEnded:Connect(function (InputInfo, GameProcessedEvent)
 
 	-- Make sure this was button 1 being released
 	if InputInfo.UserInputType ~= Enum.UserInputType.MouseButton1 then
@@ -918,7 +918,7 @@ function StartDragging(BasePart, InitialState, BasePoint)
 
 	-- Prepare snapping in case it is enabled, and make sure to override its default target selection
 	SnapTracking.TargetBlacklist = Selection.Items;
-	Connections.DragSnapping = PointSnapped:connect(function (SnappedPoint)
+	Connections.DragSnapping = PointSnapped:Connect(function (SnappedPoint)
 
 		-- Align the selection's base point to the snapped point
 		local Rotation = SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p);
@@ -950,7 +950,7 @@ function StartDragging(BasePart, InitialState, BasePoint)
 	end;
 
 	-- Start up the dragging action
-	Connections.Drag = Core.Mouse.Move:connect(function ()
+	Connections.Drag = Core.Mouse.Move:Connect(function ()
 		DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions);
 	end);
 
