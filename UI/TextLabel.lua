@@ -73,6 +73,9 @@ function TextLabel:getSize()
 end
 
 function TextLabel:updateSize()
+    if not self.Mounted then
+        return
+    end
 
     -- Calculate new size
     local Size = self:getSize()
@@ -90,7 +93,6 @@ function TextLabel:updateSize()
             TextSize = TextSize
         }
     end
-
 end
 
 function TextLabel:init()
@@ -144,7 +146,18 @@ function TextLabel:render()
     props.Height = nil
     props.Bold = nil
     props.TextColor = nil
+    props.AspectRatio = nil
     props[Roact.Children] = nil
+
+    -- Include aspect ratio constraint if specified
+    if self.props.AspectRatio then
+        local Constraint = new('UIAspectRatioConstraint', {
+            AspectRatio = self.props.AspectRatio
+        })
+
+        -- Insert constraint into children
+        children.AspectRatio = Constraint
+    end
 
     -- Add a bold layer if specified
     if self.props.Bold then
@@ -163,7 +176,12 @@ end
 
 function TextLabel:didMount()
     self.Updating = nil
+    self.Mounted = true
     self:updateSize()
+end
+
+function TextLabel:willUnmount()
+    self.Mounted = nil
 end
 
 function TextLabel:didUpdate(previousProps, previousState)

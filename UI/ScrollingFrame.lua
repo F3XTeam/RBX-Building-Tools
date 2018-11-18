@@ -39,55 +39,23 @@ function ScrollingFrame:render()
 
     -- Include list layout if specified
     if props.Layout == 'List' then
-
-        -- Determine dynamic dimensions
-        local DynamicWidth = props.Size == 'WRAP_CONTENT' or
-            props.Width == 'WRAP_CONTENT'
-        local DynamicHeight = props.Size == 'WRAP_CONTENT' or
-            props.Height == 'WRAP_CONTENT'
-        local DynamicSize = DynamicWidth or DynamicHeight
-        local SizeCallback = DynamicSize and function (rbx)
-            self:SetContentSize(rbx.AbsoluteContentSize)
-        end
-
-        -- Determine dynamic canvas dimensions
-        local DynamicCanvasWidth = props.CanvasSize == 'WRAP_CONTENT' or
-            props.CanvasWidth == 'WRAP_CONTENT'
-        local DynamicCanvasHeight = props.CanvasSize == 'WRAP_CONTENT' or
-            props.CanvasHeight == 'WRAP_CONTENT'
-        local DynamicCanvasSize = DynamicCanvasWidth or DynamicCanvasHeight
-        local SizeCallback = SizeCallback or (DynamicCanvasSize and function (rbx)
-            self:SetContentSize(rbx.AbsoluteContentSize)
-        end)
-
-        -- Create layout
         local Layout = new('UIListLayout', {
             FillDirection = props.LayoutDirection,
             Padding = props.LayoutPadding,
             HorizontalAlignment = props.HorizontalAlignment,
             VerticalAlignment = props.VerticalAlignment,
             SortOrder = props.SortOrder or 'LayoutOrder',
-            [Roact.Change.AbsoluteContentSize] = SizeCallback or nil
+            [Roact.Ref] = function (rbx)
+                self:UpdateContentSize(rbx)
+            end,
+            [Roact.Change.AbsoluteContentSize] = function (rbx)
+                self:UpdateContentSize(rbx)
+            end
         })
 
-        -- Update size based on content if dynamic
-        local ContentSize = state.ContentSize
-        if DynamicSize and ContentSize then
-            props.Size = UDim2.new(
-                DynamicWidth and UDim.new(0, ContentSize.X) or
-                    (props.Width or self.props.Size.X),
-                DynamicHeight and UDim.new(0, ContentSize.Y) or
-                    (props.Height or self.props.Size.Y)
-            )
-        end
-        if DynamicCanvasSize and ContentSize then
-            props.CanvasSize = UDim2.new(
-                DynamicCanvasWidth and UDim.new(0, ContentSize.X) or
-                    (props.CanvasWidth or self.props.CanvasSize.X),
-                DynamicCanvasHeight and UDim.new(0, ContentSize.Y) or
-                    (props.CanvasHeight or self.props.CanvasSize.Y)
-            )
-        end
+        -- Update size
+        props.Size = self:GetSize()
+        props.CanvasSize = self:GetCanvasSize()
 
         -- Insert layout into children
         props[Roact.Children] = Support.Merge(
@@ -114,8 +82,52 @@ function ScrollingFrame:render()
 
 end
 
-function ScrollingFrame:SetContentSize(ContentSize)
-    self:setState { ContentSize = ContentSize }
+function ScrollingFrame:GetSize(ContentSize)
+    local props = self.props
+
+    -- Determine dynamic dimensions
+    local DynamicWidth = props.Size == 'WRAP_CONTENT' or
+        props.Width == 'WRAP_CONTENT'
+    local DynamicHeight = props.Size == 'WRAP_CONTENT' or
+        props.Height == 'WRAP_CONTENT'
+    local DynamicSize = DynamicWidth or DynamicHeight
+    
+    -- Calculate size based on content if dynamic
+    return UDim2.new(
+        (ContentSize and DynamicWidth) and UDim.new(0, ContentSize.X) or
+            (typeof(props.Width) == 'UDim' and props.Width or props.Size.X),
+        (ContentSize and DynamicHeight) and UDim.new(0, ContentSize.Y) or
+            (typeof(props.Height) == 'UDim' and props.Height or props.Size.Y)
+    )
+end
+
+function ScrollingFrame:GetCanvasSize(ContentSize)
+    local props = self.props
+
+    -- Determine dynamic canvas dimensions
+    local DynamicCanvasWidth = props.CanvasSize == 'WRAP_CONTENT' or
+        props.CanvasWidth == 'WRAP_CONTENT'
+    local DynamicCanvasHeight = props.CanvasSize == 'WRAP_CONTENT' or
+        props.CanvasHeight == 'WRAP_CONTENT'
+    local DynamicCanvasSize = DynamicCanvasWidth or DynamicCanvasHeight
+
+    -- Calculate size based on content if dynamic
+    return UDim2.new(
+        (ContentSize and DynamicCanvasWidth) and UDim.new(0, ContentSize.X) or
+            (typeof(props.CanvasWidth) == 'UDim' and props.CanvasWidth or props.CanvasSize.X),
+        (ContentSize and DynamicCanvasHeight) and UDim.new(0, ContentSize.Y) or
+            (typeof(props.CanvasHeight) == 'UDim' and props.CanvasHeight or props.CanvasSize.Y)
+    )
+end
+
+function ScrollingFrame:UpdateContentSize(Layout)
+    if not (Layout and Layout.Parent) then
+        return
+    end
+
+    -- Set container size based on content
+    Layout.Parent.Size = self:GetSize(Layout.AbsoluteContentSize)
+    Layout.Parent.CanvasSize = self:GetCanvasSize(Layout.AbsoluteContentSize)
 end
 
 return ScrollingFrame

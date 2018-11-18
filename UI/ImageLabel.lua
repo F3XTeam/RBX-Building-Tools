@@ -39,42 +39,27 @@ function ImageLabel:render()
 
     -- Include list layout if specified
     if props.Layout == 'List' then
-
-        -- Determine dynamic dimensions
-        local DynamicWidth = props.Size == 'WRAP_CONTENT' or
-            props.Width == 'WRAP_CONTENT'
-        local DynamicHeight = props.Size == 'WRAP_CONTENT' or
-            props.Height == 'WRAP_CONTENT'
-        local DynamicSize = DynamicWidth or DynamicHeight
-        local SizeCallback = DynamicSize and function (rbx)
-            self:SetContentSize(rbx.AbsoluteContentSize)
-        end
-
-        -- Create layout
         local Layout = new('UIListLayout', {
             FillDirection = props.LayoutDirection,
             Padding = props.LayoutPadding,
             HorizontalAlignment = props.HorizontalAlignment,
             VerticalAlignment = props.VerticalAlignment,
             SortOrder = props.SortOrder or 'LayoutOrder',
-            [Roact.Change.AbsoluteContentSize] = SizeCallback or nil
+            [Roact.Ref] = function (rbx)
+                self:UpdateContentSize(rbx)
+            end,
+            [Roact.Change.AbsoluteContentSize] = function (rbx)
+                self:UpdateContentSize(rbx)
+            end
         })
 
-        -- Update size based on content if dynamic
-        local ContentSize = state.ContentSize
-        if DynamicSize and ContentSize then
-            props.Size = UDim2.new(
-                DynamicWidth and UDim.new(0, ContentSize.X) or
-                    (props.Width or self.props.Size.X),
-                DynamicHeight and UDim.new(0, ContentSize.Y) or
-                    (props.Height or self.props.Size.Y)
-            )
-        end
+        -- Update size
+        props.Size = self:GetSize()
 
         -- Insert layout into children
         props[Roact.Children] = Support.Merge(
             { Layout = Layout },
-            props[Roact.Children] or {}
+            props[Roact.Children]
         )
     end
 
@@ -91,6 +76,8 @@ function ImageLabel:render()
     props.LayoutPadding = nil
     props.HorizontalAlignment = nil
     props.VerticalAlignment = nil
+    props.HorizontalPadding = nil
+    props.VerticalPadding = nil
     props.SortOrder = nil
     props.Width = nil
     props.Height = nil
@@ -101,8 +88,38 @@ function ImageLabel:render()
 
 end
 
-function ImageLabel:SetContentSize(ContentSize)
-    self:setState { ContentSize = ContentSize }
+function ImageLabel:GetSize(ContentSize)
+    local props = self.props
+    
+    -- Determine dynamic dimensions
+    local DynamicWidth = props.Size == 'WRAP_CONTENT' or
+        props.Width == 'WRAP_CONTENT'
+    local DynamicHeight = props.Size == 'WRAP_CONTENT' or
+        props.Height == 'WRAP_CONTENT'
+    local DynamicSize = DynamicWidth or DynamicHeight
+
+    -- Get padding from props
+    local Padding = UDim2.new(
+        0, props.HorizontalPadding or 0,
+        0, props.VerticalPadding or 0
+    )
+    
+    -- Calculate size based on content if dynamic
+    return Padding + UDim2.new(
+        (ContentSize and DynamicWidth) and UDim.new(0, ContentSize.X) or
+            (typeof(props.Width) == 'UDim' and props.Width or props.Size.X),
+        (ContentSize and DynamicHeight) and UDim.new(0, ContentSize.Y) or
+            (typeof(props.Height) == 'UDim' and props.Height or props.Size.Y)
+    )
+end
+
+function ImageLabel:UpdateContentSize(Layout)
+    if not (Layout and Layout.Parent) then
+        return
+    end
+
+    -- Set container size based on content
+    Layout.Parent.Size = self:GetSize(Layout.AbsoluteContentSize)
 end
 
 return ImageLabel

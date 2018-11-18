@@ -34,67 +34,126 @@ function Frame:render()
             { AspectRatio = Constraint },
             props[Roact.Children] or {}
         )
+
+        -- Base height off width using the aspect ratio
+        if props.DominantAxis == 'Width' then
+            props.SizeConstraint = 'RelativeXX'
+            if typeof(props.Width) == 'UDim' then
+                props.Height = UDim.new(props.Width.Scale / props.AspectRatio, 0)
+            else
+                props.Size = UDim2.new(
+                    props.Size.X,
+                    UDim.new(props.Size.X.Scale / props.AspectRatio, 0)
+                )
+            end
+
+        -- Base width off height using the aspect ratio
+        elseif props.DominantAxis == 'Height' then
+            props.SizeConstraint = 'RelativeYY'
+            if typeof(props.Height) == 'UDim' then
+                props.Width = UDim.new(props.Height.Scale * props.AspectRatio, 0)
+            else
+                props.Size = UDim2.new(
+                    UDim.new(props.Size.Y.Scale * props.AspectRatio, 0),
+                    props.Size.Y
+                )
+            end
+        end
     end
 
     -- Include list layout if specified
     if props.Layout == 'List' then
-
-        -- Determine dynamic dimensions
-        local DynamicWidth = props.Size == 'WRAP_CONTENT' or
-            props.Width == 'WRAP_CONTENT'
-        local DynamicHeight = props.Size == 'WRAP_CONTENT' or
-            props.Height == 'WRAP_CONTENT'
-        local DynamicSize = DynamicWidth or DynamicHeight
-        local SizeCallback = DynamicSize and function (rbx)
-            self:SetContentSize(rbx.AbsoluteContentSize)
-        end
-
-        -- Create layout
         local Layout = new('UIListLayout', {
             FillDirection = props.LayoutDirection,
             Padding = props.LayoutPadding,
             HorizontalAlignment = props.HorizontalAlignment,
             VerticalAlignment = props.VerticalAlignment,
             SortOrder = props.SortOrder or 'LayoutOrder',
-            [Roact.Change.AbsoluteContentSize] = SizeCallback or nil
+            [Roact.Ref] = function (rbx)
+                self:UpdateContentSize(rbx)
+            end,
+            [Roact.Change.AbsoluteContentSize] = function (rbx)
+                self:UpdateContentSize(rbx)
+            end
         })
 
-        -- Update size based on content if dynamic
-        local ContentSize = state.ContentSize
-        if DynamicSize and ContentSize then
-            props.Size = UDim2.new(
-                DynamicWidth and UDim.new(0, ContentSize.X) or
-                    (props.Width or self.props.Size.X),
-                DynamicHeight and UDim.new(0, ContentSize.Y) or
-                    (props.Height or self.props.Size.Y)
-            )
-        end
+        -- Update size
+        props.Size = self:GetSize()
 
         -- Insert layout into children
         props[Roact.Children] = Support.Merge(
             { Layout = Layout },
-            props[Roact.Children] or {}
+            props[Roact.Children]
         )
     end
 
     -- Filter out custom properties
     props.AspectRatio = nil
+    props.DominantAxis = nil
     props.Layout = nil
     props.LayoutDirection = nil
     props.LayoutPadding = nil
     props.HorizontalAlignment = nil
     props.VerticalAlignment = nil
+    props.HorizontalPadding = nil
+    props.VerticalPadding = nil
     props.SortOrder = nil
     props.Width = nil
     props.Height = nil
+    props.ResizeParent = nil
 
     -- Display component in wrapper
     return new('Frame', props)
 
 end
 
-function Frame:SetContentSize(ContentSize)
-    self:setState { ContentSize = ContentSize }
+function Frame:GetSize(ContentSize)
+    local props = self.props
+    
+    -- Determine dynamic dimensions
+    local DynamicWidth = props.Size == 'WRAP_CONTENT' or
+        props.Width == 'WRAP_CONTENT'
+    local DynamicHeight = props.Size == 'WRAP_CONTENT' or
+        props.Height == 'WRAP_CONTENT'
+    local DynamicSize = DynamicWidth or DynamicHeight
+
+    -- Get padding from props
+    local Padding = UDim2.new(
+        0, props.HorizontalPadding or 0,
+        0, props.VerticalPadding or 0
+    )
+
+    -- Calculate size based on content if dynamic
+    return Padding + UDim2.new(
+        (ContentSize and DynamicWidth) and UDim.new(0, ContentSize.X) or
+            (typeof(props.Width) == 'UDim' and props.Width or props.Size.X),
+        (ContentSize and DynamicHeight) and UDim.new(0, ContentSize.Y) or
+            (typeof(props.Height) == 'UDim' and props.Height or props.Size.Y)
+    )
+end
+
+function Frame:UpdateContentSize(Layout)
+    if not (Layout and Layout.Parent) then
+        return
+    end
+
+    -- Set container size based on content
+    Layout.Parent.Size = self:GetSize(Layout.AbsoluteContentSize)
+
+    -- Set parent size based on content if specified
+    local ResizeParent = self.props.ResizeParent
+    local Parent = ResizeParent and Layout.Parent.Parent
+    if ResizeParent and Parent then
+        local ParentWidth = Parent.Size.X
+        local ParentHeight = Parent.Size.Y
+        if Support.IsInTable(ResizeParent, 'WIDTH') then
+            ParentWidth = UDim.new(0, Layout.Parent.AbsoluteSize.X)
+        end
+        if Support.IsInTable(ResizeParent, 'HEIGHT') then
+            ParentHeight = UDim.new(0, Layout.Parent.AbsoluteSize.Y)
+        end
+        Parent.Size = UDim2.new(ParentWidth, ParentHeight)
+    end
 end
 
 return Frame
