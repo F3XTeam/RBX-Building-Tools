@@ -160,7 +160,17 @@ function Security.IsItemAllowed(Item, Player)
 	-- Returns whether instance `Item` can be accessed
 
 	-- Ensure `Item` is a part or a model
-	if not ((Item:IsA 'BasePart' and not Item:IsA 'Terrain') or Item:IsA 'Model' or Item:IsA 'Folder') then
+	local IsItemClassAllowed = (Item:IsA 'BasePart' and not Item:IsA 'Terrain') or
+		(Item:IsA 'Model' and not Item:IsA 'Workspace') or
+		Item:IsA 'Folder' or
+		Item:IsA 'Smoke' or
+		Item:IsA 'Fire' or
+		Item:IsA 'Sparkles' or
+		Item:IsA 'DataModelMesh' or
+		Item:IsA 'Decal' or
+		Item:IsA 'Texture' or
+		Item:IsA 'Light'
+	if not IsItemClassAllowed then
 		return false
 	end
 
