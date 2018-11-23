@@ -611,7 +611,7 @@ if Mode == 'Tool' then
 	AssignHotkey({ 'RightControl', 'R' }, Support.Call(Selection.Clear, true));
 end;
 
-function GroupSelection()
+function GroupSelection(GroupType)
 	-- Groups the selected items
 
 	-- Create history record
@@ -633,7 +633,7 @@ function GroupSelection()
 	end
 
 	-- Perform group creation
-	HistoryRecord.NewParent = SyncAPI:Invoke('CreateGroup', 'Model',
+	HistoryRecord.NewParent = SyncAPI:Invoke('CreateGroup', GroupType,
 		GetHighestParent(HistoryRecord.Items),
 		HistoryRecord.Items
 	)
@@ -704,8 +704,10 @@ function UngroupSelection()
 end
 
 -- Assign grouping hotkeys
-AssignHotkey({ 'LeftShift', 'G' }, GroupSelection)
-AssignHotkey({ 'RightShift', 'G' }, GroupSelection)
+AssignHotkey({ 'LeftShift', 'G' }, Support.Call(GroupSelection, 'Model'))
+AssignHotkey({ 'RightShift', 'G' }, Support.Call(GroupSelection, 'Model'))
+AssignHotkey({ 'LeftShift', 'F' }, Support.Call(GroupSelection, 'Folder'))
+AssignHotkey({ 'RightShift', 'F' }, Support.Call(GroupSelection, 'Folder'))
 AssignHotkey({ 'LeftShift', 'U' }, UngroupSelection)
 AssignHotkey({ 'RightShift', 'U' }, UngroupSelection)
 
