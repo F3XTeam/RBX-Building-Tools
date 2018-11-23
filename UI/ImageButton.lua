@@ -35,6 +35,31 @@ function ImageButton:render()
             { AspectRatio = Constraint },
             props[Roact.Children] or {}
         )
+
+        -- Base height off width using the aspect ratio
+        if props.DominantAxis == 'Width' then
+            props.SizeConstraint = 'RelativeXX'
+            if typeof(props.Width) == 'UDim' then
+                props.Height = UDim.new(props.Width.Scale / props.AspectRatio, 0)
+            else
+                props.Size = UDim2.new(
+                    props.Size.X,
+                    UDim.new(props.Size.X.Scale / props.AspectRatio, 0)
+                )
+            end
+
+        -- Base width off height using the aspect ratio
+        elseif props.DominantAxis == 'Height' then
+            props.SizeConstraint = 'RelativeYY'
+            if typeof(props.Height) == 'UDim' then
+                props.Width = UDim.new(props.Height.Scale * props.AspectRatio, 0)
+            else
+                props.Size = UDim2.new(
+                    UDim.new(props.Size.Y.Scale * props.AspectRatio, 0),
+                    props.Size.Y
+                )
+            end
+        end
     end
 
     -- Include list layout if specified
@@ -71,6 +96,7 @@ function ImageButton:render()
 
     -- Filter out custom properties
     props.AspectRatio = nil
+    props.DominantAxis = nil
     props.Layout = nil
     props.LayoutDirection = nil
     props.LayoutPadding = nil

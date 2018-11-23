@@ -256,6 +256,7 @@ function ItemRow:render()
         -- Locking button
         Lock = new(ImageButton, {
             AspectRatio = 1,
+            DominantAxis = 'Height',
             Image = 'rbxassetid://2244452978',
             ImageRectOffset = Vector2.new(14 * (props.IsLocked and 2 or 1), 0) * 2,
             ImageRectSize = Vector2.new(14, 14) * 2,
