@@ -131,6 +131,23 @@ function SupportLibrary.GetAllDescendants(Parent)
 	return Descendants;
 end;
 
+function SupportLibrary.GetDescendantsWhichAreA(Object, Class)
+	-- Returns descendants of `Object` which match `Class`
+
+	local Matches = {}
+
+	-- Check each descendant
+	for _, Descendant in pairs(Object:GetDescendants()) do
+		if Descendant:IsA(Class) then
+			Matches[#Matches + 1] = Descendant
+		end
+	end
+
+	-- Return matches
+	return Matches
+
+end
+
 function SupportLibrary.FilterArray(Array, Callback)
 	-- Returns a filtered copy of `Array` based on the filter `Callback`
 
