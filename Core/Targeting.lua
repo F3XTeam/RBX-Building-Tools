@@ -109,7 +109,7 @@ function TargetingModule:UpdateTarget(Scope, Force)
 
 	-- Make sure target is selectable
 	local Core = GetCore()
-	if not Core.IsSelectable(NewTarget) then
+	if not Core.IsSelectable({ NewTarget }) then
 		self.HighlightTarget(nil)
 		self.LastTarget = nil
 		self.LastScopeTarget = nil
@@ -222,7 +222,7 @@ function TargetingModule.SelectTarget(Force, Scope)
 	end;
 
 	-- Clear selection if invalid target selected
-	if not GetCore().IsSelectable(Target) then
+	if not GetCore().IsSelectable({ Target }) then
 		Selection.Clear(true);
 		return;
 	end;
@@ -259,6 +259,11 @@ function TargetingModule.SelectSiblings(Part, ReplaceSelection)
 
 	-- Get the focused item's siblings
 	local Siblings = Part.Parent:GetDescendants();
+
+	-- Ensure items are selectable
+	if not GetCore().IsSelectable(Siblings) then
+		return
+	end
 
 	-- Add to or replace selection
 	if ReplaceSelection then
@@ -396,7 +401,7 @@ function TargetingModule.FinishRectangleSelecting()
 				local RightCheck = ScreenPoint.X <= EndPoint.X;
 				local TopCheck = ScreenPoint.Y >= StartPoint.Y;
 				local BottomCheck = ScreenPoint.Y <= EndPoint.Y;
-				if (LeftCheck and RightCheck and TopCheck and BottomCheck) and Core.IsSelectable(Part) then
+				if (LeftCheck and RightCheck and TopCheck and BottomCheck) and Core.IsSelectable({ Part }) then
 					local ScopeTarget = TargetingModule.FindTargetInScope(Part, TargetingModule.Scope)
 					SelectableItems[ScopeTarget] = true
 				end

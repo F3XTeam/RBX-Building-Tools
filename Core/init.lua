@@ -709,23 +709,55 @@ AssignHotkey({ 'RightShift', 'G' }, GroupSelection)
 AssignHotkey({ 'LeftShift', 'U' }, UngroupSelection)
 AssignHotkey({ 'RightShift', 'U' }, UngroupSelection)
 
-function IsSelectable(Object)
-	-- Returns whether `Object` can be selected
+function GetPartsFromSelection(Selection)
+	local Parts = {}
 
-	-- Check if `Object` exists, is not locked, and is not ignored
-	if not Object or not Object.Parent or (Object:IsA 'BasePart' and Object.Locked) then
-		return false;
-	end;
+	-- Get parts from selection
+	for _, Item in pairs(Selection) do
+		if Item:IsA 'BasePart' then
+			Parts[#Parts + 1] = Item
 
-	-- If areas are enabled, check if `Object` violates any areas
-	if Security.AreAreasEnabled() then
-		return not Security.ArePartsViolatingAreas({ Object }, Player, true, {});
-	end;
+		-- Get parts within other items
+		else
+			for _, Descendant in pairs(Item:GetDescendants()) do
+				if Descendant:IsA 'BasePart' then
+					Parts[#Parts + 1] = Descendant
+				end
+			end
+		end
+	end
 
-	-- If no checks fail, `Object` is selectable
-	return Object;
+	-- Return parts
+	return Parts
+end
 
-end;
+function IsSelectable(Items)
+	-- Returns whether `Items` can be selected
+
+	-- Check each item
+	for _, Item in pairs(Items) do
+
+		-- Ensure item exists and is not locked
+		if (not Item) or (not Item.Parent) or (Item:IsA 'BasePart' and Item.Locked) then
+			return false
+		end
+
+		-- Ensure item can be modified
+		if not Security.IsItemAllowed(Item, Player) then
+			return false
+		end
+	end
+
+	-- Check if parts intruding into private areas
+	local Parts = GetPartsFromSelection(Items)
+	if Security.ArePartsViolatingAreas(Parts, Player, true) then
+		return false
+	end
+
+	-- If no checks fail, items are selectable
+	return true
+
+end
 
 function ExportSelection()
 	-- Exports the selected parts

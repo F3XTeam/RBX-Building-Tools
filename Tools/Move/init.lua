@@ -764,7 +764,7 @@ function EnableDragging()
 
 		-- Make sure target is draggable, unless snapping
 		local IsSnapping = UserInputService:IsKeyDown(Enum.KeyCode.R) and #Selection.Items > 0
-		if not Core.IsSelectable(TargetPart) and not IsSnapping then
+		if not Core.IsSelectable({ TargetPart }) and not IsSnapping then
 			return Enum.ContextActionResult.Pass
 		end
 
