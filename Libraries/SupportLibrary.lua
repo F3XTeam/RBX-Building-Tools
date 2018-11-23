@@ -131,6 +131,36 @@ function SupportLibrary.GetAllDescendants(Parent)
 	return Descendants;
 end;
 
+function SupportLibrary.FilterArray(Array, Callback)
+	-- Returns a filtered copy of `Array` based on the filter `Callback`
+
+	local FilteredArray = {}
+
+	-- Add items from `Array` that `Callback` returns `true` on
+	for Key, Value in ipairs(Array) do
+		if Callback(Value, Key) then
+			table.insert(FilteredArray, Value)
+		end
+	end
+
+	return FilteredArray
+end
+
+function SupportLibrary.FilterMap(Map, Callback)
+	-- Returns a filtered copy of `Map` based on the filter `Callback`
+
+	local FilteredMap = {}
+
+	-- Add items from `Map` that `Callback` returns `true` on
+	for Key, Value in ipairs(Map) do
+		if Callback(Value, Key) then
+			FilteredMap[Key] = Value
+		end
+	end
+
+	return FilteredMap
+end
+
 function SupportLibrary.GetDescendantCount(Parent)
 	-- Recursively gets a count of all the descendants of `Parent` and returns them
 
