@@ -266,7 +266,7 @@ function TargetingModule.SelectSiblings(Part, ReplaceSelection)
 	end;
 
 	-- Get the focused item's siblings
-	local Siblings = Part.Parent:GetDescendants();
+	local Siblings = Support.GetDescendantsWhichAreA(Part.Parent, 'BasePart')
 
 	-- Ensure items are selectable
 	if not GetCore().IsSelectable(Siblings) then
@@ -406,21 +406,20 @@ function TargetingModule.FinishRectangleSelecting()
 	local SelectableItems = {};
 
 	-- Find items that lie within the rectangle
-	for _, Part in pairs(TargetingModule.Scope:GetDescendants()) do
-		if Part:IsA 'BasePart' then
-			local ScreenPoint, OnScreen = Workspace.CurrentCamera:WorldToScreenPoint(Part.Position);
-			if OnScreen then
-				local LeftCheck = ScreenPoint.X >= StartPoint.X;
-				local RightCheck = ScreenPoint.X <= EndPoint.X;
-				local TopCheck = ScreenPoint.Y >= StartPoint.Y;
-				local BottomCheck = ScreenPoint.Y <= EndPoint.Y;
-				if (LeftCheck and RightCheck and TopCheck and BottomCheck) and Core.IsSelectable({ Part }) then
-					local ScopeTarget = TargetingModule.FindTargetInScope(Part, TargetingModule.Scope)
-					SelectableItems[ScopeTarget] = true
-				end
-			end;
-		end;
-	end;
+	local ScopeParts = Support.GetDescendantsWhichAreA(TargetingModule.Scope, 'BasePart')
+	for _, Part in pairs(ScopeParts) do
+		local ScreenPoint, OnScreen = Workspace.CurrentCamera:WorldToScreenPoint(Part.Position)
+		if OnScreen then
+			local LeftCheck = ScreenPoint.X >= StartPoint.X
+			local RightCheck = ScreenPoint.X <= EndPoint.X
+			local TopCheck = ScreenPoint.Y >= StartPoint.Y
+			local BottomCheck = ScreenPoint.Y <= EndPoint.Y
+			if (LeftCheck and RightCheck and TopCheck and BottomCheck) and Core.IsSelectable({ Part }) then
+				local ScopeTarget = TargetingModule.FindTargetInScope(Part, TargetingModule.Scope)
+				SelectableItems[ScopeTarget] = true
+			end
+		end
+	end
 
 	-- Add to selection if multiselecting
 	if Selection.Multiselecting then
