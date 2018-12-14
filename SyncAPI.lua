@@ -301,9 +301,7 @@ Actions = {
 					table.insert(Parts, Object.Parent);
 
 				elseif Object:IsA 'Model' or Object:IsA 'Folder' then
-					Parts = Support.FilterArray(Object:GetDescendants(), function (Descendant)
-						return Descendant:IsA 'BasePart'
-					end)
+					Support.ConcatTable(Parts, Support.GetDescendantsWhichAreA(Object, 'BasePart'))
 				end
 
 			end;
@@ -355,9 +353,7 @@ Actions = {
 					table.insert(Parts, Object.Parent);
 
 				elseif Object:IsA 'Model' or Object:IsA 'Folder' then
-					Parts = Support.FilterArray(Object:GetDescendants(), function (Descendant)
-						return Descendant:IsA 'BasePart'
-					end)
+					Support.ConcatTable(Parts, Support.GetDescendantsWhichAreA(Object, 'BasePart'))
 				end
 
 			end;
