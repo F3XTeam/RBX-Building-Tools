@@ -53,6 +53,9 @@ function TargetingModule:EnableTargeting()
 	-- Enable direct selection
 	self:EnableDirectSelection()
 
+	-- Enable automatic scope resetting
+	self:EnableScopeAutoReset()
+
 end;
 
 function TargetingModule:SetScope(Scope)
@@ -75,6 +78,11 @@ local function IsTargetable(Item)
 end
 
 function TargetingModule.FindTargetInScope(Target, Scope)
+
+	-- Return `nil` if no scope is set
+	if not Scope then
+		return nil
+	end
 
 	-- Search for ancestor of target directly within scope
 	local TargetChain = { Target }
@@ -203,8 +211,8 @@ local function IsAncestorSelected(Item)
 	end
 end
 
-function TargetingModule.SelectTarget(Force, Scope)
-	local Scope = Scope or TargetingModule.Scope
+function TargetingModule.SelectTarget(Force)
+	local Scope = TargetingModule.Scope
 
 	-- Update target
 	local Target, ScopeTarget = TargetingModule:UpdateTarget(Scope, true)
@@ -379,6 +387,11 @@ function TargetingModule.FinishRectangleSelecting()
 	if not RectangleSelecting then
 		return;
 	end;
+
+	-- Ensure a targeting scope is set
+	if not TargetingModule.Scope then
+		return
+	end
 
 	-- Get rectangle dimensions
 	local StartPoint = Vector2.new(
@@ -563,6 +576,66 @@ function TargetingModule:EnableDirectSelection()
 		ContextActionService:UnbindAction('BT: Scope')
 	end)
 
+end
+
+function TargetingModule:EnableScopeAutoReset()
+	-- Enables automatic scope resetting (when scope becomes invalid)
+
+	local LastScopeListener, LastScopeAncestry
+
+	-- Listen to changes in scope
+	GetCore().UIMaid.ScopeReset = self.ScopeChanged:Connect(function (Scope)
+
+		-- Clear last scope listener
+		LastScopeListener = LastScopeListener and LastScopeListener:Disconnect()
+
+		-- Only listen to new scope if defined
+		if not Scope then
+			return
+		end
+
+		-- Capture new scope's ancestry
+		LastScopeAncestry = {}
+		local Ancestor = Scope.Parent
+		while Ancestor:IsDescendantOf(Workspace) do
+			table.insert(LastScopeAncestry, Ancestor)
+			Ancestor = Ancestor.Parent
+		end
+
+		-- Reset scope when scope is gone
+		LastScopeListener = Scope.AncestryChanged:Connect(function (_, Parent)
+			if Parent == nil then
+
+				-- Get next parent in ancestry
+				local NextScopeInAncestry
+				if LastScopeAncestry then
+					for _, Parent in ipairs(LastScopeAncestry) do
+						if Parent:IsDescendantOf(Workspace) then
+							NextScopeInAncestry = Parent
+							break
+						end
+					end
+				end
+
+				-- Set next scope
+				if NextScopeInAncestry then
+					self:SetScope(NextScopeInAncestry)
+				else
+					self:SetScope(Workspace, true)
+				end
+
+			-- Capture scope ancestry when it changes
+			else
+				LastScopeAncestry = {}
+				local Ancestor = Scope.Parent
+				while Ancestor:IsDescendantOf(Workspace) do
+					table.insert(LastScopeAncestry, Ancestor)
+					Ancestor = Ancestor.Parent
+				end
+			end
+		end)
+
+	end)
 end
 
 function GetCore()
