@@ -21,7 +21,8 @@ local Types = {
 	Smoke = 12,
 	Fire = 13,
 	Sparkles = 14,
-	Model = 15
+	Model = 15,
+	Folder = 18
 };
 
 local DefaultNames = {
@@ -40,7 +41,8 @@ local DefaultNames = {
 	Smoke = 'Smoke',
 	Fire = 'Fire',
 	Sparkles = 'Sparkles',
-	Model = 'Model'
+	Model = 'Model',
+	Folder = 'Folder'
 };
 
 function Serialization.SerializeModel(Items)
@@ -229,6 +231,14 @@ function Serialization.SerializeModel(Items)
 			Data.Items[Index] = Datum;
 		end;
 
+		if Item.ClassName == 'Folder' then
+			local Datum = {}
+			Datum[1] = Types[Item.ClassName]
+			Datum[2] = Keys[Item.Parent] or 0
+			Datum[3] = Item.Name == DefaultNames[Item.ClassName] and '' or Item.Name
+			Data.Items[Index] = Datum
+		end
+
 		-- Spread the workload over time to avoid locking up the CPU
 		if Index % 100 == 0 then
 			wait(0.01);
@@ -411,6 +421,14 @@ function Serialization.InflateBuildData(Data)
 			Instances[Index] = Item;
 		end;
 
+		-- Inflate Folder instances
+		if Datum[1] == Types.Folder then
+			local Item = Instance.new('Folder')
+
+			-- Register the folder
+			Instances[Index] = Item
+		end
+
 	end;
 
 	-- Set object values on each instance
@@ -420,7 +438,7 @@ function Serialization.InflateBuildData(Data)
 		local Item = Instances[Index];
 
 		-- Set each item's parent and name
-		if Item and Datum[1] <= 15 then
+		if Item and Datum[1] <= 18 then
 			Item.Name = (Datum[3] == '') and DefaultNames[Item.ClassName] or Datum[3];
 			if Datum[2] == 0 then
 				table.insert(Build, Item);
