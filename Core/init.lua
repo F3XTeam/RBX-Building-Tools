@@ -1,8 +1,5 @@
 Tool = script.Parent;
-
--- Await initialization
-repeat wait() until _G[Tool];
-Plugin = _G[Tool].Plugin;
+Plugin = (Tool.Parent:IsA 'Plugin') and Tool.Parent or nil
 
 -- Detect mode
 Mode = Plugin and 'Plugin' or 'Tool';

@@ -1,14 +1,13 @@
 local Tool = script.Parent;
-local Plugin = plugin;
-
--- Expose plugin if in plugin mode
-_G[Tool] = { Plugin = Plugin };
 
 -- Load tool completely before proceeding
 local Indicator = Tool:WaitForChild 'Loaded';
 while not Indicator.Value do
 	Indicator.Changed:Wait();
 end;
+
+-- Start library manager
+require(Tool:WaitForChild 'LibraryManager')
 
 -- Initialize the core
 local Core = require(Tool:WaitForChild 'Core');
@@ -85,3 +84,5 @@ Core.Dock.AddToolButton(Core.Assets.LightingIcon, 'U', LightingTool, 'LightingIn
 local DecorateTool = require(CoreTools.Decorate)
 Core.AssignHotkey('P', Core.Support.Call(Core.EquipTool, DecorateTool));
 Core.Dock.AddToolButton(Core.Assets.DecorateIcon, 'P', DecorateTool, 'DecorateInfo');
+
+return Core

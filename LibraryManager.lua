@@ -153,3 +153,4 @@ end;
 
 -- Expose GetLibraries function
 _G.GetLibraries = GetLibraries;
+return GetLibraries

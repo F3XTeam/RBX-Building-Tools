@@ -10,9 +10,9 @@
       "path": "Tools",
       "target": "StarterPack.Building Tools.Tools"
     },
-    "initializer": {
-      "path": "Initializer.client.lua",
-      "target": "StarterPack.Building Tools.Initializer"
+    "loader": {
+      "path": "Loader",
+      "target": "StarterPack.Building Tools.Loader"
     },
     "sync/api": {
       "path": "SyncAPI.lua",
@@ -49,10 +49,6 @@
     "replication/listener": {
       "path": "Support/ReplicationListener.client.lua",
       "target": "StarterPack.Building Tools.Loaded.ReplicationListener"
-    },
-    "filtering": {
-      "path": "Support/FilterModeEnabler.server.lua",
-      "target": "StarterPack.Building Tools.FilterMode.FilterModeEnabler"
     },
     "version": {
       "path": "Version.model.json",

@@ -193,17 +193,19 @@ function Handles:Resume()
     end
 
     -- Ignore character whenever character enters first person
-    spawn(function ()
-        while self.Running do
-            local FirstPerson = IsFirstPerson(self.Camera)
-            local Character = Players.LocalPlayer.Character
-            if Character then
-                self.ObstacleBlacklistIndex[Character] = FirstPerson and true or nil
-                self.ObstacleBlacklist = Support.Keys(self.ObstacleBlacklistIndex)
+    if Players.LocalPlayer then
+        spawn(function ()
+            while self.Running do
+                local FirstPerson = IsFirstPerson(self.Camera)
+                local Character = Players.LocalPlayer.Character
+                if Character then
+                    self.ObstacleBlacklistIndex[Character] = FirstPerson and true or nil
+                    self.ObstacleBlacklist = Support.Keys(self.ObstacleBlacklistIndex)
+                end
+                wait(0.2)
             end
-            wait(0.2)
-        end
-    end)
+        end)
+    end
 
     -- Show UI
     self.Gui.Enabled = true

@@ -22,11 +22,7 @@ CreatedInstances = {};
 LastParents = {};
 
 -- Determine whether we're in tool or plugin mode
-if Tool:IsA 'Tool' then
-	ToolMode = 'Tool';
-elseif Tool:IsA 'Model' then
-	ToolMode = 'Plugin';
-end;
+ToolMode = (Tool.Parent:IsA 'Plugin') and 'Plugin' or 'Tool'
 
 -- List of actions that could be requested
 Actions = {
