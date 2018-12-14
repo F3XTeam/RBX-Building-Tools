@@ -137,8 +137,15 @@ Actions = {
 
 		-- Parent group
 		Group.Parent = Parent
+
+		-- Make joints
 		if Type == 'Model' then
 			Group:MakeJoints()
+		elseif Type == 'Folder' then
+			local Parts = Support.GetDescendantsWhichAreA(Group, 'BasePart')
+			for _, Part in pairs(Parts) do
+				Part:MakeJoints()
+			end
 		end
 
 		-- Return the new group
@@ -221,6 +228,9 @@ Actions = {
 
 				-- Move item
 				Item.Parent = Parent
+				if Item:IsA 'BasePart' then
+					Item:MakeJoints()
+				end
 			end
 
 		-- Move to single parent
@@ -230,6 +240,9 @@ Actions = {
 			-- Reparent items
 			for _, Item in pairs(Items) do
 				Item.Parent = Parent
+				if Item:IsA 'BasePart' then
+					Item:MakeJoints()
+				end
 			end
 		end
 
