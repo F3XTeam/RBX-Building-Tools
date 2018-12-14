@@ -41,7 +41,7 @@ Actions = {
 
 		-- Validate requested parent
 		assert(typeof(Parent) == 'Instance', 'Invalid parent')
-		assert(Security.IsLocationAllowed(Parent), 'Permission denied for client')
+		assert(Security.IsLocationAllowed(Parent, Player), 'Permission denied for client')
 
 		-- Make sure the given items are all parts
 		if not CanModifyItems(Parts) then
@@ -80,7 +80,7 @@ Actions = {
 
 		-- Validate requested parent
 		assert(typeof(Parent) == 'Instance', 'Invalid parent')
-		assert(Security.IsLocationAllowed(Parent), 'Permission denied for client')
+		assert(Security.IsLocationAllowed(Parent, Player), 'Permission denied for client')
 
 		-- Create the part
 		local NewPart = CreatePart(PartType);
@@ -117,7 +117,7 @@ Actions = {
 		-- Validate arguments
 		assert(ValidGroupTypes[Type], 'Invalid group type')
 		assert(typeof(Parent) == 'Instance', 'Invalid parent')
-		assert(Security.IsLocationAllowed(Parent), 'Permission denied for client')
+		assert(Security.IsLocationAllowed(Parent, Player), 'Permission denied for client')
 
 		-- Check if items selectable
 		if not CanModifyItems(Items) then
@@ -221,7 +221,7 @@ Actions = {
 				local Parent = Parent[Key]
 
 				-- Check if parent allowed
-				assert(Security.IsLocationAllowed(Parent), 'Permission denied for client')
+				assert(Security.IsLocationAllowed(Parent, Player), 'Permission denied for client')
 
 				-- Move item
 				Item.Parent = Parent
@@ -229,7 +229,7 @@ Actions = {
 
 		-- Move to single parent
 		elseif typeof(Parent) == 'Instance' then
-			assert(Security.IsLocationAllowed(Parent), 'Permission denied for client')
+			assert(Security.IsLocationAllowed(Parent, Player), 'Permission denied for client')
 
 			-- Reparent items
 			for _, Item in pairs(Items) do
@@ -1660,7 +1660,7 @@ function CanModifyItems(Items)
 	for _, Item in pairs(Items) do
 
 		-- Catch items that cannot be reached
-		local ItemAllowed = Security.IsItemAllowed(Item)
+		local ItemAllowed = Security.IsItemAllowed(Item, Player)
 		local LastParentKnown = LastParents[Item]
 		if not (ItemAllowed or LastParentKnown) then
 			return false

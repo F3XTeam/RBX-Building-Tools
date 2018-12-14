@@ -156,11 +156,11 @@ function Security.IsAreaAuthorizedForPlayer(Area, Player)
 	return false;
 end;
 
-function Security.IsItemAllowed(Item)
+function Security.IsItemAllowed(Item, Player)
 	-- Returns whether instance `Item` can be accessed
 
 	-- Ensure `Item` is a part or a model
-	if not (Item:IsA 'BasePart' or Item:IsA 'Model' or Item:IsA 'Folder') then
+	if not ((Item:IsA 'BasePart' and not Item:IsA 'Terrain') or Item:IsA 'Model' or Item:IsA 'Folder') then
 		return false
 	end
 
@@ -176,7 +176,7 @@ function Security.IsItemAllowed(Item)
 
 end
 
-function Security.IsLocationAllowed(Location)
+function Security.IsLocationAllowed(Location, Player)
 	-- Returns whether location `Location` can be accessed
 
 	-- Check if within allowed locations

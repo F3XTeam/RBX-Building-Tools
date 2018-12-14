@@ -495,7 +495,7 @@ function TargetingModule:EnableDirectSelection()
 			-- If Alt-Shift-Z is pressed, exit current scope
 			elseif Scoping and IsAltPressed and IsShiftPressed and (Input.KeyCode.Name == 'Z') then
 				local NewScope = self.Scope.Parent or InitialScope
-				if GetCore().Security.IsLocationAllowed(NewScope) then
+				if GetCore().Security.IsLocationAllowed(NewScope, GetCore().Player) then
 					self:SetScope(NewScope)
 					self:UpdateTarget(self.Scope, true)
 					Scoping = self.Scope
