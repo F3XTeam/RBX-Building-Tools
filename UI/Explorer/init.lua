@@ -55,8 +55,18 @@ end
 
 function Explorer:UpdateScope(Scope)
 
+    -- Clear previous cleanup maid
+    if self.ScopeMaid then
+        self.ScopeMaid:Destroy()
+    end
+
     -- Create maid for cleanup
     self.ScopeMaid = Maid.new()
+
+    -- Ensure new scope is defined
+    if not Scope then
+        return
+    end
 
     -- Build initial tree
     spawn(function ()
