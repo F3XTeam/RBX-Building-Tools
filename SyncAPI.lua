@@ -186,7 +186,9 @@ Actions = {
 				LastParents[Child] = Group
 				Children[#Children + 1] = Child
 				Child.Parent = NewParent
-				Child:MakeJoints()
+				if Child:IsA 'BasePart' then
+					Child:MakeJoints()
+				end
 			end
 
 			-- Track removing group
