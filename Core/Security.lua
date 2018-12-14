@@ -209,6 +209,11 @@ function Security.ArePartsViolatingAreas(Parts, Player, ExemptPartial, AreaPermi
 		return false;
 	end;
 
+	-- If no parts, no violations exist
+	if not next(Parts) then
+		return false
+	end
+
 	-- Make sure there is a permissions cache
 	AreaPermissions = AreaPermissions or {};
 
