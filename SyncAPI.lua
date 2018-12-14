@@ -387,6 +387,16 @@ Actions = {
 			-- Set the object's parent to the last parent
 			Object.Parent = LastParent;
 
+			-- Make joints
+			if Object:IsA 'BasePart' then
+				Object:MakeJoints()
+			else
+				local Parts = Support.GetDescendantsWhichAreA(Object, 'BasePart')
+				for _, Part in pairs(Parts) do
+					Part:MakeJoints()
+				end
+			end
+
 		end;
 
 	end;
