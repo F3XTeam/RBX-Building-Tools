@@ -36,43 +36,39 @@ Actions = {
 		Tool.Handle.BrickColor = NewColor;
 	end;
 
-	['Clone'] = function (Parts, Parent)
-		-- Clones the given parts
+	['Clone'] = function (Items, Parent)
+		-- Clones the given items
 
-		-- Validate requested parent
+		-- Validate arguments
+		assert(type(Items) == 'table', 'Invalid items')
 		assert(typeof(Parent) == 'Instance', 'Invalid parent')
 		assert(Security.IsLocationAllowed(Parent, Player), 'Permission denied for client')
 
-		-- Make sure the given items are all parts
-		if not CanModifyItems(Parts) then
-			return;
-		end;
+		-- Check if items modifiable
+		if not CanModifyItems(Items) then
+			return {}
+		end
 
-		-- Cache up permissions for all private areas
-		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+		-- Check if parts intruding into private areas
+		local Parts = GetPartsFromSelection(Items)
+		if Security.ArePartsViolatingAreas(Parts, Player, false) then
+			return {}
+		end
 
-		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
-			return;
-		end;
+		local Clones = {}
 
-		local Clones = {};
-
-		-- Clone the parts
-		for _, Part in pairs(Parts) do
-
-			-- Create the clone
-			local Clone = Part:Clone();
+		-- Clone items
+		for _, Item in pairs(Items) do
+			local Clone = Item:Clone()
 			Clone.Parent = Parent
 
 			-- Register the clone
-			table.insert(Clones, Clone);
-			CreatedInstances[Part] = Part;
-
-		end;
+			table.insert(Clones, Clone)
+			CreatedInstances[Item] = Item
+		end
 
 		-- Return the clones
-		return Clones;
+		return Clones
 	end;
 
 	['CreatePart'] = function (PartType, Position, Parent)
