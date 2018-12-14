@@ -30,9 +30,9 @@
       "path": "Libraries",
       "target": "StarterPack.Building Tools.Libraries"
     },
-    "libraries/roact": {
-      "path": "Modules/Roact/lib",
-      "target": "StarterPack.Building Tools.Libraries.Roact"
+    "vendor/roact": {
+      "path": "Vendor/Roact/lib",
+      "target": "StarterPack.Building Tools.Vendor.Roact"
     },
     "assets": {
       "path": "Support/Assets.lua",

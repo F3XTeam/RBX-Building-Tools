@@ -1,10 +1,11 @@
 local Root = script.Parent.Parent
 local Libraries = Root:WaitForChild 'Libraries'
+local Vendor = Root:WaitForChild 'Vendor'
 local UI = Root:WaitForChild 'UI'
 
 -- Libraries
 local Support = require(Libraries:WaitForChild 'SupportLibrary')
-local Roact = require(Libraries:WaitForChild 'Roact')
+local Roact = require(Vendor:WaitForChild 'Roact')
 
 -- Roact
 local new = Roact.createElement

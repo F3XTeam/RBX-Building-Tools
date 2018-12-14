@@ -26,7 +26,7 @@ Support = require(Tool.Libraries.SupportLibrary)
 Cheer = require(Tool.Libraries.Cheer)
 Try = require(Tool.Libraries.Try)
 Make = require(Tool.Libraries.Make)
-local Roact = require(Tool.Libraries:WaitForChild 'Roact')
+local Roact = require(Tool.Vendor:WaitForChild 'Roact')
 local Maid = require(Tool.Libraries:WaitForChild 'Maid')
 
 -- References
