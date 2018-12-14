@@ -286,24 +286,26 @@ Actions = {
 
 				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Light' then
 					table.insert(Parts, Object.Parent);
-				end;
+
+				elseif Object:IsA 'Model' or Object:IsA 'Folder' then
+					Parts = Support.FilterArray(Object:GetDescendants(), function (Descendant)
+						return Descendant:IsA 'BasePart'
+					end)
+				end
 
 			end;
 
 		end;
 
-		-- Ensure relevant parts are selectable
-		if not CanModifyItems(Parts) then
-			return;
-		end;
+		-- Check if items modifiable
+		if not CanModifyItems(Objects) then
+			return
+		end
 
-		-- Cache up permissions for all private areas
-		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
-
-		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
-			return;
-		end;
+		-- Check if parts intruding into private areas
+		if Security.ArePartsViolatingAreas(Parts, Player, true) then
+			return
+		end
 
 		-- After confirming permissions, perform each removal
 		for _, Object in pairs(Objects) do
@@ -338,24 +340,26 @@ Actions = {
 
 				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Light' then
 					table.insert(Parts, Object.Parent);
-				end;
+
+				elseif Object:IsA 'Model' or Object:IsA 'Folder' then
+					Parts = Support.FilterArray(Object:GetDescendants(), function (Descendant)
+						return Descendant:IsA 'BasePart'
+					end)
+				end
 
 			end;
 
 		end;
 
-		-- Ensure relevant parts are selectable
-		if not CanModifyItems(Parts) then
-			return;
-		end;
+		-- Check if items modifiable
+		if not CanModifyItems(Objects) then
+			return
+		end
 
-		-- Cache up permissions for all private areas
-		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
-
-		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
-			return;
-		end;
+		-- Check if parts intruding into private areas
+		if Security.ArePartsViolatingAreas(Parts, Player, false) then
+			return
+		end
 
 		-- After confirming permissions, perform each removal
 		for _, Object in pairs(Objects) do
