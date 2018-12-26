@@ -184,6 +184,11 @@ Actions = {
 				Child.Parent = NewParent
 				if Child:IsA 'BasePart' then
 					Child:MakeJoints()
+				elseif Child:IsA 'Folder' then
+					local Parts = Support.GetDescendantsWhichAreA(Child, 'BasePart')
+					for _, Part in pairs(Parts) do
+						Part:MakeJoints()
+					end
 				end
 			end
 
@@ -228,6 +233,11 @@ Actions = {
 				Item.Parent = Parent
 				if Item:IsA 'BasePart' then
 					Item:MakeJoints()
+				elseif Item:IsA 'Folder' then
+					local Parts = Support.GetDescendantsWhichAreA(Item, 'BasePart')
+					for _, Part in pairs(Parts) do
+						Part:MakeJoints()
+					end
 				end
 			end
 
@@ -240,6 +250,11 @@ Actions = {
 				Item.Parent = Parent
 				if Item:IsA 'BasePart' then
 					Item:MakeJoints()
+				elseif Item:IsA 'Folder' then
+					local Parts = Support.GetDescendantsWhichAreA(Item, 'BasePart')
+					for _, Part in pairs(Parts) do
+						Part:MakeJoints()
+					end
 				end
 			end
 		end
