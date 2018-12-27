@@ -26,6 +26,9 @@ function Handles.new(Options)
     Gui.IgnoreGuiInset = true
     self.Maid.Gui = Gui
 
+    -- Create interface
+    self:CreateHandles(Options)
+
     -- Get camera and viewport information
     self.Camera = Workspace.CurrentCamera
     self.GuiInset = GuiService:GetGuiInset()
@@ -34,9 +37,19 @@ function Handles.new(Options)
     self.ObstacleBlacklistIndex = Support.FlipTable(Options.ObstacleBlacklist or {})
     self.ObstacleBlacklist = Support.Keys(self.ObstacleBlacklistIndex)
 
-    -- Generate a handle for each side
+    -- Enable handle
+    self:SetAdornee(Options.Adornee)
+    self.Gui.Parent = Options.Parent
+
+    -- Return new handles
+    return self
+end
+
+function Handles:CreateHandles(Options)
     self.Handles = {}
     self.HandleStates = {}
+
+    -- Generate a handle for each side
     for _, Side in ipairs(Enum.NormalId:GetEnumItems()) do
 
         -- Create handle
@@ -73,14 +86,14 @@ function Handles.new(Options)
         -- Listen for handle interactions on click
         HandleMaid.DragStart = Handle.MouseButton1Down:Connect(function (X, Y)
             local InitialHandlePlane = self.HandleStates[Handle].PlaneNormal
-            local InitialSideNormal = self.HandleStates[Handle].SideNormal
-            local InitialHandlePoint = self.HandleStates[Handle].WorldPoint
+            local InitialHandleNormal = self.HandleStates[Handle].HandleNormal
+            local InitialHandlePoint = self.HandleStates[Handle].HandleCFrame.p
 
             -- Calculate dragging distance offset
             local AimRay = self.Camera:ViewportPointToRay(X, Y)
             local AimDistance = (InitialHandlePoint - AimRay.Origin):Dot(InitialHandlePlane) / AimRay.Direction:Dot(InitialHandlePlane)
             local AimWorldPoint = (AimDistance * AimRay.Direction) + AimRay.Origin
-            local DragDistanceOffset = InitialSideNormal:Dot(AimWorldPoint - InitialHandlePoint)
+            local DragDistanceOffset = InitialHandleNormal:Dot(AimWorldPoint - InitialHandlePoint)
 
             -- Run callback
             if Options.OnDragStart then
@@ -93,7 +106,7 @@ function Handles.new(Options)
                 local AimRay = self.Camera:ScreenPointToRay(AimScreenPoint.X, AimScreenPoint.Y)
                 local AimDistance = (InitialHandlePoint - AimRay.Origin):Dot(InitialHandlePlane) / AimRay.Direction:Dot(InitialHandlePlane)
                 local AimWorldPoint = (AimDistance * AimRay.Direction) + AimRay.Origin
-                local DragDistance = InitialSideNormal:Dot(AimWorldPoint - InitialHandlePoint) - DragDistanceOffset
+                local DragDistance = InitialHandleNormal:Dot(AimWorldPoint - InitialHandlePoint) - DragDistanceOffset
 
                 -- Run drag callback
                 if Options.OnDrag then
@@ -140,12 +153,6 @@ function Handles.new(Options)
 
     end
 
-    -- Enable handle
-    self:SetAdornee(Options.Adornee)
-    self.Gui.Parent = Options.Parent
-
-    -- Return new handles
-    return self
 end
 
 function Handles:Hide()
@@ -272,48 +279,49 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
         self.Adornee:GetModelSize() or
         self.Adornee.Size
 
-    -- Calculate CFrame of the handle's side
-    local SideCFrame = AdorneeCFrame * CFrame.new(AdorneeSize * SideUnitVector / 2)
-    local SideNormal = (SideCFrame.p - AdorneeCFrame.p).unit
+    -- Calculate radius of adornee extents along axis
+    local AdorneeRadius = (AdorneeSize * SideUnitVector / 2).magnitude
+    local SideCFrame = AdorneeCFrame * CFrame.new(AdorneeRadius * SideUnitVector)
+    local AdorneeViewportPoint, AdorneeCameraDepth = WorldToViewportPoint(Camera, SideCFrame.p)
+    local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * AdorneeCameraDepth
+    local StudsPerPixel = StudWidth / Camera.ViewportSize.X
+    local HandlePadding = math.max(1, StudsPerPixel * 14)
+    local PaddedRadius = AdorneeRadius + 2 * HandlePadding
 
-    -- Get viewport position of adornee and the side the handle will be on
-    local AdorneeViewportPoint, AdorneeCameraDepth = WorldToViewportPoint(Camera, AdorneeCFrame.p)
-    local SideViewportPoint, SideCameraDepth, SideVisible = WorldToViewportPoint(Camera, SideCFrame.p)
+    -- Calculate CFrame of the handle's side
+    local HandleCFrame = AdorneeCFrame * CFrame.new(PaddedRadius * SideUnitVector)
+    local HandleNormal = (HandleCFrame.p - AdorneeCFrame.p).unit
+    local HandleViewportPoint, HandleCameraDepth, HandleVisible = WorldToViewportPoint(Camera, HandleCFrame.p)
 
     -- Display handle if side is visible to the camera
-    Handle.Visible = SideVisible
+    Handle.Visible = HandleVisible
 
     -- Calculate handle size (12 px, or at least 0.5 studs)
-    local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * SideCameraDepth
+    local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * HandleCameraDepth
     local PixelsPerStud = Camera.ViewportSize.X / StudWidth
     local HandleSize = math.max(12, 0.5 * PixelsPerStud)
-    local SpacingSize = math.max(12, 1 * PixelsPerStud)
     Handle.Size = UDim2.new(0, HandleSize, 0, HandleSize)
 
     -- Calculate where handles will appear on the screen
-    local HandleViewportOffset = (SideViewportPoint - AdorneeViewportPoint).Unit * SpacingSize
-    local HandleViewportPosition = SideViewportPoint + HandleViewportOffset
     Handle.Position = UDim2.new(
-        0, HandleViewportPosition.X,
-        0, HandleViewportPosition.Y
+        0, HandleViewportPoint.X,
+        0, HandleViewportPoint.Y
     )
 
     -- Calculate where handles will appear in the world
-    local HandleRay = Camera:ViewportPointToRay(HandleViewportPosition.X, HandleViewportPosition.Y)
     local HandlePlaneNormal = (Handle.Name == 'Top' or Handle.Name == 'Bottom') and
         AdorneeCFrame.LookVector or
         AdorneeCFrame.UpVector
-    local HandleCameraDepth = (SideCFrame.p - HandleRay.Origin):Dot(HandlePlaneNormal) / HandleRay.Direction:Dot(HandlePlaneNormal)
-    local HandleWorldPoint = (HandleCameraDepth * HandleRay.Direction) + HandleRay.Origin
 
     -- Save handle position
     local HandleState = self.HandleStates[Handle] or {}
     self.HandleStates[Handle] = HandleState
     HandleState.PlaneNormal = HandlePlaneNormal
-    HandleState.WorldPoint = HandleWorldPoint
-    HandleState.SideNormal = SideNormal
-
+    HandleState.HandleCFrame = HandleCFrame
+    HandleState.HandleNormal = HandleNormal
+    
     -- Hide handles if obscured by a non-blacklisted part
+    local HandleRay = Camera:ViewportPointToRay(HandleViewportPoint.X, HandleViewportPoint.Y)
     local TargetRay = Ray.new(HandleRay.Origin, HandleRay.Direction * (HandleCameraDepth - 0.25))
     local Target, TargetPoint = Workspace:FindPartOnRayWithIgnoreList(TargetRay, self.ObstacleBlacklist)
     if Target then
