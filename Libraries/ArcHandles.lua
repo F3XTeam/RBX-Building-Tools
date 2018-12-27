@@ -411,7 +411,6 @@ function ArcHandles:UpdateHandle(Side, Handle)
     local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * HandleCameraDepth
     local PixelsPerStud = Camera.ViewportSize.X / StudWidth
     local HandleSize = math.max(12, 0.5 * PixelsPerStud)
-    local SpacingSize = math.max(14, 1 * PixelsPerStud)
     Handle.Size = UDim2.new(0, HandleSize, 0, HandleSize)
 
     -- Calculate where handles will appear on the screen
