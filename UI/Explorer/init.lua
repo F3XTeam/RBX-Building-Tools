@@ -90,9 +90,28 @@ function Explorer:UpdateScope(Scope)
     self.ScopeMaid.Select = Selection.ItemsAdded:Connect(function (Items)
         self:UpdateSelection(Items)
 
-        -- If single item selected, get button position
+        -- If single item selected, get item state
         local ListFrame = self.ListRef.current
         local ItemId = (#Items == 1) and self.IdMap[Items[1]]
+
+        -- Expand ancestors leading to item
+        self:setState(function (State)
+            local Changes = {}
+            local ItemState = State[ItemId]
+            local ParentId = ItemState and self.IdMap[ItemState.Parent]
+            local ParentState = ParentId and State[ParentId]
+
+            while ParentState do
+                ParentState.Expanded = true
+                Changes[ParentId] = ParentState
+                ParentId = self.IdMap[ParentState.Parent]
+                ParentState = State[ParentId]
+            end
+
+            return Changes
+        end)
+
+        -- Check item button position
         local ItemButton = ItemId and ListFrame and ListFrame:FindFirstChild(ItemId)
         if ListFrame and ItemButton then
             local RelativePosition = ItemButton.AbsolutePosition.Y -
