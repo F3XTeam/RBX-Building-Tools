@@ -27,6 +27,7 @@ function Handles.new(Options)
     self.Maid.Gui = Gui
 
     -- Create interface
+    self.IsMouseAvailable = UserInputService.MouseEnabled
     self:CreateHandles(Options)
 
     -- Get camera and viewport information
@@ -285,7 +286,7 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
     local AdorneeViewportPoint, AdorneeCameraDepth = WorldToViewportPoint(Camera, SideCFrame.p)
     local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * AdorneeCameraDepth
     local StudsPerPixel = StudWidth / Camera.ViewportSize.X
-    local HandlePadding = math.max(1, StudsPerPixel * 14)
+    local HandlePadding = math.max(1, StudsPerPixel * 14) * (self.IsMouseAvailable and 1 or 1.6)
     local PaddedRadius = AdorneeRadius + 2 * HandlePadding
 
     -- Calculate CFrame of the handle's side
@@ -299,7 +300,7 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
     -- Calculate handle size (12 px, or at least 0.5 studs)
     local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * HandleCameraDepth
     local PixelsPerStud = Camera.ViewportSize.X / StudWidth
-    local HandleSize = math.max(12, 0.5 * PixelsPerStud)
+    local HandleSize = math.max(12, 0.5 * PixelsPerStud) * (self.IsMouseAvailable and 1 or 1.6)
     Handle.Size = UDim2.new(0, HandleSize, 0, HandleSize)
 
     -- Calculate where handles will appear on the screen

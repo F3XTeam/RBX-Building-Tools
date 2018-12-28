@@ -52,6 +52,7 @@ function ArcHandles.new(Options)
     self.Maid.Gui = Gui
 
     -- Create interface
+    self.IsMouseAvailable = UserInputService.MouseEnabled
     self:CreateCircles()
     self:CreateHandles(Options)
 
@@ -391,7 +392,7 @@ function ArcHandles:UpdateHandle(Side, Handle)
     local ViewportPoint, CameraDepth, Visible = WorldToViewportPoint(Camera, AdorneeCFrame.p)
     local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * CameraDepth
     local StudsPerPixel = StudWidth / Camera.ViewportSize.X
-    local HandlePadding = math.max(1, StudsPerPixel * 14)
+    local HandlePadding = math.max(1, StudsPerPixel * 14) * (self.IsMouseAvailable and 1 or 1.6)
     local AdorneeRadius = AdorneeSize.magnitude / 2
     local Radius = AdorneeRadius + 2 * HandlePadding
 
@@ -410,7 +411,7 @@ function ArcHandles:UpdateHandle(Side, Handle)
     -- Calculate handle size (12 px, or at least 0.5 studs)
     local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * HandleCameraDepth
     local PixelsPerStud = Camera.ViewportSize.X / StudWidth
-    local HandleSize = math.max(12, 0.5 * PixelsPerStud)
+    local HandleSize = math.max(12, 0.5 * PixelsPerStud) * (self.IsMouseAvailable and 1 or 1.6)
     Handle.Size = UDim2.new(0, HandleSize, 0, HandleSize)
 
     -- Calculate where handles will appear on the screen
@@ -456,9 +457,9 @@ function ArcHandles:UpdateCircle(Axis, Lines)
     local ViewportPoint, CameraDepth, Visible = WorldToViewportPoint(Camera, AdorneeCFrame.p)
     local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * CameraDepth
     local StudsPerPixel = StudWidth / Camera.ViewportSize.X
-    local HandleSpacing = math.max(1, StudsPerPixel * 14)
+    local HandlePadding = math.max(1, StudsPerPixel * 14) * (self.IsMouseAvailable and 1 or 1.6)
     local AdorneeRadius = AdorneeSize.magnitude / 2
-    local Radius = AdorneeRadius + 2 * HandleSpacing
+    local Radius = AdorneeRadius + 2 * HandlePadding
 
     -- Determine angle of each circle slice
     local Angle = 2 * math.pi / #Lines
