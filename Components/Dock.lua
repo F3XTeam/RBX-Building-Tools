@@ -110,15 +110,31 @@ function Component.AddToolButton(Icon, Hotkey, Tool, InfoSection)
 	Cheer(View.ToolInformation).RegisterSection(InfoSection);
 
 	-- Trigger information section on interactions with button
-	Cheer.Bind(Button.MouseEnter, function ()
-		Cheer(View.ToolInformation).ProcessHover(Tool, InfoSection);
-	end);
-	Cheer.Bind(Button.MouseLeave, function ()
-		Cheer(View.ToolInformation).ProcessUnhover(Tool, InfoSection);
-	end);
-	Cheer.Bind(Button, function ()
-		Cheer(View.ToolInformation).ProcessClick(Tool, InfoSection);
-	end);
+	Support.AddGuiInputListener(Button, 'Began', {'MouseButton1'}, false, function ()
+		Cheer(View.ToolInformation).ProcessClick(Tool, InfoSection)
+	end)
+	Support.AddGuiInputListener(Button, 'Began', {'MouseMovement'}, false, function ()
+		Cheer(View.ToolInformation).ProcessHover(Tool, InfoSection)
+	end)
+	Support.AddGuiInputListener(Button, 'Ended', {'MouseMovement'}, true, function ()
+		Cheer(View.ToolInformation).ProcessUnhover(Tool, InfoSection)
+	end)
+
+	-- Time how long each press on the button lasts
+	local TouchStart = nil
+	Support.AddGuiInputListener(Button, 'Began', {'Touch'}, false, function ()
+		local Timestamp = tick()
+		TouchStart = Timestamp
+		wait(0.5)
+
+		-- Trigger tool info if still touching after delay
+		if TouchStart == Timestamp then
+			Cheer(View.ToolInformation).ProcessClick(Tool, InfoSection)
+		end
+	end)
+	Support.AddGuiInputListener(Button, 'Ended', {'Touch'}, true, function ()
+		TouchStart = nil
+	end)
 
 	-- Position the button
 	Button.Position = UDim2.new(Index % 2 * 0.5, 0, 0, Button.AbsoluteSize.Y * math.floor(Index / 2));

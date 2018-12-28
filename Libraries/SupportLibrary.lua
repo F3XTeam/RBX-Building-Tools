@@ -498,11 +498,16 @@ function SupportLibrary.AddUserInputListener(InputState, InputTypeFilter, CatchA
 
 end;
 
-function SupportLibrary.AddGuiInputListener(Gui, InputState, InputType, CatchAll, Callback)
+function SupportLibrary.AddGuiInputListener(Gui, InputState, InputTypeFilter, CatchAll, Callback)
 	-- Connects to the given GUI user input event and takes care of standard boilerplate code
 
-	-- Turn the given `InputType` string into a proper enum
-	local InputType = Enum.UserInputType[InputType];
+	-- Create input type whitelist
+	local InputTypes = {}
+	if type(InputTypeFilter) == 'string' then
+		InputTypes[InputTypeFilter] = true
+	elseif type(InputTypeFilter) == 'table' then
+		InputTypes = SupportLibrary.FlipTable(InputTypeFilter)
+	end
 
 	-- Create a UserInputService listener based on the given `InputState`
 	return Gui['Input' .. InputState]:Connect(function (Input, GameProcessedEvent)
@@ -513,7 +518,7 @@ function SupportLibrary.AddGuiInputListener(Gui, InputState, InputType, CatchAll
 		end;
 
 		-- Make sure this is the right input type
-		if Input.UserInputType ~= InputType then
+		if not InputTypes[Input.UserInputType.Name] then
 			return;
 		end;
 

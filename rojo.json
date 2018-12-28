@@ -57,6 +57,10 @@
     "ui": {
       "path": "UI",
       "target": "StarterPack.Building Tools.UI"
+    },
+    "cheer-ui/dock": {
+      "path": "Components/Dock.lua",
+      "target": "StarterPack.Building Tools.Interfaces.Dock.[Component]"
     }
   }
 }
