@@ -34,6 +34,9 @@ function Explorer:init()
     self.IdMap = {}
     self.PendingParent = {}
 
+    -- Instance references
+    self.ListRef = Roact.createRef()
+
     -- Define item expanding function
     self._ToggleExpand = function (ItemId)
         return self:setState(function (State)
@@ -86,6 +89,22 @@ function Explorer:UpdateScope(Scope)
     local Selection = self.props.Selection
     self.ScopeMaid.Select = Selection.ItemsAdded:Connect(function (Items)
         self:UpdateSelection(Items)
+
+        -- If single item selected, get button position
+        local ListFrame = self.ListRef.current
+        local ItemId = (#Items == 1) and self.IdMap[Items[1]]
+        local ItemButton = ItemId and ListFrame and ListFrame:FindFirstChild(ItemId)
+        if ListFrame and ItemButton then
+            local RelativePosition = ItemButton.AbsolutePosition.Y -
+                ListFrame.AbsolutePosition.Y +
+                ListFrame.CanvasPosition.Y
+
+            -- If button out of view, scroll to its position 
+            if RelativePosition < ListFrame.CanvasPosition.Y or
+               RelativePosition > (ListFrame.CanvasPosition.Y + ListFrame.AbsoluteSize.Y) then
+                ListFrame.CanvasPosition = Vector2.new(0, RelativePosition)
+            end
+        end
     end)
     self.ScopeMaid.Deselect = Selection.ItemsRemoved:Connect(function (Items)
         self:UpdateSelection(Items)
@@ -640,6 +659,7 @@ function Explorer:render()
             ScrollBarThickness = 2,
             ScrollBarImageTransparency = 0.6,
             VerticalScrollBarInset = 'ScrollBar',
+            [Roact.Ref] = self.ListRef,
             [Roact.Children] = Support.Merge(ItemList, {
                 SizeConstraint = new('UISizeConstraint', {
                     MinSize = Vector2.new(0, 20),
