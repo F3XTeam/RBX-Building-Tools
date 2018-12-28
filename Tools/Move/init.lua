@@ -769,7 +769,7 @@ function EnableDragging()
 		end
 
 		-- Initialize dragging detection data
-		DragStartTarget = IsSnapping and Selection.Focus or TargetPart
+		DragStartTarget = TargetPart
 		DragStart = Vector2.new(Core.Mouse.X, Core.Mouse.Y)
 
 		-- Select unselected target, if not snapping
@@ -905,9 +905,12 @@ function StartDragging(BasePart, InitialState, BasePoint)
 	end;
 
 	-- Ensure a base part is provided
-	if not BasePart or not InitialState[BasePart] then
-		return;
-	end;
+	if not InitialState[BasePart] then
+		BasePart = next(InitialState)
+		if not BasePart then
+			return
+		end
+	end
 
 	-- Determine the base point for dragging
 	local BasePartOffset = -BasePart.CFrame:pointToObjectSpace(Core.Mouse.Hit.p);
