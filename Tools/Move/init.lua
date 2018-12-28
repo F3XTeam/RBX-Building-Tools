@@ -796,8 +796,10 @@ function EnableDragging()
 
 			end
 
-			-- Pass input
-			return Enum.ContextActionResult.Pass
+			-- Pass input if not a touch interaction
+			if Input.UserInputType.Name ~= 'Touch' then
+				return Enum.ContextActionResult.Pass
+			end
 		end
 	
 		-- Watch for potential dragging
