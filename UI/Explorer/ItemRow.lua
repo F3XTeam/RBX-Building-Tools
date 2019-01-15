@@ -20,6 +20,44 @@ local TextBox = require(UI:WaitForChild 'TextBox')
 -- Create component
 local ItemRow = Roact.PureComponent:extend 'ItemRow'
 
+function ItemRow:init()
+
+    -- Item button callback
+    self.OnActivated = function ()
+        self:HandleSelection()
+    end
+
+    -- Expand arrow callback
+    self.OnArrowActivated = function ()
+        self:ToggleExpand()
+    end
+
+    -- Lock button callback
+    self.OnLockActivated = function ()
+        self:ToggleLock()
+    end
+
+    -- Name button callback
+    self.OnNameActivated = function (rbx)
+        local CurrentTime = tick()
+        if self.LastNameClick and (CurrentTime - self.LastNameClick) <= 0.25 then
+            self:setState { EditingName = true }
+        else
+            self.LastNameClick = CurrentTime
+            self:HandleSelection()
+        end
+    end
+
+    -- Name input callback
+    self.OnNameInputBlur = function (rbx, EnterPressed)
+        if #rbx.Text > 0 then
+            self:SetName(rbx.Text)
+        end
+        self:setState { EditingName = Roact.None }
+    end
+
+end
+
 function ItemRow:GetParts()
     local Object = self.props.Instance
 
@@ -51,18 +89,18 @@ function ItemRow:ToggleLock()
     }
 
     function HistoryRecord:Unapply()
-        props.SyncAPI:Invoke('SetLocked', self.Parts, self.BeforeLocked)
+        props.Core.SyncAPI:Invoke('SetLocked', self.Parts, self.BeforeLocked)
     end
 
     function HistoryRecord:Apply()
-        props.SyncAPI:Invoke('SetLocked', self.Parts, self.AfterLocked)
+        props.Core.SyncAPI:Invoke('SetLocked', self.Parts, self.AfterLocked)
     end
 
     -- Send lock toggling request to gameserver
     HistoryRecord:Apply()
 
     -- Register history record
-    props.History.Add(HistoryRecord)
+    props.Core.History.Add(HistoryRecord)
 
 end
 
@@ -77,25 +115,25 @@ function ItemRow:SetName(Name)
     }
 
     function HistoryRecord:Unapply()
-        props.SyncAPI:Invoke('SetName', self.Items, self.BeforeName)
+        props.Core.SyncAPI:Invoke('SetName', self.Items, self.BeforeName)
     end
 
     function HistoryRecord:Apply()
-        props.SyncAPI:Invoke('SetName', self.Items, self.AfterName)
+        props.Core.SyncAPI:Invoke('SetName', self.Items, self.AfterName)
     end
 
     -- Send renaming request to gameserver
     HistoryRecord:Apply()
 
     -- Register history record
-    props.History.Add(HistoryRecord)
+    props.Core.History.Add(HistoryRecord)
 
 end
 
 function ItemRow:HandleSelection()
     local props = self.props
-    local Selection = props.Selection
-    local Targeting = props.Targeting
+    local Selection = props.Core.Selection
+    local Targeting = props.Core.Targeting
 
     -- Check if scoping
     local Scoping = UserInputService:IsKeyDown 'LeftAlt' or
@@ -127,14 +165,10 @@ function ItemRow:ToggleExpand()
     self.props.ToggleExpand(self.props.Id)
 end
 
-function ItemRow:init()
-    self.state = {}
-end
-
 function ItemRow:didMount()
     self.Maid = Maid.new()
 
-    local Targeting = self.props.Targeting
+    local Targeting = self.props.Core.Targeting
     local Item = self.props.Instance
 
     -- Listen for targeting
@@ -208,36 +242,23 @@ function ItemRow:render()
         -- Item name
         NameContainer = new(ImageButton, {
             Layout = 'List',
-            Size = 'WRAP_CONTENT',
+            Width = 'WRAP_CONTENT',
             LayoutOrder = 3,
-            [Roact.Event.Activated] = function (rbx)
-                local CurrentTime = tick()
-                if self.LastNameClick and (CurrentTime - self.LastNameClick) <= 0.25 then
-                    self:setState { EditingName = true }
-                else
-                    self.LastNameClick = CurrentTime
-                    self:HandleSelection()
-                end
-            end
+            [Roact.Event.Activated] = self.OnNameActivated
         },
         {
             Name = (not state.EditingName) and new(TextLabel, {
                 TextSize = 13,
                 TextColor = 'FFFFFF',
                 Text = props.Name,
-                Size = 'WRAP_CONTENT'
+                Width = 'WRAP_CONTENT'
             }),
             NameInput = state.EditingName and new(TextBox, {
                 TextSize = 13,
                 TextColor = 'FFFFFF',
                 Text = props.Name,
-                Size = 'WRAP_CONTENT',
-                [Roact.Event.FocusLost] = function (rbx, EnterPressed)
-                    if #rbx.Text > 0 then
-                        self:SetName(rbx.Text)
-                    end
-                    self:setState { EditingName = Roact.None }
-                end
+                Width = 'WRAP_CONTENT',
+                [Roact.Event.FocusLost] = self.OnNameInputBlur
             })
         })
     })
@@ -263,9 +284,7 @@ function ItemRow:render()
             Size = UDim2.new(1, 0, 12/18, 0),
             ImageTransparency = 1 - (props.IsLocked and 0.75 or 0.15),
             LayoutOrder = 0,
-            [Roact.Event.Activated] = function ()
-                self:ToggleLock()
-            end
+            [Roact.Event.Activated] = self.OnLockActivated
         }),
 
         Spacer = new(Frame, {
@@ -286,9 +305,7 @@ function ItemRow:render()
                 ImageRectSize = Vector2.new(14, 14) * 2,
                 Rotation = props.Expanded and 180 or 90,
                 ImageTransparency = 1 - 0.15,
-                [Roact.Event.Activated] = function ()
-                    self:ToggleExpand()
-                end
+                [Roact.Event.Activated] = self.OnArrowActivated
             })
         }),
 
@@ -309,13 +326,11 @@ function ItemRow:render()
     -- Return button with contents
     return new(ImageButton, {
         LayoutOrder = props.Order,
-        Size = UDim2.new(1, 0, 0, 18),
+        Size = UDim2.new(1, 0, 0, props.Height),
         AutoButtonColor = false,
         BackgroundColor3 = Color3.new(1, 1, 1),
         BackgroundTransparency = Transparency,
-        [Roact.Event.Activated] = function (rbx)
-            self:HandleSelection()
-        end
+        [Roact.Event.Activated] = self.OnActivated
     },
     {
         Metadata = Metadata,

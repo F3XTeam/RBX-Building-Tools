@@ -13,17 +13,19 @@ local Signal = require(Libraries:WaitForChild 'Signal')
 -- Roact
 local new = Roact.createElement
 local Frame = require(UI:WaitForChild 'Frame')
-local ScrollingFrame = require(UI:WaitForChild 'ScrollingFrame')
 local ImageLabel = require(UI:WaitForChild 'ImageLabel')
 local ImageButton = require(UI:WaitForChild 'ImageButton')
 local TextLabel = require(UI:WaitForChild 'TextLabel')
-local ItemRow = require(script:WaitForChild 'ItemRow')
+local ItemList = require(script:WaitForChild 'ItemList')
 
 -- Create component
 local Explorer = Roact.PureComponent:extend 'Explorer'
 
-function Explorer:init()
-    self.state = {}
+function Explorer:init(props)
+    self:setState {
+        Items = {},
+        RowHeight = 18
+    }
 
     -- Update batching data
     self.UpdateQueues = {}
@@ -34,15 +36,12 @@ function Explorer:init()
     self.IdMap = {}
     self.PendingParent = {}
 
-    -- Instance references
-    self.ListRef = Roact.createRef()
-
     -- Define item expanding function
-    self._ToggleExpand = function (ItemId)
+    self.ToggleExpand = function (ItemId)
         return self:setState(function (State)
-            local Item = State[ItemId]
+            local Item = State.Items[ItemId]
             Item.Expanded = not Item.Expanded
-            return { [ItemId] = Item }
+            return { Items = State.Items }
         end)
     end
 end
@@ -57,6 +56,7 @@ function Explorer:didUpdate(previousProps, previousState)
 end
 
 function Explorer:UpdateScope(Scope)
+    local Core = self.props.Core
 
     -- Clear previous cleanup maid
     if self.ScopeMaid then
@@ -77,7 +77,7 @@ function Explorer:UpdateScope(Scope)
     end)
 
     -- Listen for new and removing items
-    local Scope = self.props.Scope
+    local Scope = Core.Targeting.Scope
     self.ScopeMaid.Add = Scope.DescendantAdded:Connect(function (Item)
         self:UpdateTree()
     end)
@@ -86,46 +86,33 @@ function Explorer:UpdateScope(Scope)
     end)
 
     -- Listen for selected items
-    local Selection = self.props.Selection
-    self.ScopeMaid.Select = Selection.ItemsAdded:Connect(function (Items)
+    self.ScopeMaid.Select = Core.Selection.ItemsAdded:Connect(function (Items)
         self:UpdateSelection(Items)
 
         -- If single item selected, get item state
-        local ListFrame = self.ListRef.current
         local ItemId = (#Items == 1) and self.IdMap[Items[1]]
 
         -- Expand ancestors leading to item
         self:setState(function (State)
             local Changes = {}
-            local ItemState = State[ItemId]
+            local ItemState = State.Items[ItemId]
             local ParentId = ItemState and self.IdMap[ItemState.Parent]
-            local ParentState = ParentId and State[ParentId]
+            local ParentState = ParentId and State.Items[ParentId]
 
             while ParentState do
                 ParentState.Expanded = true
                 Changes[ParentId] = ParentState
                 ParentId = self.IdMap[ParentState.Parent]
-                ParentState = State[ParentId]
+                ParentState = State.Items[ParentId]
             end
 
-            return Changes
+            return {
+                Items = Support.Merge(State.Items, Changes),
+                ScrollTo = ItemId
+            }
         end)
-
-        -- Check item button position
-        local ItemButton = ItemId and ListFrame and ListFrame:FindFirstChild(ItemId)
-        if ListFrame and ItemButton then
-            local RelativePosition = ItemButton.AbsolutePosition.Y -
-                ListFrame.AbsolutePosition.Y +
-                ListFrame.CanvasPosition.Y
-
-            -- If button out of view, scroll to its position 
-            if RelativePosition < ListFrame.CanvasPosition.Y or
-               RelativePosition > (ListFrame.CanvasPosition.Y + ListFrame.AbsoluteSize.Y) then
-                ListFrame.CanvasPosition = Vector2.new(0, RelativePosition)
-            end
-        end
     end)
-    self.ScopeMaid.Deselect = Selection.ItemsRemoved:Connect(function (Items)
+    self.ScopeMaid.Deselect = Core.Selection.ItemsRemoved:Connect(function (Items)
         self:UpdateSelection(Items)
     end)
 
@@ -170,7 +157,7 @@ function Explorer:UpdateTree()
     end
 
     -- Track order of each item
-    local OrderCounter = 0
+    local OrderCounter = 1
     local IdMap = self.IdMap
 
     -- Perform update to state
@@ -182,7 +169,7 @@ function Explorer:UpdateTree()
         -- Check all items in scope
         for Index, Item in ipairs(Descendants) do
             local ItemId = IdMap[Item]
-            local ItemState = ItemId and State[ItemId]
+            local ItemState = ItemId and State.Items[ItemId]
 
             -- Update reordered items
             if ItemState then
@@ -195,7 +182,7 @@ function Explorer:UpdateTree()
 
                 -- Update parents in case scope changed
                 local ParentId = self.IdMap[ItemState.Parent]
-                if not self.state[ParentId] then
+                if not State.Items[ParentId] then
                     self:UpdateItemParent(Item, Changes, State)
                 end
 
@@ -206,12 +193,12 @@ function Explorer:UpdateTree()
         end
 
         -- Remove old items from state
-        for ItemId, Item in pairs(State) do
+        for ItemId, Item in pairs(State.Items) do
             local Object = Item.Instance
             if not DescendantMap[Object] then
 
                 -- Clear state
-                Changes[ItemId] = Roact.None
+                Changes[ItemId] = Support.Blank
 
                 -- Clear ID
                 IdMap[Object] = nil
@@ -234,13 +221,13 @@ function Explorer:UpdateTree()
         end
 
         -- Update state
-        return Changes
+        return { Items = Support.MergeWithBlanks(State.Items, Changes) }
     end)
 
 end
 
 function Explorer:UpdateSelection(Items)
-    local Selection = self.props.Selection
+    local Selection = self.props.Core.Selection
 
     -- Queue changed items
     self:QueueUpdate('Selection', Items)
@@ -258,13 +245,13 @@ function Explorer:UpdateSelection(Items)
             for _, Item in ipairs(Items) do
                 local ItemId = self.IdMap[Item]
                 if ItemId then
-                    local ItemState = Support.CloneTable(State[ItemId])
+                    local ItemState = Support.CloneTable(State.Items[ItemId])
                     ItemState.Selected = Selection.IsSelected(Item)
                     Changes[ItemId] = ItemState
                 end
             end
         end
-        return Changes
+        return { Items = Support.Merge(State.Items, Changes) }
     end)
 
 end
@@ -316,7 +303,7 @@ function Explorer:BuildItemState(Item, Scope, Order, Changes, State)
         Order = Order,
         Expanded = nil,
         Instance = Item,
-        Selected = self.props.Selection.IsSelected(Item) or nil
+        Selected = self.props.Core.Selection.IsSelected(Item) or nil
     }
 
     -- Register item state into changes
@@ -358,11 +345,11 @@ function Explorer:BuildItemState(Item, Scope, Order, Changes, State)
             local Queue = self:GetUpdateQueue('Name')
             for Item in pairs(Queue) do
                 local ItemId = self.IdMap[Item]
-                local ItemState = Support.CloneTable(State[ItemId])
+                local ItemState = Support.CloneTable(State.Items[ItemId])
                 ItemState.Name = Item.Name
                 Changes[ItemId] = ItemState
             end
-            return Changes
+            return { Items = Support.Merge(State.Items, Changes) }
         end)
 
     end)
@@ -388,7 +375,7 @@ function Explorer:BuildItemState(Item, Scope, Order, Changes, State)
             for Item in pairs(Queue) do
                 self:UpdateItemParent(Item, Changes, State)
             end
-            return Changes
+            return { Items = Support.MergeWithBlanks(State.Items, Changes) }
         end)
 
         -- Update tree state
@@ -414,7 +401,7 @@ function Explorer:BuildItemState(Item, Scope, Order, Changes, State)
                 for Item in pairs(Queue) do
                     self:UpdateItemLock(Item, Changes, State)
                 end
-                return Changes
+                return { Items = Support.MergeWithBlanks(State.Items, Changes) }
             end)
 
         end)
@@ -426,7 +413,9 @@ function Explorer:BuildItemState(Item, Scope, Order, Changes, State)
 end
 
 function Explorer:QueueUpdate(Type, Item)
-    self.UpdateQueues[Type] = Support.Merge(self.UpdateQueues[Type] or {}, { [Item] = true })
+    self.UpdateQueues[Type] = Support.Merge(self.UpdateQueues[Type] or {}, {
+        [Item] = true
+    })
 end
 
 function Explorer:GetUpdateQueue(Type)
@@ -441,28 +430,13 @@ function Explorer:GetUpdateQueue(Type)
 end
 
 function Explorer:ShouldExecuteQueue(Type)
-
-    -- Start timer
-    local CurrentTime = tick()
-    self.QueueTimers[Type] = CurrentTime
-
-    -- Continue if no new changes occur after delay
-    wait(0.025)
-    if self.QueueTimers[Type] ~= CurrentTime then
-        return
-    end
-
-    -- Clear timer
-    self.QueueTimers[Type] = nil
+    local ShouldExecute = self.QueueTimers[Type] or Support.CreateConsecutiveCallDeferrer(0.025)
+    self.QueueTimers[Type] = ShouldExecute
 
     -- Wait until state updatable
-    if not self:WaitUntilRendered() then
-        return
+    if ShouldExecute() and self:WaitUntilRendered() then
+        return true
     end
-
-    -- Continue executing queue
-    return true
-
 end
 
 function Explorer:UpdateItemLock(Item, Changes, State)
@@ -489,13 +463,13 @@ function Explorer:GetStagedItemState(ItemId, Changes, State)
     local StagedItemState = ItemId and Changes[ItemId]
 
     -- Ensure item still exists
-    if not ItemId or (StagedItemState == Roact.None) or
-        not (StagedItemState or State[ItemId]) then
+    if not ItemId or (StagedItemState == Support.Blank) or
+        not (StagedItemState or State.Items[ItemId]) then
         return
     end
 
     -- Return staged item state
-    return StagedItemState or Support.CloneTable(State[ItemId])
+    return StagedItemState or Support.CloneTable(State.Items[ItemId])
 
 end
 
@@ -586,54 +560,9 @@ function Explorer:render()
     local props = self.props
     local state = self.state
 
-    -- Declare a button for each item
-    local ItemList = {}
-    for Key, Item in pairs(state) do
-
-        -- Get item parent state
-        local ParentId = Item.Parent and self.IdMap[Item.Parent]
-        local ParentState = ParentId and state[ParentId]
-
-        -- Determine visibility and depth from ancestors
-        local Visible = true
-        local Depth = 0
-        if ParentId then
-            local ParentState = ParentState
-            while ParentState do
-
-                -- Stop if ancestor not visible
-                if not ParentState.Expanded then
-                    Visible = false
-                    break
-
-                -- Count visible ancestors
-                else
-                    Depth = Depth + 1
-                end
-
-                -- Check next ancestor
-                local ParentId = self.IdMap[ParentState.Parent]
-                ParentState = state[ParentId]
-
-            end
-        end
-
-        -- Declare component for item
-        ItemList[Key] = Visible and new(ItemRow, Support.Merge({}, Item, {
-            Depth = Depth,
-            Selection = props.Selection,
-            History = props.History,
-            Targeting = props.Targeting,
-            SyncAPI = props.SyncAPI,
-            ToggleExpand = self._ToggleExpand
-        }))
-
-    end
-
     -- Display window
     return new(ImageLabel, {
         Active = true,
-        Draggable = true,
         Layout = 'List',
         LayoutDirection = 'Vertical',
         AnchorPoint = Vector2.new(1, 0),
@@ -669,22 +598,13 @@ function Explorer:render()
         }),
 
         -- Scrollable item list
-        ItemList = new(ScrollingFrame, {
-            Layout = 'List',
-            LayoutDirection = 'Vertical',
-            Size = UDim2.new(1, 0, 0, 0),
-            CanvasHeight = 'WRAP_CONTENT',
-            Height = 'WRAP_CONTENT',
-            ScrollBarThickness = 2,
-            ScrollBarImageTransparency = 0.6,
-            VerticalScrollBarInset = 'ScrollBar',
-            [Roact.Ref] = self.ListRef,
-            [Roact.Children] = Support.Merge(ItemList, {
-                SizeConstraint = new('UISizeConstraint', {
-                    MinSize = Vector2.new(0, 20),
-                    MaxSize = Vector2.new(math.huge, 300)
-                })
-            })
+        ItemList = new(ItemList, {
+            Items = state.Items,
+            ScrollTo = state.ScrollTo,
+            Core = props.Core,
+            IdMap = self.IdMap,
+            RowHeight = state.RowHeight,
+            ToggleExpand = self.ToggleExpand
         })
     })
 end

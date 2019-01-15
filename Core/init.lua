@@ -319,12 +319,9 @@ function OpenExplorer()
 
 	-- Initialize explorer
 	Explorer = Roact.createElement(ExplorerTemplate, {
-		Selection = Selection,
-		Targeting = Targeting,
-		History = History,
-		Scope = Targeting.Scope,
-		SyncAPI = SyncAPI,
-		Close = CloseExplorer
+		Core = getfenv(0),
+		Close = CloseExplorer,
+		Scope = Targeting.Scope
 	})
 
 	-- Mount explorer
