@@ -111,6 +111,33 @@ function SupportLibrary.Merge(Target, ...)
 	return Target
 end
 
+-- Create symbol representing a blank value
+local Blank = newproxy(true)
+SupportLibrary.Blank = Blank
+getmetatable(Blank).__tostring = function ()
+	return 'Symbol(Blank)'
+end
+
+function SupportLibrary.MergeWithBlanks(Target, ...)
+	-- Copies members of the given tables into the specified target table, including blank values
+
+	local Tables = { ... }
+
+	-- Copy members from each table into target
+	for TableOrder, Table in ipairs(Tables) do
+		for Key, Value in pairs(Table) do
+			if Value == Blank then
+				Target[Key] = nil
+			else
+				Target[Key] = Value
+			end
+		end
+	end
+
+	-- Return target
+	return Target
+end
+
 function SupportLibrary.GetAllDescendants(Parent)
 	-- Recursively gets all the descendants of `Parent` and returns them
 
