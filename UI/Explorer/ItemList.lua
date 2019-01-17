@@ -102,10 +102,14 @@ function ItemList:render()
             end
         end
 
-        -- Set canvas position to begin at item if requested
+        -- Set canvas position to begin at item if requested and out-of-view
         if (Item.Id == props.ScrollTo) and (self.ScrolledTo ~= props.ScrollTo) then
-            TargetCanvasPosition = Vector2.new(0, VisibleItemCount * props.RowHeight)
-            self.ScrolledTo = Item.Id
+            local ItemPosition = VisibleItemCount * props.RowHeight
+            if ItemPosition < state.CanvasPosition.Y or
+               ItemPosition > (state.CanvasPosition.Y + props.MaxHeight) then
+                TargetCanvasPosition = Vector2.new(0, ItemPosition)
+                self.ScrolledTo = Item.Id
+            end
         end
 
         -- Calculate whether item is in view
