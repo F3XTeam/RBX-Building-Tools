@@ -57,6 +57,7 @@ end
 
 function Explorer:UpdateScope(Scope)
     local Core = self.props.Core
+    local Selection = Core.Selection
 
     -- Clear previous cleanup maid
     if self.ScopeMaid then
@@ -74,6 +75,12 @@ function Explorer:UpdateScope(Scope)
     -- Build initial tree
     spawn(function ()
         self:UpdateTree()
+
+        -- Scroll to first selected item
+        if #Selection.Items > 0 then
+            local FocusedItem = Selection.IsSelected(Selection.Focus) and Selection.Focus or Selection.Items[1]
+            self:setState { ScrollTo = self.IdMap[FocusedItem] }
+        end
     end)
 
     -- Listen for new and removing items
@@ -86,7 +93,7 @@ function Explorer:UpdateScope(Scope)
     end)
 
     -- Listen for selected items
-    self.ScopeMaid.Select = Core.Selection.ItemsAdded:Connect(function (Items)
+    self.ScopeMaid.Select = Selection.ItemsAdded:Connect(function (Items)
         self:UpdateSelection(Items)
 
         -- If single item selected, get item state
@@ -112,7 +119,7 @@ function Explorer:UpdateScope(Scope)
             }
         end)
     end)
-    self.ScopeMaid.Deselect = Core.Selection.ItemsRemoved:Connect(function (Items)
+    self.ScopeMaid.Deselect = Selection.ItemsRemoved:Connect(function (Items)
         self:UpdateSelection(Items)
     end)
 
