@@ -86,30 +86,48 @@ function Handles:CreateHandles(Options)
 
         -- Listen for handle interactions on click
         HandleMaid.DragStart = Handle.MouseButton1Down:Connect(function (X, Y)
-            local InitialHandlePlane = self.HandleStates[Handle].PlaneNormal
-            local InitialHandleNormal = self.HandleStates[Handle].HandleNormal
-            local InitialHandlePoint = self.HandleStates[Handle].HandleCFrame.p
+            local HandleState = self.HandleStates[Handle]
+            local HandlePlane = HandleState.PlaneNormal
+            local HandleNormal = HandleState.HandleNormal
+            local HandleWorldPoint = HandleState.HandleCFrame.Position
+            local HandleAxisLine = (HandleState.HandleViewportPosition - HandleState.AdorneeViewportPosition).Unit
+
+            -- Project viewport aim point onto 2D handle axis line
+            local AimAdorneeViewportOffset = Vector2.new(X, Y) - HandleState.AdorneeViewportPosition
+            local MappedViewportPointOnAxis = HandleAxisLine:Dot(AimAdorneeViewportOffset) * HandleAxisLine +
+                HandleState.AdorneeViewportPosition
+
+            -- Map projected viewport aim point onto 3D handle axis line
+            local AimRay = self.Camera:ViewportPointToRay(MappedViewportPointOnAxis.X, MappedViewportPointOnAxis.Y)
+            local AimDistance = (HandleWorldPoint - AimRay.Origin):Dot(HandlePlane) / AimRay.Direction:Dot(HandlePlane)
+            local AimWorldPoint = (AimDistance * AimRay.Direction) + AimRay.Origin
 
             -- Calculate dragging distance offset
-            local AimRay = self.Camera:ViewportPointToRay(X, Y)
-            local AimDistance = (InitialHandlePoint - AimRay.Origin):Dot(InitialHandlePlane) / AimRay.Direction:Dot(InitialHandlePlane)
-            local AimWorldPoint = (AimDistance * AimRay.Direction) + AimRay.Origin
-            local DragDistanceOffset = InitialHandleNormal:Dot(AimWorldPoint - InitialHandlePoint)
+            local DragDistanceOffset = HandleNormal:Dot(AimWorldPoint - HandleWorldPoint)
 
-            -- Run callback
+            -- Run drag start callback
             if Options.OnDragStart then
                 Options.OnDragStart()
             end
 
             local function ProcessDragChange(AimScreenPoint)
+                local HandleAxisLine = (HandleState.HandleViewportPosition - HandleState.AdorneeViewportPosition).Unit
+
+                -- Project screen aim point onto 2D handle axis line
+                local AdorneeScreenPosition = HandleState.AdorneeViewportPosition - self.GuiInset
+                local AimAdorneeScreenOffset = Vector2.new(AimScreenPoint.X, AimScreenPoint.Y) - AdorneeScreenPosition
+                local MappedScreenPointOnAxis = HandleAxisLine:Dot(AimAdorneeScreenOffset) * HandleAxisLine +
+                    AdorneeScreenPosition
+
+                -- Map projected screen aim point onto 3D handle axis line
+                local AimRay = self.Camera:ScreenPointToRay(MappedScreenPointOnAxis.X, MappedScreenPointOnAxis.Y)
+                local AimDistance = (HandleWorldPoint - AimRay.Origin):Dot(HandlePlane) / AimRay.Direction:Dot(HandlePlane)
+                local AimWorldPoint = (AimDistance * AimRay.Direction) + AimRay.Origin
 
                 -- Calculate distance dragged
-                local AimRay = self.Camera:ScreenPointToRay(AimScreenPoint.X, AimScreenPoint.Y)
-                local AimDistance = (InitialHandlePoint - AimRay.Origin):Dot(InitialHandlePlane) / AimRay.Direction:Dot(InitialHandlePlane)
-                local AimWorldPoint = (AimDistance * AimRay.Direction) + AimRay.Origin
-                local DragDistance = InitialHandleNormal:Dot(AimWorldPoint - InitialHandlePoint) - DragDistanceOffset
+                local DragDistance = HandleNormal:Dot(AimWorldPoint - HandleWorldPoint) - DragDistanceOffset
 
-                -- Run drag callback
+                -- Run drag step callback
                 if Options.OnDrag then
                     Options.OnDrag(Side, DragDistance)
                 end
@@ -320,6 +338,8 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
     HandleState.PlaneNormal = HandlePlaneNormal
     HandleState.HandleCFrame = HandleCFrame
     HandleState.HandleNormal = HandleNormal
+    HandleState.AdorneeViewportPosition = AdorneeViewportPoint
+    HandleState.HandleViewportPosition = HandleViewportPoint
     
     -- Hide handles if obscured by a non-blacklisted part
     local HandleRay = Camera:ViewportPointToRay(HandleViewportPoint.X, HandleViewportPoint.Y)
