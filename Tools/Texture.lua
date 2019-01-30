@@ -485,26 +485,27 @@ function AddTextures(TextureType, Face)
 	-- Put together the history record
 	local HistoryRecord = {
 		Textures = Textures;
+		Selection = Selection.Items;
 
-		Unapply = function (HistoryRecord)
+		Unapply = function (Record)
 			-- Reverts this change
 
 			-- Select changed parts
-			Selection.Replace(Support.GetListMembers(HistoryRecord.Textures, 'Parent'));
+			Selection.Replace(Record.Selection)
 
 			-- Remove the textures
-			Core.SyncAPI:Invoke('Remove', HistoryRecord.Textures);
+			Core.SyncAPI:Invoke('Remove', Record.Textures);
 
 		end;
 
-		Apply = function (HistoryRecord)
+		Apply = function (Record)
 			-- Reapplies this change
 
 			-- Restore the textures
-			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Textures);
+			Core.SyncAPI:Invoke('UndoRemove', Record.Textures);
 
 			-- Select changed parts
-			Selection.Replace(Support.GetListMembers(HistoryRecord.Textures, 'Parent'));
+			Selection.Replace(Record.Selection)
 
 		end;
 
@@ -523,26 +524,27 @@ function RemoveTextures(TextureType, Face)
 	-- Create the history record
 	local HistoryRecord = {
 		Textures = Textures;
+		Selection = Selection.Items;
 
-		Unapply = function (HistoryRecord)
+		Unapply = function (Record)
 			-- Reverts this change
 
 			-- Restore the textures
-			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Textures);
+			Core.SyncAPI:Invoke('UndoRemove', Record.Textures);
 
 			-- Select changed parts
-			Selection.Replace(Support.GetListMembers(HistoryRecord.Textures, 'Parent'));
+			Selection.Replace(Record.Selection)
 
 		end;
 
-		Apply = function (HistoryRecord)
+		Apply = function (Record)
 			-- Reapplies this change
 
 			-- Select changed parts
-			Selection.Replace(Support.GetListMembers(HistoryRecord.Textures, 'Parent'));
+			Selection.Replace(Record.Selection)
 
 			-- Remove the textures
-			Core.SyncAPI:Invoke('Remove', HistoryRecord.Textures);
+			Core.SyncAPI:Invoke('Remove', Record.Textures);
 
 		end;
 
@@ -562,12 +564,13 @@ function TrackChange()
 	HistoryRecord = {
 		Before = {};
 		After = {};
+		Selection = Selection.Items;
 
 		Unapply = function (Record)
 			-- Reverts this change
 
 			-- Select the changed parts
-			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
+			Selection.Replace(Record.Selection)
 
 			-- Send the change request
 			Core.SyncAPI:Invoke('SyncTexture', Record.Before);
@@ -578,7 +581,7 @@ function TrackChange()
 			-- Applies this change
 
 			-- Select the changed parts
-			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
+			Selection.Replace(Record.Selection)
 
 			-- Send the change request
 			Core.SyncAPI:Invoke('SyncTexture', Record.After);

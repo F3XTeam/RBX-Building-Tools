@@ -56,6 +56,7 @@ function MoveTool.Unequip()
 
 	-- Disable dragging
 	ContextActionService:UnbindAction 'BT: Start dragging'
+	ContextActionService:UnbindAction 'Move Tool: Drag Hotkey'
 
 	-- Clear unnecessary resources
 	HideUI();
@@ -680,12 +681,13 @@ function TrackChange()
 		Parts = Support.CloneTable(Selection.Parts);
 		BeforeCFrame = {};
 		AfterCFrame = {};
+		Selection = Selection.Items;
 
 		Unapply = function (Record)
 			-- Reverts this change
 
 			-- Select the changed parts
-			Selection.Replace(Record.Parts);
+			Selection.Replace(Record.Selection)
 
 			-- Put together the change request
 			local Changes = {};
@@ -702,7 +704,7 @@ function TrackChange()
 			-- Applies this change
 
 			-- Select the changed parts
-			Selection.Replace(Record.Parts);
+			Selection.Replace(Record.Selection)
 
 			-- Put together the change request
 			local Changes = {};
@@ -814,6 +816,31 @@ function EnableDragging()
 		Enum.UserInputType.MouseButton1,
 		Enum.UserInputType.Touch
 	)
+
+	local function HandleDragHotkey(Action, State, Input)
+
+		-- Make sure to only trigger when dragging hotkey pressed
+		local KeysPressed = UserInputService:GetKeysPressed()
+		for _, KeyInput in pairs(KeysPressed) do
+			if (KeyInput.KeyCode.Name ~= 'Z') and (KeyInput.KeyCode.Name ~= 'R') then
+				return Enum.ContextActionResult.Pass
+			end
+		end
+
+		-- Stop dragging if already dragging
+		if Dragging and (State.Name == 'Begin') then
+			SetAxes(MoveTool.Axes)
+			FinishDragging()
+			return
+		end
+
+		-- Begin dragging
+		HandleDragStart(Action, State, Input)
+
+	end
+
+	-- Listen for dragging hotkey
+	ContextActionService:BindAction('Move Tool: Drag Hotkey', HandleDragHotkey, false, Enum.KeyCode.Z)
 
 end;
 

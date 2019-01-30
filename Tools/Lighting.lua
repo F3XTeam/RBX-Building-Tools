@@ -484,26 +484,27 @@ function AddLights(LightType)
 	-- Put together the history record
 	local HistoryRecord = {
 		Lights = Lights;
+		Selection = Selection.Items;
 
-		Unapply = function (HistoryRecord)
+		Unapply = function (Record)
 			-- Reverts this change
 
 			-- Select changed parts
-			Selection.Replace(Support.GetListMembers(HistoryRecord.Lights, 'Parent'));
+			Selection.Replace(Record.Selection)
 
 			-- Remove the lights
-			Core.SyncAPI:Invoke('Remove', HistoryRecord.Lights);
+			Core.SyncAPI:Invoke('Remove', Record.Lights);
 
 		end;
 
-		Apply = function (HistoryRecord)
+		Apply = function (Record)
 			-- Reapplies this change
 
 			-- Restore the lights
-			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Lights);
+			Core.SyncAPI:Invoke('UndoRemove', Record.Lights);
 
 			-- Select changed parts
-			Selection.Replace(Support.GetListMembers(HistoryRecord.Lights, 'Parent'));
+			Selection.Replace(Record.Selection)
 
 		end;
 
@@ -525,26 +526,27 @@ function RemoveLights(LightType)
 	-- Create the history record
 	local HistoryRecord = {
 		Lights = Lights;
+		Selection = Selection.Items;
 
-		Unapply = function (HistoryRecord)
+		Unapply = function (Record)
 			-- Reverts this change
 
 			-- Restore the lights
-			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Lights);
+			Core.SyncAPI:Invoke('UndoRemove', Record.Lights);
 
 			-- Select changed parts
-			Selection.Replace(Support.GetListMembers(HistoryRecord.Lights, 'Parent'));
+			Selection.Replace(Record.Selection)
 
 		end;
 
-		Apply = function (HistoryRecord)
+		Apply = function (Record)
 			-- Reapplies this change
 
 			-- Select changed parts
-			Selection.Replace(Support.GetListMembers(HistoryRecord.Lights, 'Parent'));
+			Selection.Replace(Record.Selection)
 
 			-- Remove the lights
-			Core.SyncAPI:Invoke('Remove', HistoryRecord.Lights);
+			Core.SyncAPI:Invoke('Remove', Record.Lights);
 
 		end;
 
@@ -564,12 +566,13 @@ function TrackChange()
 	HistoryRecord = {
 		Before = {};
 		After = {};
+		Selection = Selection.Items;
 
 		Unapply = function (Record)
 			-- Reverts this change
 
 			-- Select the changed parts
-			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
+			Selection.Replace(Record.Selection)
 
 			-- Send the change request
 			Core.SyncAPI:Invoke('SyncLighting', Record.Before);
@@ -580,7 +583,7 @@ function TrackChange()
 			-- Applies this change
 
 			-- Select the changed parts
-			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
+			Selection.Replace(Record.Selection)
 
 			-- Send the change request
 			Core.SyncAPI:Invoke('SyncLighting', Record.After);

@@ -9,6 +9,9 @@ Libraries = Tool:WaitForChild 'Libraries'
 Support = require(Libraries:WaitForChild 'SupportLibrary')
 RegionModule = require(Libraries:WaitForChild 'Region')
 
+-- Determine whether we're in tool or plugin mode
+local ToolMode = (Tool.Parent:IsA 'Plugin') and 'Plugin' or 'Tool'
+
 -- Initialize the security module
 Security = {};
 
@@ -204,7 +207,7 @@ function Security.AreAreasEnabled()
 	-- Returns whether areas are enabled
 
 	-- Base whether areas are enabled depending on area container presence and tool mode
-	if Security.Areas and Tool.ClassName == 'Tool' then
+	if Security.Areas and (ToolMode == 'Tool') then
 		return true;
 	else
 		return false;

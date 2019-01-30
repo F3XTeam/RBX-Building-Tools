@@ -419,26 +419,27 @@ function AddMeshes()
 	-- Put together the history record
 	local HistoryRecord = {
 		Meshes = Meshes;
+		Selection = Selection.Items;
 
-		Unapply = function (HistoryRecord)
+		Unapply = function (Record)
 			-- Reverts this change
 
 			-- Select changed parts
-			Selection.Replace(Support.GetListMembers(HistoryRecord.Meshes, 'Parent'));
+			Selection.Replace(Record.Selection)
 
 			-- Remove the meshes
-			Core.SyncAPI:Invoke('Remove', HistoryRecord.Meshes);
+			Core.SyncAPI:Invoke('Remove', Record.Meshes);
 
 		end;
 
-		Apply = function (HistoryRecord)
+		Apply = function (Record)
 			-- Reapplies this change
 
 			-- Restore the meshes
-			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Meshes);
+			Core.SyncAPI:Invoke('UndoRemove', Record.Meshes);
 
 			-- Select changed parts
-			Selection.Replace(Support.GetListMembers(HistoryRecord.Meshes, 'Parent'));
+			Selection.Replace(Record.Selection)
 
 		end;
 
@@ -457,26 +458,27 @@ function RemoveMeshes()
 	-- Create the history record
 	local HistoryRecord = {
 		Meshes = Meshes;
+		Selection = Selection.Items;
 
-		Unapply = function (HistoryRecord)
+		Unapply = function (Record)
 			-- Reverts this change
 
 			-- Restore the meshes
-			Core.SyncAPI:Invoke('UndoRemove', HistoryRecord.Meshes);
+			Core.SyncAPI:Invoke('UndoRemove', Record.Meshes);
 
 			-- Select changed parts
-			Selection.Replace(Support.GetListMembers(HistoryRecord.Meshes, 'Parent'));
+			Selection.Replace(Record.Selection)
 
 		end;
 
-		Apply = function (HistoryRecord)
+		Apply = function (Record)
 			-- Reapplies this change
 
 			-- Select changed parts
-			Selection.Replace(Support.GetListMembers(HistoryRecord.Meshes, 'Parent'));
+			Selection.Replace(Record.Selection)
 
 			-- Remove the meshes
-			Core.SyncAPI:Invoke('Remove', HistoryRecord.Meshes);
+			Core.SyncAPI:Invoke('Remove', Record.Meshes);
 
 		end;
 
@@ -701,12 +703,13 @@ function TrackChange()
 	HistoryRecord = {
 		Before = {};
 		After = {};
+		Selection = Selection.Items;
 
 		Unapply = function (Record)
 			-- Reverts this change
 
 			-- Select the changed parts
-			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
+			Selection.Replace(Record.Selection)
 
 			-- Send the change request
 			Core.SyncAPI:Invoke('SyncMesh', Record.Before);
@@ -717,7 +720,7 @@ function TrackChange()
 			-- Applies this change
 
 			-- Select the changed parts
-			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
+			Selection.Replace(Record.Selection)
 
 			-- Send the change request
 			Core.SyncAPI:Invoke('SyncMesh', Record.After);

@@ -747,12 +747,13 @@ function TrackChange()
 		Parts = Support.CloneTable(Selection.Parts);
 		BeforeCFrame = {};
 		AfterCFrame = {};
+		Selection = Selection.Items;
 
 		Unapply = function (Record)
 			-- Reverts this change
 
 			-- Select the changed parts
-			Selection.Replace(Record.Parts);
+			Selection.Replace(Record.Selection)
 
 			-- Put together the change request
 			local Changes = {};
@@ -769,7 +770,7 @@ function TrackChange()
 			-- Applies this change
 
 			-- Select the changed parts
-			Selection.Replace(Record.Parts);
+			Selection.Replace(Record.Selection)
 
 			-- Put together the change request
 			local Changes = {};
