@@ -200,12 +200,13 @@ function TrackChange()
 	HistoryRecord = {
 		Before = {};
 		After = {};
+		Selection = Selection.Items;
 
 		Unapply = function (Record)
 			-- Reverts this change
 
 			-- Select the changed parts
-			Selection.Replace(Support.GetListMembers(Record.Before, 'Part'));
+			Selection.Replace(Record.Selection)
 
 			-- Send the change request
 			Core.SyncAPI:Invoke('SyncAnchor', Record.Before);
@@ -216,7 +217,7 @@ function TrackChange()
 			-- Applies this change
 
 			-- Select the changed parts
-			Selection.Replace(Support.GetListMembers(Record.After, 'Part'));
+			Selection.Replace(Record.Selection)
 
 			-- Send the change request
 			Core.SyncAPI:Invoke('SyncAnchor', Record.After);
