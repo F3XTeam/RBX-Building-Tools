@@ -37,7 +37,6 @@ function ConstraintsTool:ShowHUD()
     },
     {
         UI = Roact.createElement(Template, { 
-            Core = Core,
             Color = self.Color.Color
         })
     })

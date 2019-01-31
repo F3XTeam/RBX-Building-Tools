@@ -17,13 +17,10 @@ local function ConstraintsHUD(props)
     return new(ToolHUD, {
         Color = props.Color,
         Width = UDim.new(0, props.Mode == 'SelectConstraintType' and 205 or 172),
-        Label = 'Constraints',
-        Core = props.Core
+        Label = 'Constraints'
     },
     {
-        ConstraintSelector = new(ConstraintSelector, {
-            Core = props.Core
-        })
+        ConstraintSelector = new(ConstraintSelector)
     })
 end
 
