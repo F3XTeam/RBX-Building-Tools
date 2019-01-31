@@ -70,10 +70,10 @@ local TextureTool = require(CoreTools.Texture)
 Core.AssignHotkey('G', Core.Support.Call(Core.EquipTool, TextureTool));
 Core.Dock.AddToolButton(Core.Assets.TextureIcon, 'G', TextureTool, 'TextureInfo');
 
--- Initialize weld tool
-local WeldTool = require(CoreTools.Weld)
-Core.AssignHotkey('F', Core.Support.Call(Core.EquipTool, WeldTool));
-Core.Dock.AddToolButton(Core.Assets.WeldIcon, 'F', WeldTool, 'WeldInfo');
+-- Initialize constraints tool
+local ConstraintsTool = require(CoreTools:WaitForChild 'Constraints')
+Core.AssignHotkey('F', Core.Support.Call(Core.EquipTool, ConstraintsTool))
+Core.Dock.AddToolButton(Core.Assets.WeldIcon, 'F', ConstraintsTool, 'WeldInfo')
 
 -- Initialize lighting tool
 local LightingTool = require(CoreTools.Lighting)
