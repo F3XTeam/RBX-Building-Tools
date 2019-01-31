@@ -164,7 +164,10 @@ function TextLabel:render()
         local BoldProps = Support.CloneTable(props)
         BoldProps.Size = UDim2.new(1, 0, 1, 0)
         BoldProps.Position = nil
-        BoldProps.TextScaled = true
+        BoldProps.TextScaled = self.props.TextScaled
+        if not self.props.TextScaled then
+            BoldProps.TextSize = self.props.TextSize
+        end
         BoldProps.AnchorPoint = nil
         children.Bold = new(TextLabel, BoldProps)
     end
