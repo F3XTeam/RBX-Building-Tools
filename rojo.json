@@ -34,6 +34,14 @@
       "path": "Vendor/Roact/lib",
       "target": "StarterPack.Building Tools.Vendor.Roact"
     },
+    "vendor/rodux": {
+      "path": "Vendor/Rodux/lib",
+      "target": "StarterPack.Building Tools.Vendor.Rodux"
+    },
+    "vendor/roact-rodux": {
+      "path": "Vendor/RoactRodux/lib",
+      "target": "StarterPack.Building Tools.Vendor.RoactRodux"
+    },
     "assets": {
       "path": "Support/Assets.lua",
       "target": "StarterPack.Building Tools.Assets"

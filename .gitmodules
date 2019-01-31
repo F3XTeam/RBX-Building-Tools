@@ -1,3 +1,9 @@
 [submodule "Vendor/Roact"]
 	path = Vendor/Roact
 	url = https://github.com/Roblox/roact
+[submodule "Vendor/Rodux"]
+	path = Vendor/Rodux
+	url = https://github.com/Roblox/rodux
+[submodule "Vendor/RoactRodux"]
+	path = Vendor/RoactRodux
+	url = https://github.com/Roblox/roact-rodux
