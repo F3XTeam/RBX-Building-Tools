@@ -16,6 +16,7 @@ local ImageLabel = require(UI:WaitForChild 'ImageLabel')
 local ImageButton = require(UI:WaitForChild 'ImageButton')
 local TextLabel = require(UI:WaitForChild 'TextLabel')
 local TextBox = require(UI:WaitForChild 'TextBox')
+local InstanceIcon = require(UI:WaitForChild 'InstanceIcon')
 
 -- Create component
 local ItemRow = Roact.PureComponent:extend 'ItemRow'
@@ -186,31 +187,9 @@ function ItemRow:willUnmount()
     self.Maid = self.Maid:Destroy()
 end
 
-ItemRow.ClassIcons = {
-    Part = Vector2.new(2, 1),
-    MeshPart = Vector2.new(4, 8),
-    UnionOperation = Vector2.new(4, 8),
-    NegateOperation = Vector2.new(3, 8),
-    VehicleSeat = Vector2.new(6, 4),
-    Seat = Vector2.new(6, 4),
-    TrussPart = Vector2.new(2, 1),
-    CornerWedgePart = Vector2.new(2, 1),
-    WedgePart = Vector2.new(2, 1),
-    SpawnLocation = Vector2.new(6, 3),
-    Model = Vector2.new(3, 1),
-    Folder = Vector2.new(8, 8),
-    Tool = Vector2.new(8, 2),
-    Workspace = Vector2.new(10, 2),
-    Accessory = Vector2.new(3, 4),
-    Accoutrement = Vector2.new(3, 4)
-}
-
 function ItemRow:render()
     local props = self.props
     local state = self.state
-
-    -- Determine icon for class
-    local IconPosition = ItemRow.ClassIcons[props.Class] or Vector2.new(1, 1)
 
     -- Item information
     local Metadata = new(Frame, {
@@ -225,11 +204,9 @@ function ItemRow:render()
         }),
 
         -- Class icon
-        Icon = new(ImageLabel, {
+        Icon = new(InstanceIcon, {
+            ClassName = props.Class,
             AspectRatio = 1,
-            Image = 'rbxassetid://2245672825',
-            ImageRectOffset = (IconPosition - Vector2.new(1, 1)) * Vector2.new(16, 16),
-            ImageRectSize = Vector2.new(16, 16),
             Size = UDim2.new(1, 0, 12/18, 0),
             LayoutOrder = 1
         }),
