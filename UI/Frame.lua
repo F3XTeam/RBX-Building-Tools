@@ -87,6 +87,39 @@ function Frame:render()
         )
     end
 
+    -- Include grid layout if specified
+    if props.Layout == 'Grid' then
+        local Layout = new('UIGridLayout', {
+            FillDirection = props.LayoutDirection,
+            CellPadding = props.CellPadding or UDim2.new(),
+            CellSize = props.CellSize or UDim2.new(),
+            FillDirectionMaxCells = props.FillDirectionMaxCells,
+            HorizontalAlignment = props.HorizontalAlignment,
+            VerticalAlignment = props.VerticalAlignment,
+            SortOrder = props.SortOrder or 'LayoutOrder',
+            [Roact.Ref] = function (rbx)
+                self:UpdateContentSize(rbx)
+            end,
+            [Roact.Change.AbsoluteContentSize] = function (rbx)
+                self:UpdateContentSize(rbx)
+            end
+        })
+
+        -- Clear out custom props
+        props.CellPadding = nil
+        props.CellSize = nil
+        props.FillDirectionMaxCells = nil
+
+        -- Update size
+        props.Size = self:GetSize()
+
+        -- Insert layout into children
+        props[Roact.Children] = Support.Merge(
+            { Layout = Layout },
+            props[Roact.Children]
+        )
+    end
+
     -- Filter out custom properties
     props.AspectRatio = nil
     props.DominantAxis = nil
