@@ -1,26 +1,25 @@
-Tool = script.Parent.Parent;
-Core = require(Tool.Core);
-SnapTracking = require(Tool.Core.Snapping);
-BoundingBox = require(Tool.Core.BoundingBox);
+local Tool = script.Parent.Parent
+local Core = require(Tool.Core)
+local SnapTracking = require(Tool.Core.Snapping)
+local BoundingBox = require(Tool.Core.BoundingBox)
 
 -- Services
 local ContextActionService = game:GetService 'ContextActionService'
 local Workspace = game:GetService 'Workspace'
+local UserInputService = game:GetService 'UserInputService'
 
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
 local Signal = require(Libraries:WaitForChild 'Signal')
-local Make = require(Libraries:WaitForChild 'Make')
+local Maid = require(Libraries:WaitForChild 'Maid')
 
 -- Import relevant references
-Selection = Core.Selection;
-Support = Core.Support;
-Security = Core.Security;
-Support.ImportServices();
+local Selection = Core.Selection
+local Support = Core.Support
+local Security = Core.Security
 
 -- Initialize the tool
 local MoveTool = {
-
 	Name = 'Move Tool';
 	Color = BrickColor.new 'Deep orange';
 
@@ -28,168 +27,164 @@ local MoveTool = {
 	Increment = 1;
 	Axes = 'Global';
 
-};
+	-- Dragging state
+	Dragging = false;
+	HandleDragging = false;
+	DragStart = nil;
+	DragStartTarget = nil;
+	TriggerAlignment = nil;
+	SurfaceAlignment = nil;
+	LastSurfaceAlignment = nil;
+	CrossthroughCorrection = nil;
+	LastSelection = nil;
+	LastBasePartOffset = nil;
+	Target = nil;
+	TargetPoint = nil;
+	TargetNormal = nil;
+	LastTargetNormal = nil;
+	CornerOffsets = nil;
 
--- Container for temporary connections (disconnected automatically)
-local Connections = {};
+	-- Selection state
+	InitialState = nil;
+	InitialFocusCFrame = nil;
+	InitialExtentsSize = nil;
+	InitialExtentsCFrame = nil;
 
-function MoveTool.Equip()
+	-- Snapping state
+	SnappedPoint = nil;
+	PointSnapped = Signal.new();
+
+	-- Resource maid
+	Maid = Maid.new();
+}
+
+function MoveTool:Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Set our current axis mode
-	SetAxes(MoveTool.Axes);
+	self:SetAxes(self.Axes)
 
 	-- Start up our interface
-	ShowUI();
-	BindShortcutKeys();
-	EnableDragging();
+	self:ShowUI()
+	self:BindShortcutKeys()
+	self:EnableDragging()
 
-end;
+end
 
-function MoveTool.Unequip()
+function MoveTool:Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- If dragging, finish dragging
-	if Dragging then
-		FinishDragging();
-	end;
+	if self.Dragging then
+		self:FinishDragging()
+	end
 
 	-- Disable dragging
 	ContextActionService:UnbindAction 'BT: Start dragging'
 
 	-- Clear unnecessary resources
-	HideUI();
-	HideHandles();
-	ClearConnections();
+	self:HideUI()
+	self:HideHandles()
+	self.Maid:Destroy()
 	BoundingBox.ClearBoundingBox();
 	SnapTracking.StopTracking();
 
-end;
+end
 
-function ClearConnections()
-	-- Clears out temporary connections
-
-	for ConnectionKey, Connection in pairs(Connections) do
-		Connection:Disconnect();
-		Connections[ConnectionKey] = nil;
-	end;
-
-end;
-
-function ClearConnection(ConnectionKey)
-	-- Clears the given specific connection
-
-	local Connection = Connections[ConnectionKey];
-
-	-- Disconnect the connection if it exists
-	if Connections[ConnectionKey] then
-		Connection:Disconnect();
-		Connections[ConnectionKey] = nil;
-	end;
-
-end;
-
-function ShowUI()
+function MoveTool:ShowUI()
 	-- Creates and reveals the UI
 
 	-- Reveal UI if already created
-	if MoveTool.UI then
-
-		-- Reveal the UI
-		MoveTool.UI.Visible = true;
-
-		-- Update the UI every 0.1 seconds
-		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
-
-		-- Skip UI creation
-		return;
-
-	end;
+	if self.UI then
+		self.UI.Visible = true
+		self.UIUpdater = Support.Loop(0.1, self.UpdateUI, self)
+		return
+	end
 
 	-- Create the UI
-	MoveTool.UI = Core.Tool.Interfaces.BTMoveToolGUI:Clone();
-	MoveTool.UI.Parent = Core.UI;
-	MoveTool.UI.Visible = true;
+	self.UI = Core.Tool.Interfaces.BTMoveToolGUI:Clone()
+	self.UI.Parent = Core.UI
+	self.UI.Visible = true
 
 	-- Add functionality to the axes option switch
-	local AxesSwitch = MoveTool.UI.AxesOption;
+	local AxesSwitch = self.UI.AxesOption
 	AxesSwitch.Global.Button.MouseButton1Down:Connect(function ()
-		SetAxes('Global');
-	end);
+		self:SetAxes('Global')
+	end)
 	AxesSwitch.Local.Button.MouseButton1Down:Connect(function ()
-		SetAxes('Local');
-	end);
+		self:SetAxes('Local')
+	end)
 	AxesSwitch.Last.Button.MouseButton1Down:Connect(function ()
-		SetAxes('Last');
-	end);
+		self:SetAxes('Last')
+	end)
 
 	-- Add functionality to the increment input
-	local IncrementInput = MoveTool.UI.IncrementOption.Increment.TextBox;
+	local IncrementInput = self.UI.IncrementOption.Increment.TextBox
 	IncrementInput.FocusLost:Connect(function (EnterPressed)
-		MoveTool.Increment = tonumber(IncrementInput.Text) or MoveTool.Increment;
-		IncrementInput.Text = Support.Round(MoveTool.Increment, 4);
-	end);
+		self.Increment = tonumber(IncrementInput.Text) or self.Increment
+		IncrementInput.Text = Support.Round(self.Increment, 4)
+	end)
 
 	-- Add functionality to the position inputs
-	local XInput = MoveTool.UI.Info.Center.X.TextBox;
-	local YInput = MoveTool.UI.Info.Center.Y.TextBox;
-	local ZInput = MoveTool.UI.Info.Center.Z.TextBox;
+	local XInput = self.UI.Info.Center.X.TextBox
+	local YInput = self.UI.Info.Center.Y.TextBox
+	local ZInput = self.UI.Info.Center.Z.TextBox
 	XInput.FocusLost:Connect(function (EnterPressed)
-		local NewPosition = tonumber(XInput.Text);
+		local NewPosition = tonumber(XInput.Text)
 		if NewPosition then
-			SetAxisPosition('X', NewPosition);
-		end;
-	end);
+			self:SetAxisPosition('X', NewPosition)
+		end
+	end)
 	YInput.FocusLost:Connect(function (EnterPressed)
-		local NewPosition = tonumber(YInput.Text);
+		local NewPosition = tonumber(YInput.Text)
 		if NewPosition then
-			SetAxisPosition('Y', NewPosition);
-		end;
-	end);
+			self:SetAxisPosition('Y', NewPosition)
+		end
+	end)
 	ZInput.FocusLost:Connect(function (EnterPressed)
-		local NewPosition = tonumber(ZInput.Text);
+		local NewPosition = tonumber(ZInput.Text)
 		if NewPosition then
-			SetAxisPosition('Z', NewPosition);
-		end;
-	end);
+			self:SetAxisPosition('Z', NewPosition)
+		end
+	end)
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
+	self.UIUpdater = Support.Loop(0.1, self.UpdateUI, self)
 
-end;
+end
 
-function HideUI()
+function MoveTool:HideUI()
 	-- Hides the tool UI
 
 	-- Make sure there's a UI
-	if not MoveTool.UI then
+	if not self.UI then
 		return;
 	end;
 
 	-- Hide the UI
-	MoveTool.UI.Visible = false;
+	self.UI.Visible = false
 
 	-- Stop updating the UI
-	UIUpdater:Stop();
+	self.UIUpdater()
 
-end;
+end
 
-function UpdateUI()
+function MoveTool:UpdateUI()
 	-- Updates information on the UI
 
 	-- Make sure the UI's on
-	if not MoveTool.UI then
+	if not self.UI then
 		return;
 	end;
 
 	-- Only show and calculate selection info if it's not empty
 	if #Selection.Parts == 0 then
-		MoveTool.UI.Info.Visible = false;
-		MoveTool.UI.Size = UDim2.new(0, 245, 0, 90);
+		self.UI.Info.Visible = false
+		self.UI.Size = UDim2.new(0, 245, 0, 90)
 		return;
 	else
-		MoveTool.UI.Info.Visible = true;
-		MoveTool.UI.Size = UDim2.new(0, 245, 0, 150);
+		self.UI.Info.Visible = true
+		self.UI.Size = UDim2.new(0, 245, 0, 150)
 	end;
 
 	---------------------------------------------
@@ -208,9 +203,9 @@ function UpdateUI()
 	local CommonZ = Support.IdentifyCommonItem(ZVariations);
 
 	-- Shortcuts to indicators
-	local XIndicator = MoveTool.UI.Info.Center.X.TextBox;
-	local YIndicator = MoveTool.UI.Info.Center.Y.TextBox;
-	local ZIndicator = MoveTool.UI.Info.Center.Z.TextBox;
+	local XIndicator = self.UI.Info.Center.X.TextBox
+	local YIndicator = self.UI.Info.Center.Y.TextBox
+	local ZIndicator = self.UI.Info.Center.Z.TextBox
 
 	-- Update each indicator if it's not currently being edited
 	if not XIndicator:IsFocused() then
@@ -223,17 +218,17 @@ function UpdateUI()
 		ZIndicator.Text = CommonZ or '*';
 	end;
 
-end;
+end
 
-function SetAxes(AxisMode)
+function MoveTool:SetAxes(AxisMode)
 	-- Sets the given axis mode
 
 	-- Update setting
-	MoveTool.Axes = AxisMode;
+	self.Axes = AxisMode
 
 	-- Update the UI switch
-	if MoveTool.UI then
-		Core.ToggleSwitch(AxisMode, MoveTool.UI.AxesOption);
+	if self.UI then
+		Core.ToggleSwitch(AxisMode, self.UI.AxesOption)
 	end;
 
 	-- Disable any unnecessary bounding boxes
@@ -241,18 +236,20 @@ function SetAxes(AxisMode)
 
 	-- For global mode, use bounding box handles
 	if AxisMode == 'Global' then
-		BoundingBox.StartBoundingBox(AttachHandles);
+		BoundingBox.StartBoundingBox(function (BoundingBox)
+			self:AttachHandles(BoundingBox)
+		end)
 
 	-- For local mode, use focused part handles
 	elseif AxisMode == 'Local' then
-		AttachHandles(Selection.Focus, true);
+		self:AttachHandles(Selection.Focus, true)
 
 	-- For last mode, use focused part handles
 	elseif AxisMode == 'Last' then
-		AttachHandles(Selection.Focus, true);
-	end;
+		self:AttachHandles(Selection.Focus, true)
+	end
 
-end;
+end
 
 -- Directions of movement for each handle's dragged face
 local AxisMultipliers = {
@@ -264,24 +261,24 @@ local AxisMultipliers = {
 	[Enum.NormalId.Right] = Vector3.new(1, 0, 0);
 };
 
-function AttachHandles(Part, Autofocus)
+function MoveTool:AttachHandles(Part, Autofocus)
 	-- Creates and attaches handles to `Part`, and optionally automatically attaches to the focused part
 
 	-- Enable autofocus if requested and not already on
-	if Autofocus and not Connections.AutofocusHandle then
-		Connections.AutofocusHandle = Selection.FocusChanged:Connect(function ()
-			AttachHandles(Selection.Focus, true);
-		end);
+	if Autofocus and not self.Maid.AutofocusHandle then
+		self.Maid.AutofocusHandle = Selection.FocusChanged:Connect(function ()
+			self:AttachHandles(Selection.Focus, true)
+		end)
 
 	-- Disable autofocus if not requested and on
-	elseif not Autofocus and Connections.AutofocusHandle then
-		ClearConnection 'AutofocusHandle';
-	end;
+	elseif not Autofocus and self.Maid.AutofocusHandle then
+		self.Maid.AutofocusHandle = nil
+	end
 
 	-- Just attach and show the handles if they already exist
-	if MoveTool.Handles then
-		MoveTool.Handles:BlacklistObstacle(BoundingBox.GetBoundingBox())
-		MoveTool.Handles:SetAdornee(Part)
+	if self.Handles then
+		self.Handles:BlacklistObstacle(BoundingBox.GetBoundingBox())
+		self.Handles:SetAdornee(Part)
 		return
 	end
 
@@ -293,19 +290,24 @@ function AttachHandles(Part, Autofocus)
 		Core.Targeting.CancelSelecting();
 
 		-- Indicate dragging via handles
-		HandleDragging = true
+		self.HandleDragging = true
 
 		-- Freeze bounding box extents while dragging
 		if BoundingBox.GetBoundingBox() then
-			InitialExtentsSize, InitialExtentsCFrame = BoundingBox.CalculateExtents(Selection.Parts, BoundingBox.StaticExtents);
-			BoundingBox.PauseMonitoring();
-		end;
+			local InitialExtentsSize, InitialExtentsCFrame =
+				BoundingBox.CalculateExtents(Selection.Parts, BoundingBox.StaticExtents)
+			self.InitialExtentsSize = InitialExtentsSize
+			self.InitialExtentsCFrame = InitialExtentsCFrame
+			BoundingBox.PauseMonitoring()
+		end
 
 		-- Stop parts from moving, and capture the initial state of the parts
-		InitialState, InitialFocusCFrame = PreparePartsForDragging()
+		local InitialState, InitialFocusCFrame = PreparePartsForDragging()
+		self.InitialState = InitialState
+		self.InitialFocusCFrame = InitialFocusCFrame
 
 		-- Track the change
-		TrackChange();
+		self:TrackChange()
 
 		-- Cache area permissions information
 		if Core.Mode == 'Tool' then
@@ -318,46 +320,46 @@ function AttachHandles(Part, Autofocus)
 		-- Update parts when the handles are moved
 
 		-- Only drag if handle is enabled
-		if not HandleDragging then
+		if not self.HandleDragging then
 			return;
 		end;
 
 		-- Calculate the increment-aligned drag distance
-		Distance = GetIncrementMultiple(Distance, MoveTool.Increment);
+		Distance = GetIncrementMultiple(Distance, self.Increment);
 
 		-- Move the parts along the selected axes by the calculated distance
-		MovePartsAlongAxesByFace(Face, Distance, InitialState, InitialFocusCFrame)
+		self:MovePartsAlongAxesByFace(Face, Distance, self.InitialState, self.InitialFocusCFrame)
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-			local Part, InitialPartState = next(InitialState)
+			local Part, InitialPartState = next(self.InitialState)
 			Part.CFrame = InitialPartState.CFrame
-			TranslatePartsRelativeToPart(Part, InitialState)
+			TranslatePartsRelativeToPart(Part, self.InitialState)
 			Distance = 0
 		end;
 
 		-- Update the "distance moved" indicator
-		if MoveTool.UI then
-			MoveTool.UI.Changes.Text.Text = 'moved ' .. math.abs(Distance) .. ' studs';
+		if self.UI then
+			self.UI.Changes.Text.Text = 'moved ' .. math.abs(Distance) .. ' studs';
 		end;
 
 		-- Update bounding box if enabled in global axes movements
-		if MoveTool.Axes == 'Global' and BoundingBox.GetBoundingBox() then
-			BoundingBox.GetBoundingBox().CFrame = InitialExtentsCFrame + (AxisMultipliers[Face] * Distance);
+		if self.Axes == 'Global' and BoundingBox.GetBoundingBox() then
+			BoundingBox.GetBoundingBox().CFrame = self.InitialExtentsCFrame + (AxisMultipliers[Face] * Distance);
 		end;
 
 	end
 
 	local function OnHandleDragEnd()
-		if not HandleDragging then
+		if not self.HandleDragging then
 			return
 		end
 
 		-- Disable dragging
-		HandleDragging = false
+		self.HandleDragging = false
 
 		-- Make joints, restore original anchor and collision states
-		for Part, State in pairs(InitialState) do
+		for Part, State in pairs(self.InitialState) do
 			Part:MakeJoints()
 			Core.RestoreJoints(State.Joints)
 			Part.CanCollide = State.CanCollide
@@ -365,7 +367,7 @@ function AttachHandles(Part, Autofocus)
 		end
 
 		-- Register change
-		RegisterChange()
+		self:RegisterChange()
 
 		-- Resume bounding box updates
 		BoundingBox.RecalculateStaticExtents()
@@ -374,8 +376,8 @@ function AttachHandles(Part, Autofocus)
 
 	-- Create the handles
 	local Handles = require(Libraries:WaitForChild 'Handles')
-	MoveTool.Handles = Handles.new({
-		Color = MoveTool.Color.Color,
+	self.Handles = Handles.new({
+		Color = self.Color.Color,
 		Parent = Core.UIContainer,
 		Adornee = Part,
 		ObstacleBlacklist = { BoundingBox.GetBoundingBox() },
@@ -386,42 +388,42 @@ function AttachHandles(Part, Autofocus)
 
 end
 
-function HideHandles()
+function MoveTool:HideHandles()
 	-- Hides the resizing handles
 
 	-- Make sure handles exist and are visible
-	if not MoveTool.Handles then
-		return;
-	end;
+	if not self.Handles then
+		return
+	end
 
 	-- Hide the handles
-	MoveTool.Handles = MoveTool.Handles:Destroy()
+	self.Handles = self.Handles:Destroy()
 
 	-- Disable handle autofocus
-	ClearConnection 'AutofocusHandle';
+	self.Maid.AutofocusHandle = nil
 
-end;
+end
 
-function MovePartsAlongAxesByFace(Face, Distance, InitialStates, InitialFocusCFrame)
+function MoveTool:MovePartsAlongAxesByFace(Face, Distance, InitialStates, InitialFocusCFrame)
 	-- Moves the given parts in `InitialStates`, along the given axis mode, in the given face direction, by the given distance
 
 	-- Calculate the shift along the direction of the face
 	local Shift = Vector3.FromNormalId(Face) * Distance
 
 	-- Move along global axes
-	if MoveTool.Axes == 'Global' then
+	if self.Axes == 'Global' then
 		for Part, InitialState in pairs(InitialStates) do
 			Part.CFrame = InitialState.CFrame + Shift
 		end
 
 	-- Move along individual items' axes
-	elseif MoveTool.Axes == 'Local' then
+	elseif self.Axes == 'Local' then
 		for Part, InitialState in pairs(InitialStates) do
 			Part.CFrame = InitialState.CFrame * CFrame.new(Shift)
 		end
 
 	-- Move along focused item's axes
-	elseif MoveTool.Axes == 'Last' then
+	elseif self.Axes == 'Last' then
 
 		-- Calculate focused item's position
 		local FocusCFrame = InitialFocusCFrame * CFrame.new(Shift)
@@ -436,16 +438,14 @@ function MovePartsAlongAxesByFace(Face, Distance, InitialStates, InitialFocusCFr
 
 end
 
-function BindShortcutKeys()
+function MoveTool:BindShortcutKeys()
 	-- Enables useful shortcut keys for this tool
 
 	-- Track user input while this tool is equipped
-	table.insert(Connections, UserInputService.InputBegan:Connect(function (InputInfo, GameProcessedEvent)
-
-		-- Make sure this is an intentional event
+	self.Maid.HotkeyStart = UserInputService.InputBegan:Connect(function (InputInfo, GameProcessedEvent)
 		if GameProcessedEvent then
-			return;
-		end;
+			return
+		end
 
 		-- Make sure this input is a key press
 		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
@@ -461,69 +461,63 @@ function BindShortcutKeys()
 		if InputInfo.KeyCode == Enum.KeyCode.Return or InputInfo.KeyCode == Enum.KeyCode.KeypadEnter then
 
 			-- Toggle the current axis mode
-			if MoveTool.Axes == 'Global' then
-				SetAxes('Local');
-
-			elseif MoveTool.Axes == 'Local' then
-				SetAxes('Last');
-
-			elseif MoveTool.Axes == 'Last' then
-				SetAxes('Global');
-			end;
+			if self.Axes == 'Global' then
+				self:SetAxes('Local')
+			elseif self.Axes == 'Local' then
+				self:SetAxes('Last')
+			elseif self.Axes == 'Last' then
+				self:SetAxes('Global')
+			end
 
 		-- Check if the - key was pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.Minus or InputInfo.KeyCode == Enum.KeyCode.KeypadMinus then
 
 			-- Focus on the increment input
-			if MoveTool.UI then
-				MoveTool.UI.IncrementOption.Increment.TextBox:CaptureFocus();
+			if self.UI then
+				self.UI.IncrementOption.Increment.TextBox:CaptureFocus();
 			end;
 
 		-- Check if the R key was pressed down, and it's not the selection clearing hotkey
 		elseif InputInfo.KeyCode == Enum.KeyCode.R and not Selection.Multiselecting then
 
 			-- Start tracking snap points nearest to the mouse
-			StartSnapping();
+			self:StartSnapping()
 
 		-- Nudge up if the 8 button on the keypad is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadEight then
-			NudgeSelectionByFace(Enum.NormalId.Top);
+			self:NudgeSelectionByFace(Enum.NormalId.Top)
 
 		-- Nudge down if the 2 button on the keypad is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadTwo then
-			NudgeSelectionByFace(Enum.NormalId.Bottom);
+			self:NudgeSelectionByFace(Enum.NormalId.Bottom)
 
 		-- Nudge forward if the 9 button on the keypad is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadNine then
-			NudgeSelectionByFace(Enum.NormalId.Front);
+			self:NudgeSelectionByFace(Enum.NormalId.Front)
 
 		-- Nudge backward if the 1 button on the keypad is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadOne then
-			NudgeSelectionByFace(Enum.NormalId.Back);
+			self:NudgeSelectionByFace(Enum.NormalId.Back)
 
 		-- Nudge left if the 4 button on the keypad is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadFour then
-			NudgeSelectionByFace(Enum.NormalId.Left);
+			self:NudgeSelectionByFace(Enum.NormalId.Left)
 
 		-- Nudge right if the 6 button on the keypad is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadSix then
-			NudgeSelectionByFace(Enum.NormalId.Right);
+			self:NudgeSelectionByFace(Enum.NormalId.Right)
 
 		-- Align the selection to the current target surface if T is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.T then
-			AlignSelectionToTarget();
-
-		end;
-
-	end));
+			self:AlignSelectionToTarget()
+		end
+	end)
 
 	-- Track ending user input while this tool is equipped
-	table.insert(Connections, UserInputService.InputEnded:Connect(function (InputInfo, GameProcessedEvent)
-
-		-- Make sure this is an intentional event
+	self.Maid.HotkeyRelease = UserInputService.InputEnded:Connect(function (InputInfo, GameProcessedEvent)
 		if GameProcessedEvent then
-			return;
-		end;
+			return
+		end
 
 		-- Make sure this is input from the keyboard
 		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
@@ -539,31 +533,27 @@ function BindShortcutKeys()
 			end;
 
 			-- Reset handles if not dragging
-			if not Dragging then
-				SetAxes(MoveTool.Axes);
-			end;
+			if not self.Dragging then
+				self:SetAxes(self.Axes)
+			end
 
 			-- Stop snapping point tracking if it was enabled
 			SnapTracking.StopTracking();
 
-		end;
+		end
+	end)
 
-	end));
+end
 
-end;
-
--- Event that fires when new point comes into focus while snapping
-local PointSnapped = Signal.new()
-
-function StartSnapping()
+function MoveTool:StartSnapping()
 	-- Starts tracking snap points nearest to the mouse
 
 	-- Hide any handles or bounding boxes
-	AttachHandles(nil, true);
+	self:AttachHandles(nil, true)
 	BoundingBox.ClearBoundingBox();
 
 	-- Avoid targeting snap points in selected parts while dragging
-	if Dragging then
+	if self.Dragging then
 		SnapTracking.TargetBlacklist = Selection.Items;
 	end;
 
@@ -572,19 +562,19 @@ function StartSnapping()
 
 		-- Fire `SnappedPoint` and update `SnappedPoint` when there is a new snap point in focus
 		if NewPoint then
-			SnappedPoint = NewPoint.p;
-			PointSnapped:Fire(SnappedPoint);
-		end;
+			self.SnappedPoint = NewPoint.p
+			self.PointSnapped:Fire(self.SnappedPoint)
+		end
 
-	end);
+	end)
 
-end;
+end
 
-function SetAxisPosition(Axis, Position)
+function MoveTool:SetAxisPosition(Axis, Position)
 	-- Sets the selection's position on axis `Axis` to `Position`
 
 	-- Track this change
-	TrackChange();
+	self:TrackChange()
 
 	-- Prepare parts to be moved
 	local InitialStates = PreparePartsForDragging();
@@ -620,15 +610,15 @@ function SetAxisPosition(Axis, Position)
 	end;
 
 	-- Register the change
-	RegisterChange();
+	self:RegisterChange()
 
-end;
+end
 
-function NudgeSelectionByFace(Face)
+function MoveTool:NudgeSelectionByFace(Face)
 	-- Nudges the selection along the current axes mode in the direction of the focused part's face
 
 	-- Get amount to nudge by
-	local NudgeAmount = MoveTool.Increment;
+	local NudgeAmount = self.Increment
 
 	-- Reverse nudge amount if shift key is held while nudging
 	local PressedKeys = Support.FlipTable(Support.GetListMembers(UserInputService:GetKeysPressed(), 'KeyCode'));
@@ -637,18 +627,18 @@ function NudgeSelectionByFace(Face)
 	end;
 
 	-- Track this change
-	TrackChange();
+	self:TrackChange()
 
 	-- Prepare parts to be moved
 	local InitialState, InitialFocusCFrame = PreparePartsForDragging()
 
 	-- Perform the movement
-	MovePartsAlongAxesByFace(Face, NudgeAmount, InitialState, InitialFocusCFrame)
+	self:MovePartsAlongAxesByFace(Face, NudgeAmount, InitialState, InitialFocusCFrame)
 
 	-- Update the "distance moved" indicator
-	if MoveTool.UI then
-		MoveTool.UI.Changes.Text.Text = 'moved ' .. math.abs(NudgeAmount) .. ' studs';
-	end;
+	if self.UI then
+		self.UI.Changes.Text.Text = 'moved ' .. math.abs(NudgeAmount) .. ' studs'
+	end
 
 	-- Cache up permissions for all private areas
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
@@ -669,14 +659,14 @@ function NudgeSelectionByFace(Face)
 	end;
 
 	-- Register the change
-	RegisterChange();
+	self:RegisterChange()
 
-end;
+end
 
-function TrackChange()
+function MoveTool:TrackChange()
 
 	-- Start the record
-	HistoryRecord = {
+	self.HistoryRecord = {
 		Parts = Support.CloneTable(Selection.Parts);
 		BeforeCFrame = {};
 		AfterCFrame = {};
@@ -719,24 +709,24 @@ function TrackChange()
 	};
 
 	-- Collect the selection's initial state
-	for _, Part in pairs(HistoryRecord.Parts) do
-		HistoryRecord.BeforeCFrame[Part] = Part.CFrame;
-	end;
+	for _, Part in pairs(self.HistoryRecord.Parts) do
+		self.HistoryRecord.BeforeCFrame[Part] = Part.CFrame
+	end
 
-end;
+end
 
-function RegisterChange()
+function MoveTool:RegisterChange()
 	-- Finishes creating the history record and registers it
 
 	-- Make sure there's an in-progress history record
-	if not HistoryRecord then
-		return;
-	end;
+	if not self.HistoryRecord then
+		return
+	end
 
 	-- Collect the selection's final state
 	local Changes = {};
-	for _, Part in pairs(HistoryRecord.Parts) do
-		HistoryRecord.AfterCFrame[Part] = Part.CFrame;
+	for _, Part in pairs(self.HistoryRecord.Parts) do
+		self.HistoryRecord.AfterCFrame[Part] = Part.CFrame
 		table.insert(Changes, { Part = Part, CFrame = Part.CFrame });
 	end;
 
@@ -744,12 +734,12 @@ function RegisterChange()
 	Core.SyncAPI:Invoke('SyncMove', Changes);
 
 	-- Register the record and clear the staging
-	Core.History.Add(HistoryRecord);
-	HistoryRecord = nil;
+	Core.History.Add(self.HistoryRecord)
+	self.HistoryRecord = nil
 
-end;
+end
 
-function EnableDragging()
+function MoveTool:EnableDragging()
 	-- Enables part dragging
 
 	local function HandleDragStart(Action, State, Input)
@@ -770,11 +760,11 @@ function EnableDragging()
 		end
 
 		-- Initialize dragging detection data
-		DragStartTarget = TargetPart
-		DragStart = Vector2.new(Core.Mouse.X, Core.Mouse.Y)
+		self.DragStartTarget = TargetPart
+		self.DragStart = Vector2.new(Core.Mouse.X, Core.Mouse.Y)
 
 		-- Select unselected target, if not snapping
-		local Target, ScopeTarget = Core.Targeting:UpdateTarget()
+		local _, ScopeTarget = Core.Targeting:UpdateTarget()
 		if not Selection.IsSelected(ScopeTarget) and not IsSnapping then
 			Core.Targeting.SelectTarget(true)
 			Core.Targeting.CancelSelecting()
@@ -786,11 +776,11 @@ function EnableDragging()
 			end
 
 			-- Trigger dragging if the mouse is moved over 2 pixels
-			if DragStart and (Vector2.new(Core.Mouse.X, Core.Mouse.Y) - DragStart).magnitude >= 2 then
+			if self.DragStart and (Vector2.new(Core.Mouse.X, Core.Mouse.Y) - self.DragStart).magnitude >= 2 then
 
 				-- Prepare for dragging
 				BoundingBox.ClearBoundingBox()
-				SetUpDragging(DragStartTarget, SnapTracking.Enabled and SnappedPoint or nil)
+				self:SetUpDragging(self.DragStartTarget, SnapTracking.Enabled and self.SnappedPoint or nil)
 
 				-- Stop watching for potential dragging
 				ContextActionService:UnbindAction 'BT: Watch for dragging'
@@ -802,7 +792,7 @@ function EnableDragging()
 				return Enum.ContextActionResult.Pass
 			end
 		end
-	
+
 		-- Watch for potential dragging
 		ContextActionService:BindAction('BT: Watch for dragging', HandlePotentialDragStart, false,
 			Enum.UserInputType.MouseMovement,
@@ -816,42 +806,40 @@ function EnableDragging()
 		Enum.UserInputType.Touch
 	)
 
-end;
+end
 
 -- Catch whenever the user finishes dragging
 Support.AddUserInputListener('Ended', {'Touch', 'MouseButton1'}, true, function (Input)
 
 	-- Clear drag detection data
-	DragStart = nil
-	DragStartTarget = nil
+	MoveTool.DragStart = nil
+	MoveTool.DragStartTarget = nil
 	ContextActionService:UnbindAction 'BT: Watch for dragging'
 
 	-- Reset from drag mode if dragging
-	if Dragging then
+	if MoveTool.Dragging then
 
 		-- Reset axes
-		SetAxes(MoveTool.Axes)
+		MoveTool:SetAxes(MoveTool.Axes)
 
 		-- Finalize the dragging operation
-		FinishDragging()
+		MoveTool:FinishDragging()
 
 	end
 
 end)
 
-function SetUpDragging(BasePart, BasePoint)
+function MoveTool:SetUpDragging(BasePart, BasePoint)
 	-- Sets up and initiates dragging based on the given base part
 
 	-- Prevent selection while dragging
 	Core.Targeting.CancelSelecting();
 
 	-- Prepare parts, and start dragging
-	InitialState = PreparePartsForDragging();
-	StartDragging(BasePart, InitialState, BasePoint);
+	self.InitialState = PreparePartsForDragging()
+	self:StartDragging(BasePart, self.InitialState, BasePoint)
 
-end;
-
-MoveTool.SetUpDragging = SetUpDragging;
+end
 
 function PreparePartsForDragging()
 	-- Prepares parts for dragging and returns the initial state of the parts
@@ -884,19 +872,19 @@ function PreparePartsForDragging()
 	return InitialState, InitialFocusCFrame
 end;
 
-function StartDragging(BasePart, InitialState, BasePoint)
+function MoveTool:StartDragging(BasePart, InitialState, BasePoint)
 	-- Begins dragging the selection
 
 	-- Ensure dragging is not already ongoing
-	if Dragging then
-		return;
-	end;
+	if self.Dragging then
+		return
+	end
 
 	-- Indicate that we're dragging
-	Dragging = true;
+	self.Dragging = true
 
 	-- Track changes
-	TrackChange();
+	self:TrackChange()
 
 	-- Disable bounding box calculation
 	BoundingBox.ClearBoundingBox();
@@ -920,10 +908,10 @@ function StartDragging(BasePart, InitialState, BasePoint)
 
 	-- Improve base point alignment for the given increment
 	BasePartOffset = Vector3.new(
-		math.clamp(GetIncrementMultiple(BasePartOffset.X, MoveTool.Increment), -BasePart.Size.X / 2, BasePart.Size.X / 2),
-		math.clamp(GetIncrementMultiple(BasePartOffset.Y, MoveTool.Increment), -BasePart.Size.Y / 2, BasePart.Size.Y / 2),
-		math.clamp(GetIncrementMultiple(BasePartOffset.Z, MoveTool.Increment), -BasePart.Size.Z / 2, BasePart.Size.Z / 2)
-	);
+		math.clamp(GetIncrementMultiple(BasePartOffset.X, self.Increment), -BasePart.Size.X / 2, BasePart.Size.X / 2),
+		math.clamp(GetIncrementMultiple(BasePartOffset.Y, self.Increment), -BasePart.Size.Y / 2, BasePart.Size.Y / 2),
+		math.clamp(GetIncrementMultiple(BasePartOffset.Z, self.Increment), -BasePart.Size.Z / 2, BasePart.Size.Z / 2)
+	)
 
 	-- Use the given base point instead if any
 	if BasePoint then
@@ -932,10 +920,10 @@ function StartDragging(BasePart, InitialState, BasePoint)
 
 	-- Prepare snapping in case it is enabled, and make sure to override its default target selection
 	SnapTracking.TargetBlacklist = Selection.Items;
-	Connections.DragSnapping = PointSnapped:Connect(function (SnappedPoint)
+	self.Maid.DragSnapping = self.PointSnapped:Connect(function (SnappedPoint)
 
 		-- Align the selection's base point to the snapped point
-		local Rotation = SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p);
+		local Rotation = self.SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p)
 		BasePart.CFrame = CFrame.new(SnappedPoint) * Rotation * CFrame.new(BasePartOffset);
 		TranslatePartsRelativeToPart(BasePart, InitialState);
 
@@ -945,38 +933,38 @@ function StartDragging(BasePart, InitialState, BasePoint)
 			TranslatePartsRelativeToPart(BasePart, InitialState);
 		end;
 
-	end);
+	end)
 
 	-- Update cache of corner offsets for later crossthrough calculations
-	CornerOffsets = GetCornerOffsets(InitialState[BasePart].CFrame, InitialState);
+	self.CornerOffsets = GetCornerOffsets(InitialState[BasePart].CFrame, InitialState)
 
 	-- Provide a callback to trigger alignment
-	TriggerAlignment = function ()
+	self.TriggerAlignment = function ()
 
 		-- Trigger drag recalculation
-		DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions);
+		self:DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions);
 
 		-- Trigger snapping recalculation
 		if SnapTracking.Enabled then
-			PointSnapped:Fire(SnappedPoint);
-		end;
+			self.PointSnapped:Fire(self.SnappedPoint)
+		end
 
-	end;
+	end
 
 	local function HandleDragChange(Action, State, Input)
 		if State.Name == 'Change' then
-			DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
+			self:DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 		end
 		return Enum.ContextActionResult.Pass
 	end
 
-	-- Start up the dragging 
+	-- Start up the dragging
 	ContextActionService:BindAction('BT: Dragging', HandleDragChange, false,
 		Enum.UserInputType.MouseMovement,
 		Enum.UserInputType.Touch
 	)
 
-end;
+end
 
 -- Cache common functions to avoid unnecessary table lookups
 local TableInsert, NewVector3 = table.insert, Vector3.new;
@@ -1010,7 +998,7 @@ function GetCornerOffsets(Origin, InitialStates)
 
 end;
 
-function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
+function MoveTool:DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	-- Drags the selection by `BasePart`, judging area authorization from `AreaPermissions`
 
 	----------------------------------------------
@@ -1022,27 +1010,32 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	table.insert(IgnoreList, Core.Player and Core.Player.Character);
 
 	-- Perform the mouse target search
-	Target, TargetPoint, TargetNormal = Workspace:FindPartOnRayWithIgnoreList(
+	local Target, TargetPoint, TargetNormal = Workspace:FindPartOnRayWithIgnoreList(
 		Ray.new(Core.Mouse.UnitRay.Origin, Core.Mouse.UnitRay.Direction * 5000),
 		IgnoreList
-	);
+	)
+	self.Target = Target
+	self.TargetPoint = TargetPoint
+	self.TargetNormal = TargetNormal
 
 	-- Reset any surface alignment and calculated crossthrough if target surface changes
-	if LastTargetNormal ~= TargetNormal then
-		SurfaceAlignment = nil;
-		CrossthroughCorrection = nil;
-	end;
+	if self.LastTargetNormal ~= self.TargetNormal then
+		self.SurfaceAlignment = nil
+		self.CrossthroughCorrection = nil
+	end
 
 	-- Reset any calculated crossthrough if selection, drag offset, or surface alignment change
-	if (LastSelection ~= Selection.Items) or (LastBasePartOffset ~= BasePartOffset) or (LastSurfaceAlignment ~= SurfaceAlignment) then
-		CrossthroughCorrection = nil;
-	end;
+	if (self.LastSelection ~= Selection.Items) or
+			(self.LastBasePartOffset ~= BasePartOffset) or
+			(self.LastSurfaceAlignment ~= self.SurfaceAlignment) then
+		self.CrossthroughCorrection = nil
+	end
 
 	-- Save last dragging options for change detection
-	LastSelection = Selection.Items;
-	LastBasePartOffset = BasePartOffset;
-	LastSurfaceAlignment = SurfaceAlignment;
-	LastTargetNormal = TargetNormal;
+	self.LastSelection = Selection.Items
+	self.LastBasePartOffset = BasePartOffset
+	self.LastSurfaceAlignment = self.SurfaceAlignment
+	self.LastTargetNormal = self.TargetNormal
 
 	------------------------------------------------
 	-- Move the selection towards any snapped points
@@ -1058,32 +1051,37 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 	------------------------------------------------------
 
 	-- Get the increment-aligned target point
-	TargetPoint = GetAlignedTargetPoint(Target, TargetPoint, TargetNormal);
+	self.TargetPoint = GetAlignedTargetPoint(
+		self.Target,
+		self.TargetPoint,
+		self.TargetNormal,
+		self.Increment
+	)
 
 	-- Move the parts towards their target destination
-	local Rotation = SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p);
-	local TargetCFrame = CFrame.new(TargetPoint) * Rotation * CFrame.new(BasePartOffset);
+	local Rotation = self.SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p);
+	local TargetCFrame = CFrame.new(self.TargetPoint) * Rotation * CFrame.new(BasePartOffset);
 
 	-- Calculate crossthrough against target plane if necessary
-	if not CrossthroughCorrection then
-		CrossthroughCorrection = 0;
+	if not self.CrossthroughCorrection then
+		self.CrossthroughCorrection = 0
 
 		-- Calculate each corner's tentative position
-		for _, CornerOffset in pairs(CornerOffsets) do
+		for _, CornerOffset in pairs(self.CornerOffsets) do
 			local Corner = TargetCFrame * CornerOffset;
 
 			-- Calculate the corner's target plane crossthrough
-			local CornerCrossthrough = -(TargetPoint - Corner):Dot(TargetNormal);
+			local CornerCrossthrough = -(self.TargetPoint - Corner):Dot(self.TargetNormal)
 
 			-- Check if this corner crosses through the most
-			if CornerCrossthrough < CrossthroughCorrection then
-				CrossthroughCorrection = CornerCrossthrough;
-			end;
-		end;
-	end;
+			if CornerCrossthrough < self.CrossthroughCorrection then
+				self.CrossthroughCorrection = CornerCrossthrough
+			end
+		end
+	end
 
 	-- Move the selection, retracted by the max. crossthrough amount
-	BasePart.CFrame = TargetCFrame - (TargetNormal * CrossthroughCorrection);
+	BasePart.CFrame = TargetCFrame - (self.TargetNormal * self.CrossthroughCorrection)
 	TranslatePartsRelativeToPart(BasePart, InitialState);
 
 	----------------------------------------
@@ -1096,30 +1094,31 @@ function DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
 		TranslatePartsRelativeToPart(BasePart, InitialState);
 	end;
 
-end;
+end
 
-function AlignSelectionToTarget()
+function MoveTool:AlignSelectionToTarget()
 	-- Aligns the selection to the current target surface while dragging
 
 	-- Ensure dragging is ongoing
-	if not Dragging or not TargetNormal then
+	if not self.Dragging or not self.TargetNormal then
 		return;
 	end;
 
 	-- Get target surface normal as arbitrarily oriented CFrame
-	local TargetNormalCF = CFrame.new(Vector3.new(), TargetNormal);
+	local TargetNormalCF = CFrame.new(Vector3.new(), self.TargetNormal);
 
 	-- Use detected surface normal directly if not targeting a part
-	if not Target then
-		SurfaceAlignment = TargetNormalCF * CFrame.Angles(-math.pi / 2, 0, 0);
+	if not self.Target then
+		self.SurfaceAlignment = TargetNormalCF * CFrame.Angles(-math.pi / 2, 0, 0)
 
 	-- For parts, calculate orientation based on the target surface, and the target part's orientation
 	else
 
 		-- Set upward direction to match the target surface normal
-		local UpVector, LookVector, RightVector = TargetNormal;
+		local UpVector, LookVector, RightVector = self.TargetNormal;
 
 		-- Use target's rightward orientation for calculating orientation (when targeting forward or backward directions)
+		local Target, TargetNormal = self.Target, self.TargetNormal
 		if TargetNormal:isClose(Target.CFrame.lookVector, 0.000001) or TargetNormal:isClose(-Target.CFrame.lookVector, 0.000001) then
 			LookVector = TargetNormal:Cross(Target.CFrame.rightVector).unit;
 			RightVector = LookVector:Cross(TargetNormal).unit;
@@ -1131,21 +1130,21 @@ function AlignSelectionToTarget()
 		end;
 
 		-- Generate rotation matrix based on direction vectors
-		SurfaceAlignment = CFrame.new(
+		self.SurfaceAlignment = CFrame.new(
 			0, 0, 0,
 			RightVector.X, UpVector.X, -LookVector.X,
 			RightVector.Y, UpVector.Y, -LookVector.Y,
 			RightVector.Z, UpVector.Z, -LookVector.Z
-		);
+		)
 
 	end;
 
 	-- Trigger alignment
-	TriggerAlignment();
+	self:TriggerAlignment()
 
-end;
+end
 
-function GetAlignedTargetPoint(Target, TargetPoint, TargetNormal)
+function GetAlignedTargetPoint(Target, TargetPoint, TargetNormal, Increment)
 	-- Returns the target point aligned to the nearest increment multiple
 
 	-- By default, use the center of the universe for alignment on all axes
@@ -1253,22 +1252,22 @@ function GetAlignedTargetPoint(Target, TargetPoint, TargetNormal)
 
 	-- Align target point on increment grid from reference point along the plane axes
 	local AlignedTargetPoint = ReferencePoint * (Vector3.new(
-		GetIncrementMultiple(ReferencePointOffset.X, MoveTool.Increment),
-		GetIncrementMultiple(ReferencePointOffset.Y, MoveTool.Increment),
-		GetIncrementMultiple(ReferencePointOffset.Z, MoveTool.Increment)
-	) * PlaneAxes);
+		GetIncrementMultiple(ReferencePointOffset.X, Increment),
+		GetIncrementMultiple(ReferencePointOffset.Y, Increment),
+		GetIncrementMultiple(ReferencePointOffset.Z, Increment)
+	) * PlaneAxes)
 
 	-- Return the aligned target point
 	return AlignedTargetPoint;
 
-end;
+end
 
 function GetIncrementMultiple(Number, Increment)
 
 	-- Get how far the actual distance is from a multiple of our increment
 	local MultipleDifference = Number % Increment;
 
-	-- Identify the closest lower and upper multiples of the increment 
+	-- Identify the closest lower and upper multiples of the increment
 	local LowerMultiple = Number - MultipleDifference;
 	local UpperMultiple = Number - MultipleDifference + Increment;
 
@@ -1305,29 +1304,29 @@ function TranslatePartsRelativeToPart(BasePart, InitialStates)
 
 end;
 
-function FinishDragging()
+function MoveTool:FinishDragging()
 	-- Releases parts and registers position changes from dragging
 
 	-- Make sure dragging is active
-	if not Dragging then
+	if not self.Dragging then
 		return;
 	end;
 
 	-- Indicate that we're no longer dragging
-	Dragging = false;
+	self.Dragging = false
 
 	-- Clear any surface alignment
-	SurfaceAlignment = nil;
+	self.SurfaceAlignment = nil
 
 	-- Stop the dragging action
 	ContextActionService:UnbindAction 'BT: Dragging';
 
 	-- Stop, clean up snapping point tracking
 	SnapTracking.StopTracking();
-	ClearConnection 'DragSnapping';
+	self.Maid.DragSnapping = nil
 
 	-- Restore the original state of each part
-	for Part, State in pairs(InitialState) do
+	for Part, State in pairs(self.InitialState) do
 		Part:MakeJoints();
 		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
@@ -1335,9 +1334,9 @@ function FinishDragging()
 	end;
 
 	-- Register changes
-	RegisterChange();
+	self:RegisterChange()
 
-end;
+end
 
 -- Return the tool
 return MoveTool;

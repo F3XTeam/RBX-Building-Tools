@@ -180,7 +180,7 @@ function CreatePart(Type)
 
 	-- Enable dragging to allow easy positioning of the created part
 	if DragNewParts then
-		MoveTool.SetUpDragging(Part);
+		MoveTool:SetUpDragging(Part)
 	end;
 
 end;
