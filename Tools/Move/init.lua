@@ -28,10 +28,10 @@ local MoveTool = {
 	Axes = 'Global';
 
 	-- Dragging state
-	Dragging = false;
-	HandleDragging = false;
-	DragStart = nil;
-	DragStartTarget = nil;
+	IsFreeDragging = false;
+	IsHandleDragging = false;
+	FreeDragStartScreenPoint = nil;
+	FreeDragStartTarget = nil;
 	TriggerAlignment = nil;
 	SurfaceAlignment = nil;
 	LastSurfaceAlignment = nil;
@@ -75,7 +75,7 @@ function MoveTool:Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- If dragging, finish dragging
-	if self.Dragging then
+	if self.IsFreeDragging then
 		self:FinishDragging()
 	end
 
@@ -290,7 +290,7 @@ function MoveTool:AttachHandles(Part, Autofocus)
 		Core.Targeting.CancelSelecting();
 
 		-- Indicate dragging via handles
-		self.HandleDragging = true
+		self.IsHandleDragging = true
 
 		-- Freeze bounding box extents while dragging
 		if BoundingBox.GetBoundingBox() then
@@ -320,7 +320,7 @@ function MoveTool:AttachHandles(Part, Autofocus)
 		-- Update parts when the handles are moved
 
 		-- Only drag if handle is enabled
-		if not self.HandleDragging then
+		if not self.IsHandleDragging then
 			return;
 		end;
 
@@ -351,12 +351,12 @@ function MoveTool:AttachHandles(Part, Autofocus)
 	end
 
 	local function OnHandleDragEnd()
-		if not self.HandleDragging then
+		if not self.IsHandleDragging then
 			return
 		end
 
 		-- Disable dragging
-		self.HandleDragging = false
+		self.IsHandleDragging = false
 
 		-- Make joints, restore original anchor and collision states
 		for Part, State in pairs(self.InitialState) do
@@ -533,7 +533,7 @@ function MoveTool:BindShortcutKeys()
 			end;
 
 			-- Reset handles if not dragging
-			if not self.Dragging then
+			if not self.IsFreeDragging then
 				self:SetAxes(self.Axes)
 			end
 
@@ -553,7 +553,7 @@ function MoveTool:StartSnapping()
 	BoundingBox.ClearBoundingBox();
 
 	-- Avoid targeting snap points in selected parts while dragging
-	if self.Dragging then
+	if self.IsFreeDragging then
 		SnapTracking.TargetBlacklist = Selection.Items;
 	end;
 
@@ -760,8 +760,8 @@ function MoveTool:EnableDragging()
 		end
 
 		-- Initialize dragging detection data
-		self.DragStartTarget = TargetPart
-		self.DragStart = Vector2.new(Core.Mouse.X, Core.Mouse.Y)
+		self.FreeDragStartTarget = TargetPart
+		self.FreeDragStartScreenPoint = Vector2.new(Core.Mouse.X, Core.Mouse.Y)
 
 		-- Select unselected target, if not snapping
 		local _, ScopeTarget = Core.Targeting:UpdateTarget()
@@ -776,11 +776,13 @@ function MoveTool:EnableDragging()
 			end
 
 			-- Trigger dragging if the mouse is moved over 2 pixels
-			if self.DragStart and (Vector2.new(Core.Mouse.X, Core.Mouse.Y) - self.DragStart).magnitude >= 2 then
+			local DragScreenDistance = self.FreeDragStartScreenPoint and
+				(Vector2.new(Core.Mouse.X, Core.Mouse.Y) - self.FreeDragStartScreenPoint).Magnitude
+			if DragScreenDistance >= 2 then
 
 				-- Prepare for dragging
 				BoundingBox.ClearBoundingBox()
-				self:SetUpDragging(self.DragStartTarget, SnapTracking.Enabled and self.SnappedPoint or nil)
+				self:SetUpDragging(self.FreeDragStartTarget, SnapTracking.Enabled and self.SnappedPoint or nil)
 
 				-- Stop watching for potential dragging
 				ContextActionService:UnbindAction 'BT: Watch for dragging'
@@ -812,12 +814,12 @@ end
 Support.AddUserInputListener('Ended', {'Touch', 'MouseButton1'}, true, function (Input)
 
 	-- Clear drag detection data
-	MoveTool.DragStart = nil
-	MoveTool.DragStartTarget = nil
+	MoveTool.FreeDragStartScreenPoint = nil
+	MoveTool.FreeDragStartTarget = nil
 	ContextActionService:UnbindAction 'BT: Watch for dragging'
 
 	-- Reset from drag mode if dragging
-	if MoveTool.Dragging then
+	if MoveTool.IsFreeDragging then
 
 		-- Reset axes
 		MoveTool:SetAxes(MoveTool.Axes)
@@ -876,12 +878,12 @@ function MoveTool:StartDragging(BasePart, InitialState, BasePoint)
 	-- Begins dragging the selection
 
 	-- Ensure dragging is not already ongoing
-	if self.Dragging then
+	if self.IsFreeDragging then
 		return
 	end
 
 	-- Indicate that we're dragging
-	self.Dragging = true
+	self.IsFreeDragging = true
 
 	-- Track changes
 	self:TrackChange()
@@ -1100,7 +1102,7 @@ function MoveTool:AlignSelectionToTarget()
 	-- Aligns the selection to the current target surface while dragging
 
 	-- Ensure dragging is ongoing
-	if not self.Dragging or not self.TargetNormal then
+	if not self.IsFreeDragging or not self.TargetNormal then
 		return;
 	end;
 
@@ -1308,12 +1310,12 @@ function MoveTool:FinishDragging()
 	-- Releases parts and registers position changes from dragging
 
 	-- Make sure dragging is active
-	if not self.Dragging then
+	if not self.IsFreeDragging then
 		return;
 	end;
 
 	-- Indicate that we're no longer dragging
-	self.Dragging = false
+	self.IsFreeDragging = false
 
 	-- Clear any surface alignment
 	self.SurfaceAlignment = nil
