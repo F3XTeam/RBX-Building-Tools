@@ -1,17 +1,21 @@
 local Core = require(script.Parent);
 local Support = Core.Support;
 
+-- Libraries
+local Tool = script.Parent.Parent
+local Libraries = Tool:WaitForChild 'Libraries'
+local Maid = require(Libraries:WaitForChild 'Maid')
+
 -- Initialize module
 local BoundingBoxModule = {};
 
 -- Initialize internal module state
 local StaticParts = {};
 local StaticPartsIndex = {};
-local StaticPartMonitors = {};
+local StaticPartMonitors = Maid.new()
 local RecalculateStaticExtents = true;
-local AggregatingStaticParts = false;
-local StaticPartAggregators = {};
-local PotentialPartMonitors = {};
+local StaticPartAggregators = Maid.new()
+local PotentialPartMonitors = Maid.new()
 
 function BoundingBoxModule.StartBoundingBox(HandleAttachmentCallback)
 	-- Creates and starts a selection bounding box
@@ -186,18 +190,24 @@ function AddStaticPartMonitor(Part)
 	end;
 
 	-- Start monitoring part for changes
-	StaticPartMonitors[Part] = Part.Changed:Connect(function (Property)
+	StaticPartMonitors[Part] = Maid.new({
 
 		-- Trigger static extent recalculations on position or size changes
-		if Property == 'CFrame' or Property == 'Size' then
-			RecalculateStaticExtents = true;
+		Part:GetPropertyChangedSignal('CFrame'):Connect(function ()
+			RecalculateStaticExtents = true
+		end);
+		Part:GetPropertyChangedSignal('Size'):Connect(function ()
+			RecalculateStaticExtents = true
+		end);
 
 		-- Remove part from static index if it becomes mobile
-		elseif Property == 'Anchored' and not IsPhysicsStatic() and not Part.Anchored then
-			RemoveStaticParts { Part };
-		end;
+		Part:GetPropertyChangedSignal('Anchored'):Connect(function ()
+			if not IsPhysicsStatic() and not Part.Anchored then
+				RemoveStaticParts { Part }
+			end
+		end);
 
-	end);
+	})
 
 end;
 
@@ -211,10 +221,7 @@ function RemoveStaticParts(Parts)
 		StaticPartsIndex[Part] = nil;
 
 		-- Clean up the part's change monitors
-		if StaticPartMonitors[Part] then
-			StaticPartMonitors[Part]:Disconnect();
-			StaticPartMonitors[Part] = nil;
-		end;
+		StaticPartMonitors[Part] = nil
 
 	end;
 
@@ -238,7 +245,7 @@ function StartAggregatingStaticParts()
 	end;
 
 	-- Watch newly selected parts
-	table.insert(StaticPartAggregators, Core.Selection.PartsAdded:Connect(function (Parts)
+	StaticPartAggregators.SelectedParts = Core.Selection.PartsAdded:Connect(function (Parts)
 
 		-- Add qualifying parts to static parts index
 		AddStaticParts(Parts);
@@ -248,18 +255,15 @@ function StartAggregatingStaticParts()
 			AddPotentialPartMonitor(Part);
 		end;
 
-	end));
+	end)
 
 	-- Remove deselected parts from static parts index
-	table.insert(StaticPartAggregators, Core.Selection.PartsRemoved:Connect(function (Parts)
+	StaticPartAggregators.DeselectedParts = Core.Selection.PartsRemoved:Connect(function (Parts)
 		RemoveStaticParts(Parts);
 		for _, Part in pairs(Parts) do
-			if PotentialPartMonitors[Part] then
-				PotentialPartMonitors[Part]:Disconnect();
-				PotentialPartMonitors[Part] = nil;
-			end;
-		end;
-	end));
+			PotentialPartMonitors[Part] = nil
+		end
+	end)
 
 end;
 
@@ -280,8 +284,8 @@ function AddPotentialPartMonitor(Part)
 	end;
 
 	-- Create anchored state change monitor
-	PotentialPartMonitors[Part] = Part.Changed:Connect(function (Property)
-		if Property == 'Anchored' and Part.Anchored then
+	PotentialPartMonitors[Part] = Part:GetPropertyChangedSignal('Anchored'):Connect(function (Property)
+		if Part.Anchored then
 			AddStaticParts { Part };
 		end;
 	end);
@@ -292,16 +296,10 @@ function BoundingBoxModule.PauseMonitoring()
 	-- Disables part monitors
 
 	-- Disconnect all potential part monitors
-	for Part, Monitor in pairs(PotentialPartMonitors) do
-		Monitor:Disconnect();
-		PotentialPartMonitors[Part] = nil;
-	end;
+	PotentialPartMonitors:Destroy()
 
 	-- Disconnect all static part monitors
-	for Part, Monitor in pairs(StaticPartMonitors) do
-		Monitor:Disconnect();
-		StaticPartMonitors[Part] = nil;
-	end;
+	StaticPartMonitors:Destroy()
 
 	-- Stop update loop
 	if BoundingBoxUpdater then
@@ -340,22 +338,13 @@ function StopAggregatingStaticParts()
 	-- Stops looking for static parts, clears unnecessary data
 
 	-- Disconnect all aggregators
-	for AggregatorKey, Aggregator in pairs(StaticPartAggregators) do
-		Aggregator:Disconnect();
-		StaticPartAggregators[AggregatorKey] = nil;
-	end;
+	StaticPartAggregators:Destroy()
 
 	-- Remove all static part monitors
-	for MonitorKey, Monitor in pairs(StaticPartMonitors) do
-		Monitor:Disconnect();
-		StaticPartMonitors[MonitorKey] = nil;
-	end;
+	StaticPartMonitors:Destroy()
 
 	-- Remove all potential part monitors
-	for MonitorKey, Monitor in pairs(PotentialPartMonitors) do
-		Monitor:Disconnect();
-		PotentialPartMonitors[MonitorKey] = nil;
-	end;
+	PotentialPartMonitors:Destroy()
 
 	-- Clear all static part information
 	StaticParts = {};
@@ -364,122 +353,87 @@ function StopAggregatingStaticParts()
 
 end;
 
--- Create shortcuts to avoid intensive lookups
-local CFrame_new = CFrame.new;
-local table_insert = table.insert;
-local CFrame_toWorldSpace = CFrame.new().toWorldSpace;
-local math_min = math.min;
-local math_max = math.max;
-local unpack = unpack;
-
-function BoundingBoxModule.CalculateExtents(Items, StaticExtents, ExtentsOnly)
+function BoundingBoxModule.CalculateExtents(Parts, StaticExtents, ExtentsOnly)
 	-- Returns the size and position of a box covering all items in `Items`
 
 	-- Ensure there are items
-	if #Items == 0 then
-		return;
-	end;
+	if #Parts == 0 then
+		return nil
+	end
 
 	-- Get initial extents data for comparison
-	local ComparisonBaseMin = StaticExtents and StaticExtents.Min or Items[1].Position;
-	local ComparisonBaseMax = StaticExtents and StaticExtents.Max or Items[1].Position;
-	local MinX, MinY, MinZ = ComparisonBaseMin.X, ComparisonBaseMin.Y, ComparisonBaseMin.Z;
-	local MaxX, MaxY, MaxZ = ComparisonBaseMax.X, ComparisonBaseMax.Y, ComparisonBaseMax.Z;
+	local ComparisonBaseMin = StaticExtents and StaticExtents.Min or Parts[1].Position
+	local ComparisonBaseMax = StaticExtents and StaticExtents.Max or Parts[1].Position
+	local MinX, MinY, MinZ = ComparisonBaseMin.X, ComparisonBaseMin.Y, ComparisonBaseMin.Z
+	local MaxX, MaxY, MaxZ = ComparisonBaseMax.X, ComparisonBaseMax.Y, ComparisonBaseMax.Z
 
-	-- Go through each part in `Items`
-	for _, Part in pairs(Items) do
+	-- Check each relevant part
+	local IsPhysicsStatic = IsPhysicsStatic()
+	for i = 1, #Parts do
+		if not ((IsPhysicsStatic or Parts[i].Anchored) and StaticExtents) then
+			local PositionX, PositionY, PositionZ,
+				RightVectorX, UpVectorX, LookVectorX,
+				RightVectorY, UpVectorY, LookVectorY,
+				RightVectorZ, UpVectorZ, LookVectorZ = Parts[i].CFrame:GetComponents()
+			local PartSize = Parts[i].Size
+			local SizeX, SizeY, SizeZ = PartSize.X/2, PartSize.Y/2, PartSize.Z/2
 
-		-- Avoid re-calculating for static parts
-		if not ((IsPhysicsStatic() or Part.Anchored) and StaticExtents) then
+			-- Calculate extents along X axis
+			local px = SizeX * (RightVectorX < 0 and -RightVectorX or RightVectorX) +
+					SizeY * (UpVectorX < 0 and -UpVectorX or UpVectorX) +
+					SizeZ * (LookVectorX < 0 and -LookVectorX or LookVectorX)
 
-			-- Get shortcuts to part data
-			local PartCFrame = Part.CFrame;
-			local PartSize = Part.Size / 2;
-			local SizeX, SizeY, SizeZ = PartSize.X, PartSize.Y, PartSize.Z;
+			-- Calculate extents along Y axis
+			local py = SizeX * (RightVectorY < 0 and -RightVectorY or RightVectorY) +
+					SizeY * (UpVectorY < 0 and -UpVectorY or UpVectorY) +
+					SizeZ * (LookVectorY < 0 and -LookVectorY or LookVectorY)
 
-			local Corner;
-			local XPoints, YPoints, ZPoints = {}, {}, {};
+			-- Calculate extents along Z axis
+			local pz = SizeX * (RightVectorZ < 0 and -RightVectorZ or RightVectorZ) +
+					SizeY * (UpVectorZ < 0 and -UpVectorZ or UpVectorZ) +
+					SizeZ * (LookVectorZ < 0 and -LookVectorZ or LookVectorZ)
 
-			Corner = PartCFrame * CFrame_new(SizeX, SizeY, SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			-- Update minimum positions on each axis
+			local PartMinX = PositionX - px
+			if PartMinX < MinX then
+				MinX = PartMinX
+			end
+			local PartMinY = PositionY - py
+			if PartMinY < MinY then
+				MinY = PartMinY
+			end
+			local PartMinZ = PositionZ - pz
+			if PartMinZ < MinZ then
+				MinZ = PartMinZ
+			end
 
-			Corner = PartCFrame * CFrame_new(-SizeX, SizeY, SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			-- Update max positions on each axis
+			local PartMaxX = PositionX + px
+			if PartMaxX > MaxX then
+				MaxX = PartMaxX
+			end
+			local PartMaxY = PositionY + py
+			if PartMaxY > MaxY then
+				MaxY = PartMaxY
+			end
+			local PartMaxZ = PositionZ + pz
+			if PartMaxZ > MaxZ then
+				MaxZ = PartMaxZ
+			end
+		end
+	end
 
-			Corner = PartCFrame * CFrame_new(SizeX, -SizeY, SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
-
-			Corner = PartCFrame * CFrame_new(SizeX, SizeY, -SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
-
-			Corner = PartCFrame * CFrame_new(-SizeX, SizeY, -SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
-
-			Corner = PartCFrame * CFrame_new(-SizeX, -SizeY, SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
-
-			Corner = PartCFrame * CFrame_new(SizeX, -SizeY, -SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
-
-			Corner = PartCFrame * CFrame_new(-SizeX, -SizeY, -SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
-
-			-- Reduce gathered points to min/max extents
-			MinX = math_min(MinX, unpack(XPoints));
-			MinY = math_min(MinY, unpack(YPoints));
-			MinZ = math_min(MinZ, unpack(ZPoints));
-			MaxX = math_max(MaxX, unpack(XPoints));
-			MaxY = math_max(MaxY, unpack(YPoints));
-			MaxZ = math_max(MaxZ, unpack(ZPoints));
-
-		end;
-
-	end;
-
-	-- Calculate the extents
-	local Extents = {
-		Min = Vector3.new(MinX, MinY, MinZ),
-		Max = Vector3.new(MaxX, MaxY, MaxZ);
-	};
-
-	-- Only return extents if requested
+	-- Return extents only if requested
 	if ExtentsOnly then
-		return Extents;
-	end;
+		return {
+			Min = Vector3.new(MinX, MinY, MinZ);
+			Max = Vector3.new(MaxX, MaxY, MaxZ);
+		}
+	end
 
-	-- Calculate the bounding box size
-	local Size = Vector3.new(
-		MaxX - MinX,
-		MaxY - MinY,
-		MaxZ - MinZ
-	);
-
-	-- Calculate the bounding box center
-	local Position = CFrame.new(
-		MinX + (MaxX - MinX) / 2,
-		MinY + (MaxY - MinY) / 2,
-		MinZ + (MaxZ - MinZ) / 2
-	);
-
-	-- Return the size and position
-	return Size, Position;
-
-end;
+	-- Construct CFrame and Vector3 representing bounding box center and size
+	return Vector3.new((MaxX - MinX), (MaxY - MinY), (MaxZ - MinZ)),
+		   CFrame.new((MinX + MaxX)/2, (MinY + MaxY)/2, (MinZ + MaxZ)/2)
+end
 
 return BoundingBoxModule;

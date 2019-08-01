@@ -121,13 +121,13 @@ function MoveTool:MovePartsAlongAxesByFace(Face, Distance, InitialStates, Initia
 	-- Move along global axes
 	if self.Axes == 'Global' then
 		for Part, InitialState in pairs(InitialStates) do
-			Part.CFrame = InitialState.CFrame + Shift
+			Part.Position = InitialState.CFrame.Position + Shift
 		end
 
 	-- Move along individual items' axes
 	elseif self.Axes == 'Local' then
 		for Part, InitialState in pairs(InitialStates) do
-			Part.CFrame = InitialState.CFrame * CFrame.new(Shift)
+			Part.Position = (InitialState.CFrame * CFrame.new(Shift)).Position
 		end
 
 	-- Move along focused item's axes
@@ -139,7 +139,7 @@ function MoveTool:MovePartsAlongAxesByFace(Face, Distance, InitialStates, Initia
 		-- Move parts based on initial offset from focus
 		for Part, InitialState in pairs(InitialStates) do
 			local FocusOffset = InitialFocusCFrame:toObjectSpace(InitialState.CFrame)
-			Part.CFrame = FocusCFrame * FocusOffset
+			Part.Position = (FocusCFrame * FocusOffset).Position
 		end
 
 	end
@@ -281,19 +281,17 @@ function MoveTool:SetAxisPosition(Axis, Position)
 	self:TrackChange()
 
 	-- Prepare parts to be moved
+	BoundingBox.PauseMonitoring()
 	local InitialStates = self:PreparePartsForDragging()
 
 	-- Update each part
 	for Part in pairs(InitialStates) do
-
-		-- Set the part's new CFrame
-		Part.CFrame = CFrame.new(
+		Part.Position = Vector3.new(
 			Axis == 'X' and Position or Part.Position.X,
 			Axis == 'Y' and Position or Part.Position.Y,
 			Axis == 'Z' and Position or Part.Position.Z
-		) * (Part.CFrame - Part.CFrame.p);
-
-	end;
+		)
+	end
 
 	-- Cache up permissions for all private areas
 	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
@@ -301,20 +299,22 @@ function MoveTool:SetAxisPosition(Axis, Position)
 	-- Revert changes if player is not authorized to move parts to target destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
 		for Part, State in pairs(InitialStates) do
-			Part.CFrame = State.CFrame;
-		end;
-	end;
+			Part.Position = State.CFrame.Position
+		end
+	end
 
 	-- Restore the parts' original states
-	for Part, State in pairs(InitialStates) do
-		Part:MakeJoints();
-		Core.RestoreJoints(State.Joints);
-		Part.CanCollide = State.CanCollide;
-		Part.Anchored = State.Anchored;
-	end;
+	if not Core.IsPhysicsStatic() then
+		for Part, State in pairs(InitialStates) do
+			Part.CanCollide = State.CanCollide
+			Part.Anchored = State.Anchored
+		end
+	end
 
 	-- Register the change
+	BoundingBox.UpdateBoundingBox()
 	self:RegisterChange()
+	BoundingBox.ResumeMonitoring()
 
 end
 
@@ -334,6 +334,7 @@ function MoveTool:NudgeSelectionByFace(Face)
 	self:TrackChange()
 
 	-- Prepare parts to be moved
+	BoundingBox.PauseMonitoring()
 	local InitialState, InitialFocusCFrame = self:PreparePartsForDragging()
 
 	-- Perform the movement
@@ -348,20 +349,22 @@ function MoveTool:NudgeSelectionByFace(Face)
 	-- Revert changes if player is not authorized to move parts to target destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
 		for Part, State in pairs(InitialState) do
-			Part.CFrame = State.CFrame;
-		end;
-	end;
+			Part.Position = State.CFrame.Position
+		end
+	end
 
 	-- Restore the parts' original states
-	for Part, State in pairs(InitialState) do
-		Part:MakeJoints();
-		Core.RestoreJoints(State.Joints);
-		Part.CanCollide = State.CanCollide;
-		Part.Anchored = State.Anchored;
-	end;
+	if not Core.IsPhysicsStatic() then
+		for Part, State in pairs(InitialState) do
+			Part.CanCollide = State.CanCollide
+			Part.Anchored = State.Anchored
+		end
+	end
 
 	-- Register the change
+	BoundingBox.UpdateBoundingBox()
 	self:RegisterChange()
+	BoundingBox.ResumeMonitoring()
 
 end
 
@@ -433,7 +436,9 @@ function MoveTool:RegisterChange()
 	end;
 
 	-- Send the change to the server
-	Core.SyncAPI:Invoke('SyncMove', Changes);
+	if not Core.LocalMode then
+		Core.SyncAPI:Invoke('SyncMove', Changes)
+	end
 
 	-- Register the record and clear the staging
 	Core.History.Add(self.HistoryRecord)
@@ -446,19 +451,24 @@ function MoveTool:PreparePartsForDragging()
 
 	local InitialState = {};
 
-	-- Get index of parts
-	local PartIndex = Support.FlipTable(Selection.Parts)
-
 	-- Stop parts from moving, and capture the initial state of the parts
-	for _, Part in pairs(Selection.Parts) do
-		InitialState[Part] = { Anchored = Part.Anchored, CanCollide = Part.CanCollide, CFrame = Part.CFrame };
-		Part.Anchored = true;
-		Part.CanCollide = false;
-		InitialState[Part].Joints = Core.PreserveJoints(Part, PartIndex);
-		Part:BreakJoints();
-		Part.Velocity = Vector3.new();
-		Part.RotVelocity = Vector3.new();
-	end;
+	if Core.IsPhysicsStatic() then
+		for _, Part in pairs(Selection.Parts) do
+			InitialState[Part] = { CFrame = Part.CFrame }
+		end
+	else
+		for _, Part in pairs(Selection.Parts) do
+			InitialState[Part] = {
+				Anchored = Part.Anchored,
+				CanCollide = Part.CanCollide,
+				CFrame = Part.CFrame
+			}
+			Part.Anchored = true
+			Part.CanCollide = false
+			Part.Velocity = Vector3.new()
+			Part.RotVelocity = Vector3.new()
+		end
+	end
 
 	-- Get initial state of focused item
 	local InitialFocusCFrame

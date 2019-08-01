@@ -826,4 +826,28 @@ function SupportLibrary.CreateConsecutiveCallDeferrer(MaxInterval)
 
 end
 
+function SupportLibrary.ToDegrees(...)
+	local Results = {}
+
+	-- Convert each number
+	for Key, Number in ipairs({...}) do
+		Results[Key] = math.deg(Number)
+	end
+
+	-- Unpack numbers
+	return unpack(Results)
+end
+
+function SupportLibrary.ToRadians(...)
+	local Results = {}
+
+	-- Convert each number
+	for Key, Number in ipairs({...}) do
+		Results[Key] = math.rad(Number)
+	end
+
+	-- Unpack numbers
+	return unpack(Results)
+end
+
 return SupportLibrary;

@@ -97,6 +97,7 @@ function HandleDragging:AttachHandles(Part, Autofocus)
 
 	end
 
+	local LastDistance
 	local function OnHandleDrag(Face, Distance)
 		-- Update parts when the handles are moved
 
@@ -108,13 +109,20 @@ function HandleDragging:AttachHandles(Part, Autofocus)
 		-- Calculate the increment-aligned drag distance
 		Distance = MoveUtil.GetIncrementMultiple(Distance, self.Tool.Increment)
 
+		-- Avoid repeated drag updates
+		if LastDistance == Distance then
+			return
+		else
+			LastDistance = Distance
+		end
+
 		-- Move the parts along the selected axes by the calculated distance
 		self.Tool:MovePartsAlongAxesByFace(Face, Distance, self.InitialState, self.InitialFocusCFrame)
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
 			local Part, InitialPartState = next(self.InitialState)
-			Part.CFrame = InitialPartState.CFrame
+			Part.Position = InitialPartState.CFrame.Position
 			MoveUtil.TranslatePartsRelativeToPart(Part, self.InitialState)
 			Distance = 0
 		end
@@ -137,12 +145,12 @@ function HandleDragging:AttachHandles(Part, Autofocus)
 		-- Disable dragging
 		self.IsHandleDragging = false
 
-		-- Make joints, restore original anchor and collision states
-		for Part, State in pairs(self.InitialState) do
-			Part:MakeJoints()
-			Core.RestoreJoints(State.Joints)
-			Part.CanCollide = State.CanCollide
-			Part.Anchored = State.Anchored
+		-- Restore original anchor and collision states
+		if not Core.IsPhysicsStatic() then
+			for Part, State in pairs(self.InitialState) do
+				Part.CanCollide = State.CanCollide
+				Part.Anchored = State.Anchored
+			end
 		end
 
 		-- Register change

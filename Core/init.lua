@@ -3,6 +3,7 @@ Plugin = (Tool.Parent:IsA 'Plugin') and Tool.Parent or nil
 
 -- Detect mode
 Mode = Plugin and 'Plugin' or 'Tool';
+LocalMode = (Mode == 'Plugin') and true or false
 
 -- Load tool completely
 local Indicator = Tool:WaitForChild 'Loaded';
@@ -25,6 +26,9 @@ Try = require(Tool.Libraries.Try)
 Make = require(Tool.Libraries.Make)
 local Roact = require(Tool.Vendor:WaitForChild 'Roact')
 local Maid = require(Tool.Libraries:WaitForChild 'Maid')
+
+-- Services
+local Workspace = game:GetService 'Workspace'
 
 -- References
 Support.ImportServices();
@@ -940,6 +944,15 @@ function PreserveJoints(Part, Whitelist)
 	return Joints;
 
 end;
+
+local _IsPhysicsStatic
+
+function IsPhysicsStatic()
+	if _IsPhysicsStatic == nil then
+		_IsPhysicsStatic = (Mode == 'Plugin') and (Workspace.DistributedGameTime == 0)
+	end
+	return _IsPhysicsStatic
+end
 
 -- Initialize the UI
 InitializeUI();
