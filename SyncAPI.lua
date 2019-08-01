@@ -5,19 +5,12 @@ Player = nil;
 
 -- Libraries
 Security = require(Tool.Core.Security);
+RegionModule = require(Tool.Libraries.Region);
 Support = require(Tool.Libraries.SupportLibrary);
 Serialization = require(Tool.Libraries.SerializationV3);
 
--- Services
-local Workspace = game:GetService 'Workspace'
-local RunService = game:GetService 'RunService'
-local HttpService = game:GetService 'HttpService'
-local Players = game:GetService 'Players'
-
--- Shortcuts
--- (TODO: Remove upon release of new Lua VM)
-local deg = math.deg
-local newVector3 = Vector3.new
+-- Import services
+Support.ImportServices();
 
 -- Default options
 Options = {
@@ -30,7 +23,6 @@ LastParents = {};
 
 -- Determine whether we're in tool or plugin mode
 ToolMode = (Tool.Parent:IsA 'Plugin') and 'Plugin' or 'Tool'
-LocalMode = (ToolMode == 'Plugin') and true or false
 
 -- List of actions that could be requested
 Actions = {
@@ -451,37 +443,41 @@ Actions = {
 			end;
 		end;
 
-		-- Stabilize parts in-game
-		if not IsPhysicsStatic() then
-			for Part in pairs(ChangeSet) do
-				Part.Anchored = true
-				Part.Velocity = Vector3.new()
-				Part.RotVelocity = Vector3.new()
-			end
-		end
-
-		-- Update each part's CFrame
+		-- Preserve joints
 		for Part, Change in pairs(ChangeSet) do
-			local OrientationX, OrientationY, OrientationZ = Change.CFrame:ToOrientation()
-			Part.Orientation = newVector3(deg(OrientationX), deg(OrientationY), deg(OrientationZ))
-			Part.Position = Change.CFrame.Position
-		end
+			Change.Joints = PreserveJoints(Part, ChangeSet);
+		end;
 
-		-- Revert changes if player is not authorized to move parts into this area
+		-- Perform each change
+		for Part, Change in pairs(ChangeSet) do
+
+			-- Stabilize the parts and maintain the original anchor state
+			Part.Anchored = true;
+			Part:BreakJoints();
+			Part.Velocity = Vector3.new();
+			Part.RotVelocity = Vector3.new();
+
+			-- Set the part's CFrame
+			Part.CFrame = Change.CFrame;
+
+		end;
+
+		-- Make sure the player is authorized to move parts into this area
 		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
+
+			-- Revert changes if unauthorized destination
 			for Part, Change in pairs(ChangeSet) do
-				local OrientationX, OrientationY, OrientationZ = Change.InitialState.CFrame:ToOrientation()
-				Part.Orientation = newVector3(deg(OrientationX), deg(OrientationY), deg(OrientationZ))
-				Part.Position = Change.InitialState.CFrame.Position
-			end
-		end
+				Part.CFrame = Change.InitialState.CFrame;
+			end;
+
+		end;
 
 		-- Restore the parts' original states
-		if not IsPhysicsStatic() then
-			for Part, Change in pairs(ChangeSet) do
-				Part.Anchored = Change.InitialState.Anchored
-			end
-		end
+		for Part, Change in pairs(ChangeSet) do
+			Part:MakeJoints();
+			RestoreJoints(Change.Joints);
+			Part.Anchored = Change.InitialState.Anchored;
+		end;
 
 	end;
 
@@ -1864,15 +1860,6 @@ function CreatePart(PartType)
 	NewPart.Anchored = true
 
 	return NewPart
-end
-
-local _IsPhysicsStatic
-
-function IsPhysicsStatic()
-	if _IsPhysicsStatic == nil then
-		_IsPhysicsStatic = (ToolMode == 'Plugin') and (Workspace.DistributedGameTime == 0)
-	end
-	return _IsPhysicsStatic
 end
 
 -- Keep current player updated in tool mode

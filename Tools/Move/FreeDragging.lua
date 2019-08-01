@@ -27,10 +27,9 @@ function FreeDragging.new(Tool)
         IsDragging = false;
         StartScreenPoint = nil;
         StartTarget = nil;
-		CrossthroughCorrection = nil;
+        CrossthroughCorrection = nil;
         LastSelection = nil;
         LastBasePartOffset = nil;
-		LastTargetCFrame = nil;
         Target = nil;
         TargetPoint = nil;
         TargetNormal = nil;
@@ -187,14 +186,13 @@ function FreeDragging:StartDragging(BasePart, InitialState, BasePoint)
 
 		-- Align the selection's base point to the snapped point
 		local Rotation = self.SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p)
-		local TargetCFrame = CFrame.new(SnappedPoint) * Rotation * CFrame.new(BasePartOffset)
-		MoveUtil.TransformPartToCFrame(BasePart, TargetCFrame)
-		MoveUtil.TransformPartsRelativeToPart(BasePart, InitialState)
+		BasePart.CFrame = CFrame.new(SnappedPoint) * Rotation * CFrame.new(BasePartOffset)
+		MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialState)
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-			MoveUtil.TransformPartToCFrame(BasePart, InitialState[BasePart].CFrame)
-			MoveUtil.TransformPartsRelativeToPart(BasePart, InitialState)
+			BasePart.CFrame = InitialState[BasePart].CFrame
+			MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialState)
 		end
 
 	end)
@@ -294,13 +292,6 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialState, AreaPe
 	local Rotation = self.SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p)
 	local TargetCFrame = CFrame.new(self.TargetPoint) * Rotation * CFrame.new(BasePartOffset)
 
-	-- Avoid repeated drag updates
-	if (self.LastTargetCFrame == TargetCFrame) and self.CrossthroughCorrection then
-		return
-	else
-		self.LastTargetCFrame = TargetCFrame
-	end
-
 	-- Calculate crossthrough against target plane if necessary
 	if not self.CrossthroughCorrection then
 		self.CrossthroughCorrection = 0
@@ -320,8 +311,8 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialState, AreaPe
 	end
 
 	-- Move the selection, retracted by the max. crossthrough amount
-	MoveUtil.TransformPartToCFrame(BasePart, TargetCFrame - (self.TargetNormal * self.CrossthroughCorrection))
-	MoveUtil.TransformPartsRelativeToPart(BasePart, InitialState)
+	BasePart.CFrame = TargetCFrame - (self.TargetNormal * self.CrossthroughCorrection)
+	MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialState)
 
 	----------------------------------------
 	-- Check for relevant area authorization
@@ -329,8 +320,8 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialState, AreaPe
 
 	-- Make sure we're not entering any unauthorized private areas
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-		MoveUtil.TransformPartToCFrame(BasePart, InitialState[BasePart].CFrame)
-		MoveUtil.TransformPartsRelativeToPart(BasePart, InitialState)
+		BasePart.CFrame = InitialState[BasePart].CFrame
+		MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialState)
 	end
 
 end
@@ -523,11 +514,11 @@ function FreeDragging:FinishDragging()
 	self.Tool.Maid.DragSnapping = nil
 
 	-- Restore the original state of each part
-	if not Core.IsPhysicsStatic() then
-		for Part, State in pairs(self.InitialState) do
-			Part.CanCollide = State.CanCollide
-			Part.Anchored = State.Anchored
-		end
+	for Part, State in pairs(self.InitialState) do
+		Part:MakeJoints()
+		Core.RestoreJoints(State.Joints)
+		Part.CanCollide = State.CanCollide
+		Part.Anchored = State.Anchored
 	end
 
 	-- Register changes
@@ -579,11 +570,11 @@ function FreeDragging:InstallDragEndListener()
         -- Reset from drag mode if dragging
         if self.IsDragging then
 
-            -- Finalize the dragging operation
-			self:FinishDragging()
-
             -- Reset axes
             self.Tool:SetAxes(self.Tool.Axes)
+
+            -- Finalize the dragging operation
+            self:FinishDragging()
 
         end
 

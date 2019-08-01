@@ -1,12 +1,3 @@
-local deg = math.deg
-local newVector3 = Vector3.new
-
-local function TransformPartToCFrame(Part, CFrame)
-	local OrientationX, OrientationY, OrientationZ = CFrame:ToOrientation()
-	Part.Orientation = newVector3(deg(OrientationX), deg(OrientationY), deg(OrientationZ))
-	Part.Position = CFrame.Position
-end
-
 local function TranslatePartsRelativeToPart(BasePart, InitialStates)
 	-- Moves the given parts in `InitialStates` to BasePart's current position, with their original offset from it
 
@@ -20,28 +11,7 @@ local function TranslatePartsRelativeToPart(BasePart, InitialStates)
 		local Offset = RelativeTo * InitialState.CFrame
 
 		-- Move relative to the focused part by this part's offset from it
-		Part.Position = (BasePart.CFrame * Offset).Position
-
-	end
-end
-
-local function TransformPartsRelativeToPart(BasePart, InitialStates)
-	-- Moves, rotates the given parts in `InitialStates` to BasePart's current position, with their original offset from it
-
-	-- Get focused part's position for offsetting
-	local RelativeTo = InitialStates[BasePart].CFrame:inverse()
-
-	-- Calculate offset and move each part
-	for Part, InitialState in pairs(InitialStates) do
-
-		-- Calculate how far apart we should be from the focused part
-		local Offset = RelativeTo * InitialState.CFrame
-
-		-- Move relative to the focused part by this part's offset from it
-		local TargetCFrame = BasePart.CFrame * Offset
-		local OrientationX, OrientationY, OrientationZ = TargetCFrame:ToOrientation()
-		Part.Orientation = newVector3(deg(OrientationX), deg(OrientationY), deg(OrientationZ))
-		Part.Position = TargetCFrame.Position
+		Part.CFrame = BasePart.CFrame * Offset
 
 	end
 end
@@ -70,8 +40,6 @@ local function GetIncrementMultiple(Number, Increment)
 end
 
 return {
-	TranslatePartsRelativeToPart = TranslatePartsRelativeToPart;
-	TransformPartsRelativeToPart = TransformPartsRelativeToPart;
-	GetIncrementMultiple = GetIncrementMultiple;
-	TransformPartToCFrame = TransformPartToCFrame;
+    TranslatePartsRelativeToPart = TranslatePartsRelativeToPart;
+    GetIncrementMultiple = GetIncrementMultiple;
 }
