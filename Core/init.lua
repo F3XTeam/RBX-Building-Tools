@@ -354,6 +354,20 @@ function CloseExplorer()
 
 end
 
+-- Create scope HUD when tool opens
+coroutine.wrap(function ()
+	Enabled:Wait()
+
+	-- Create scope HUD
+	local ScopeHUDTemplate = require(UIElements:WaitForChild 'ScopeHUD')
+	local ScopeHUD = Roact.createElement(ScopeHUDTemplate, {
+		Core = getfenv(0);
+	})
+
+	-- Mount scope HUD
+	Roact.mount(ScopeHUD, UI, 'ScopeHUD')
+end)()
+
 -- Register explorer pane toggling hotkeys
 AssignHotkey({ 'LeftShift', 'H' }, ToggleExplorer)
 AssignHotkey({ 'RightShift', 'H' }, ToggleExplorer)
