@@ -73,7 +73,7 @@ function Explorer:UpdateScope(Scope)
     end
 
     -- Build initial tree
-    spawn(function ()
+    coroutine.resume(coroutine.create(function ()
         self:UpdateTree()
 
         -- Scroll to first selected item
@@ -81,7 +81,7 @@ function Explorer:UpdateScope(Scope)
             local FocusedItem = Selection.IsSelected(Selection.Focus) and Selection.Focus or Selection.Items[1]
             self:setState { ScrollTo = self.IdMap[FocusedItem] }
         end
-    end)
+    end))
 
     -- Listen for new and removing items
     local Scope = Core.Targeting.Scope

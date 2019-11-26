@@ -653,9 +653,9 @@ function UngroupSelection()
 
 		-- Reparent children
 		for GroupId, Items in ipairs(self.GroupChildren) do
-			spawn(function ()
+			coroutine.resume(coroutine.create(function ()
 				SyncAPI:Invoke('SetParent', Items, self.Groups[GroupId])
-			end)
+			end))
 		end
 
 		-- Reselect groups

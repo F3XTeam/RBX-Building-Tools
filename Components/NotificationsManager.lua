@@ -35,10 +35,10 @@ function Component.Start(Core)
 	View:TweenPosition(UDim2.new(0.5, 0, 0.5, 0), nil, nil, 0.2);
 
 	-- Destroy notifications container on tool unequip
-	Spawn(function ()
+	coroutine.wrap(function ()
 		Core.Disabling:Wait();
 		View:Destroy();
-	end);
+	end)()
 
 	-- Return component for chaining
 	return Component;
