@@ -13,9 +13,11 @@ local InstancePool = require(Libraries:WaitForChild 'InstancePool')
 
 TargetingModule = {};
 TargetingModule.Scope = Workspace
+TargetingModule.IsScopeLocked = true
 TargetingModule.TargetChanged = Signal.new()
 TargetingModule.ScopeChanged = Signal.new()
 TargetingModule.ScopeTargetChanged = Signal.new()
+TargetingModule.ScopeLockChanged = Signal.new()
 
 function TargetingModule:EnableTargeting()
 	-- 	Begin targeting parts from the mouse
@@ -506,6 +508,8 @@ function TargetingModule:EnableDirectSelection()
 				if Target ~= ScopeTarget then
 					self:SetScope(ScopeTarget or self.Scope)
 					self:UpdateTarget(self.Scope, true)
+					self.IsScopeLocked = false
+					self.ScopeLockChanged:Fire(false)
 					Scoping = self.Scope
 				end
 
@@ -515,6 +519,8 @@ function TargetingModule:EnableDirectSelection()
 				if GetCore().Security.IsLocationAllowed(NewScope, GetCore().Player) then
 					self:SetScope(NewScope)
 					self:UpdateTarget(self.Scope, true)
+					self.IsScopeLocked = false
+					self.ScopeLockChanged:Fire(false)
 					Scoping = self.Scope
 				end
 				return Enum.ContextActionResult.Sink
@@ -525,6 +531,8 @@ function TargetingModule:EnableDirectSelection()
 				if Target ~= ScopeTarget then
 					self:SetScope(ScopeTarget or self.Scope)
 					self:UpdateTarget(self.Scope, true)
+					self.IsScopeLocked = false
+					self.ScopeLockChanged:Fire(false)
 					Scoping = self.Scope
 				end
 				return Enum.ContextActionResult.Sink
@@ -532,6 +540,8 @@ function TargetingModule:EnableDirectSelection()
 			-- If Alt-F is pressed, stay in current scope
 			elseif Scoping and IsAltPressed and (Input.KeyCode.Name == 'F') then
 				Scoping = true
+				self.IsScopeLocked = true
+				self.ScopeLockChanged:Fire(true)
 				return Enum.ContextActionResult.Sink
 			end
 
@@ -540,6 +550,8 @@ function TargetingModule:EnableDirectSelection()
 			if Scoping and (Input.KeyCode.Name:match 'Alt') then
 				if self.Scope == Scoping then
 					self:SetScope(InitialScope)
+					self.IsScopeLocked = true
+					self.ScopeLockChanged:Fire(true)
 				end
 				self:UpdateTarget(self.Scope, true)
 				Scoping = nil
@@ -551,6 +563,8 @@ function TargetingModule:EnableDirectSelection()
 		if Scoping and Input.UserInputType.Name == 'Focus' then
 			if self.Scope == Scoping then
 				self:SetScope(InitialScope)
+				self.IsScopeLocked = true
+				self.ScopeLockChanged:Fire(true)
 			end
 			self:UpdateTarget(self.Scope, true)
 			Scoping = nil
