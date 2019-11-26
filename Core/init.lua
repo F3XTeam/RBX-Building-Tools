@@ -203,6 +203,13 @@ function Enable(Mouse)
 	Selection.EnableOutlines();
 	Selection.EnableMultiselectionHotkeys();
 
+	-- Sync studio selection in
+	if Mode == 'Plugin' then
+		Connections.StudioSelectionListener = SelectionService.SelectionChanged:Connect(function ()
+			Selection.Replace(SelectionService:Get(), false)
+		end)
+	end
+
 	-- Equip current tool
 	EquipTool(CurrentTool or require(Tool.Tools.Move));
 
