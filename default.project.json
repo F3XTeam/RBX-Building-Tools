@@ -38,7 +38,7 @@
         "Vendor": {
           "$className": "Folder",
           "Roact": {
-            "$path": "Vendor/Roact/lib"
+            "$path": "Vendor/Roact/src"
           }
         },
         "Assets": {

@@ -30,7 +30,7 @@ function ItemList:init(props)
 
     -- Create callback for updating canvas boundaries
     self.UpdateBoundaries = function (rbx)
-        if self:WaitUntilRendered() then
+        if self.Mounted then
             self:setState {
                 CanvasPosition = rbx.CanvasPosition,
                 Min = rbx.CanvasPosition.Y - rbx.AbsoluteSize.Y,
@@ -40,11 +40,12 @@ function ItemList:init(props)
     end
 end
 
-function ItemList:WaitUntilRendered()
+function ItemList:didMount()
+    self.Mounted = true
+end
 
-    -- Wait for state to unblock
-    while self._setStateBlockedReason do
-        RunService.Heartbeat:Wait()
+function ItemList:willUnmount()
+    self.Mounted = false
     end
 
     -- Return whether component still mounted

@@ -333,7 +333,7 @@ function OpenExplorer()
 	UIMaid.ExplorerScope = Targeting.ScopeChanged:Connect(function (Scope)
 		local UpdatedProps = Support.Merge({}, Explorer.props, { Scope = Scope })
 		local UpdatedExplorer = Roact.createElement(ExplorerTemplate, UpdatedProps)
-		ExplorerHandle = Roact.reconcile(ExplorerHandle, UpdatedExplorer)
+		ExplorerHandle = Roact.update(ExplorerHandle, UpdatedExplorer)
 	end)
 
 	-- Update dock
