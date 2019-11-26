@@ -61,7 +61,7 @@ function FreeDragging:EnableDragging()
 
 		-- Get mouse target
 		local TargetPart = Core.Mouse.Target
-		if Selection.Multiselecting then
+		if (not TargetPart) or Selection.Multiselecting then
 			return Enum.ContextActionResult.Pass
 		end
 
