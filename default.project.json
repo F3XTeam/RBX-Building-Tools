@@ -12,6 +12,7 @@
           "$path": "Core"
         },
         "Tools": {
+          "$className": "Folder",
           "$path": "Tools"
         },
         "Loader": {
@@ -37,6 +38,7 @@
         },
         "Vendor": {
           "$className": "Folder",
+          "$ignoreUnknownInstances": false,
           "Roact": {
             "$path": "Vendor/Roact/src"
           }
