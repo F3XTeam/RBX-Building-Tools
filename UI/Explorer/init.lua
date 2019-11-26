@@ -79,7 +79,13 @@ function Explorer:UpdateScope(Scope)
         -- Scroll to first selected item
         if #Selection.Items > 0 then
             local FocusedItem = Selection.IsSelected(Selection.Focus) and Selection.Focus or Selection.Items[1]
-            self:setState { ScrollTo = self.IdMap[FocusedItem] }
+            self:setState({
+                ScrollTo = self.IdMap[FocusedItem]
+            })
+        else
+            self:setState({
+                ScrollTo = Roact.None
+            })
         end
     end))
 
@@ -594,6 +600,7 @@ function Explorer:render()
 
         -- Scrollable item list
         ItemList = new(ItemList, {
+            Scope = props.Scope,
             Items = state.Items,
             ScrollTo = state.ScrollTo,
             Core = props.Core,

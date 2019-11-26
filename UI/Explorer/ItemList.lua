@@ -46,11 +46,20 @@ end
 
 function ItemList:willUnmount()
     self.Mounted = false
+end
+
+function ItemList:didUpdate(previousProps, previousState)
+    local IsScrollTargetSet = self.props.ScrollTo and
+        (previousProps.ScrollTo ~= self.props.ScrollTo)
+
+    -- Reset canvas position whenever scope updates (unless a scrolling target is set)
+    if (previousProps.Scope ~= self.props.Scope) and (not IsScrollTargetSet) then
+        self:setState({
+            CanvasPosition = Vector2.new(0, 0);
+            Min = 0;
+            Max = self.props.MaxHeight;
+        })
     end
-
-    -- Return whether component still mounted
-    return (not not self._handle)
-
 end
 
 function ItemList:render()
