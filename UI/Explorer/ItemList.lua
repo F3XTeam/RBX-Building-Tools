@@ -30,7 +30,7 @@ function ItemList:init(props)
 
     -- Create callback for updating canvas boundaries
     self.UpdateBoundaries = function (rbx)
-        if self:WaitUntilRendered() then
+        if self.Mounted then
             self:setState {
                 CanvasPosition = rbx.CanvasPosition,
                 Min = rbx.CanvasPosition.Y - rbx.AbsoluteSize.Y,
@@ -40,16 +40,26 @@ function ItemList:init(props)
     end
 end
 
-function ItemList:WaitUntilRendered()
+function ItemList:didMount()
+    self.Mounted = true
+end
 
-    -- Wait for state to unblock
-    while self._setStateBlockedReason do
-        RunService.Heartbeat:Wait()
+function ItemList:willUnmount()
+    self.Mounted = false
+end
+
+function ItemList:didUpdate(previousProps, previousState)
+    local IsScrollTargetSet = self.props.ScrollTo and
+        (previousProps.ScrollTo ~= self.props.ScrollTo)
+
+    -- Reset canvas position whenever scope updates (unless a scrolling target is set)
+    if (previousProps.Scope ~= self.props.Scope) and (not IsScrollTargetSet) then
+        self:setState({
+            CanvasPosition = Vector2.new(0, 0);
+            Min = 0;
+            Max = self.props.MaxHeight;
+        })
     end
-
-    -- Return whether component still mounted
-    return (not not self._handle)
-
 end
 
 function ItemList:render()

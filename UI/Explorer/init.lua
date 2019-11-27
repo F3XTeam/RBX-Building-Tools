@@ -73,15 +73,21 @@ function Explorer:UpdateScope(Scope)
     end
 
     -- Build initial tree
-    spawn(function ()
+    coroutine.resume(coroutine.create(function ()
         self:UpdateTree()
 
         -- Scroll to first selected item
         if #Selection.Items > 0 then
             local FocusedItem = Selection.IsSelected(Selection.Focus) and Selection.Focus or Selection.Items[1]
-            self:setState { ScrollTo = self.IdMap[FocusedItem] }
+            self:setState({
+                ScrollTo = self.IdMap[FocusedItem]
+            })
+        else
+            self:setState({
+                ScrollTo = Roact.None
+            })
         end
-    end)
+    end))
 
     -- Listen for new and removing items
     local Scope = Core.Targeting.Scope
@@ -126,21 +132,21 @@ function Explorer:UpdateScope(Scope)
 end
 
 function Explorer:didMount()
+    self.Mounted = true
 
     -- Create maid for cleanup on unmount
     self.ItemMaid = Maid.new()
 
     -- Set scope
     self:UpdateScope(self.props.Scope)
-
 end
 
 function Explorer:willUnmount()
+    self.Mounted = false
 
     -- Clean up resources
     self.ScopeMaid:Destroy()
     self.ItemMaid:Destroy()
-
 end
 
 local function IsTargetable(Item)
@@ -260,18 +266,6 @@ function Explorer:UpdateSelection(Items)
         end
         return { Items = Support.Merge(State.Items, Changes) }
     end)
-
-end
-
-function Explorer:WaitUntilRendered()
-
-    -- Wait for state to unblock
-    while self._setStateBlockedReason do
-        RunService.Heartbeat:Wait()
-    end
-
-    -- Return whether component still mounted
-    return (not not self._handle)
 
 end
 
@@ -441,7 +435,7 @@ function Explorer:ShouldExecuteQueue(Type)
     self.QueueTimers[Type] = ShouldExecute
 
     -- Wait until state updatable
-    if ShouldExecute() and self:WaitUntilRendered() then
+    if ShouldExecute() and self.Mounted then
         return true
     end
 end
@@ -606,6 +600,7 @@ function Explorer:render()
 
         -- Scrollable item list
         ItemList = new(ItemList, {
+            Scope = props.Scope,
             Items = state.Items,
             ScrollTo = state.ScrollTo,
             Core = props.Core,

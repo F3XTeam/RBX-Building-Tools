@@ -224,7 +224,7 @@ function ArcHandles:CreateHandles(Options)
 
             -- Fire callback when dragging ends
             DragMaid.Callback = function ()
-                spawn(Options.OnDragEnd)
+                coroutine.wrap(Options.OnDragEnd)()
             end
 
         end)
@@ -277,27 +277,27 @@ function ArcHandles:Resume()
 
     -- Update each handle
     for Side, Handle in pairs(self.Handles) do
-        spawn(function ()
+        coroutine.wrap(function ()
             while self.Running do
                 self:UpdateHandle(Side, Handle)
                 RunService.RenderStepped:Wait()
             end
-        end)
+        end)()
     end
 
     -- Update each axis circle
     for Axis, Lines in pairs(self.AxisCircles) do
-        spawn(function ()
+        coroutine.wrap(function ()
             while self.Running do
                 self:UpdateCircle(Axis, Lines)
                 RunService.RenderStepped:Wait()
             end
-        end)
+        end)()
     end
 
     -- Ignore character whenever character enters first person
     if Players.LocalPlayer then
-        spawn(function ()
+        coroutine.wrap(function ()
             while self.Running do
                 local FirstPerson = IsFirstPerson(self.Camera)
                 local Character = Players.LocalPlayer.Character
@@ -307,7 +307,7 @@ function ArcHandles:Resume()
                 end
                 wait(0.2)
             end
-        end)
+        end)()
     end
 
     -- Show UI

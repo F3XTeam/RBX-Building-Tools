@@ -27,12 +27,12 @@ function InstancePool:Release(Instance)
     self.LastUse[Instance] = ReleaseTime
 
     -- Remove instance if not used after timeout
-    spawn(function ()
+    coroutine.resume(coroutine.create(function ()
         wait(self.Timeout)
         if self.LastUse[Instance] == ReleaseTime then
             self:Remove(Instance)
         end
-    end)
+    end))
 
     -- Run cleanup routine on instance
     self.Cleanup(Instance)

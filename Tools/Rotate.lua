@@ -568,7 +568,7 @@ function BindShortcutKeys()
 			StartSnapping();
 
 		-- Start snapping when T key is pressed down (alias)
-		elseif InputInfo.KeyCode == Enum.KeyCode.T then
+		elseif (InputInfo.KeyCode == Enum.KeyCode.T) and (not Selection.Multiselecting) then
 			StartSnapping();
 
 		end;

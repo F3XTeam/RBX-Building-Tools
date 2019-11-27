@@ -203,6 +203,13 @@ function Enable(Mouse)
 	Selection.EnableOutlines();
 	Selection.EnableMultiselectionHotkeys();
 
+	-- Sync studio selection in
+	if Mode == 'Plugin' then
+		Connections.StudioSelectionListener = SelectionService.SelectionChanged:Connect(function ()
+			Selection.Replace(SelectionService:Get(), false)
+		end)
+	end
+
 	-- Equip current tool
 	EquipTool(CurrentTool or require(Tool.Tools.Move));
 
@@ -333,7 +340,7 @@ function OpenExplorer()
 	UIMaid.ExplorerScope = Targeting.ScopeChanged:Connect(function (Scope)
 		local UpdatedProps = Support.Merge({}, Explorer.props, { Scope = Scope })
 		local UpdatedExplorer = Roact.createElement(ExplorerTemplate, UpdatedProps)
-		ExplorerHandle = Roact.reconcile(ExplorerHandle, UpdatedExplorer)
+		ExplorerHandle = Roact.update(ExplorerHandle, UpdatedExplorer)
 	end)
 
 	-- Update dock
@@ -353,6 +360,20 @@ function CloseExplorer()
 	ExplorerDockButton.ImageTransparency = 0.66
 
 end
+
+-- Create scope HUD when tool opens
+coroutine.wrap(function ()
+	Enabled:Wait()
+
+	-- Create scope HUD
+	local ScopeHUDTemplate = require(UIElements:WaitForChild 'ScopeHUD')
+	local ScopeHUD = Roact.createElement(ScopeHUDTemplate, {
+		Core = getfenv(0);
+	})
+
+	-- Mount scope HUD
+	Roact.mount(ScopeHUD, UI, 'ScopeHUD')
+end)()
 
 -- Register explorer pane toggling hotkeys
 AssignHotkey({ 'LeftShift', 'H' }, ToggleExplorer)
@@ -653,9 +674,9 @@ function UngroupSelection()
 
 		-- Reparent children
 		for GroupId, Items in ipairs(self.GroupChildren) do
-			spawn(function ()
+			coroutine.resume(coroutine.create(function ()
 				SyncAPI:Invoke('SetParent', Items, self.Groups[GroupId])
-			end)
+			end))
 		end
 
 		-- Reselect groups

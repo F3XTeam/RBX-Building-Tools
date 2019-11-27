@@ -12,10 +12,14 @@ local Make = require(Libraries:WaitForChild 'Make')
 local InstancePool = require(Libraries:WaitForChild 'InstancePool')
 
 TargetingModule = {};
+TargetingModule.TargetingMode = 'Scoped'
+TargetingModule.TargetingModeChanged = Signal.new()
 TargetingModule.Scope = Workspace
+TargetingModule.IsScopeLocked = true
 TargetingModule.TargetChanged = Signal.new()
 TargetingModule.ScopeChanged = Signal.new()
 TargetingModule.ScopeTargetChanged = Signal.new()
+TargetingModule.ScopeLockChanged = Signal.new()
 
 function TargetingModule:EnableTargeting()
 	-- 	Begin targeting parts from the mouse
@@ -50,11 +54,14 @@ function TargetingModule:EnableTargeting()
 	-- Cancel any ongoing selection when tool is unequipped
 	Connections.CancelSelectionOnDisable = Core.Disabling:Connect(self.CancelRectangleSelecting);
 
-	-- Enable direct selection
-	self:EnableDirectSelection()
+	-- Enable scope selection
+	self:EnableScopeSelection()
 
 	-- Enable automatic scope resetting
 	self:EnableScopeAutoReset()
+
+	-- Enable targeting mode hotkeys
+	self:BindTargetingModeHotkeys()
 
 end;
 
@@ -77,11 +84,20 @@ local function IsTargetable(Item)
 		Item:IsA 'Accoutrement'
 end
 
-function TargetingModule.FindTargetInScope(Target, Scope)
+--- Returns the target within the current scope based on the current targeting mode.
+-- @param Target Which part is being targeted directly
+-- @param Scope The current scope to search for the target in
+-- @returns Instance | nil
+function TargetingModule:FindTargetInScope(Target, Scope)
 
-	-- Return `nil` if no scope is set
-	if not Scope then
+	-- Return `nil` if no target, or if scope is unset
+	if not (Target and Scope) then
 		return nil
+	end
+
+	-- If in direct targeting mode, return target
+	if self.TargetingMode == 'Direct' and (Target:IsDescendantOf(Scope)) then
+		return Target
 	end
 
 	-- Search for ancestor of target directly within scope
@@ -105,8 +121,8 @@ function TargetingModule:UpdateTarget(Scope, Force)
 
 	-- Get target
 	local NewTarget = Mouse.Target
-	local NewScopeTarget = self.FindTargetInScope(NewTarget, Scope)
-	
+	local NewScopeTarget = self:FindTargetInScope(NewTarget, Scope)
+
 	-- Register whether target has changed
 	if (self.LastTarget == NewTarget) and (not Force) then
 		return NewTarget, NewScopeTarget
@@ -415,7 +431,7 @@ function TargetingModule.FinishRectangleSelecting()
 			local TopCheck = ScreenPoint.Y >= StartPoint.Y
 			local BottomCheck = ScreenPoint.Y <= EndPoint.Y
 			if (LeftCheck and RightCheck and TopCheck and BottomCheck) and Core.IsSelectable({ Part }) then
-				local ScopeTarget = TargetingModule.FindTargetInScope(Part, TargetingModule.Scope)
+				local ScopeTarget = TargetingModule:FindTargetInScope(Part, TargetingModule.Scope)
 				SelectableItems[ScopeTarget] = true
 			end
 		end
@@ -482,8 +498,8 @@ function TargetingModule.PrismSelect()
 
 end;
 
-function TargetingModule:EnableDirectSelection()
-	-- Enables the direct selection interface
+function TargetingModule:EnableScopeSelection()
+	-- Enables the scope selection interface
 
 	-- Set up state
 	local Scoping = false
@@ -506,6 +522,8 @@ function TargetingModule:EnableDirectSelection()
 				if Target ~= ScopeTarget then
 					self:SetScope(ScopeTarget or self.Scope)
 					self:UpdateTarget(self.Scope, true)
+					self.IsScopeLocked = false
+					self.ScopeLockChanged:Fire(false)
 					Scoping = self.Scope
 				end
 
@@ -515,6 +533,8 @@ function TargetingModule:EnableDirectSelection()
 				if GetCore().Security.IsLocationAllowed(NewScope, GetCore().Player) then
 					self:SetScope(NewScope)
 					self:UpdateTarget(self.Scope, true)
+					self.IsScopeLocked = false
+					self.ScopeLockChanged:Fire(false)
 					Scoping = self.Scope
 				end
 				return Enum.ContextActionResult.Sink
@@ -525,6 +545,8 @@ function TargetingModule:EnableDirectSelection()
 				if Target ~= ScopeTarget then
 					self:SetScope(ScopeTarget or self.Scope)
 					self:UpdateTarget(self.Scope, true)
+					self.IsScopeLocked = false
+					self.ScopeLockChanged:Fire(false)
 					Scoping = self.Scope
 				end
 				return Enum.ContextActionResult.Sink
@@ -532,6 +554,8 @@ function TargetingModule:EnableDirectSelection()
 			-- If Alt-F is pressed, stay in current scope
 			elseif Scoping and IsAltPressed and (Input.KeyCode.Name == 'F') then
 				Scoping = true
+				self.IsScopeLocked = true
+				self.ScopeLockChanged:Fire(true)
 				return Enum.ContextActionResult.Sink
 			end
 
@@ -540,6 +564,8 @@ function TargetingModule:EnableDirectSelection()
 			if Scoping and (Input.KeyCode.Name:match 'Alt') then
 				if self.Scope == Scoping then
 					self:SetScope(InitialScope)
+					self.IsScopeLocked = true
+					self.ScopeLockChanged:Fire(true)
 				end
 				self:UpdateTarget(self.Scope, true)
 				Scoping = nil
@@ -551,6 +577,8 @@ function TargetingModule:EnableDirectSelection()
 		if Scoping and Input.UserInputType.Name == 'Focus' then
 			if self.Scope == Scoping then
 				self:SetScope(InitialScope)
+				self.IsScopeLocked = true
+				self.ScopeLockChanged:Fire(true)
 			end
 			self:UpdateTarget(self.Scope, true)
 			Scoping = nil
@@ -634,6 +662,60 @@ function TargetingModule:EnableScopeAutoReset()
 			end
 		end)
 
+	end)
+end
+
+--- Switches to the specified targeting mode.
+-- @returns void
+function TargetingModule:SetTargetingMode(NewTargetingMode)
+	if (NewTargetingMode == 'Scoped') or (NewTargetingMode == 'Direct') then
+		self.TargetingMode = NewTargetingMode
+		self.TargetingModeChanged:Fire(NewTargetingMode)
+	else
+		error('Invalid targeting mode', 2)
+	end
+end
+
+--- Toggles between targeting modes.
+-- @returns void
+function TargetingModule:ToggleTargetingMode()
+	if self.TargetingMode == 'Scoped' then
+		self:SetTargetingMode('Direct')
+	elseif self.TargetingMode == 'Direct' then
+		self:SetTargetingMode('Scoped')
+	end
+end
+
+--- Installs listener for targeting mode toggling hotkeys.
+-- @returns void
+function TargetingModule:BindTargetingModeHotkeys()
+	local function Callback(Action, State, Input)
+		if (State.Name == 'End') then
+			return Enum.ContextActionResult.Pass
+		end
+
+		-- Ensure shift is held
+		local KeysPressed = UserInputService:GetKeysPressed()
+		local IsShiftHeld = Input:IsModifierKeyDown(Enum.ModifierKey.Shift)
+		if (#KeysPressed ~= 2) or (not IsShiftHeld) then
+			return Enum.ContextActionResult.Pass
+		end
+
+		-- Toggle between targeting modes
+		self:ToggleTargetingMode()
+		self:UpdateTarget(nil, true)
+
+		-- Sink input
+		return Enum.ContextActionResult.Sink
+	end
+
+	-- Install listener for T key
+	ContextActionService:BindAction('BT: Toggle Targeting Mode', Callback, false, Enum.KeyCode.T)
+
+	-- Unbind hotkey when tool is disabled
+	local Core = GetCore()
+	Core.Connections.UnbindTargetingModeHotkeys = Core.Disabling:Connect(function ()
+		ContextActionService:UnbindAction('BT: Toggle Targeting Mode')
 	end)
 end
 

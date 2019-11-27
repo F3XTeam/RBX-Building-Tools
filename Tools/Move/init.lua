@@ -212,7 +212,7 @@ function MoveTool:BindShortcutKeys()
 			self:NudgeSelectionByFace(Enum.NormalId.Right)
 
 		-- Align the selection to the current target surface if T is pressed
-		elseif InputInfo.KeyCode == Enum.KeyCode.T then
+		elseif (InputInfo.KeyCode == Enum.KeyCode.T) and (not Selection.Multiselecting) then
 			self.FreeDragging:AlignSelectionToTarget()
 		end
 	end)
@@ -463,7 +463,9 @@ function MoveTool:PreparePartsForDragging()
 	-- Get initial state of focused item
 	local InitialFocusCFrame
 	local Focus = Selection.Focus
-	if Focus:IsA 'BasePart' then
+	if not Focus then
+		InitialFocusCFrame = nil
+	elseif Focus:IsA 'BasePart' then
 		InitialFocusCFrame = Focus.CFrame
 	elseif Focus:IsA 'Model' then
 		InitialFocusCFrame = Focus:GetModelCFrame()
