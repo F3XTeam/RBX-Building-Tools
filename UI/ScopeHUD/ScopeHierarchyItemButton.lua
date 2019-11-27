@@ -101,7 +101,7 @@ end
 function ScopeHierarchyItemButton:render()
     local ClassName = self.props.Instance.ClassName
     local IconPosition = ClassIconPositions[ClassName] or Vector2.new(1, 1)
-    local ShouldDisplayArrow = (self.props.LayoutOrder ~= 0) or nil
+    local ShouldDisplayArrow = (self.props.LayoutOrder ~= 2) or nil
 
     return new('ImageButton', {
         BackgroundTransparency = 1;

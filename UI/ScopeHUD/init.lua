@@ -14,6 +14,7 @@ local Support = require(Libraries:WaitForChild 'SupportLibrary')
 local new = Roact.createElement
 local ScopeHierarchyItemButton = require(script:WaitForChild 'ScopeHierarchyItemButton')
 local HotkeyTooltip = require(script:WaitForChild 'HotkeyTooltip')
+local ModeToggle = require(script:WaitForChild 'ModeToggle')
 
 -- Create component
 local ScopeHUD = Roact.PureComponent:extend 'ScopeHUD'
@@ -155,6 +156,9 @@ function ScopeHUD:render()
             SortOrder = Enum.SortOrder.LayoutOrder;
             Padding = UDim.new(0, 5/2);
         });
+        ModeToggle = new(ModeToggle, {
+            Core = self.props.Core;
+        });
     }))
 end
 
@@ -195,7 +199,7 @@ function ScopeHUD:BuildScopeHierarchyButtons()
             IsScopeLocked = self.state.IsScopeLocked;
             SetScopeFromButton = self.SetScopeFromButton;
             IsAltDown = self.state.IsAltDown;
-            LayoutOrder = Index - 1;
+            LayoutOrder = Index + 1;
         })
     end
 
@@ -204,7 +208,7 @@ function ScopeHUD:BuildScopeHierarchyButtons()
         Buttons[#Hierarchy + 1] = new(HotkeyTooltip, {
             IsAltDown = false;
             DisplayAltHotkey = UserInputService.KeyboardEnabled;
-            LayoutOrder = #Hierarchy;
+            LayoutOrder = #Hierarchy + 2;
         })
     end
 
