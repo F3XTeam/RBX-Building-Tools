@@ -54,8 +54,8 @@ function TargetingModule:EnableTargeting()
 	-- Cancel any ongoing selection when tool is unequipped
 	Connections.CancelSelectionOnDisable = Core.Disabling:Connect(self.CancelRectangleSelecting);
 
-	-- Enable direct selection
-	self:EnableDirectSelection()
+	-- Enable scope selection
+	self:EnableScopeSelection()
 
 	-- Enable automatic scope resetting
 	self:EnableScopeAutoReset()
@@ -491,8 +491,8 @@ function TargetingModule.PrismSelect()
 
 end;
 
-function TargetingModule:EnableDirectSelection()
-	-- Enables the direct selection interface
+function TargetingModule:EnableScopeSelection()
+	-- Enables the scope selection interface
 
 	-- Set up state
 	local Scoping = false
