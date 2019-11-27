@@ -8,6 +8,7 @@ local Maid = require(Libraries:WaitForChild 'Maid')
 
 -- Roact
 local new = Roact.createElement
+local Tooltip = require(script:WaitForChild 'Tooltip')
 
 local ModeToggle = Roact.PureComponent:extend 'ModeToggle'
 
@@ -89,7 +90,10 @@ function ModeToggle:render()
                 Size = UDim2.new(0, 28/2, 0, 28/2);
                 ImageRectOffset = Vector2.new(IconSpritesheetPosition, 0);
                 ImageRectSize = Vector2.new(14, 14);
-            })
+            });
+            Tooltip = new(Tooltip, {
+                Visible = self.state.IsHovering;
+            });
         });
         ModeToggleSpacer = new('Frame', {
             BackgroundTransparency = 1;
