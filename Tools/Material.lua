@@ -56,6 +56,7 @@ local Materials = {
 	[Enum.Material.DiamondPlate] = 'Diamond Plate';
 	[Enum.Material.Fabric] = 'Fabric';
 	[Enum.Material.Foil] = 'Foil';
+	[Enum.Material.ForceField] = 'Forcefield';
 	[Enum.Material.Granite] = 'Granite';
 	[Enum.Material.Grass] = 'Grass';
 	[Enum.Material.Ice] = 'Ice';
