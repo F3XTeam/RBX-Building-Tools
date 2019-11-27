@@ -212,7 +212,7 @@ function MoveTool:BindShortcutKeys()
 			self:NudgeSelectionByFace(Enum.NormalId.Right)
 
 		-- Align the selection to the current target surface if T is pressed
-		elseif InputInfo.KeyCode == Enum.KeyCode.T then
+		elseif (InputInfo.KeyCode == Enum.KeyCode.T) and (not Selection.Multiselecting) then
 			self.FreeDragging:AlignSelectionToTarget()
 		end
 	end)
