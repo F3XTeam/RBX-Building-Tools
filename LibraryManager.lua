@@ -143,7 +143,7 @@ end;
 local Tool = script.Parent;
 local Indicator = Tool:WaitForChild 'Loaded';
 while not Indicator.Value do
-	Indicator.Changed:wait();
+	Indicator.Changed:Wait();
 end;
 
 -- Populate library list with cached libraries
@@ -153,3 +153,4 @@ end;
 
 -- Expose GetLibraries function
 _G.GetLibraries = GetLibraries;
+return GetLibraries

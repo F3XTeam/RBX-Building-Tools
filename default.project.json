@@ -1,0 +1,90 @@
+{
+  "name": "RBX-Building-Tools",
+  "servePort": 8000,
+  "tree": {
+    "$className": "DataModel",
+    "StarterPack": {
+      "$className": "StarterPack",
+      "Building Tools": {
+        "$className": "Tool",
+        "$ignoreUnknownInstances": true,
+        "Core": {
+          "$path": "Core"
+        },
+        "Tools": {
+          "$className": "Folder",
+          "$path": "Tools"
+        },
+        "Loader": {
+          "$path": "Loader"
+        },
+        "SyncAPI": {
+          "$className": "BindableFunction",
+          "SyncModule": {
+            "$path": "SyncAPI.lua"
+          },
+          "LocalEndpoint": {
+            "$path": "Support/LocalAPIEndpoint.client.lua"
+          },
+          "ServerEndpoint": {
+            "$className": "RemoteFunction",
+            "ServerEndpoint": {
+              "$path": "Support/ServerAPIEndpoint.server.lua"
+            }
+          }
+        },
+        "Libraries": {
+          "$path": "Libraries"
+        },
+        "Vendor": {
+          "$className": "Folder",
+          "$ignoreUnknownInstances": false,
+          "Roact": {
+            "$path": "Vendor/Roact/src"
+          }
+        },
+        "Assets": {
+          "$path": "Support/Assets.lua"
+        },
+        "AutoUpdate": {
+          "$className": "BoolValue",
+          "AutomaticUpdating": {
+            "$path": "AutomaticUpdating.server.lua"
+          }
+        },
+        "Loaded": {
+          "$className": "BoolValue",
+          "DescendantCount": {
+            "$className": "IntValue",
+            "DescendantCounter": {
+              "$path": "Support/DescendantCounter.server.lua"
+            }
+          },
+          "ReplicationListener": {
+            "$path": "Support/ReplicationListener.client.lua"
+          }
+        },
+        "Version": {
+          "$className": "StringValue",
+          "$properties": {
+            "Value": "3.0.0"
+          }
+        },
+        "UI": {
+          "$path": "UI"
+        },
+        "Interfaces": {
+          "$className": "Folder",
+          "$ignoreUnknownInstances": true,
+          "Dock": {
+            "$className": "Folder",
+            "$ignoreUnknownInstances": true,
+            "[Component]": {
+              "$path": "Components/Dock.lua"
+            }
+          }
+        }
+      }
+    }
+  }
+}
