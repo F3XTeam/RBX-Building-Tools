@@ -12,6 +12,8 @@ local Make = require(Libraries:WaitForChild 'Make')
 local InstancePool = require(Libraries:WaitForChild 'InstancePool')
 
 TargetingModule = {};
+TargetingModule.TargetingMode = 'Scoped'
+TargetingModule.TargetingModeChanged = Signal.new()
 TargetingModule.Scope = Workspace
 TargetingModule.IsScopeLocked = true
 TargetingModule.TargetChanged = Signal.new()
@@ -79,7 +81,12 @@ local function IsTargetable(Item)
 		Item:IsA 'Accoutrement'
 end
 
-function TargetingModule.FindTargetInScope(Target, Scope)
+function TargetingModule:FindTargetInScope(Target, Scope)
+
+	-- If in direct targeting mode, return target
+	if self.TargetingMode == 'Direct' then
+		return Target
+	end
 
 	-- Return `nil` if no scope is set
 	if not Scope then
@@ -107,8 +114,8 @@ function TargetingModule:UpdateTarget(Scope, Force)
 
 	-- Get target
 	local NewTarget = Mouse.Target
-	local NewScopeTarget = self.FindTargetInScope(NewTarget, Scope)
-	
+	local NewScopeTarget = self:FindTargetInScope(NewTarget, Scope)
+
 	-- Register whether target has changed
 	if (self.LastTarget == NewTarget) and (not Force) then
 		return NewTarget, NewScopeTarget
@@ -417,7 +424,7 @@ function TargetingModule.FinishRectangleSelecting()
 			local TopCheck = ScreenPoint.Y >= StartPoint.Y
 			local BottomCheck = ScreenPoint.Y <= EndPoint.Y
 			if (LeftCheck and RightCheck and TopCheck and BottomCheck) and Core.IsSelectable({ Part }) then
-				local ScopeTarget = TargetingModule.FindTargetInScope(Part, TargetingModule.Scope)
+				local ScopeTarget = TargetingModule:FindTargetInScope(Part, TargetingModule.Scope)
 				SelectableItems[ScopeTarget] = true
 			end
 		end
@@ -649,6 +656,27 @@ function TargetingModule:EnableScopeAutoReset()
 		end)
 
 	end)
+end
+
+--- Switches to the specified targeting mode.
+-- @returns void
+function TargetingModule:SetTargetingMode(NewTargetingMode)
+	if (NewTargetingMode == 'Scoped') or (NewTargetingMode == 'Direct') then
+		self.TargetingMode = NewTargetingMode
+		self.TargetingModeChanged:Fire(NewTargetingMode)
+	else
+		error('Invalid targeting mode', 2)
+	end
+end
+
+--- Toggles between targeting modes.
+-- @returns void
+function TargetingModule:ToggleTargetingMode()
+	if self.TargetingMode == 'Scoped' then
+		self:SetTargetingMode('Direct')
+	elseif self.TargetingMode == 'Direct' then
+		self:SetTargetingMode('Scoped')
+	end
 end
 
 function GetCore()
