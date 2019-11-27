@@ -60,6 +60,9 @@ function TargetingModule:EnableTargeting()
 	-- Enable automatic scope resetting
 	self:EnableScopeAutoReset()
 
+	-- Enable targeting mode hotkeys
+	self:BindTargetingModeHotkeys()
+
 end;
 
 function TargetingModule:SetScope(Scope)
@@ -81,16 +84,20 @@ local function IsTargetable(Item)
 		Item:IsA 'Accoutrement'
 end
 
+--- Returns the target within the current scope based on the current targeting mode.
+-- @param Target Which part is being targeted directly
+-- @param Scope The current scope to search for the target in
+-- @returns Instance | nil
 function TargetingModule:FindTargetInScope(Target, Scope)
 
-	-- If in direct targeting mode, return target
-	if self.TargetingMode == 'Direct' then
-		return Target
+	-- Return `nil` if no target, or if scope is unset
+	if not (Target and Scope) then
+		return nil
 	end
 
-	-- Return `nil` if no scope is set
-	if not Scope then
-		return nil
+	-- If in direct targeting mode, return target
+	if self.TargetingMode == 'Direct' and (Target:IsDescendantOf(Scope)) then
+		return Target
 	end
 
 	-- Search for ancestor of target directly within scope
@@ -677,6 +684,39 @@ function TargetingModule:ToggleTargetingMode()
 	elseif self.TargetingMode == 'Direct' then
 		self:SetTargetingMode('Scoped')
 	end
+end
+
+--- Installs listener for targeting mode toggling hotkeys.
+-- @returns void
+function TargetingModule:BindTargetingModeHotkeys()
+	local function Callback(Action, State, Input)
+		if (State.Name == 'End') then
+			return Enum.ContextActionResult.Pass
+		end
+
+		-- Ensure shift is held
+		local KeysPressed = UserInputService:GetKeysPressed()
+		local IsShiftHeld = Input:IsModifierKeyDown(Enum.ModifierKey.Shift)
+		if (#KeysPressed ~= 2) or (not IsShiftHeld) then
+			return Enum.ContextActionResult.Pass
+		end
+
+		-- Toggle between targeting modes
+		self:ToggleTargetingMode()
+		self:UpdateTarget(nil, true)
+
+		-- Sink input
+		return Enum.ContextActionResult.Sink
+	end
+
+	-- Install listener for T key
+	ContextActionService:BindAction('BT: Toggle Targeting Mode', Callback, false, Enum.KeyCode.T)
+
+	-- Unbind hotkey when tool is disabled
+	local Core = GetCore()
+	Core.Connections.UnbindTargetingModeHotkeys = Core.Disabling:Connect(function ()
+		ContextActionService:UnbindAction('BT: Toggle Targeting Mode')
+	end)
 end
 
 function GetCore()
