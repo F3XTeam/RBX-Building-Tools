@@ -91,7 +91,7 @@ function EnableSurfaceClickSelection(LightType)
 	Connections.SurfaceClickSelection = Core.Mouse.Button1Down:Connect(function ()
 		local _, ScopeTarget = Core.Targeting:UpdateTarget()
 		if Selection.IsSelected(ScopeTarget) then
-			SetSurface(LightType, Core.Mouse.TargetSurface.Name)
+			SetSurface(LightType, Core.Mouse.TargetSurface)
 		end
 	end)
 
