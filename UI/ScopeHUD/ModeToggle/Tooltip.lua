@@ -15,7 +15,12 @@ local DIRECT_LABEL_SIZE = TextService:GetTextSize('Parts only', 25/2, Enum.Font.
 
 local function Tooltip(props)
     return new('ImageLabel', {
-        Position = UDim2.new(0, 0, 1, 12/2);
+        AnchorPoint = props.IsToolModeEnabled and
+            Vector2.new(0, 1) or
+            Vector2.new(0, 0);
+        Position = props.IsToolModeEnabled and
+            UDim2.new(0, 0, 0, -12/2) or
+            UDim2.new(0, 0, 1, 12/2);
         BackgroundTransparency = 1;
         Image = 'rbxassetid://4445959523';
         ScaleType = Enum.ScaleType.Slice;
@@ -29,7 +34,9 @@ local function Tooltip(props)
             BackgroundColor3 = Color3.fromRGB(67, 67, 67);
             BorderSizePixel = 0;
             AnchorPoint = Vector2.new(0.5, 0.5);
-            Position = UDim2.new(0, 18/2, 0, 0);
+            Position = props.IsToolModeEnabled and
+                UDim2.new(0, 18/2, 1, 0) or
+                UDim2.new(0, 18/2, 0, 0);
             Size = UDim2.new(0, 10/2, 0, 10/2);
             Rotation = 45;
         });
