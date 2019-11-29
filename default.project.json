@@ -67,7 +67,7 @@
         "Version": {
           "$className": "StringValue",
           "$properties": {
-            "Value": "3.0.0"
+            "Value": "3.0.1"
           }
         },
         "UI": {
