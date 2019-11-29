@@ -181,14 +181,14 @@ function UpdateUI()
 
 end;
 
-function SetSurface(Surface)
+function SetSurface(SurfaceName)
 	-- Changes the surface option to `Surface`
 
 	-- Set the surface option
-	SurfaceTool.Surface = Surface;
+	SurfaceTool.Surface = SurfaceName;
 
 	-- Update the current surface in the surface dropdown
-	SurfaceDropdown.SetOption(Surface);
+	SurfaceDropdown.SetOption(SurfaceName);
 
 end;
 

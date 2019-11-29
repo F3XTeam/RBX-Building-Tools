@@ -93,6 +93,7 @@ function ModeToggle:render()
             });
             Tooltip = new(Tooltip, {
                 Visible = self.state.IsHovering;
+                IsToolModeEnabled = self.props.IsToolModeEnabled;
             });
         });
         ModeToggleSpacer = new('Frame', {

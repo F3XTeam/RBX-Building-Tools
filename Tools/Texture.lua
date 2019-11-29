@@ -146,7 +146,7 @@ function EnableSurfaceClickSelection()
 	Connections.SurfaceClickSelection = Core.Mouse.Button1Down:Connect(function ()
 		local _, ScopeTarget = Core.Targeting:UpdateTarget()
 		if Selection.IsSelected(ScopeTarget) then
-			SetFace(Core.Mouse.TargetSurface.Name)
+			SetFace(Core.Mouse.TargetSurface)
 		end
 	end)
 

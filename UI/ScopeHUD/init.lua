@@ -59,6 +59,7 @@ function ScopeHUD:init(props)
     self:UpdateTargetingState()
     self:setState({
         IsHovering = false;
+        IsToolModeEnabled = (self.props.Core.Mode == 'Tool')
     })
 end
 
@@ -141,7 +142,12 @@ function ScopeHUD:render()
     return new('Frame', {
         Active = true;
         Draggable = true;
-        Position = UDim2.new(0, 10/2, 0, 8/2);
+        Position = self.state.IsToolModeEnabled and
+            UDim2.new(0, 10/2, 1, -8/2) or
+            UDim2.new(0, 10/2, 0, 8/2);
+        AnchorPoint = self.state.IsToolModeEnabled and
+            Vector2.new(0, 1) or
+            Vector2.new(0, 0);
         Size = self.ContainerSize;
         BackgroundTransparency = 1;
         [Roact.Event.InputBegan] = self.OnInputBegin;
@@ -158,6 +164,7 @@ function ScopeHUD:render()
         });
         ModeToggle = new(ModeToggle, {
             Core = self.props.Core;
+            IsToolModeEnabled = self.state.IsToolModeEnabled;
         });
     }))
 end
