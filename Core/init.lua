@@ -30,6 +30,7 @@ local Maid = require(Tool.Libraries:WaitForChild 'Maid')
 Support.ImportServices();
 SyncAPI = Tool.SyncAPI;
 Player = Players.LocalPlayer;
+local RunService = game:GetService('RunService')
 
 -- Preload assets
 Assets = require(Tool.Assets)
@@ -205,8 +206,16 @@ function Enable(Mouse)
 
 	-- Sync studio selection in
 	if Mode == 'Plugin' then
+		local LastSelectionChangeHandle
 		Connections.StudioSelectionListener = SelectionService.SelectionChanged:Connect(function ()
-			Selection.Replace(SelectionService:Get(), false)
+			local SelectionChangeHandle = {}
+			LastSelectionChangeHandle = SelectionChangeHandle
+
+			-- Replace selection if it hasn't changed in a heartbeat
+			RunService.Heartbeat:Wait()
+			if LastSelectionChangeHandle == SelectionChangeHandle then
+				Selection.Replace(SelectionService:Get(), false)
+			end
 		end)
 	end
 
