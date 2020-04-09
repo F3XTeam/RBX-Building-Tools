@@ -6,6 +6,7 @@ BoundingBox = require(Tool.Core.BoundingBox);
 -- Services
 local ContextActionService = game:GetService 'ContextActionService'
 local Workspace = game:GetService 'Workspace'
+local UserInputService = game:GetService('UserInputService')
 
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
@@ -531,14 +532,6 @@ function BindShortcutKeys()
 				SetPivot('Center');
 			end;
 
-		-- Check if the - key was pressed
-		elseif InputInfo.KeyCode == Enum.KeyCode.Minus or InputInfo.KeyCode == Enum.KeyCode.KeypadMinus then
-
-			-- Focus on the increment input
-			if RotateTool.UI then
-				RotateTool.UI.IncrementOption.Increment.TextBox:CaptureFocus();
-			end;
-
 		-- Nudge around X axis if the 8 button on the keypad is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadEight then
 			NudgeSelectionByAxis(Enum.Axis.X, 1);
@@ -575,6 +568,24 @@ function BindShortcutKeys()
 
 	end));
 
+	-- Track ending user input while this tool is equipped
+	Connections.HotkeyRelease = UserInputService.InputEnded:Connect(function (InputInfo, GameProcessedEvent)
+		if GameProcessedEvent then
+			return
+		end
+
+		-- Make sure this is input from the keyboard
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return
+		end
+
+		-- If - key was released, focus on increment input
+		if (InputInfo.KeyCode.Name == 'Minus') or (InputInfo.KeyCode.Name == 'KeypadMinus') then
+			if RotateTool.UI then
+				RotateTool.UI.IncrementOption.Increment.TextBox:CaptureFocus()
+			end
+		end
+	end)
 end;
 
 function StartSnapping()
