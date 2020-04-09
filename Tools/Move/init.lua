@@ -177,10 +177,6 @@ function MoveTool:BindShortcutKeys()
 				self:SetAxes('Global')
 			end
 
-		-- If - key was pressed, focus on increment input
-		elseif (InputInfo.KeyCode.Name == 'Minus') or (InputInfo.KeyCode.Name == 'KeypadMinus') then
-			self.UIController:FocusIncrementInput()
-
 		-- Check if the R key was pressed down, and it's not the selection clearing hotkey
 		elseif InputInfo.KeyCode == Enum.KeyCode.R and not Selection.Multiselecting then
 
@@ -244,6 +240,9 @@ function MoveTool:BindShortcutKeys()
 			-- Stop snapping point tracking if it was enabled
 			SnapTracking.StopTracking();
 
+		-- If - key was released, focus on increment input
+		elseif (InputInfo.KeyCode.Name == 'Minus') or (InputInfo.KeyCode.Name == 'KeypadMinus') then
+			self.UIController:FocusIncrementInput()
 		end
 	end)
 
