@@ -493,14 +493,6 @@ function BindShortcutKeys()
 				SetDirections('Normal');
 			end;
 
-		-- Check if the - key was pressed
-		elseif InputInfo.KeyCode == Enum.KeyCode.Minus or InputInfo.KeyCode == Enum.KeyCode.KeypadMinus then
-
-			-- Focus on the increment input
-			if ResizeTool.UI then
-				ResizeTool.UI.IncrementOption.Increment.TextBox:CaptureFocus();
-			end;
-
 		-- Nudge up if the 8 button on the keypad is pressed
 		elseif InputInfo.KeyCode == Enum.KeyCode.KeypadEight then
 			NudgeSelectionByFace(Enum.NormalId.Top);
@@ -555,7 +547,12 @@ function BindShortcutKeys()
 		if InputInfo.KeyCode == Enum.KeyCode.R and not Selection.Multiselecting then
 			FinishSnapping();
 
-		end;
+		-- If - key was released, focus on increment input
+		elseif (InputInfo.KeyCode.Name == 'Minus') or (InputInfo.KeyCode.Name == 'KeypadMinus') then
+			if ResizeTool.UI then
+				ResizeTool.UI.IncrementOption.Increment.TextBox:CaptureFocus()
+			end
+		end
 
 	end));
 
