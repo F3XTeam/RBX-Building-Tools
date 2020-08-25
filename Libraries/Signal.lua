@@ -43,7 +43,9 @@ function Signal:Connect(handler)
 	end
 
 	return self._bindableEvent.Event:Connect(function()
-		handler(unpack(self._argData, 1, self._argCount))
+		if self._argData ~= nil and self._argCount ~= nil then
+			handler(unpack(self._argData, 1, self._argCount))
+		end
 	end)
 end
 
