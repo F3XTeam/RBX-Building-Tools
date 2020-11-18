@@ -1,3 +1,5 @@
+local HttpService = game:GetService('HttpService')
+
 -- References
 SyncAPI = script.Parent;
 Tool = SyncAPI.Parent;
@@ -1582,25 +1584,8 @@ Actions = {
 			return SyncAPI.ServerEndpoint:InvokeServer('IsHttpServiceEnabled');
 		end;
 
-		-- For in-game tool, return cached status if available
-		if ToolMode == 'Tool' and (IsHttpServiceEnabled ~= nil) then
-			return IsHttpServiceEnabled;
-		end;
-
-		-- Perform test HTTP request
-		local Success, Error = pcall(function ()
-			return HttpService:GetAsync('http://google.com');
-		end);
-
-		-- Determine whether HttpService is enabled
-		if not Success and Error:match 'Http requests are not enabled' then
-			IsHttpServiceEnabled = false;
-		elseif Success then
-			IsHttpServiceEnabled = true;
-		end;
-
 		-- Return HttpService status
-		return IsHttpServiceEnabled;
+		return HttpService.HttpEnabled
 
 	end;
 
