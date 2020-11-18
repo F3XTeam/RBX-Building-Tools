@@ -48,6 +48,9 @@
         },
         "AutoUpdate": {
           "$className": "BoolValue",
+          "$properties": {
+            "Value": false
+          },
           "AutomaticUpdating": {
             "$path": "AutomaticUpdating.server.lua"
           }
