@@ -1,12 +1,8 @@
 local Root = script:FindFirstAncestorWhichIsA('Tool')
 local Vendor = Root:WaitForChild('Vendor')
-local Libraries = Root:WaitForChild('Libraries')
 
 -- Libraries
 local Roact = require(Vendor:WaitForChild('Roact'))
-Roact.setGlobalConfig({
-    elementTracing = true;
-})
 
 -- Roact
 local new = Roact.createElement
