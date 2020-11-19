@@ -57,6 +57,7 @@ function Dock:render()
         });
         AboutPane = new(AboutPane, {
             LayoutOrder = 2;
+            Core = self.props.Core;
         });
     })
 end
