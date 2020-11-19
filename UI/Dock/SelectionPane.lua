@@ -94,36 +94,42 @@ function SelectionPane:render()
             IconAssetId = 'rbxassetid://141741408';
             IsActive = self.state.CanUndo;
             OnActivated = self.props.Core.History.Undo;
+            TooltipText = '<b>UNDO</b><br />Shift-Z';
         });
         RedoButton = new(SelectionButton, {
             LayoutOrder = 1;
             IconAssetId = 'rbxassetid://141741327';
             IsActive = self.state.CanRedo;
             OnActivated = self.props.Core.History.Redo;
+            TooltipText = '<b>REDO</b><br />Shift-Y';
         });
         DeleteButton = new(SelectionButton, {
             LayoutOrder = 2;
             IconAssetId = 'rbxassetid://141896298';
             IsActive = not self.state.IsSelectionEmpty;
             OnActivated = self.props.Core.DeleteSelection;
+            TooltipText = '<b>DELETE</b><br />Shift-X';
         });
         ExportButton = new(SelectionButton, {
             LayoutOrder = 3;
             IconAssetId = 'rbxassetid://141741337';
             IsActive = not self.state.IsSelectionEmpty;
             OnActivated = self.props.Core.ExportSelection;
+            TooltipText = '<b>EXPORT</b><br />Shift-P';
         });
         CloneButton = new(SelectionButton, {
             LayoutOrder = 4;
             IconAssetId = 'rbxassetid://142073926';
             IsActive = not self.state.IsSelectionEmpty;
             OnActivated = self.props.Core.CloneSelection;
+            TooltipText = '<b>CLONE</b><br />Shift-C';
         });
         ExplorerButton = new(SelectionButton, {
             LayoutOrder = 5;
             IconAssetId = 'rbxassetid://2326621485';
             IsActive = self.state.IsExplorerOpen;
             OnActivated = self.props.Core.ToggleExplorer;
+            TooltipText = '<b>EXPLORER</b><br />Shift-H';
         });
     })
 end
