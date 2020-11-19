@@ -26,6 +26,7 @@ Try = require(Tool.Libraries.Try)
 Make = require(Tool.Libraries.Make)
 local Roact = require(Tool.Vendor:WaitForChild 'Roact')
 local Maid = require(Tool.Libraries:WaitForChild 'Maid')
+local Cryo = require(Tool.Libraries:WaitForChild('Cryo'))
 
 -- References
 Support.ImportServices();
@@ -298,8 +299,30 @@ function InitializeUI()
 	UI = Instance.new('ScreenGui')
 	UI.Name = 'Building Tools by F3X (UI)'
 
-	-- Set up dock
-	Dock = Cheer(Tool.Interfaces.Dock, UI).Start(getfenv(0));
+	-- Create dock
+	local ToolList = {}
+	local DockComponent = require(Tool:WaitForChild('UI'):WaitForChild('Dock'))
+	local DockElement = Roact.createElement(DockComponent, {
+		Core = Core;
+		Tools = ToolList;
+	})
+	local DockHandle = Roact.mount(DockElement, UI, 'Dock')
+
+	-- Provide API for adding tool buttons to dock
+	local function AddToolButton(IconAssetId, HotkeyLabel, Tool)
+		table.insert(ToolList, {
+			IconAssetId = IconAssetId;
+			HotkeyLabel = HotkeyLabel;
+			Tool = Tool;
+		})
+
+		-- Update dock
+		Roact.update(DockHandle, Roact.createElement(DockComponent, {
+			Core = Core;
+			Tools = Cryo.List.join(ToolList);
+		}))
+	end
+	Core.AddToolButton = AddToolButton
 
 	-- Clean up UI on tool teardown
 	UIMaid = Maid.new()

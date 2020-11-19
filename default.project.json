@@ -78,14 +78,7 @@
         },
         "Interfaces": {
           "$className": "Folder",
-          "$ignoreUnknownInstances": true,
-          "Dock": {
-            "$className": "Folder",
-            "$ignoreUnknownInstances": true,
-            "[Component]": {
-              "$path": "Components/Dock.lua"
-            }
-          }
+          "$ignoreUnknownInstances": true
         }
       }
     }
