@@ -1,6 +1,9 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 
+-- Libraries
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+
 -- Import relevant references
 Selection = Core.Selection;
 Support = Core.Support;
@@ -9,11 +12,16 @@ Support.ImportServices();
 
 -- Initialize the tool
 local MeshTool = {
-
 	Name = 'Mesh Tool';
 	Color = BrickColor.new 'Bright violet';
+}
 
-};
+MeshTool.ManualText = [[<font size="16"><b>Mesh Tool  🛠</b></font>
+Lets you add meshes to parts.<font size="6"><br /></font>
+
+<b>TIP:</b> You can paste the link to anything with a mesh (e.g. a hat, gear, etc) and it will automatically find the right mesh and texture IDs.<font size="6"><br /></font>
+
+<b>NOTE:</b> If HttpService is not enabled, you must type the mesh or image asset ID directly.]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -152,6 +160,10 @@ function ShowUI()
 	RemoveButton.Button.MouseButton1Click:Connect(function ()
 		RemoveMeshes();
 	end);
+
+	-- Hook up manual triggering
+	local SignatureButton = MeshTool.UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(MeshTool.ManualText, MeshTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);

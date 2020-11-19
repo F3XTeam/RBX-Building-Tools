@@ -4,6 +4,9 @@ Core = require(Tool.Core);
 -- Services
 local ContextActionService = game:GetService 'ContextActionService'
 
+-- Libraries
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+
 -- Import relevant references
 Selection = Core.Selection;
 Support = Core.Support;
@@ -12,14 +15,17 @@ Support.ImportServices();
 
 -- Initialize the tool
 local NewPartTool = {
-
 	Name = 'New Part Tool';
 	Color = BrickColor.new 'Really black';
 
 	-- Default options
 	Type = 'Normal';
+}
 
-};
+NewPartTool.ManualText = [[<font size="16"><b>New Part Tool  🛠</b></font>
+Lets you create new parts.<font size="6"><br /></font>
+
+<b>TIP:</b> Click and drag where you want your part to be.]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -83,7 +89,10 @@ function ShowUI()
 		SetType(Type);
 	end);
 
-end;
+	-- Hook up manual triggering
+	local SignatureButton = UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(NewPartTool.ManualText, NewPartTool.Color.Color, SignatureButton)
+end
 
 function HideUI()
 	-- Hides the tool UI

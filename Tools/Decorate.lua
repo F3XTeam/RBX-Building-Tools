@@ -1,6 +1,9 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 
+-- Libraries
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+
 -- Import relevant references
 Selection = Core.Selection;
 Support = Core.Support;
@@ -9,11 +12,12 @@ Support.ImportServices();
 
 -- Initialize the tool
 local DecorateTool = {
-
 	Name = 'Decorate Tool';
 	Color = BrickColor.new 'Really black';
+}
 
-};
+DecorateTool.ManualText = [[<font size="16"><b>Decorate Tool  🛠</b></font>
+Allows you to add smoke, fire, and sparkles to parts.]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -71,6 +75,10 @@ function ShowUI()
 	EnableOptionsUI(DecorateTool.UI.Smoke);
 	EnableOptionsUI(DecorateTool.UI.Fire);
 	EnableOptionsUI(DecorateTool.UI.Sparkles);
+
+	-- Hook up manual triggering
+	local SignatureButton = DecorateTool.UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(DecorateTool.ManualText, DecorateTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);

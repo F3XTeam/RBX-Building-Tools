@@ -1,6 +1,9 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 
+-- Libraries
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+
 -- Import relevant references
 Selection = Core.Selection;
 Support = Core.Support;
@@ -9,11 +12,14 @@ Support.ImportServices();
 
 -- Initialize the tool
 local WeldTool = {
-
 	Name = 'Weld Tool';
 	Color = BrickColor.new 'Really black';
+}
 
-};
+WeldTool.ManualText = [[<font size="16"><b>Weld Tool  🛠</b></font>
+Allows you to weld parts to hold them together.<font size="6"><br /></font>
+
+<b>NOTE: </b>Welds may break if parts are individually moved.]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -68,6 +74,10 @@ function ShowUI()
 	-- Hook up the buttons
 	UI.Interface.WeldButton.MouseButton1Click:Connect(CreateWelds);
 	UI.Interface.BreakWeldsButton.MouseButton1Click:Connect(BreakWelds);
+
+	-- Hook up manual triggering
+	local SignatureButton = UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(WeldTool.ManualText, WeldTool.Color.Color, SignatureButton)
 
 end;
 

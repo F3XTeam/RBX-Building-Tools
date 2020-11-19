@@ -44,6 +44,34 @@ local MoveTool = {
 	AxesChanged = Signal.new();
 }
 
+MoveTool.ManualText = [[<font size="16"><b>Move Tool  🛠</b></font>
+Allows you to move parts.<font size="12"><br /></font>
+<font size="12" color="rgb(150, 150, 150)"><b>Axes</b></font>
+This option lets you choose in which direction to move each part.<font size="6"><br /></font>
+ <font color="rgb(150, 150, 150)">•</font>  <b>GLOBAL</b> <font color="rgb(150, 150, 150)">—</font> Relative to the <b>world</b>
+ <font color="rgb(150, 150, 150)">•</font>  <b>LOCAL</b> <font color="rgb(150, 150, 150)">—</font> Relative to each <b>individual part</b>
+ <font color="rgb(150, 150, 150)">•</font>  <b>LAST</b> <font color="rgb(150, 150, 150)">—</font> Relative to the <b>last part clicked</b><font size="6"><br /></font>
+
+<b>TIP:</b> Click on any part to focus the handles on it.<font size="6"><br /></font>
+<b>TIP: </b>Hit the <b>Enter</b> key to switch between Axes modes quickly.<font size="12"><br /></font>
+
+<font size="12" color="rgb(150, 150, 150)"><b>Increment</b></font>
+Lets you choose how many studs to move parts by.<font size="6"><br /></font>
+
+<b>TIP: </b>Hit the – key to quickly type increments.<font size="6"><br /></font>
+
+<b>TIP: </b>Use your number pad to move exactly by the current increment. Holding <b>Shift</b> reverses the increment.<font size="4"><br /></font>
+   <font color="rgb(150, 150, 150)">•</font>  8 & 2 — up & down
+   <font color="rgb(150, 150, 150)">•</font>  1 & 9 — back & forth
+   <font color="rgb(150, 150, 150)">•</font>  4 & 6 — left & right<font size="12"><br /></font>
+
+<font size="12" color="rgb(150, 150, 150)"><b>Snapping</b></font>
+You can place parts perfectly together by holding the <b><i>R</i></b> key, and dragging parts by their <b>snap points</b>.<font size="12"><br /></font>
+
+<font size="12" color="rgb(150, 150, 150)"><b>Alignment</b></font>
+Press <b><i>T</i></b> while dragging to <b>align</b> the bottom surface of your base part to the current target surface.
+]]
+
 -- Initialize tool subsystems
 MoveTool.HandleDragging = require(script:WaitForChild 'HandleDragging')
 	.new(MoveTool)

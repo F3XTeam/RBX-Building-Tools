@@ -1,13 +1,14 @@
 local Tool = script.Parent.Parent.Parent
+local Libraries = Tool:WaitForChild('Libraries')
 
 -- API
 local Core = require(Tool.Core)
 local Selection = Core.Selection
 
 -- Libraries
-local Libraries = Tool:WaitForChild 'Libraries'
 local Support = require(Libraries:WaitForChild 'SupportLibrary')
 local Maid = require(Libraries:WaitForChild 'Maid')
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
 
 -- Create class
 local UIController = {}
@@ -83,6 +84,10 @@ function UIController:ShowUI()
 			self.Tool:SetAxisPosition('Z', NewPosition)
 		end
 	end)
+
+	-- Hook up manual triggering
+	local SignatureButton = self.UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(self.Tool.ManualText, self.Tool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
     self.Maid.UIUpdater = Support.Loop(0.1, self.UpdateUI, self)

@@ -6,6 +6,7 @@ Core = require(Tool.Core);
 local Libraries = Tool:WaitForChild 'Libraries'
 local Maid = require(Libraries:WaitForChild 'Maid')
 local PaintHistoryRecord = require(script:WaitForChild 'PaintHistoryRecord')
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -15,14 +16,17 @@ Support.ImportServices();
 
 -- Initialize the tool
 local PaintTool = {
-
 	Name = 'Paint Tool';
 	Color = BrickColor.new 'Really red';
 
 	-- Default options
 	BrickColor = nil;
+}
 
-};
+PaintTool.ManualText = [[<font size="16"><b>Paint Tool  🛠</b></font>
+Lets you paint parts in different colors.<font size="6"><br /></font>
+
+<b>TIP:</b> Press <b><i>R</i></b> while hovering over a part to copy its color.]]
 
 function PaintTool:Equip()
 	-- Enables the tool's equipped functionality
@@ -102,6 +106,10 @@ function ShowUI()
 			PreviewColor
 		);
 	end);
+
+	-- Hook up manual triggering
+	local SignatureButton = PaintTool.UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(PaintTool.ManualText, PaintTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);

@@ -1,6 +1,9 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 
+-- Libraries
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+
 -- Import relevant references
 Selection = Core.Selection;
 Support = Core.Support;
@@ -9,11 +12,14 @@ Support.ImportServices();
 
 -- Initialize the tool
 local CollisionTool = {
-
 	Name = 'Collision Tool';
 	Color = BrickColor.new 'Really black';
+}
 
-};
+CollisionTool.ManualText = [[<font size="16"><b>Collision Tool  🛠</b></font>
+Lets you change whether parts collide with one another.<font size="6"><br /></font>
+
+<b>TIP:</b> Press <b>Enter</b> to toggle collision quickly.]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -79,6 +85,10 @@ function ShowUI()
 	OffButton.MouseButton1Click:Connect(function ()
 		SetProperty('CanCollide', false);
 	end);
+
+	-- Hook up manual triggering
+	local SignatureButton = UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(CollisionTool.ManualText, CollisionTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);

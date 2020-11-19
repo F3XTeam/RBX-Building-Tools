@@ -1,6 +1,9 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 
+-- Libraries
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+
 -- Import relevant references
 Selection = Core.Selection;
 Support = Core.Support;
@@ -9,11 +12,12 @@ Support.ImportServices();
 
 -- Initialize the tool
 local MaterialTool = {
-
 	Name = 'Material Tool';
 	Color = BrickColor.new 'Bright violet';
+}
 
-};
+MaterialTool.ManualText = [[<font size="16"><b>Material Tool  🛠</b></font>
+Lets you change the material, transparency, and reflectance of parts.]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -109,6 +113,10 @@ function ShowUI()
 	-- Enable the transparency and reflectance inputs
 	SyncInputToProperty('Transparency', TransparencyInput);
 	SyncInputToProperty('Reflectance', ReflectanceInput);
+
+	-- Hook up manual triggering
+	local SignatureButton = UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(MaterialTool.ManualText, MaterialTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);

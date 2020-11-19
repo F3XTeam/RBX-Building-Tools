@@ -1,6 +1,9 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 
+-- Libraries
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+
 -- Import relevant references
 Selection = Core.Selection;
 Support = Core.Support;
@@ -13,7 +16,12 @@ local AnchorTool = {
 	Name = 'Anchor Tool';
 	Color = BrickColor.new 'Really black';
 
-};
+}
+
+AnchorTool.ManualText = [[<font size="16"><b>Anchor Tool  🛠</b></font>
+Lets you anchor and unanchor parts.<font size="6"><br /></font>
+
+<b>TIP:</b> Press <b>Enter</b> to toggle anchor quickly.]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -79,6 +87,10 @@ function ShowUI()
 	UnanchorButton.MouseButton1Click:Connect(function ()
 		SetProperty('Anchored', false);
 	end);
+
+	-- Hook up manual triggering
+	local SignatureButton = UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(AnchorTool.ManualText, AnchorTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);

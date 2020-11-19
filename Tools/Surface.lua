@@ -1,6 +1,9 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 
+-- Libraries
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+
 -- Import relevant references
 Selection = Core.Selection;
 Support = Core.Support;
@@ -9,14 +12,17 @@ Support.ImportServices();
 
 -- Initialize the tool
 local SurfaceTool = {
-
 	Name = 'Surface Tool';
 	Color = BrickColor.new 'Bright violet';
 
 	-- Default options
 	Surface = 'All';
+}
 
-};
+SurfaceTool.ManualText = [[<font size="16"><b>Surface Tool  🛠</b></font>
+Lets you change the surfaces of parts.<font size="6"><br /></font>
+
+<b>TIP: </b>Click a part's surface to select it quickly.]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -94,6 +100,10 @@ function ShowUI()
 	SurfaceTypeDropdown = Core.Cheer(SurfaceTool.UI.TypeOption.Dropdown).Start({ 'Studs', 'Inlets', 'Smooth', 'Weld', 'Glue', 'Universal', 'Hinge', 'Motor', 'No Outline' }, '', function (Option)
 		SetSurfaceType(Enum.SurfaceType[SurfaceTypes[Option]]);
 	end);
+
+	-- Hook up manual triggering
+	local SignatureButton = SurfaceTool.UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(SurfaceTool.ManualText, SurfaceTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);

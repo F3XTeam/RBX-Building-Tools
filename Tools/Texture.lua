@@ -1,6 +1,9 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 
+-- Libraries
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+
 -- Import relevant references
 Selection = Core.Selection;
 Support = Core.Support;
@@ -9,15 +12,22 @@ Support.ImportServices();
 
 -- Initialize the tool
 local TextureTool = {
-
 	Name = 'Texture Tool';
 	Color = BrickColor.new 'Bright violet';
 
 	-- Default options
 	Type = 'Decal';
 	Face = Enum.NormalId.Front;
+}
 
-};
+TextureTool.ManualText = [[<font size="16"><b>Texture Tool  🛠</b></font>
+Lets you add decals and textures to parts.<font size="6"><br /></font>
+
+<b>TIP: </b>Click on any part's surface to quickly change a decal/texture's side.<font size="6"><br /></font>
+
+<b>TIP: </b>You can paste the link to any decal and it'll automatically get the right image ID.<font size="6"><br /></font>
+
+<b>NOTE: </b>If HttpService isn't enabled, you must manually type an image's ID.]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -117,6 +127,10 @@ function ShowUI()
 	RemoveButton.Button.MouseButton1Click:Connect(function ()
 		RemoveTextures(TextureTool.Type, TextureTool.Face);
 	end);
+
+	-- Hook up manual triggering
+	local SignatureButton = UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(TextureTool.ManualText, TextureTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);

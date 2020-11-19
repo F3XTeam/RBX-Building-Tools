@@ -11,6 +11,7 @@ local UserInputService = game:GetService('UserInputService')
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
 local Make = require(Libraries:WaitForChild 'Make')
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -20,15 +21,38 @@ Support.ImportServices();
 
 -- Initialize the tool
 local RotateTool = {
-
 	Name = 'Rotate Tool';
 	Color = BrickColor.new 'Bright green';
 
 	-- Default options
 	Increment = 15;
 	Pivot = 'Center';
+}
 
-};
+RotateTool.ManualText = [[<font size="16"><b>Rotate Tool  🛠</b></font>
+Allows you to rotate parts.<font size="12"><br /></font>
+<font size="12" color="rgb(150, 150, 150)"><b>Pivot</b></font>
+This option lets you choose what to rotate the parts around.<font size="6"><br /></font>
+ <font color="rgb(150, 150, 150)">•</font>  <b>CENTER</b> <font color="rgb(150, 150, 150)">—</font> Relative to the <b>center of the selection</b>
+ <font color="rgb(150, 150, 150)">•</font>  <b>LOCAL</b> <font color="rgb(150, 150, 150)">—</font> Each part around its <b>own center</b>
+ <font color="rgb(150, 150, 150)">•</font>  <b>LAST</b> <font color="rgb(150, 150, 150)">—</font> Relative to the <b>center of the last part clicked</b><font size="6"><br /></font>
+
+<b>TIP:</b> Click on any part to focus the handles on it.<font size="6"><br /></font>
+<b>TIP: </b>Hit the <b>Enter</b> key to switch between Pivot modes quickly.<font size="12"><br /></font>
+
+<font size="12" color="rgb(150, 150, 150)"><b>Increment</b></font>
+Lets you choose how many degrees to rotate by.<font size="6"><br /></font>
+
+<b>TIP: </b>Hit the – key to quickly type increments.<font size="6"><br /></font>
+
+<b>TIP: </b>Use your number pad to rotate exactly by the current increment. Holding <b>Shift</b> reverses the increment.<font size="4"><br /></font>
+   <font color="rgb(150, 150, 150)">•</font>  4 & 6 — Y axis (green)
+   <font color="rgb(150, 150, 150)">•</font>  1 & 9 — Z axis (blue)
+   <font color="rgb(150, 150, 150)">•</font>  2 & 8 — X axis (red)<font size="12"><br /></font>
+
+<font size="12" color="rgb(150, 150, 150)"><b>Snapping</b></font>
+Press <b><i>R</i></b> and click on a part's <b>snap point</b> to rotate around it.
+]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -143,6 +167,10 @@ function ShowUI()
 			SetAxisAngle('Z', NewAngle);
 		end;
 	end);
+
+	-- Hook up manual triggering
+	local SignatureButton = RotateTool.UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(RotateTool.ManualText, RotateTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);

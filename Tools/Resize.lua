@@ -10,6 +10,7 @@ local Workspace = game:GetService 'Workspace'
 local Libraries = Tool:WaitForChild 'Libraries'
 local Signal = require(Libraries:WaitForChild 'Signal')
 local Make = require(Libraries:WaitForChild 'Make')
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -19,15 +20,36 @@ Support.ImportServices();
 
 -- Initialize the tool
 local ResizeTool = {
-
 	Name = 'Resize Tool';
 	Color = BrickColor.new 'Cyan';
 
 	-- Default options
 	Increment = 1;
 	Directions = 'Normal';
+}
 
-};
+ResizeTool.ManualText = [[<font size="16"><b>Resize Tool  🛠</b></font>
+Allows you to resize parts.<font size="12"><br /></font>
+<font size="12" color="rgb(150, 150, 150)"><b>Directions</b></font>
+Lets you choose in which directions to resize the part.<font size="6"><br /></font>
+
+<b>TIP: </b>Click on a part to focus the handles on it.<font size="6"><br /></font>
+
+<b>TIP: </b>Hit <b>Enter</b> to switch between directions quickly.<font size="12"><br /></font>
+
+<font size="12" color="rgb(150, 150, 150)"><b>Increment</b></font>
+Lets you choose how many studs to resize by.<font size="6"><br /></font>
+
+<b>TIP: </b>Hit the – key to quickly type increments.<font size="6"><br /></font>
+
+<b>TIP: </b>Use your number pad to resize exactly by the current increment. Holding <b>Shift</b> reverses the increment.<font size="4"><br /></font>
+   <font color="rgb(150, 150, 150)">•</font>  8 & 2 — up & down
+   <font color="rgb(150, 150, 150)">•</font>  1 & 9 — back & forth
+   <font color="rgb(150, 150, 150)">•</font>  4 & 6 — left & right<font size="12"><br /></font>
+
+<font size="12" color="rgb(150, 150, 150)"><b>Snapping</b></font>
+Hold the <b><i>R</i></b> key, and <b>click and drag the snap point</b> of a part (in the direction you want to resize) towards the snap point of another part, to resize up to that point.
+]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -137,6 +159,10 @@ function ShowUI()
 			SetAxisSize('Z', NewSize);
 		end;
 	end);
+
+	-- Hook up manual triggering
+	local SignatureButton = ResizeTool.UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(ResizeTool.ManualText, ResizeTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);

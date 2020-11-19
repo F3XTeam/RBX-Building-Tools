@@ -1,6 +1,9 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 
+-- Libraries
+local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+
 -- Import relevant references
 Selection = Core.Selection;
 Support = Core.Support;
@@ -9,11 +12,14 @@ Support.ImportServices();
 
 -- Initialize the tool
 local LightingTool = {
-
 	Name = 'Lighting Tool';
 	Color = BrickColor.new 'Really black';
+}
 
-};
+LightingTool.ManualText = [[<font size="16"><b>Lighting Tool  🛠</b></font>
+Lets you add point lights, surface lights, and spotlights to parts.<font size="6"><br /></font>
+
+<b>TIP:</b> Click on the surface of any part to change a light's side quickly.]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -72,6 +78,10 @@ function ShowUI()
 	EnableLightSettingsUI(LightingTool.UI.PointLight);
 	EnableLightSettingsUI(LightingTool.UI.SpotLight);
 	EnableLightSettingsUI(LightingTool.UI.SurfaceLight);
+
+	-- Hook up manual triggering
+	local SignatureButton = LightingTool.UI:WaitForChild('Title'):WaitForChild('Signature')
+	ListenForManualWindowTrigger(LightingTool.ManualText, LightingTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
