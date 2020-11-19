@@ -9,7 +9,7 @@ local Roact = require(Vendor:WaitForChild('Roact'))
 local new = Roact.createElement
 local ToolManualWindow = require(UI:WaitForChild('ToolManualWindow'))
 
-local MANUAL_CONTENT = [[<font size="16"><b>Building Tools by F3X  🛠</b></font>
+local MANUAL_CONTENT = [[<font face="GothamBlack" size="16">Building Tools by F3X  🛠</font>
 To learn more about each tool, click on its ❔ icon at the top right corner.<font size="12"><br /></font>
 
 <font size="12" color="rgb(150, 150, 150)"><b>Selecting</b></font>

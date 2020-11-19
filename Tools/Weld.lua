@@ -16,7 +16,7 @@ local WeldTool = {
 	Color = BrickColor.new 'Really black';
 }
 
-WeldTool.ManualText = [[<font size="16"><b>Weld Tool  🛠</b></font>
+WeldTool.ManualText = [[<font face="GothamBlack" size="16">Weld Tool  🛠</font>
 Allows you to weld parts to hold them together.<font size="6"><br /></font>
 
 <b>NOTE: </b>Welds may break if parts are individually moved.]]

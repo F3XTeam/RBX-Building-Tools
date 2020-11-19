@@ -16,7 +16,7 @@ local MeshTool = {
 	Color = BrickColor.new 'Bright violet';
 }
 
-MeshTool.ManualText = [[<font size="16"><b>Mesh Tool  🛠</b></font>
+MeshTool.ManualText = [[<font face="GothamBlack" size="16">Mesh Tool  🛠</font>
 Lets you add meshes to parts.<font size="6"><br /></font>
 
 <b>TIP:</b> You can paste the link to anything with a mesh (e.g. a hat, gear, etc) and it will automatically find the right mesh and texture IDs.<font size="6"><br /></font>

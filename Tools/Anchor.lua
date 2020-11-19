@@ -18,7 +18,7 @@ local AnchorTool = {
 
 }
 
-AnchorTool.ManualText = [[<font size="16"><b>Anchor Tool  🛠</b></font>
+AnchorTool.ManualText = [[<font face="GothamBlack" size="16">Anchor Tool  🛠</font>
 Lets you anchor and unanchor parts.<font size="6"><br /></font>
 
 <b>TIP:</b> Press <b>Enter</b> to toggle anchor quickly.]]

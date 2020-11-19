@@ -16,7 +16,7 @@ local MaterialTool = {
 	Color = BrickColor.new 'Bright violet';
 }
 
-MaterialTool.ManualText = [[<font size="16"><b>Material Tool  🛠</b></font>
+MaterialTool.ManualText = [[<font face="GothamBlack" size="16">Material Tool  🛠</font>
 Lets you change the material, transparency, and reflectance of parts.]]
 
 -- Container for temporary connections (disconnected automatically)

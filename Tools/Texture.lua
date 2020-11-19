@@ -20,7 +20,7 @@ local TextureTool = {
 	Face = Enum.NormalId.Front;
 }
 
-TextureTool.ManualText = [[<font size="16"><b>Texture Tool  🛠</b></font>
+TextureTool.ManualText = [[<font face="GothamBlack" size="16">Texture Tool  🛠</font>
 Lets you add decals and textures to parts.<font size="6"><br /></font>
 
 <b>TIP: </b>Click on any part's surface to quickly change a decal/texture's side.<font size="6"><br /></font>

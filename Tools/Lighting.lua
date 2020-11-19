@@ -16,7 +16,7 @@ local LightingTool = {
 	Color = BrickColor.new 'Really black';
 }
 
-LightingTool.ManualText = [[<font size="16"><b>Lighting Tool  🛠</b></font>
+LightingTool.ManualText = [[<font face="GothamBlack" size="16">Lighting Tool  🛠</font>
 Lets you add point lights, surface lights, and spotlights to parts.<font size="6"><br /></font>
 
 <b>TIP:</b> Click on the surface of any part to change a light's side quickly.]]

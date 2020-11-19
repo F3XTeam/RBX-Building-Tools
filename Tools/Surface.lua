@@ -19,7 +19,7 @@ local SurfaceTool = {
 	Surface = 'All';
 }
 
-SurfaceTool.ManualText = [[<font size="16"><b>Surface Tool  🛠</b></font>
+SurfaceTool.ManualText = [[<font face="GothamBlack" size="16">Surface Tool  🛠</font>
 Lets you change the surfaces of parts.<font size="6"><br /></font>
 
 <b>TIP: </b>Click a part's surface to select it quickly.]]

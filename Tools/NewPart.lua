@@ -22,7 +22,7 @@ local NewPartTool = {
 	Type = 'Normal';
 }
 
-NewPartTool.ManualText = [[<font size="16"><b>New Part Tool  🛠</b></font>
+NewPartTool.ManualText = [[<font face="GothamBlack" size="16">New Part Tool  🛠</font>
 Lets you create new parts.<font size="6"><br /></font>
 
 <b>TIP:</b> Click and drag where you want your part to be.]]
