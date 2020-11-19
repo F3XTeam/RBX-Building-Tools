@@ -26,8 +26,7 @@ function Dock:render()
         Active = true;
         AnchorPoint = Vector2.new(1, 0.5);
         BackgroundTransparency = 1;
-        -- Position = UDim2.new(1, -10, 0.6, 0);
-        Position = UDim2.new(1, -90, 0.6, 0);
+        Position = UDim2.new(1, -10, 0.6, 0);
         Size = self.DockSize;
         ZIndex = 0;
     }, {
