@@ -331,13 +331,7 @@ function InitializeUI()
 			UIMaid:Destroy()
 		end
 	end)
-
-	-- Register explorer button on dock
-	ExplorerDockButton = Dock.AddSelectionButton(Assets.ExplorerDockIcon, 'EXPLORER\n(Shift + H)')
-	ExplorerDockButton.Activated:Connect(ToggleExplorer)
-	ExplorerDockButton.ImageTransparency = 0.66
-
-end;
+end
 
 local UIElements = Tool:WaitForChild 'UI'
 local ExplorerTemplate = require(UIElements:WaitForChild 'Explorer')
