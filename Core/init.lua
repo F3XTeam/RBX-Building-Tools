@@ -1,3 +1,4 @@
+local Core = getfenv(0)
 Tool = script.Parent;
 Plugin = (Tool.Parent:IsA 'Plugin') and Tool.Parent or nil
 
@@ -317,9 +318,11 @@ end;
 
 local UIElements = Tool:WaitForChild 'UI'
 local ExplorerTemplate = require(UIElements:WaitForChild 'Explorer')
+Core.ExplorerVisibilityChanged = Signal.new()
+Core.ExplorerVisible = false
 
 function ToggleExplorer()
-	if not ExplorerVisible then
+	if not Core.ExplorerVisible then
 		OpenExplorer()
 	else
 		CloseExplorer()
@@ -342,7 +345,7 @@ function OpenExplorer()
 
 	-- Mount explorer
 	ExplorerHandle = Roact.mount(Explorer, UI, 'Explorer')
-	ExplorerVisible = true
+	Core.ExplorerVisible = true
 
 	-- Unmount explorer on tool cleanup
 	UIMaid.Explorer = Support.Call(Roact.unmount, ExplorerHandle)
@@ -352,9 +355,8 @@ function OpenExplorer()
 		ExplorerHandle = Roact.update(ExplorerHandle, UpdatedExplorer)
 	end)
 
-	-- Update dock
-	ExplorerDockButton.ImageTransparency = 0
-
+	-- Fire signal
+	Core.ExplorerVisibilityChanged:Fire()
 end
 
 function CloseExplorer()
@@ -363,11 +365,10 @@ function CloseExplorer()
 	UIMaid.Explorer = nil
 	UIMaid.ExplorerScope = nil
 	ExplorerHandle = nil
-	ExplorerVisible = nil
+	Core.ExplorerVisible = false
 
-	-- Update dock
-	ExplorerDockButton.ImageTransparency = 0.66
-
+	-- Fire signal
+	Core.ExplorerVisibilityChanged:Fire()
 end
 
 -- Create scope HUD when tool opens
