@@ -1,8 +1,12 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
+local Vendor = Tool:WaitForChild('Vendor')
+local UI = Tool:WaitForChild('UI')
 
 -- Libraries
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+local Roact = require(Vendor:WaitForChild('Roact'))
+local ColorPicker = require(UI:WaitForChild('ColorPicker'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -489,13 +493,24 @@ function SyncInputToProperty(Property, DecorationType, InputType, Input)
 
 	-- Enable inputs
 	if InputType == 'Color' then
+		local ColorPickerHandle = nil
 		Input.MouseButton1Click:Connect(function ()
-			Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
-				Support.IdentifyCommonProperty(GetDecorations(DecorationType), Property) or Color3.new(0, 0, 1),
-				function (Color) SetProperty(DecorationType, Property, Color) end,
-				Core.Targeting.CancelSelecting
-			);
-		end);
+			local CommonColor = Support.IdentifyCommonProperty(GetDecorations(DecorationType), Property)
+			local ColorPickerElement = Roact.createElement(ColorPicker, {
+				InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
+				SetPreviewColor = nil;
+				OnConfirm = function (Color)
+					SetProperty(DecorationType, Property, Color)
+					ColorPickerHandle = Roact.unmount(ColorPickerHandle)
+				end;
+				OnCancel = function ()
+					ColorPickerHandle = Roact.unmount(ColorPickerHandle)
+				end;
+			})
+			ColorPickerHandle = ColorPickerHandle and
+				Roact.update(ColorPickerHandle, ColorPickerElement) or
+				Roact.mount(ColorPickerElement, Core.UI, 'ColorPicker')
+		end)
 
 	-- Enable number inputs
 	elseif InputType == 'Number' then

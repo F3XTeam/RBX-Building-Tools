@@ -1,8 +1,12 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
+local Vendor = Tool:WaitForChild('Vendor')
+local UI = Tool:WaitForChild('UI')
 
 -- Libraries
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+local Roact = require(Vendor:WaitForChild('Roact'))
+local ColorPicker = require(UI:WaitForChild('ColorPicker'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -117,7 +121,7 @@ function EnableLightSettingsUI(LightSettingsUI)
 	local Options = LightSettingsUI.Options;
 	local RangeInput = Options.RangeOption.Input.TextBox;
 	local BrightnessInput = Options.BrightnessOption.Input.TextBox;
-	local ColorPicker = Options.ColorOption.HSVPicker;
+	local ColorPickerButton = Options.ColorOption.HSVPicker;
 	local ShadowsCheckbox = Options.ShadowsOption.Checkbox;
 
 	-- Add/remove/show button references
@@ -136,13 +140,24 @@ function EnableLightSettingsUI(LightSettingsUI)
 	end);
 
 	-- Enable color input
-	ColorPicker.MouseButton1Click:Connect(function ()
-		Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
-			Support.IdentifyCommonProperty(GetLights(LightType), 'Color') or Color3.new(1, 1, 1),
-			function (Color) SetColor(LightType, Color) end,
-			Core.Targeting.CancelSelecting
-		);
-	end);
+	local ColorPickerHandle = nil
+	ColorPickerButton.MouseButton1Click:Connect(function ()
+		local CommonColor = Support.IdentifyCommonProperty(GetLights(LightType), 'Color')
+		local ColorPickerElement = Roact.createElement(ColorPicker, {
+			InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
+			SetPreviewColor = nil;
+			OnConfirm = function (Color)
+				SetColor(LightType, Color)
+				ColorPickerHandle = Roact.unmount(ColorPickerHandle)
+			end;
+			OnCancel = function ()
+				ColorPickerHandle = Roact.unmount(ColorPickerHandle)
+			end;
+		})
+		ColorPickerHandle = ColorPickerHandle and
+			Roact.update(ColorPickerHandle, ColorPickerElement) or
+			Roact.mount(ColorPickerElement, Core.UI, 'ColorPicker')
+	end)
 
 	-- Enable shadows input
 	ShadowsCheckbox.MouseButton1Click:Connect(function ()

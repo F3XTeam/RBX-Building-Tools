@@ -1,12 +1,16 @@
 
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
+local Vendor = Tool:WaitForChild('Vendor')
+local UI = Tool:WaitForChild('UI')
 
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
 local Maid = require(Libraries:WaitForChild 'Maid')
 local PaintHistoryRecord = require(script:WaitForChild 'PaintHistoryRecord')
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+local Roact = require(Vendor:WaitForChild('Roact'))
+local ColorPicker = require(UI:WaitForChild('ColorPicker'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -98,14 +102,24 @@ function ShowUI()
 	PaintTool.UI.Controls.LastColorButton.MouseButton1Click:Connect(PaintParts);
 
 	-- Enable color picker button
+	local ColorPickerHandle = nil
 	PaintTool.UI.Controls.ColorPickerButton.MouseButton1Click:Connect(function ()
-		Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
-			Support.IdentifyCommonProperty(Selection.Parts, 'Color') or Color3.new(1, 1, 1),
-			SetColor,
-			Core.Targeting.CancelSelecting,
-			PreviewColor
-		);
-	end);
+		local CommonColor = Support.IdentifyCommonProperty(Selection.Parts, 'Color')
+		local ColorPickerElement = Roact.createElement(ColorPicker, {
+			InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
+			SetPreviewColor = PreviewColor;
+			OnConfirm = function (Color)
+				SetColor(Color)
+				ColorPickerHandle = Roact.unmount(ColorPickerHandle)
+			end;
+			OnCancel = function ()
+				ColorPickerHandle = Roact.unmount(ColorPickerHandle)
+			end;
+		})
+		ColorPickerHandle = ColorPickerHandle and
+			Roact.update(ColorPickerHandle, ColorPickerElement) or
+			Roact.mount(ColorPickerElement, Core.UI, 'ColorPicker')
+	end)
 
 	-- Hook up manual triggering
 	local SignatureButton = PaintTool.UI:WaitForChild('Title'):WaitForChild('Signature')

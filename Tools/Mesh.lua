@@ -1,8 +1,12 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
+local Vendor = Tool:WaitForChild('Vendor')
+local UI = Tool:WaitForChild('UI')
 
 -- Libraries
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+local Roact = require(Vendor:WaitForChild('Roact'))
+local ColorPicker = require(UI:WaitForChild('ColorPicker'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -145,13 +149,24 @@ function ShowUI()
 	end);
 
 	-- Enable the vertex color/tint option
+	local ColorPickerHandle = nil
 	VertexColorInput.MouseButton1Click:Connect(function ()
-		Core.Cheer(Core.Tool.Interfaces.BTHSVColorPicker, Core.UI).Start(
-			VectorToColor(Support.IdentifyCommonProperty(GetMeshes(), 'VertexColor')) or Color3.new(1, 1, 1),
-			function (Color) SetProperty('VertexColor', ColorToVector(Color)) end,
-			Core.Targeting.CancelSelecting
-		);
-	end);
+		local CommonColor = VectorToColor(Support.IdentifyCommonProperty(GetMeshes(), 'VertexColor'))
+		local ColorPickerElement = Roact.createElement(ColorPicker, {
+			InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
+			SetPreviewColor = nil;
+			OnConfirm = function (Color)
+				SetProperty('VertexColor', ColorToVector(Color))
+				ColorPickerHandle = Roact.unmount(ColorPickerHandle)
+			end;
+			OnCancel = function ()
+				ColorPickerHandle = Roact.unmount(ColorPickerHandle)
+			end;
+		})
+		ColorPickerHandle = ColorPickerHandle and
+			Roact.update(ColorPickerHandle, ColorPickerElement) or
+			Roact.mount(ColorPickerElement, Core.UI, 'ColorPicker')
+	end)
 
 	-- Enable the mesh adding button
 	AddButton.Button.MouseButton1Click:Connect(function ()
