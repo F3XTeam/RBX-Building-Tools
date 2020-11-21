@@ -195,9 +195,13 @@ function Enable(Mouse)
 	UI.Parent = UIContainer;
 
 	-- Display startup notifications
-	if not StartupNotificationsDisplayed then
-		Cheer(Tool.Interfaces.Notifications, UI).Start(getfenv(0));
-		StartupNotificationsDisplayed = true;
+	if not Core.StartupNotificationsDisplayed then
+		local NotificationsComponent = require(Tool:WaitForChild('UI'):WaitForChild('Notifications'))
+		local NotificationsElement = Roact.createElement(NotificationsComponent, {
+			Core = Core;
+		})
+		Roact.mount(NotificationsElement, UI, 'Notifications')
+		Core.StartupNotificationsDisplayed = true
 	end;
 
 	-- Start systems

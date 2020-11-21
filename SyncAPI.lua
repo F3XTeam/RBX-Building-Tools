@@ -1,4 +1,5 @@
 local HttpService = game:GetService('HttpService')
+local RunService = game:GetService('RunService')
 
 -- References
 SyncAPI = script.Parent;
@@ -25,6 +26,8 @@ LastParents = {};
 
 -- Determine whether we're in tool or plugin mode
 ToolMode = (Tool.Parent:IsA 'Plugin') and 'Plugin' or 'Tool'
+
+local IsHttpServiceEnabled = nil
 
 -- List of actions that could be requested
 Actions = {
@@ -1580,13 +1583,28 @@ Actions = {
 		-- Returns whether HttpService is enabled
 
 		-- Offload action to server-side if API is running locally
-		if RunService:IsClient() and not RunService:IsStudio() then
-			return SyncAPI.ServerEndpoint:InvokeServer('IsHttpServiceEnabled');
-		end;
+		if RunService:IsClient() then
+			return SyncAPI.ServerEndpoint:InvokeServer('IsHttpServiceEnabled')
+		end
 
-		-- Return HttpService status
-		return HttpService.HttpEnabled
+		-- Return cached status if available
+		if IsHttpServiceEnabled ~= nil then
+			return IsHttpServiceEnabled
+		end
 
+		-- Perform test HTTP request
+		local DidSucceed, Result = pcall(function ()
+			return HttpService:GetAsync('https://google.com')
+		end)
+
+		-- Determine whether HttpService is enabled based on whether request succeeded
+		if DidSucceed then
+			IsHttpServiceEnabled = true
+		elseif (not DidSucceed) and Result:match('Http requests are not enabled') then
+			IsHttpServiceEnabled = false
+		end
+
+		return IsHttpServiceEnabled or false
 	end;
 
 	['ExtractMeshFromAsset'] = function (AssetId)
