@@ -498,7 +498,9 @@ function SyncInputToProperty(Property, DecorationType, InputType, Input)
 			local CommonColor = Support.IdentifyCommonProperty(GetDecorations(DecorationType), Property)
 			local ColorPickerElement = Roact.createElement(ColorPicker, {
 				InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
-				SetPreviewColor = nil;
+				SetPreviewColor = function (Color)
+					SetPreviewColor(DecorationType, Property, Color)
+				end;
 				OnConfirm = function (Color)
 					SetProperty(DecorationType, Property, Color)
 					ColorPickerHandle = Roact.unmount(ColorPickerHandle)
@@ -521,6 +523,41 @@ function SyncInputToProperty(Property, DecorationType, InputType, Input)
 	end;
 
 end;
+
+local PreviewInitialState = nil
+
+function SetPreviewColor(DecorationType, Property, Color)
+	-- Previews the given color on the selection
+
+	-- Reset colors to initial state if previewing is over
+	if not Color and PreviewInitialState then
+		for Decoration, State in pairs(PreviewInitialState) do
+			Decoration[Property] = State[Property]
+		end
+
+		-- Clear initial state
+		PreviewInitialState = nil
+
+		-- Skip rest of function
+		return
+
+	-- Ensure valid color is given
+	elseif not Color then
+		return
+
+	-- Save initial state if first time previewing
+	elseif not PreviewInitialState then
+		PreviewInitialState = {}
+		for _, Decoration in pairs(GetDecorations(DecorationType)) do
+			PreviewInitialState[Decoration] = { [Property] = Decoration[Property] }
+		end
+	end
+
+	-- Apply preview color
+	for Decoration in pairs(PreviewInitialState) do
+		Decoration[Property] = Color
+	end
+end
 
 function SetProperty(DecorationType, Property, Value)
 
