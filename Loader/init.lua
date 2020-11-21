@@ -6,9 +6,6 @@ while not Indicator.Value do
 	Indicator.Changed:Wait();
 end;
 
--- Start library manager
-require(Tool:WaitForChild 'LibraryManager')
-
 -- Initialize the core
 local Core = require(Tool:WaitForChild 'Core');
 
