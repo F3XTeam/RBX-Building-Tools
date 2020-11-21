@@ -1,9 +1,13 @@
 local Root = script:FindFirstAncestorWhichIsA('Tool')
 local Vendor = Root:WaitForChild('Vendor')
 local UI = Root:WaitForChild('UI')
+local Libraries = Root:WaitForChild('Libraries')
+local UserInputService = game:GetService('UserInputService')
+local GuiService = game:GetService('GuiService')
 
 -- Libraries
 local Roact = require(Vendor:WaitForChild('Roact'))
+local Maid = require(Libraries:WaitForChild('Maid'))
 
 -- Roact
 local new = Roact.createElement
@@ -28,6 +32,11 @@ local AboutPane = Roact.PureComponent:extend(script.Name)
 
 function AboutPane:init()
     self.DockSize, self.SetDockSize = Roact.createBinding(UDim2.new())
+    self.Maid = Maid.new()
+end
+
+function AboutPane:willUnmount()
+    self.Maid:Destroy()
 end
 
 function AboutPane:render()
@@ -41,6 +50,37 @@ function AboutPane:render()
             self:setState({
                 IsManualOpen = not self.state.IsManualOpen;
             })
+        end;
+        [Roact.Event.MouseButton1Down] = function (rbx)
+            local Dock = rbx.Parent
+            local InitialAbsolutePosition = UserInputService:GetMouseLocation() - GuiService:GetGuiInset()
+            local InitialPosition = Dock.Position
+
+            self.Maid.DockDragging = UserInputService.InputChanged:Connect(function (Input)
+                if (Input.UserInputType.Name == 'MouseMovement') or (Input.UserInputType.Name == 'Touch') then
+
+                    -- Suppress activation response if dragging detected
+                    if (Vector2.new(Input.Position.X, Input.Position.Y) - InitialAbsolutePosition).Magnitude > 3 then
+                        rbx.Active = false
+                    end
+
+                    -- Reposition dock
+                    Dock.Position = UDim2.new(
+                        InitialPosition.X.Scale,
+                        InitialPosition.X.Offset + (Input.Position.X - InitialAbsolutePosition.X),
+                        InitialPosition.Y.Scale,
+                        InitialPosition.Y.Offset + (Input.Position.Y - InitialAbsolutePosition.Y)
+                    )
+                end
+            end)
+
+            self.Maid.DockDraggingEnd = UserInputService.InputEnded:Connect(function (Input)
+                if (Input.UserInputType.Name == 'MouseButton1') or (Input.UserInputType.Name == 'Touch') then
+                    self.Maid.DockDragging = nil
+                    self.Maid.DockDraggingEnd = nil
+                    rbx.Active = true
+                end
+            end)
         end;
     }, {
         Corners = new('UICorner', {
