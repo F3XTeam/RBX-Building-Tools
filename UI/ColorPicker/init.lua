@@ -85,9 +85,12 @@ function ColorPicker:render()
             Draggable = true;
             ZIndex = 0;
             AnchorPoint = Vector2.new(1, 0.5);
-            Position = UDim2.new(1, -110, 0.5, 0);
+            Position = self.DefaultPosition or UDim2.new(1, -110, 0.5, 0);
             BackgroundTransparency = 1;
             Size = UDim2.fromOffset(240, 0);
+            [Roact.Change.Position] = function (rbx)
+                ColorPicker.DefaultPosition = rbx.Position
+            end;
         }, {
             Layout = new('UIListLayout', {
                 FillDirection = Enum.FillDirection.Vertical;
