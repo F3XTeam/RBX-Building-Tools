@@ -816,31 +816,57 @@ function ExportSelection()
 	end;
 
 	-- Start an export dialog
-	local Dialog = Cheer(Tool.Interfaces.ExportDialog, UI).Start();
+	local DialogHandle
+	local DialogComponent = require(Tool:WaitForChild('UI'):WaitForChild('ExportDialog'))
+	local DialogDismissCallback = function ()
+		DialogHandle = Roact.unmount(DialogHandle)
+	end
+	local DialogElement = Roact.createElement(DialogComponent, {
+		Text = 'Uploading selection...';
+		OnDismiss = DialogDismissCallback;
+	})
+	DialogHandle = Roact.mount(DialogElement, UI, 'ExportDialog')
 
 	-- Send the exporting request to the server
 	Try(SyncAPI.Invoke, SyncAPI, 'Export', Selection.Items)
 
 	-- Display creation ID on success
 	:Then(function (CreationId)
-		Dialog.SetResult(CreationId);
+		Roact.update(DialogHandle, Roact.createElement(DialogComponent, {
+			Text = 'Your creation\'s ID:<font size="5"><br /></font>\n' ..
+				'<font face="GothamBlack" size="18">' .. CreationId .. '</font><font size="6"><br /></font>\n' ..
+				'<font face="Gotham" size="10">Use the code above to import your creation using the plugin in Studio.</font>';
+			OnDismiss = DialogDismissCallback;
+		}))
 		print('[Building Tools by F3X] Uploaded Export:', CreationId);
 	end)
 
 	-- Display error messages on failure
 	:Catch('Http requests are not enabled', function ()
-		Dialog.SetError('Please enable HTTP requests');
+		Roact.update(DialogHandle, Roact.createElement(DialogComponent, {
+			Text = 'Please enable HTTP requests.';
+			OnDismiss = DialogDismissCallback;
+		}))
 	end)
 	:Catch('Export failed due to server-side error', function ()
-		Dialog.SetError('An error occurred, try again');
+		Roact.update(DialogHandle, Roact.createElement(DialogComponent, {
+			Text = 'An error occurred — please try again.';
+			OnDismiss = DialogDismissCallback;
+		}))
 	end)
 	:Catch('Post data too large', function ()
-		Dialog.SetError('Try splitting up your build');
+		Roact.update(DialogHandle, Roact.createElement(DialogComponent, {
+			Text = 'Try splitting up your build.';
+			OnDismiss = DialogDismissCallback;
+		}))
 	end)
 	:Catch(function (Error, Stack, Attempt)
-		Dialog.SetError('An unknown error occurred, try again')
-		warn('❌ [Building Tools by F3X] Failed to export selection', '\n\nError:\n', Error, '\n\nStack:\n', Stack);
-	end);
+		Roact.update(DialogHandle, Roact.createElement(DialogComponent, {
+			Text = 'An unknown error occurred — please try again.';
+			OnDismiss = DialogDismissCallback;
+		}))
+		warn('❌ [Building Tools by F3X] Failed to export selection', '\n\nError:\n', Error, '\n\nStack:\n', Stack)
+	end)
 
 end;
 
