@@ -150,7 +150,9 @@ function EnableLightSettingsUI(LightSettingsUI)
 		local CommonColor = Support.IdentifyCommonProperty(GetLights(LightType), 'Color')
 		local ColorPickerElement = Roact.createElement(ColorPicker, {
 			InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
-			SetPreviewColor = nil;
+			SetPreviewColor = function (Color)
+				PreviewColor(LightType, Color)
+			end;
 			OnConfirm = function (Color)
 				SetColor(LightType, Color)
 				ColorPickerHandle = Roact.unmount(ColorPickerHandle)
@@ -741,6 +743,41 @@ function SetColor(LightType, Color)
 	RegisterChange();
 
 end;
+
+local PreviewInitialState = nil
+
+function PreviewColor(LightType, Color)
+	-- Previews the given color on the selection
+
+	-- Reset colors to initial state if previewing is over
+	if not Color and PreviewInitialState then
+		for Light, State in pairs(PreviewInitialState) do
+			Light.Color = State.Color
+		end
+
+		-- Clear initial state
+		PreviewInitialState = nil
+
+		-- Skip rest of function
+		return
+
+	-- Ensure valid color is given
+	elseif not Color then
+		return
+
+	-- Save initial state if first time previewing
+	elseif not PreviewInitialState then
+		PreviewInitialState = {}
+		for _, Light in pairs(GetLights(LightType)) do
+			PreviewInitialState[Light] = { Color = Light.Color }
+		end
+	end
+
+	-- Apply preview color
+	for Light in pairs(PreviewInitialState) do
+		Light.Color = Color
+	end
+end
 
 function ToggleShadows(LightType)
 
