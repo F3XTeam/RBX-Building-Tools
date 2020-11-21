@@ -70,6 +70,7 @@ function Handles:CreateHandles(Options)
         HandleDot.Active = false
         HandleDot.Size = UDim2.new(0, 4, 0, 4)
         HandleDot.Position = UDim2.new(0.5, 0, 0.5, 0)
+        HandleDot.Visible = true
         HandleDot.Parent = Handle
         HandleDot.ZIndex = 0
 
