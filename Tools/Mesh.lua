@@ -2,11 +2,14 @@ Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 local Vendor = Tool:WaitForChild('Vendor')
 local UI = Tool:WaitForChild('UI')
+local Libraries = Tool:WaitForChild('Libraries')
 
 -- Libraries
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
 local Roact = require(Vendor:WaitForChild('Roact'))
 local ColorPicker = require(UI:WaitForChild('ColorPicker'))
+local Dropdown = require(UI:WaitForChild('Dropdown'))
+local Signal = require(Libraries:WaitForChild('Signal'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -18,6 +21,12 @@ Support.ImportServices();
 local MeshTool = {
 	Name = 'Mesh Tool';
 	Color = BrickColor.new 'Bright violet';
+
+	-- State
+	CurrentType = nil;
+
+	-- Signals
+	OnTypeChanged = Signal.new();
 }
 
 MeshTool.ManualText = [[<font face="GothamBlack" size="16">Mesh Tool  🛠</font>
@@ -99,10 +108,25 @@ function ShowUI()
 	SortedMeshTypes = Support.Keys(MeshTypes);
 	table.sort(SortedMeshTypes);
 
-	-- Create the mesh type dropdown
-	TypeDropdown = Core.Cheer(MeshTool.UI.TypeOption.Dropdown).Start(SortedMeshTypes, '', function (Type)
-		SetProperty('MeshType', MeshTypes[Type]);
-	end);
+	-- Create type dropdown
+	local function BuildTypeDropdown()
+		return Roact.createElement(Dropdown, {
+			Position = UDim2.new(0, 40, 0, 0);
+			Size = UDim2.new(1, -40, 0, 25);
+			Options = SortedMeshTypes;
+			MaxRows = 6;
+			CurrentOption = MeshTool.CurrentType;
+			OnOptionSelected = function (Option)
+				SetProperty('MeshType', MeshTypes[Option])
+			end;
+		})
+	end
+
+	-- Mount type dropdown
+	local TypeDropdownHandle = Roact.mount(BuildTypeDropdown(), MeshTool.UI.TypeOption, 'Dropdown')
+	MeshTool.OnTypeChanged:Connect(function ()
+		Roact.update(TypeDropdownHandle, BuildTypeDropdown())
+	end)
 
 	-- Enable the scale inputs
 	local XScaleInput = MeshTool.UI.ScaleOption.XInput.TextBox;
@@ -232,7 +256,6 @@ function UpdateUI()
 	-- Shortcuts to updating UI elements
 	local AddButton = MeshTool.UI.AddButton;
 	local RemoveButton = MeshTool.UI.RemoveButton;
-	local MeshTypeDropdown = MeshTool.UI.TypeOption.Dropdown;
 	local MeshIdInput = MeshTool.UI.MeshIdOption.TextBox;
 	local TextureIdInput = MeshTool.UI.TextureIdOption.TextBox;
 	local VertexColorIndicator = MeshTool.UI.TintOption.Indicator;
@@ -256,8 +279,12 @@ function UpdateUI()
 	};
 	UpdateColorIndicator(VertexColorIndicator, VertexColor);
 
-	local MeshTypeLabel = Support.FindTableOccurrence(MeshTypes, MeshType);
-	TypeDropdown.SetOption(MeshTypeLabel and MeshTypeLabel or '*');
+	-- Update selection state
+	local MeshTypeLabel = Support.FindTableOccurrence(MeshTypes, MeshType)
+	if MeshTool.CurrentType ~= MeshTypeLabel then
+		MeshTool.CurrentType = MeshTypeLabel
+		MeshTool.OnTypeChanged:Fire(MeshTypeLabel)
+	end
 
 	AddButton.Visible = false;
 	RemoveButton.Visible = false;

@@ -1,8 +1,14 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
+local Vendor = Tool:WaitForChild('Vendor')
+local UI = Tool:WaitForChild('UI')
+local Libraries = Tool:WaitForChild('Libraries')
 
 -- Libraries
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+local Roact = require(Vendor:WaitForChild('Roact'))
+local Dropdown = require(UI:WaitForChild('Dropdown'))
+local Signal = require(Libraries:WaitForChild('Signal'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -14,6 +20,12 @@ Support.ImportServices();
 local MaterialTool = {
 	Name = 'Material Tool';
 	Color = BrickColor.new 'Bright violet';
+
+	-- State
+	CurrentMaterial = nil;
+
+	-- Signals
+	OnMaterialChanged = Signal.new();
 }
 
 MaterialTool.ManualText = [[<font face="GothamBlack" size="16">Material Tool  🛠</font>
@@ -22,19 +34,19 @@ Lets you change the material, transparency, and reflectance of parts.]]
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function MaterialTool.Equip()
+function MaterialTool:Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
-	ShowUI();
+	self:ShowUI()
 
 end;
 
-function MaterialTool.Unequip()
+function MaterialTool:Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
-	HideUI();
+	self:HideUI();
 	ClearConnections();
 
 end;
@@ -75,17 +87,19 @@ local Materials = {
 	[Enum.Material.Glass] = 'Glass';
 };
 
-function ShowUI()
+function MaterialTool:ShowUI()
 	-- Creates and reveals the UI
 
 	-- Reveal UI if already created
-	if UI then
+	if self.UI then
 
 		-- Reveal the UI
-		UI.Visible = true;
+		self.UI.Visible = true;
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
+		self.StopUpdatingUI = Support.Loop(0.1, function ()
+			self:UpdateUI()
+		end)
 
 		-- Skip UI creation
 		return;
@@ -93,49 +107,66 @@ function ShowUI()
 	end;
 
 	-- Create the UI
-	UI = Core.Tool.Interfaces.BTMaterialToolGUI:Clone();
-	UI.Parent = Core.UI;
-	UI.Visible = true;
+	self.UI = Core.Tool.Interfaces.BTMaterialToolGUI:Clone();
+	self.UI.Parent = Core.UI;
+	self.UI.Visible = true;
 
 	-- References to inputs
-	local TransparencyInput = UI.TransparencyOption.Input.TextBox;
-	local ReflectanceInput = UI.ReflectanceOption.Input.TextBox;
+	local TransparencyInput = self.UI.TransparencyOption.Input.TextBox;
+	local ReflectanceInput = self.UI.ReflectanceOption.Input.TextBox;
 
 	-- Sort the material list
 	local MaterialList = Support.Values(Materials);
 	table.sort(MaterialList);
 
-	-- Create the material selection dropdown
-	MaterialDropdown = Core.Cheer(UI.MaterialOption.Dropdown).Start(MaterialList, '', function (Material)
-		SetProperty('Material', Support.FindTableOccurrence(Materials, Material));
-	end);
+	-- Create material dropdown
+	local function BuildMaterialDropdown()
+		return Roact.createElement(Dropdown, {
+			Position = UDim2.new(0, 50, 0, 0);
+			Size = UDim2.new(0, 130, 0, 25);
+			Options = MaterialList;
+			MaxRows = 6;
+			CurrentOption = self.CurrentMaterial and self.CurrentMaterial.Name;
+			OnOptionSelected = function (Option)
+				SetProperty('Material', Support.FindTableOccurrence(Materials, Option))
+			end;
+		})
+	end
+
+	-- Mount surface dropdown
+	local MaterialDropdownHandle = Roact.mount(BuildMaterialDropdown(), self.UI.MaterialOption, 'Dropdown')
+	self.OnMaterialChanged:Connect(function ()
+		Roact.update(MaterialDropdownHandle, BuildMaterialDropdown())
+	end)
 
 	-- Enable the transparency and reflectance inputs
 	SyncInputToProperty('Transparency', TransparencyInput);
 	SyncInputToProperty('Reflectance', ReflectanceInput);
 
 	-- Hook up manual triggering
-	local SignatureButton = UI:WaitForChild('Title'):WaitForChild('Signature')
+	local SignatureButton = self.UI:WaitForChild('Title'):WaitForChild('Signature')
 	ListenForManualWindowTrigger(MaterialTool.ManualText, MaterialTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
+	self.StopUpdatingUI = Support.Loop(0.1, function ()
+		self:UpdateUI()
+	end)
 
 end;
 
-function HideUI()
+function MaterialTool:HideUI()
 	-- Hides the tool UI
 
 	-- Make sure there's a UI
-	if not UI then
+	if not self.UI then
 		return;
 	end;
 
 	-- Hide the UI
-	UI.Visible = false;
+	self.UI.Visible = false
 
 	-- Stop updating the UI
-	UIUpdater:Stop();
+	self.StopUpdatingUI()
 
 end;
 
@@ -205,7 +236,7 @@ local UIElements = { 'SelectNote', 'MaterialOption', 'TransparencyOption', 'Refl
 -- Current UI layout
 local CurrentLayout;
 
-function ChangeLayout(Layout)
+function MaterialTool:ChangeLayout(Layout)
 	-- Sets the UI to the given layout
 
 	-- Make sure the new layout isn't already set
@@ -218,7 +249,7 @@ function ChangeLayout(Layout)
 
 	-- Reset the UI
 	for _, ElementName in pairs(UIElements) do
-		local Element = UI[ElementName];
+		local Element = self.UI[ElementName];
 		Element.Visible = false;
 	end;
 
@@ -228,7 +259,7 @@ function ChangeLayout(Layout)
 	-- Go through each layout element
 	for ItemIndex, ItemName in ipairs(Layout) do
 
-		local Item = UI[ItemName];
+		local Item = self.UI[ItemName];
 
 		-- Make the item visible
 		Item.Visible = true;
@@ -247,21 +278,21 @@ function ChangeLayout(Layout)
 	end;
 
 	-- Resize the container to fit the new layout
-	UI.Size = UDim2.new(0, 200, 0, 40 + Sum);
+	self.UI.Size = UDim2.new(0, 200, 0, 40 + Sum);
 
 end;
 
-function UpdateUI()
+function MaterialTool:UpdateUI()
 	-- Updates information on the UI
 
 	-- Make sure the UI's on
-	if not UI then
+	if not self.UI then
 		return;
 	end;
 
 	-- References to inputs
-	local TransparencyInput = UI.TransparencyOption.Input.TextBox;
-	local ReflectanceInput = UI.ReflectanceOption.Input.TextBox;
+	local TransparencyInput = self.UI.TransparencyOption.Input.TextBox;
+	local ReflectanceInput = self.UI.ReflectanceOption.Input.TextBox;
 
 	-----------------------
 	-- Update the UI layout
@@ -269,12 +300,12 @@ function UpdateUI()
 
 	-- Figure out the necessary UI layout
 	if #Selection.Parts == 0 then
-		ChangeLayout(Layouts.EmptySelection);
+		self:ChangeLayout(Layouts.EmptySelection);
 		return;
 
 	-- When the selection isn't empty
 	else
-		ChangeLayout(Layouts.Normal);
+		self:ChangeLayout(Layouts.Normal);
 	end;
 
 	-- Get the common properties
@@ -283,7 +314,10 @@ function UpdateUI()
 	local Reflectance = Support.IdentifyCommonProperty(Selection.Parts, 'Reflectance');
 
 	-- Update the material dropdown
-	MaterialDropdown.SetOption(Material and Materials[Material] or '*');
+	if self.CurrentMaterial ~= Material then
+		self.CurrentMaterial = Material
+		self.OnMaterialChanged:Fire(Material)
+	end
 
 	-- Update inputs
 	UpdateDataInputs {

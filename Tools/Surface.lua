@@ -1,8 +1,14 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
+local Vendor = Tool:WaitForChild('Vendor')
+local UI = Tool:WaitForChild('UI')
+local Libraries = Tool:WaitForChild('Libraries')
 
 -- Libraries
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+local Roact = require(Vendor:WaitForChild('Roact'))
+local Dropdown = require(UI:WaitForChild('Dropdown'))
+local Signal = require(Libraries:WaitForChild('Signal'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -17,6 +23,13 @@ local SurfaceTool = {
 
 	-- Default options
 	Surface = 'All';
+
+	-- State
+	CurrentSurfaceType = nil;
+
+	-- Signals
+	OnSurfaceChanged = Signal.new();
+	OnSurfaceTypeChanged = Signal.new();
 }
 
 SurfaceTool.ManualText = [[<font face="GothamBlack" size="16">Surface Tool  🛠</font>
@@ -61,6 +74,8 @@ end;
 function ShowUI()
 	-- Creates and reveals the UI
 
+	local self = SurfaceTool
+
 	-- Reveal UI if already created
 	if SurfaceTool.UI then
 
@@ -80,26 +95,64 @@ function ShowUI()
 	SurfaceTool.UI.Parent = Core.UI;
 	SurfaceTool.UI.Visible = true;
 
-	-- Create the surface selection dropdown
-	SurfaceDropdown = Core.Cheer(SurfaceTool.UI.SideOption.Dropdown).Start({ 'All', 'Top', 'Bottom', 'Front', 'Back', 'Left', 'Right' }, 'All', SetSurface);
+	-- Create type dropdown
+	local Surfaces = {
+		'All';
+		'Top';
+		'Bottom';
+		'Front';
+		'Back';
+		'Left';
+		'Right';
+	}
+	local function BuildSurfaceDropdown()
+		return Roact.createElement(Dropdown, {
+			Position = UDim2.new(0, 30, 0, 0);
+			Size = UDim2.new(0, 72, 0, 25);
+			Options = Surfaces;
+			MaxRows = 4;
+			CurrentOption = self.Surface;
+			OnOptionSelected = function (Option)
+				SetSurface(Option)
+			end;
+		})
+	end
 
-	-- Map type label names to actual type names
+	-- Mount surface dropdown
+	local SurfaceDropdownHandle = Roact.mount(BuildSurfaceDropdown(), self.UI.SideOption, 'Dropdown')
+	self.OnSurfaceChanged:Connect(function ()
+		Roact.update(SurfaceDropdownHandle, BuildSurfaceDropdown())
+	end)
+
+	-- Create type dropdown
 	local SurfaceTypes = {
-		['Studs'] = 'Studs',
-		['Inlets'] = 'Inlet',
-		['Smooth'] = 'Smooth',
-		['Weld'] = 'Weld',
-		['Glue'] = 'Glue',
-		['Universal'] = 'Universal',
-		['Hinge'] = 'Hinge',
-		['Motor'] = 'Motor',
-		['No Outline'] = 'SmoothNoOutlines'
-	};
+		'Smooth';
+		'Studs';
+		'Inlet';
+		'Weld';
+		'Hinge';
+		'Motor';
+		'Universal';
+		'Glue';
+	}
+	local function BuildSurfaceTypeDropdown()
+		return Roact.createElement(Dropdown, {
+			Position = UDim2.new(0, 30, 0, 0);
+			Size = UDim2.new(0, 91, 0, 25);
+			Options = SurfaceTypes;
+			MaxRows = 4;
+			CurrentOption = self.CurrentSurfaceType and self.CurrentSurfaceType.Name;
+			OnOptionSelected = function (Option)
+				SetSurfaceType(Enum.SurfaceType[Option])
+			end;
+		})
+	end
 
-	-- Create the surface type selection dropdown
-	SurfaceTypeDropdown = Core.Cheer(SurfaceTool.UI.TypeOption.Dropdown).Start({ 'Studs', 'Inlets', 'Smooth', 'Weld', 'Glue', 'Universal', 'Hinge', 'Motor', 'No Outline' }, '', function (Option)
-		SetSurfaceType(Enum.SurfaceType[SurfaceTypes[Option]]);
-	end);
+	-- Mount type dropdown
+	local TypeDropdownHandle = Roact.mount(BuildSurfaceTypeDropdown(), self.UI.TypeOption, 'Dropdown')
+	self.OnSurfaceTypeChanged:Connect(function ()
+		Roact.update(TypeDropdownHandle, BuildSurfaceTypeDropdown())
+	end)
 
 	-- Hook up manual triggering
 	local SignatureButton = SurfaceTool.UI:WaitForChild('Title'):WaitForChild('Signature')
@@ -148,6 +201,8 @@ end;
 function UpdateUI()
 	-- Updates information on the UI
 
+	local self = SurfaceTool
+
 	-- Make sure the UI's on
 	if not SurfaceTool.UI then
 		return;
@@ -155,7 +210,10 @@ function UpdateUI()
 
 	-- Only show and identify current surface type if selection is not empty
 	if #Selection.Parts == 0 then
-		SurfaceTypeDropdown.SetOption('');
+		if self.CurrentSurfaceType ~= '' then
+			self.CurrentSurfaceType = ''
+			self.OnSurfaceTypeChanged:Fire('')
+		end
 		return;
 	end;
 
@@ -187,18 +245,18 @@ function UpdateUI()
 	local CommonSurfaceType = Support.IdentifyCommonItem(SurfaceTypeVariations);
 
 	-- Update the current surface type in the surface type dropdown
-	SurfaceTypeDropdown.SetOption(CommonSurfaceType and GetSurfaceTypeDisplayName(CommonSurfaceType) or '*');
-
-end;
+	if self.CurrentSurfaceType ~= CommonSurfaceType then
+		self.CurrentSurfaceType = CommonSurfaceType
+		self.OnSurfaceTypeChanged:Fire(CommonSurfaceType)
+	end
+end
 
 function SetSurface(SurfaceName)
 	-- Changes the surface option to `Surface`
 
 	-- Set the surface option
 	SurfaceTool.Surface = SurfaceName;
-
-	-- Update the current surface in the surface dropdown
-	SurfaceDropdown.SetOption(SurfaceName);
+	SurfaceTool.OnSurfaceChanged:Fire(SurfaceName)
 
 end;
 

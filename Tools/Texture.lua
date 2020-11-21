@@ -1,8 +1,14 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
+local Vendor = Tool:WaitForChild('Vendor')
+local UI = Tool:WaitForChild('UI')
+local Libraries = Tool:WaitForChild('Libraries')
 
 -- Libraries
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+local Roact = require(Vendor:WaitForChild('Roact'))
+local Dropdown = require(UI:WaitForChild('Dropdown'))
+local Signal = require(Libraries:WaitForChild('Signal'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -18,6 +24,9 @@ local TextureTool = {
 	-- Default options
 	Type = 'Decal';
 	Face = Enum.NormalId.Front;
+
+	-- Signals
+	OnFaceChanged = Signal.new();
 }
 
 TextureTool.ManualText = [[<font face="GothamBlack" size="16">Texture Tool  🛠</font>
@@ -32,24 +41,24 @@ Lets you add decals and textures to parts.<font size="6"><br /></font>
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function TextureTool.Equip()
+function TextureTool:Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
-	ShowUI();
-	EnableSurfaceClickSelection();
+	self:ShowUI()
+	self:EnableSurfaceClickSelection()
 
 	-- Set our current texture type and face
-	SetTextureType(TextureTool.Type);
-	SetFace(TextureTool.Face);
+	self:SetTextureType(self.Type)
+	self:SetFace(self.Face)
 
 end;
 
-function TextureTool.Unequip()
+function TextureTool:Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
-	HideUI();
+	self:HideUI()
 	ClearConnections();
 
 end;
@@ -64,17 +73,19 @@ function ClearConnections()
 
 end;
 
-function ShowUI()
+function TextureTool:ShowUI()
 	-- Creates and reveals the UI
 
 	-- Reveal UI if already created
-	if UI then
+	if self.UI then
 
 		-- Reveal the UI
-		UI.Visible = true;
+		self.UI.Visible = true
 
 		-- Update the UI every 0.1 seconds
-		UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
+		self.StopUpdatingUI = Support.Loop(0.1, function ()
+			self:UpdateUI()
+		end)
 
 		-- Skip UI creation
 		return;
@@ -82,33 +93,55 @@ function ShowUI()
 	end;
 
 	-- Create the UI
-	UI = Core.Tool.Interfaces.BTTextureToolGUI:Clone();
-	UI.Parent = Core.UI;
-	UI.Visible = true;
+	self.UI = Core.Tool.Interfaces.BTTextureToolGUI:Clone()
+	self.UI.Parent = Core.UI
+	self.UI.Visible = true
 
 	-- References to UI elements
-	local AddButton = UI.AddButton;
-	local RemoveButton = UI.RemoveButton;
-	local DecalModeButton = UI.ModeOption.Decal.Button;
-	local TextureModeButton = UI.ModeOption.Texture.Button;
-	local ImageIdInput = UI.ImageIDOption.TextBox;
-	local TransparencyInput = UI.TransparencyOption.Input.TextBox;
-	local RepeatXInput = UI.RepeatOption.XInput.TextBox;
-	local RepeatYInput = UI.RepeatOption.YInput.TextBox;
+	local AddButton = self.UI.AddButton
+	local RemoveButton = self.UI.RemoveButton
+	local DecalModeButton = self.UI.ModeOption.Decal.Button
+	local TextureModeButton = self.UI.ModeOption.Texture.Button
+	local ImageIdInput = self.UI.ImageIDOption.TextBox
+	local TransparencyInput = self.UI.TransparencyOption.Input.TextBox
+	local RepeatXInput = self.UI.RepeatOption.XInput.TextBox
+	local RepeatYInput = self.UI.RepeatOption.YInput.TextBox
 
 	-- Enable the texture type switch
 	DecalModeButton.MouseButton1Click:Connect(function ()
-		SetTextureType 'Decal';
+		self:SetTextureType('Decal')
 	end);
 	TextureModeButton.MouseButton1Click:Connect(function ()
-		SetTextureType 'Texture';
+		self:SetTextureType('Texture')
 	end);
 
 	-- Create the face selection dropdown
-	local Faces = { 'Top', 'Bottom', 'Front', 'Back', 'Left', 'Right' };
-	FaceDropdown = Core.Cheer(UI.SideOption.Dropdown).Start(Faces, '', function (Face)
-		SetFace(Enum.NormalId[Face]);
-	end);
+	local Faces = {
+		'Top';
+		'Bottom';
+		'Front';
+		'Back';
+		'Left';
+		'Right'
+	};
+	local function BuildFaceDropdown()
+		return Roact.createElement(Dropdown, {
+			Position = UDim2.new(0, 30, 0, 0);
+			Size = UDim2.new(1, -45, 0, 25);
+			Options = Faces;
+			MaxRows = 6;
+			CurrentOption = self.Face and self.Face.Name;
+			OnOptionSelected = function (Option)
+				self:SetFace(Enum.NormalId[Option])
+			end;
+		})
+	end
+
+	-- Mount type dropdown
+	local FaceDropdownHandle = Roact.mount(BuildFaceDropdown(), self.UI.SideOption, 'Dropdown')
+	self.OnFaceChanged:Connect(function ()
+		Roact.update(FaceDropdownHandle, BuildFaceDropdown())
+	end)
 
 	-- Enable the image ID input
 	ImageIdInput.FocusLost:Connect(function (EnterPressed)
@@ -129,11 +162,13 @@ function ShowUI()
 	end);
 
 	-- Hook up manual triggering
-	local SignatureButton = UI:WaitForChild('Title'):WaitForChild('Signature')
+	local SignatureButton = self.UI:WaitForChild('Title'):WaitForChild('Signature')
 	ListenForManualWindowTrigger(TextureTool.ManualText, TextureTool.Color.Color, SignatureButton)
 
 	-- Update the UI every 0.1 seconds
-	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
+	self.StopUpdatingUI = Support.Loop(0.1, function ()
+		self:UpdateUI()
+	end)
 
 end;
 
@@ -147,7 +182,7 @@ function SyncInputToProperty(Property, Input)
 
 end;
 
-function EnableSurfaceClickSelection()
+function TextureTool:EnableSurfaceClickSelection()
 	-- Allows for the setting of the current face by clicking
 
 	-- Clear out any existing connection
@@ -160,25 +195,25 @@ function EnableSurfaceClickSelection()
 	Connections.SurfaceClickSelection = Core.Mouse.Button1Down:Connect(function ()
 		local _, ScopeTarget = Core.Targeting:UpdateTarget()
 		if Selection.IsSelected(ScopeTarget) then
-			SetFace(Core.Mouse.TargetSurface)
+			self:SetFace(Core.Mouse.TargetSurface)
 		end
 	end)
 
 end;
 
-function HideUI()
+function TextureTool:HideUI()
 	-- Hides the tool UI
 
 	-- Make sure there's a UI
-	if not UI then
+	if not self.UI then
 		return;
 	end;
 
 	-- Hide the UI
-	UI.Visible = false;
+	self.UI.Visible = false
 
 	-- Stop updating the UI
-	UIUpdater:Stop();
+	self.StopUpdatingUI()
 
 end;
 
@@ -223,7 +258,7 @@ local UIElements = { 'SelectNote', 'ModeOption', 'SideOption', 'ImageIDOption', 
 -- Current UI layout
 local CurrentLayout;
 
-function ChangeLayout(Layout)
+function TextureTool:ChangeLayout(Layout)
 	-- Sets the UI to the given layout
 
 	-- Make sure the new layout isn't already set
@@ -236,7 +271,7 @@ function ChangeLayout(Layout)
 
 	-- Reset the UI
 	for _, ElementName in pairs(UIElements) do
-		local Element = UI[ElementName];
+		local Element = self.UI[ElementName]
 		Element.Visible = false;
 	end;
 
@@ -246,7 +281,7 @@ function ChangeLayout(Layout)
 	-- Go through each layout element
 	for ItemIndex, ItemName in ipairs(Layout) do
 
-		local Item = UI[ItemName];
+		local Item = self.UI[ItemName]
 
 		-- Make the item visible
 		Item.Visible = true;
@@ -265,15 +300,15 @@ function ChangeLayout(Layout)
 	end;
 
 	-- Resize the container to fit the new layout
-	UI.Size = UDim2.new(0, 200, 0, 30 + Sum);
+	self.UI.Size = UDim2.new(0, 200, 0, 30 + Sum)
 
 end;
 
-function UpdateUI()
+function TextureTool:UpdateUI()
 	-- Updates information on the UI
 
 	-- Make sure the UI's on
-	if not UI then
+	if not self.UI then
 		return;
 	end;
 
@@ -281,8 +316,8 @@ function UpdateUI()
 	local Textures = GetTextures(TextureTool.Type, TextureTool.Face);
 
 	-- References to UI elements
-	local ImageIdInput = UI.ImageIDOption.TextBox;
-	local TransparencyInput = UI.TransparencyOption.Input.TextBox;
+	local ImageIdInput = self.UI.ImageIDOption.TextBox;
+	local TransparencyInput = self.UI.TransparencyOption.Input.TextBox;
 
 	-----------------------
 	-- Update the UI layout
@@ -293,21 +328,21 @@ function UpdateUI()
 
 	-- Figure out the necessary UI layout
 	if #Selection.Parts == 0 then
-		ChangeLayout(Layouts.EmptySelection);
+		self:ChangeLayout(Layouts.EmptySelection)
 		return;
 
 	-- When the selection has no textures
 	elseif #Textures == 0 then
-		ChangeLayout(Layouts.NoTextures);
+		self:ChangeLayout(Layouts.NoTextures)
 		return;
 
 	-- When only some selected items have textures
 	elseif #Selection.Parts ~= #Textures then
-		ChangeLayout(Layouts['Some' .. PluralTextureType]);
+		self:ChangeLayout(Layouts['Some' .. PluralTextureType])
 
 	-- When all selected items have textures
 	elseif #Selection.Parts == #Textures then
-		ChangeLayout(Layouts['All' .. PluralTextureType]);
+		self:ChangeLayout(Layouts['All' .. PluralTextureType])
 	end;
 
 	------------------------
@@ -328,8 +363,8 @@ function UpdateUI()
 	if TextureTool.Type == 'Texture' then
 
 		-- Get texture-specific UI elements
-		local RepeatXInput = UI.RepeatOption.XInput.TextBox;
-		local RepeatYInput = UI.RepeatOption.YInput.TextBox;
+		local RepeatXInput = self.UI.RepeatOption.XInput.TextBox
+		local RepeatYInput = self.UI.RepeatOption.YInput.TextBox
 
 		-- Get texture-specific common properties
 		local RepeatX = Support.IdentifyCommonProperty(Textures, 'StudsPerTileU');
@@ -376,25 +411,20 @@ function ParseAssetId(Input)
 	return Id;
 end;
 
-function SetFace(Face)
+function TextureTool:SetFace(Face)
+	self.Face = Face
+	self.OnFaceChanged:Fire(Face)
+end
+
+function TextureTool:SetTextureType(TextureType)
 
 	-- Update the tool option
-	TextureTool.Face = Face;
+	self.Type = TextureType
 
 	-- Update the UI
-	FaceDropdown.SetOption(Face and Face.Name or '*');
-
-end;
-
-function SetTextureType(TextureType)
-
-	-- Update the tool option
-	TextureTool.Type = TextureType;
-
-	-- Update the UI
-	Core.ToggleSwitch(TextureType, UI.ModeOption);
-	UI.AddButton.Button.Text = 'ADD ' .. TextureType:upper();
-	UI.RemoveButton.Button.Text = 'REMOVE ' .. TextureType:upper();
+	Core.ToggleSwitch(TextureType, self.UI.ModeOption);
+	self.UI.AddButton.Button.Text = 'ADD ' .. TextureType:upper();
+	self.UI.RemoveButton.Button.Text = 'REMOVE ' .. TextureType:upper();
 
 end;
 

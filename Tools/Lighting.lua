@@ -2,11 +2,14 @@ Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 local Vendor = Tool:WaitForChild('Vendor')
 local UI = Tool:WaitForChild('UI')
+local Libraries = Tool:WaitForChild('Libraries')
 
 -- Libraries
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
 local Roact = require(Vendor:WaitForChild('Roact'))
 local ColorPicker = require(UI:WaitForChild('ColorPicker'))
+local Dropdown = require(UI:WaitForChild('Dropdown'))
+local Signal = require(Libraries:WaitForChild('Signal'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -18,6 +21,9 @@ Support.ImportServices();
 local LightingTool = {
 	Name = 'Lighting Tool';
 	Color = BrickColor.new 'Really black';
+
+	-- Signals
+	OnSideChanged = Signal.new();
 }
 
 LightingTool.ManualText = [[<font face="GothamBlack" size="16">Lighting Tool  🛠</font>
@@ -89,7 +95,6 @@ function ShowUI()
 
 	-- Update the UI every 0.1 seconds
 	UIUpdater = Support.ScheduleRecurringTask(UpdateUI, 0.1);
-
 end;
 
 function EnableSurfaceClickSelection(LightType)
@@ -183,10 +188,33 @@ function EnableLightSettingsUI(LightSettingsUI)
 	if LightType == 'SpotLight' or LightType == 'SurfaceLight' then
 
 		-- Create a surface selection dropdown
-		Surfaces = { 'Top', 'Bottom', 'Front', 'Back', 'Left', 'Right' };
-		local SurfaceDropdown = Core.Cheer(Options.SideOption.Dropdown).Start(Surfaces, '', function (Surface)
-			SetSurface(LightType, Enum.NormalId[Surface]);
-		end);
+		local Surfaces = {
+			'Top';
+			'Bottom';
+			'Front';
+			'Back';
+			'Left';
+			'Right';
+		}
+		local SurfaceKey = 'Current' .. LightType .. 'Side'
+		local function BuildDropdown()
+			return Roact.createElement(Dropdown, {
+				Position = UDim2.new(0, 30, 0, 0);
+				Size = UDim2.new(0, 72, 0, 25);
+				MaxRows = 3;
+				Options = Surfaces;
+				CurrentOption = LightingTool[SurfaceKey] and LightingTool[SurfaceKey].Name;
+				OnOptionSelected = function (Option)
+					SetSurface(LightType, Enum.NormalId[Option])
+				end;
+			})
+		end
+		local DropdownHandle = Roact.mount(BuildDropdown(), Options.SideOption, 'Dropdown')
+
+		-- Keep dropdown updated
+		LightingTool.OnSideChanged:Connect(function ()
+			Roact.update(DropdownHandle, BuildDropdown())
+		end)
 
 		-- Enable angle input
 		local AngleInput = Options.AngleOption.Input.TextBox;
@@ -372,7 +400,6 @@ function UpdateUI()
 		local Options = LightSettingsUI.Options;
 		local RangeInput = Options.RangeOption.Input.TextBox;
 		local BrightnessInput = Options.BrightnessOption.Input.TextBox;
-		local ColorPicker = Options.ColorOption.HSVPicker;
 		local ColorIndicator = Options.ColorOption.Indicator;
 		local ShadowsCheckbox = Options.ShadowsOption.Checkbox;
 
@@ -429,20 +456,20 @@ function UpdateUI()
 		-- Update type-specific inputs
 		if LightType == 'SpotLight' or LightType == 'SurfaceLight' then
 
-			-- Get the type-specific inputs
-			local AngleInput = Options.AngleOption.Input.TextBox;
-			local SideDropdown = Core.Cheer(Options.SideOption.Dropdown);
-
 			-- Update the angle input
+			local AngleInput = Options.AngleOption.Input.TextBox;
 			UpdateDataInputs {
 				[AngleInput] = Support.Round(Support.IdentifyCommonProperty(Lights, 'Angle'), 2) or '*';
 			};
 
 			-- Update the surface dropdown input
-			local Face = Support.IdentifyCommonProperty(Lights, 'Face');
-			SideDropdown.SetOption(Face and Face.Name or '*');
-
-		end;
+			local Face = Support.IdentifyCommonProperty(Lights, 'Face')
+			local SurfaceKey = 'Current' .. LightType .. 'Side'
+			if LightingTool[SurfaceKey] ~= Face then
+				LightingTool[SurfaceKey] = Face
+				LightingTool.OnSideChanged:Fire()
+			end
+		end
 
 		-- Update special color input
 		local Color = Support.IdentifyCommonProperty(Lights, 'Color');
@@ -745,6 +772,8 @@ function SetSurface(LightType, Face)
 	if not Face or not (LightType == 'SurfaceLight' or LightType == 'SpotLight') then
 		return;
 	end;
+
+	LightingTool['Current' .. LightType .. 'Side'] = Face
 
 	-- Start a history record
 	TrackChange();

@@ -1,11 +1,17 @@
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
+local Vendor = Tool:WaitForChild('Vendor')
+local UI = Tool:WaitForChild('UI')
+local Libraries = Tool:WaitForChild('Libraries')
 
 -- Services
 local ContextActionService = game:GetService 'ContextActionService'
 
 -- Libraries
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+local Roact = require(Vendor:WaitForChild('Roact'))
+local Dropdown = require(UI:WaitForChild('Dropdown'))
+local Signal = require(Libraries:WaitForChild('Signal'))
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -20,6 +26,9 @@ local NewPartTool = {
 
 	-- Default options
 	Type = 'Normal';
+
+	-- Signals
+	OnTypeChanged = Signal.new();
 }
 
 NewPartTool.ManualText = [[<font face="GothamBlack" size="16">New Part Tool  🛠</font>
@@ -30,23 +39,23 @@ Lets you create new parts.<font size="6"><br /></font>
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
 
-function NewPartTool.Equip()
+function NewPartTool:Equip()
 	-- Enables the tool's equipped functionality
 
 	-- Start up our interface
-	ShowUI();
+	self:ShowUI()
 	EnableClickCreation();
 
 	-- Set our current type
-	SetType(NewPartTool.Type);
+	self:SetType(NewPartTool.Type)
 
 end;
 
-function NewPartTool.Unequip()
+function NewPartTool:Unequip()
 	-- Disables the tool's equipped functionality
 
 	-- Clear unnecessary resources
-	HideUI();
+	self:HideUI()
 	ClearConnections();
 	ContextActionService:UnbindAction('BT: Create part')
 
@@ -62,14 +71,14 @@ function ClearConnections()
 
 end;
 
-function ShowUI()
+function NewPartTool:ShowUI()
 	-- Creates and reveals the UI
 
 	-- Reveal UI if already created
-	if UI then
+	if self.UI then
 
 		-- Reveal the UI
-		UI.Visible = true;
+		self.UI.Visible = true;
 
 		-- Skip UI creation
 		return;
@@ -77,45 +86,72 @@ function ShowUI()
 	end;
 
 	-- Create the UI
-	UI = Core.Tool.Interfaces.BTNewPartToolGUI:Clone();
-	UI.Parent = Core.UI;
-	UI.Visible = true;
+	self.UI = Core.Tool.Interfaces.BTNewPartToolGUI:Clone()
+	self.UI.Parent = Core.UI
+	self.UI.Visible = true
 
 	-- Creatable part types
-	Types = { 'Normal', 'Truss', 'Wedge', 'Corner', 'Cylinder', 'Ball', 'Seat', 'Vehicle Seat', 'Spawn' };
+	Types = {
+		'Normal';
+		'Truss';
+		'Wedge';
+		'Corner';
+		'Cylinder';
+		'Ball';
+		'Seat';
+		'Vehicle Seat';
+		'Spawn';
+	}
 
-	-- Create the type selection dropdown
-	TypeDropdown = Core.Cheer(UI.TypeOption.Dropdown).Start(Types, '', function (Type)
-		SetType(Type);
-	end);
+	-- Create type dropdown
+	local function BuildTypeDropdown()
+		return Roact.createElement(Dropdown, {
+			Position = UDim2.new(0, 70, 0, 0);
+			Size = UDim2.new(0, 140, 0, 25);
+			Options = Types;
+			MaxRows = 5;
+			CurrentOption = self.Type;
+			OnOptionSelected = function (Option)
+				self:SetType(Option)
+			end;
+		})
+	end
+
+	-- Mount type dropdown
+	local TypeDropdownHandle = Roact.mount(BuildTypeDropdown(), self.UI.TypeOption, 'Dropdown')
+	self.OnTypeChanged:Connect(function ()
+		Roact.update(TypeDropdownHandle, BuildTypeDropdown())
+	end)
 
 	-- Hook up manual triggering
-	local SignatureButton = UI:WaitForChild('Title'):WaitForChild('Signature')
+	local SignatureButton = self.UI:WaitForChild('Title'):WaitForChild('Signature')
 	ListenForManualWindowTrigger(NewPartTool.ManualText, NewPartTool.Color.Color, SignatureButton)
 end
 
-function HideUI()
+function NewPartTool:HideUI()
 	-- Hides the tool UI
 
 	-- Make sure there's a UI
-	if not UI then
-		return;
-	end;
+	if not self.UI then
+		return
+	end
 
 	-- Hide the UI
-	UI.Visible = false;
+	self.UI.Visible = false
 
 end;
 
-function SetType(Type)
+function NewPartTool:SetType(Type)
 
 	-- Update the tool option
-	NewPartTool.Type = Type;
+	self.Type = Type
 
 	-- Update the UI
-	TypeDropdown.SetOption(Type);
-
-end;
+	if self.Type ~= Type then
+		self.Type = Type
+		self.OnTypeChanged:Fire(Type)
+	end
+end
 
 function EnableClickCreation()
 	-- Allows the user to click anywhere and create a new part
