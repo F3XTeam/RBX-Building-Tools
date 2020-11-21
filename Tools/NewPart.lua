@@ -142,11 +142,6 @@ function NewPartTool:HideUI()
 end;
 
 function NewPartTool:SetType(Type)
-
-	-- Update the tool option
-	self.Type = Type
-
-	-- Update the UI
 	if self.Type ~= Type then
 		self.Type = Type
 		self.OnTypeChanged:Fire(Type)
