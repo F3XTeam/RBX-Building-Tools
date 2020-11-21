@@ -63,6 +63,7 @@ function Handles:CreateHandles(Options)
         Handle.BackgroundTransparency = 1
         Handle.BorderSizePixel = 0
         Handle.ZIndex = 1
+        Handle.Visible = false
 
         -- Create handle dot
         local HandleDot = Handle:Clone()
