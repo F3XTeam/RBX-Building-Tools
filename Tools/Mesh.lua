@@ -178,7 +178,9 @@ function ShowUI()
 		local CommonColor = VectorToColor(Support.IdentifyCommonProperty(GetMeshes(), 'VertexColor'))
 		local ColorPickerElement = Roact.createElement(ColorPicker, {
 			InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
-			SetPreviewColor = nil;
+			SetPreviewColor = function (Color)
+				SetPreviewTint(ColorToVector(Color))
+			end;
 			OnConfirm = function (Color)
 				SetProperty('VertexColor', ColorToVector(Color))
 				ColorPickerHandle = Roact.unmount(ColorPickerHandle)
@@ -545,6 +547,41 @@ function RemoveMeshes()
 	Core.History.Add(HistoryRecord);
 
 end;
+
+local PreviewInitialState = nil
+
+function SetPreviewTint(Tint)
+	-- Previews the given tint on the selection
+
+	-- Reset tints to initial state if previewing is over
+	if not Tint and PreviewInitialState then
+		for Mesh, State in pairs(PreviewInitialState) do
+			Mesh.VertexColor = State.VertexColor
+		end
+
+		-- Clear initial state
+		PreviewInitialState = nil
+
+		-- Skip rest of function
+		return
+
+	-- Ensure valid tint is given
+	elseif not Tint then
+		return
+
+	-- Save initial state if first time previewing
+	elseif not PreviewInitialState then
+		PreviewInitialState = {}
+		for _, Mesh in pairs(GetMeshes()) do
+			PreviewInitialState[Mesh] = { VertexColor = Mesh.VertexColor }
+		end
+	end
+
+	-- Apply preview tint
+	for Mesh in pairs(PreviewInitialState) do
+		Mesh.VertexColor = Tint
+	end
+end
 
 function SetProperty(Property, Value)
 
