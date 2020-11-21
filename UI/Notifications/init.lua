@@ -4,11 +4,7 @@ local Vendor = Root:WaitForChild('Vendor')
 
 -- Libraries
 local Roact = require(Vendor:WaitForChild('Roact'))
-local Maid = require(Libraries:WaitForChild('Maid'))
 local fastSpawn = require(Libraries:WaitForChild('fastSpawn'))
-Roact.setGlobalConfig({
-    elementTracing = true;
-})
 
 -- Roact
 local new = Roact.createElement
