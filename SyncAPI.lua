@@ -1855,9 +1855,10 @@ function CreatePart(PartType)
 	elseif PartType == 'Spawn' then
 		NewPart = Instance.new('SpawnLocation')
 		NewPart.Size = Vector3.new(6, 1, 6)
-		local SpawnDecal = Instance.new('Decal', NewPart)
+		local SpawnDecal = Instance.new('Decal')
 		SpawnDecal.Face = Enum.NormalId.Top
 		SpawnDecal.Texture = 'rbxasset://textures/SpawnLocation.png'
+		SpawnDecal.Parent = NewPart
 	end
 
 	-- Make part surfaces smooth
