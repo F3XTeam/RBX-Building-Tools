@@ -454,6 +454,27 @@ if Mode == 'Plugin' then
 		ChangeHistoryService:SetWaypoint 'Building Tools by F3X';
 	end);
 
+	-- Add plugin action for toggling tool
+	local ToggleAction = Plugin:CreatePluginAction(
+		'F3X/ToggleBuildingTools',
+		'Toggle Building Tools',
+		'Toggles the Building Tools by F3X plugin.',
+		Assets.PluginIcon,
+		true
+	)
+	ToggleAction.Triggered:Connect(function ()
+		PluginEnabled = not PluginEnabled
+		PluginButton:SetActive(PluginEnabled)
+
+		-- Toggle the tool
+		if PluginEnabled then
+			Plugin:Activate(true)
+			Enable(Plugin:GetMouse())
+		else
+			Disable()
+		end
+	end)
+
 elseif Mode == 'Tool' then
 
 	-- Set the UI root
