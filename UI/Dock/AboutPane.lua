@@ -21,7 +21,10 @@ To learn more about each tool, click on its ❔ icon at the top right corner.<fo
  <font color="rgb(150, 150, 150)">•</font> Rectangle select parts by holding <b>Shift</b>, clicking, and dragging.
  <font color="rgb(150, 150, 150)">•</font> Press <b>Shift-K</b> to select parts inside of the selected parts.
  <font color="rgb(150, 150, 150)">•</font> Press <b>Shift-R</b> to clear your selection.<font size="12"><br /></font>
-
+<font size="12" color="rgb(150, 150, 150)"><b>Grouping</b></font>
+<font color="rgb(150, 150, 150)">•</font> Group parts as a <i>model</i> by pressing <b>Shift-G</b>.
+<font color="rgb(150, 150, 150)">•</font> Group parts into a <i>folder</i> by pressing <b>Shift-F</b>.
+<font color="rgb(150, 150, 150)">•</font> Ungroup parts by pressing <b>Shift-U</b>.<font size="12"><br /></font>
 <font size="12" color="rgb(150, 150, 150)"><b>Exporting your creations</b></font>
 You can export your builds into a short code by clicking the export button, or pressing <b>Shift-P</b>.<font size="8"><br /></font>
 Install the import plugin in <b>Roblox Studio</b> to import your creation:
