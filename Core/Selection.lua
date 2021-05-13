@@ -15,6 +15,8 @@ Selection.Items = {}
 Selection.ItemIndex = {}
 Selection.Parts = {}
 Selection.PartIndex = {}
+Selection.Models = {}
+Selection.ModelIndex = {}
 Selection.Outlines = {}
 Selection.Color = BrickColor.new 'Cyan'
 Selection.Multiselecting = false
@@ -37,19 +39,27 @@ function Selection.IsSelected(Item)
 
 end;
 
-local function CollectParts(Item, Table)
-	-- Adds parts found in `Item` to `Table`
+--- Adds parts & models found in `Item` to `PartTable` & `ModelTable`.
+local function CollectPartsAndModels(Item, PartTable, ModelTable)
 
-	-- Collect parts
-	if Item:IsA 'BasePart' then
-		Table[#Table + 1] = Item
+	-- Collect item if it's a part
+	if Item:IsA('BasePart') then
+		table.insert(PartTable, Item)
 
-	-- Collect parts inside of groups
 	else
-		local Items = Item:GetDescendants()
-		for _, Item in ipairs(Items) do
-			if Item:IsA 'BasePart' then
-				Table[#Table + 1] = Item
+
+		-- Collect item if it's a model
+		if Item:IsA('Model') then
+			table.insert(ModelTable, Item)
+		end
+
+		-- Collect parts & models within item
+		local Descendants = Item:GetDescendants()
+		for _, Descendant in ipairs(Descendants) do
+			if Descendant:IsA('BasePart') then
+				table.insert(PartTable, Descendant)
+			elseif Descendant:IsA('Model') then
+				table.insert(ModelTable, Descendant)
 			end
 		end
 	end
@@ -74,8 +84,9 @@ function Selection.Add(Items, RegisterHistory)
 
 	local OldSelection = Selection.Items;
 
-	-- Track parts in new selection
+	-- Track parts and models in new selection
 	local Parts = {}
+	local Models = {}
 
 	-- Go through the valid new selection items
 	for _, Item in pairs(SelectableItems) do
@@ -95,28 +106,40 @@ function Selection.Add(Items, RegisterHistory)
 			end
 		end)
 
-		-- Collect parts within item
-		CollectParts(Item, Parts)
+		-- Find parts and models within item
+		CollectPartsAndModels(Item, Parts, Models)
 
-		-- Listen for new parts in groups
+		-- Listen for new parts or models in groups
 		local IsGroup = not Item:IsA 'BasePart' or nil
-		ItemMaid.NewParts = IsGroup and Item.DescendantAdded:Connect(function (Descendant)
-			if Descendant:IsA 'BasePart' then
-				local NewRefCount = (Selection.PartIndex[Descendant] or 0) + 1
-				Selection.PartIndex[Descendant] = NewRefCount
-				Selection.Parts = Support.Keys(Selection.PartIndex)
-				if NewRefCount == 1 then
-					Selection.PartsAdded:Fire { Descendant }
+		ItemMaid.NewPartsOrModels = IsGroup and Item.DescendantAdded:Connect(function (Descendant)
+			if Descendant:IsA('PVInstance') then
+				if Descendant:IsA('BasePart') then
+					local NewRefCount = (Selection.PartIndex[Descendant] or 0) + 1
+					Selection.PartIndex[Descendant] = NewRefCount
+					Selection.Parts = Support.Keys(Selection.PartIndex)
+					if NewRefCount == 1 then
+						Selection.PartsAdded:Fire({ Descendant })
+					end
+				elseif Descendant:IsA('Model') then
+					local NewRefCount = (Selection.ModelIndex[Descendant] or 0) + 1
+					Selection.ModelIndex[Descendant] = NewRefCount
+					Selection.Models = Support.Keys(Selection.ModelIndex)
 				end
 			end
 		end)
-		ItemMaid.RemovingParts = IsGroup and Item.DescendantRemoving:Connect(function (Descendant)
+		ItemMaid.RemovingPartsOrModels = IsGroup and Item.DescendantRemoving:Connect(function (Descendant)
 			if Selection.PartIndex[Descendant] then
 				local NewRefCount = (Selection.PartIndex[Descendant] or 0) - 1
 				Selection.PartIndex[Descendant] = (NewRefCount > 0) and NewRefCount or nil
 				if NewRefCount == 0 then
 					Selection.Parts = Support.Keys(Selection.PartIndex)
 					Selection.PartsRemoved:Fire { Descendant }
+				end
+			elseif Selection.ModelIndex[Descendant] then
+				local NewRefCount = (Selection.ModelIndex[Descendant] or 0) - 1
+				Selection.ModelIndex[Descendant] = (NewRefCount > 0) and NewRefCount or nil
+				if NewRefCount == 0 then
+					Selection.Models = Support.Keys(Selection.ModelIndex)
 				end
 			end
 		end)
@@ -137,7 +160,17 @@ function Selection.Add(Items, RegisterHistory)
 		local NewRefCount = (Selection.PartIndex[Part] or 0) + 1
 		Selection.PartIndex[Part] = NewRefCount
 		if NewRefCount == 1 then
-			NewParts[#NewParts + 1] = Part
+			table.insert(NewParts, Part)
+		end
+	end
+
+	-- Register references to new models
+	local NewModelCount = 0
+	for _, Model in ipairs(Models) do
+		local NewRefCount = (Selection.ModelIndex[Model] or 0) + 1
+		Selection.ModelIndex[Model] = NewRefCount
+		if NewRefCount == 1 then
+			NewModelCount += 1
 		end
 	end
 
@@ -145,6 +178,11 @@ function Selection.Add(Items, RegisterHistory)
 	if #NewParts > 0 then
 		Selection.Parts = Support.Keys(Selection.PartIndex)
 		Selection.PartsAdded:Fire(NewParts)
+	end
+
+	-- Update models list
+	if NewModelCount > 0 then
+		Selection.Models = Support.Keys(Selection.ModelIndex)
 	end
 
 	-- Fire relevant events
@@ -171,8 +209,9 @@ function Selection.Remove(Items, RegisterHistory)
 
 	local OldSelection = Selection.Items;
 
-	-- Track parts in removing selection
+	-- Track parts and models in removing selection
 	local Parts = {}
+	local Models = {}
 
 	-- Go through the valid deselectable items
 	for _, Item in pairs(DeselectableItems) do
@@ -184,8 +223,8 @@ function Selection.Remove(Items, RegisterHistory)
 		-- Stop tracking item's parts
 		Selection.Maid[Item] = nil
 
-		-- Get parts associated with item
-		CollectParts(Item, Parts)
+		-- Find parts and models associated with item
+		CollectPartsAndModels(Item, Parts, Models)
 
 	end;
 
@@ -203,7 +242,17 @@ function Selection.Remove(Items, RegisterHistory)
 		local NewRefCount = (Selection.PartIndex[Part] or 0) - 1
 		Selection.PartIndex[Part] = (NewRefCount > 0) and NewRefCount or nil
 		if NewRefCount == 0 then
-			RemovingParts[#RemovingParts + 1] = Part
+			table.insert(RemovingParts, Part)
+		end
+	end
+
+	-- Clear references to removing models
+	local RemovingModelCount = 0
+	for _, Model in ipairs(Models) do
+		local NewRefCount = (Selection.ModelIndex[Model] or 0) - 1
+		Selection.ModelIndex[Model] = (NewRefCount > 0) and NewRefCount or nil
+		if NewRefCount == 0 then
+			RemovingModelCount += 1
 		end
 	end
 
@@ -211,6 +260,11 @@ function Selection.Remove(Items, RegisterHistory)
 	if #RemovingParts > 0 then
 		Selection.Parts = Support.Keys(Selection.PartIndex)
 		Selection.PartsRemoved:Fire(RemovingParts)
+	end
+
+	-- Update models list
+	if RemovingModelCount > 0 then
+		Selection.Models = Support.Keys(Selection.ModelIndex)
 	end
 
 	-- Fire relevant events
