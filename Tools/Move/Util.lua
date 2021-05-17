@@ -1,11 +1,11 @@
-local function TranslatePartsRelativeToPart(BasePart, InitialStates)
+local function TranslatePartsRelativeToPart(BasePart, InitialPartStates, InitialModelStates)
 	-- Moves the given parts in `InitialStates` to BasePart's current position, with their original offset from it
 
 	-- Get focused part's position for offsetting
-	local RelativeTo = InitialStates[BasePart].CFrame:inverse()
+	local RelativeTo = InitialPartStates[BasePart].CFrame:inverse()
 
 	-- Calculate offset and move each part
-	for Part, InitialState in pairs(InitialStates) do
+	for Part, InitialState in pairs(InitialPartStates) do
 
 		-- Calculate how far apart we should be from the focused part
 		local Offset = RelativeTo * InitialState.CFrame
@@ -13,6 +13,12 @@ local function TranslatePartsRelativeToPart(BasePart, InitialStates)
 		-- Move relative to the focused part by this part's offset from it
 		Part.CFrame = BasePart.CFrame * Offset
 
+	end
+
+	-- Calculate offset and move each model
+	for Model, InitialState in pairs(InitialModelStates) do
+		local Offset = RelativeTo * InitialState.Pivot
+		Model.WorldPivot = BasePart.CFrame * Offset
 	end
 end
 

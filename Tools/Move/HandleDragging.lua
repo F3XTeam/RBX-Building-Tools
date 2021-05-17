@@ -83,8 +83,9 @@ function HandleDragging:AttachHandles(Part, Autofocus)
 		end
 
 		-- Stop parts from moving, and capture the initial state of the parts
-		local InitialState, InitialFocusCFrame = self.Tool:PreparePartsForDragging()
-		self.InitialState = InitialState
+		local InitialPartStates, InitialModelStates, InitialFocusCFrame = self.Tool:PrepareSelectionForDragging()
+		self.InitialPartStates = InitialPartStates
+		self.InitialModelStates = InitialModelStates
 		self.InitialFocusCFrame = InitialFocusCFrame
 
 		-- Track the change
@@ -109,13 +110,13 @@ function HandleDragging:AttachHandles(Part, Autofocus)
 		Distance = MoveUtil.GetIncrementMultiple(Distance, self.Tool.Increment)
 
 		-- Move the parts along the selected axes by the calculated distance
-		self.Tool:MovePartsAlongAxesByFace(Face, Distance, self.InitialState, self.InitialFocusCFrame)
+		self.Tool:MovePartsAlongAxesByFace(Face, Distance, self.InitialPartStates, self.InitialModelStates, self.InitialFocusCFrame)
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-			local Part, InitialPartState = next(self.InitialState)
+			local Part, InitialPartState = next(self.InitialPartStates)
 			Part.CFrame = InitialPartState.CFrame
-			MoveUtil.TranslatePartsRelativeToPart(Part, self.InitialState)
+			MoveUtil.TranslatePartsRelativeToPart(Part, self.InitialPartStates, self.InitialModelStates)
 			Distance = 0
 		end
 
@@ -138,7 +139,7 @@ function HandleDragging:AttachHandles(Part, Autofocus)
 		self.IsHandleDragging = false
 
 		-- Make joints, restore original anchor and collision states
-		for Part, State in pairs(self.InitialState) do
+		for Part, State in pairs(self.InitialPartStates) do
 			Part:MakeJoints()
 			Core.RestoreJoints(State.Joints)
 			Part.CanCollide = State.CanCollide

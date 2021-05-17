@@ -129,12 +129,12 @@ function FreeDragging:SetUpDragging(BasePart, BasePoint)
 	Core.Targeting.CancelSelecting()
 
 	-- Prepare parts, and start dragging
-	self.InitialState = self.Tool:PreparePartsForDragging()
-	self:StartDragging(BasePart, self.InitialState, BasePoint)
+	self.InitialPartStates, self.InitialModelStates = self.Tool:PrepareSelectionForDragging()
+	self:StartDragging(BasePart, self.InitialPartStates, self.InitialModelStates, BasePoint)
 
 end
 
-function FreeDragging:StartDragging(BasePart, InitialState, BasePoint)
+function FreeDragging:StartDragging(BasePart, InitialPartStates, InitialModelStates, BasePoint)
 	-- Begins dragging the selection
 
 	-- Ensure dragging is not already ongoing
@@ -158,8 +158,8 @@ function FreeDragging:StartDragging(BasePart, InitialState, BasePoint)
 	end
 
 	-- Ensure a base part is provided
-	if not InitialState[BasePart] then
-		BasePart = next(InitialState)
+	if not InitialPartStates[BasePart] then
+		BasePart = next(InitialPartStates)
 		if not BasePart then
 			return
 		end
@@ -185,26 +185,26 @@ function FreeDragging:StartDragging(BasePart, InitialState, BasePoint)
 	self.Tool.Maid.DragSnapping = self.Tool.PointSnapped:Connect(function (SnappedPoint)
 
 		-- Align the selection's base point to the snapped point
-		local Rotation = self.SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p)
+		local Rotation = self.SurfaceAlignment or (InitialPartStates[BasePart].CFrame - InitialPartStates[BasePart].CFrame.p)
 		BasePart.CFrame = CFrame.new(SnappedPoint) * Rotation * CFrame.new(BasePartOffset)
-		MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialState)
+		MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialPartStates, InitialModelStates)
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-			BasePart.CFrame = InitialState[BasePart].CFrame
-			MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialState)
+			BasePart.CFrame = InitialPartStates[BasePart].CFrame
+			MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialPartStates, InitialModelStates)
 		end
 
 	end)
 
 	-- Update cache of corner offsets for later crossthrough calculations
-	self.CornerOffsets = GetCornerOffsets(InitialState[BasePart].CFrame, InitialState)
+	self.CornerOffsets = GetCornerOffsets(InitialPartStates[BasePart].CFrame, InitialPartStates)
 
 	-- Provide a callback to trigger alignment
 	self.TriggerAlignment = function ()
 
 		-- Trigger drag recalculation
-		self:DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
+		self:DragToMouse(BasePart, BasePartOffset, InitialPartStates, InitialModelStates, AreaPermissions)
 
 		-- Trigger snapping recalculation
 		if SnapTracking.Enabled then
@@ -215,7 +215,7 @@ function FreeDragging:StartDragging(BasePart, InitialState, BasePoint)
 
 	local function HandleDragChange(Action, State, Input)
 		if State.Name == 'Change' then
-			self:DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
+			self:DragToMouse(BasePart, BasePartOffset, InitialPartStates, InitialModelStates, AreaPermissions)
 		end
 		return Enum.ContextActionResult.Pass
 	end
@@ -228,7 +228,7 @@ function FreeDragging:StartDragging(BasePart, InitialState, BasePoint)
 
 end
 
-function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialState, AreaPermissions)
+function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialPartStates, InitialModelStates, AreaPermissions)
 	-- Drags the selection by `BasePart`, judging area authorization from `AreaPermissions`
 
 	----------------------------------------------
@@ -289,7 +289,7 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialState, AreaPe
 	)
 
 	-- Move the parts towards their target destination
-	local Rotation = self.SurfaceAlignment or (InitialState[BasePart].CFrame - InitialState[BasePart].CFrame.p)
+	local Rotation = self.SurfaceAlignment or (InitialPartStates[BasePart].CFrame - InitialPartStates[BasePart].CFrame.p)
 	local TargetCFrame = CFrame.new(self.TargetPoint) * Rotation * CFrame.new(BasePartOffset)
 
 	-- Calculate crossthrough against target plane if necessary
@@ -312,7 +312,7 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialState, AreaPe
 
 	-- Move the selection, retracted by the max. crossthrough amount
 	BasePart.CFrame = TargetCFrame - (self.TargetNormal * self.CrossthroughCorrection)
-	MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialState)
+	MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialPartStates, InitialModelStates)
 
 	----------------------------------------
 	-- Check for relevant area authorization
@@ -320,8 +320,8 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialState, AreaPe
 
 	-- Make sure we're not entering any unauthorized private areas
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-		BasePart.CFrame = InitialState[BasePart].CFrame
-		MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialState)
+		BasePart.CFrame = InitialPartStates[BasePart].CFrame
+		MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialPartStates, InitialModelStates)
 	end
 
 end
@@ -514,7 +514,7 @@ function FreeDragging:FinishDragging()
 	self.Tool.Maid.DragSnapping = nil
 
 	-- Restore the original state of each part
-	for Part, State in pairs(self.InitialState) do
+	for Part, State in pairs(self.InitialPartStates) do
 		Part:MakeJoints()
 		Core.RestoreJoints(State.Joints)
 		Part.CanCollide = State.CanCollide
