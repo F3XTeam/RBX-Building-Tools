@@ -495,7 +495,7 @@ function MoveTool:RegisterChange()
 			CFrame = Part.CFrame;
 		})
 	end;
-	-- pcall(function ()
+	pcall(function ()
 		for _, Model in pairs(self.HistoryRecord.Models) do
 			self.HistoryRecord.AfterCFrame[Model] = Model:GetPivot()
 			table.insert(Changes, {
@@ -503,7 +503,7 @@ function MoveTool:RegisterChange()
 				Pivot = Model:GetPivot();
 			})
 		end
-	-- end)
+	end)
 
 	-- Send the change to the server
 	Core.SyncAPI:Invoke('SyncMove', Changes);
