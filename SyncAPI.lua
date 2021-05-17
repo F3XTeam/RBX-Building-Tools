@@ -568,16 +568,19 @@ Actions = {
 	['SyncRotate'] = function (Changes)
 		-- Updates parts server-side given their new CFrames
 
-		-- Grab a list of every part we're attempting to modify
+		-- Grab a list of every part and model we're attempting to modify
 		local Parts = {};
+		local Models = {}
 		for _, Change in pairs(Changes) do
 			if Change.Part then
 				table.insert(Parts, Change.Part);
-			end;
+			elseif Change.Model then
+				table.insert(Models, Change.Model)
+			end
 		end;
 
 		-- Ensure parts are selectable
-		if not CanModifyItems(Parts) then
+		if not (CanModifyItems(Parts) and CanModifyItems(Models)) then
 			return;
 		end;
 
@@ -590,21 +593,27 @@ Actions = {
 		end;
 
 		-- Reorganize the changes
-		local ChangeSet = {};
+		local PartChangeSet = {}
+		local ModelChangeSet = {}
 		for _, Change in pairs(Changes) do
 			if Change.Part then
-				Change.InitialState = { Anchored = Change.Part.Anchored, CFrame = Change.Part.CFrame };
-				ChangeSet[Change.Part] = Change;
-			end;
+				Change.InitialState = {
+					Anchored = Change.Part.Anchored;
+					CFrame = Change.Part.CFrame;
+				}
+				PartChangeSet[Change.Part] = Change
+			elseif Change.Model then
+				ModelChangeSet[Change.Model] = Change.Pivot
+			end
 		end;
 
 		-- Preserve joints
-		for Part, Change in pairs(ChangeSet) do
-			Change.Joints = PreserveJoints(Part, ChangeSet);
+		for Part, Change in pairs(PartChangeSet) do
+			Change.Joints = PreserveJoints(Part, PartChangeSet)
 		end;
 
 		-- Perform each change
-		for Part, Change in pairs(ChangeSet) do
+		for Part, Change in pairs(PartChangeSet) do
 
 			-- Stabilize the parts and maintain the original anchor state
 			Part.Anchored = true;
@@ -616,19 +625,22 @@ Actions = {
 			Part.CFrame = Change.CFrame;
 
 		end;
+		for Model, Pivot in pairs(ModelChangeSet) do
+			Model.WorldPivot = Pivot
+		end
 
 		-- Make sure the player is authorized to move parts into this area
 		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
 
 			-- Revert changes if unauthorized destination
-			for Part, Change in pairs(ChangeSet) do
+			for Part, Change in pairs(PartChangeSet) do
 				Part.CFrame = Change.InitialState.CFrame;
 			end;
 
 		end;
 
 		-- Restore the parts' original states
-		for Part, Change in pairs(ChangeSet) do
+		for Part, Change in pairs(PartChangeSet) do
 			Part:MakeJoints();
 			RestoreJoints(Change.Joints);
 			Part.Anchored = Change.InitialState.Anchored;
