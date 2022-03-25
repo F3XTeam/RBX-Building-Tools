@@ -969,6 +969,11 @@ function GetPartJoints(Part, Whitelist)
 
 	local Joints = {};
 
+	-- Get joints stored inside `Part`
+	for Joint, JointParent in pairs(SearchJoints(Part, Part, Whitelist)) do
+		Joints[Joint] = JointParent;
+	end;
+
 	-- Get joints stored inside connected parts
 	for _, ConnectedPart in pairs(GetConnectedParts(Part)) do
 		for Joint, JointParent in pairs(SearchJoints(ConnectedPart, Part, Whitelist)) do
