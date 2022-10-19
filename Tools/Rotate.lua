@@ -7,6 +7,7 @@ BoundingBox = require(Tool.Core.BoundingBox);
 local ContextActionService = game:GetService 'ContextActionService'
 local Workspace = game:GetService 'Workspace'
 local UserInputService = game:GetService('UserInputService')
+local RunService = game:GetService 'RunService'
 
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
@@ -314,10 +315,10 @@ function AttachHandles(Part, Autofocus)
 		end;
 
 		-- Stop parts from moving, and capture the initial state of the parts
-		InitialPartStates, InitialModelStates = PrepareSelectionForRotating()
+		InitialPartStates, InitialRootStates = PrepareSelectionForRotating()
 
 		-- Track the change
-		TrackChange();
+		TrackChange(InitialRootStates);
 
 		-- Cache area permissions information
 		if Core.Mode == 'Tool' then
@@ -328,15 +329,10 @@ function AttachHandles(Part, Autofocus)
 		if RotateTool.Pivot == 'Center' then
 			PivotPoint = BoundingBox.GetBoundingBox().CFrame;
 
-		-- Set the pivot point to the center of the focused part if in Last mode
+		-- Set the pivot point to the pivot of the focused part if in Last mode
 		elseif RotateTool.Pivot == 'Last' and not CustomPivotPoint then
-			if Selection.Focus:IsA 'BasePart' then
-				PivotPoint = Selection.Focus.CFrame
-			elseif Selection.Focus:IsA 'Model' then
-				PivotPoint = Selection.Focus:GetModelCFrame()
-				pcall(function ()
-					PivotPoint = Selection.Focus:GetPivot()
-				end)
+			if Selection.Focus:IsA 'PVInstance' then
+				PivotPoint = Selection.Focus:GetPivot()
 			end
 		end;
 
@@ -360,15 +356,12 @@ function AttachHandles(Part, Autofocus)
 		local DisplayedRotation = GetHandleDisplayDelta(Rotation);
 
 		-- Perform the rotation
-		RotateSelectionAroundPivot(RotateTool.Pivot, PivotPoint, Axis, Rotation, InitialPartStates, InitialModelStates)
+		RotateSelectionAroundPivot(RotateTool.Pivot, PivotPoint, Axis, Rotation, InitialPartStates, InitialRootStates)
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-			for Part, State in pairs(InitialPartStates) do
-				Part.CFrame = State.CFrame;
-			end;
-			for Model, State in pairs(InitialModelStates) do
-				Model.WorldPivot = State.Pivot
+			for PVInstance, InitialPivot in pairs(InitialRootStates) do
+				PVInstance:PivotTo(InitialPivot)
 			end
 
 			-- Reset displayed rotation delta
@@ -447,52 +440,30 @@ function HideHandles()
 
 end;
 
-function RotateSelectionAroundPivot(PivotMode, PivotPoint, Axis, Rotation, InitialPartStates, InitialModelStates)
+function RotateSelectionAroundPivot(PivotMode, PivotPoint, Axis, Rotation, InitialPartStates, InitialRootStates)
 	-- Rotates the given selection around `PivotMode` (using `PivotPoint` if applicable)'s `Axis` by `Rotation`
 
 	-- Create a CFrame that increments rotation by `Rotation` around `Axis`
 	local RotationCFrame = CFrame.fromAxisAngle(Vector3.FromAxis(Axis), math.rad(Rotation));
-
-	-- Rotate each part
-	for Part, InitialState in pairs(InitialPartStates) do
-
-		-- Rotate around the selection's center, or the currently focused part
-		if PivotMode == 'Center' or PivotMode == 'Last' then
-
-			-- Calculate the focused part's rotation
-			local RelativeTo = PivotPoint * RotationCFrame;
-
-			-- Calculate this part's offset from the focused part's rotation
-			local Offset = PivotPoint:toObjectSpace(InitialState.CFrame);
-
-			-- Rotate relative to the focused part by this part's offset from it
-			Part.CFrame = RelativeTo * Offset;
-
-		-- Rotate around the part's center
-		elseif RotateTool.Pivot == 'Local' then
-			Part.CFrame = InitialState.CFrame * RotationCFrame;
-
-		end;
-
-	end;
-
-	-- Rotate each model's pivot
-	for Model, InitialState in pairs(InitialModelStates) do
-		
-		-- Rotate around the selection's center, or the currently focused part
-		if (PivotMode == 'Center') or (PivotMode == 'Last') then
-
-			-- Calculate the focused part's rotation
-			local RelativeTo = PivotPoint * RotationCFrame
-
-			-- Calculate this part's offset from the focused part's rotation
-			local Offset = PivotPoint:ToObjectSpace(InitialState.Pivot)
-
-			-- Rotate relative to the focused part by this model's offset from it
-			Model.WorldPivot = RelativeTo * Offset
+	
+	if PivotMode == 'Center' or PivotMode == 'Last' then
+		-- Call PivotTo on each root to rotate the selection relative to the pivot
+		for PVInstance, InitialPivot in pairs(InitialRootStates) do
+			-- Rotate around the selection's center, or the currently focused part
+			if PivotMode == 'Center' or PivotMode == 'Last' then
+				-- Calculate the offset from the old pivot, and apply that
+				-- offset relative to the new one.
+				local Offset = PivotPoint:ToObjectSpace(InitialPivot)
+				local NewPivot = PivotPoint * RotationCFrame
+				PVInstance:PivotTo(NewPivot * Offset)
+			end
 		end
-	end
-
+	elseif PivotMode == 'Local' then
+		-- Rotate each part around its center (do not modify any pivots)
+		for Part, InitialState in pairs(InitialPartStates) do
+			Part.CFrame = InitialState.CFrame * RotationCFrame;
+		end;
+	end;
 end;
 
 function GetHandleDisplayDelta(HandleRotation)
@@ -693,11 +664,11 @@ function SetAxisAngle(Axis, Angle)
 	-- Turn the given angle from degrees to radians
 	local Angle = math.rad(Angle);
 
-	-- Track this change
-	TrackChange();
-
 	-- Prepare parts to be moved
-	local InitialPartStates = PrepareSelectionForRotating()
+	local InitialPartStates, InitialRootStates = PrepareSelectionForRotating()
+
+	-- Track this change
+	TrackChange(InitialRootStates);
 
 	-- Update each part
 	for Part, State in pairs(InitialPartStates) do
@@ -716,8 +687,8 @@ function SetAxisAngle(Axis, Angle)
 
 	-- Revert changes if player is not authorized to move parts to target destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-		for Part, State in pairs(InitialPartStates) do
-			Part.CFrame = State.CFrame;
+		for PVInstance, InitialPivot in pairs(InitialRootStates) do
+			PVInstance:PivotTo(InitialPivot)
 		end;
 	end;
 
@@ -751,12 +722,12 @@ function NudgeSelectionByAxis(Axis, Direction)
 		NudgeAmount = -NudgeAmount;
 	end;
 
-	-- Track the change
-	TrackChange();
-
 	-- Stop parts from moving, and capture the initial state of the parts
-	local InitialPartStates, InitialModelStates = PrepareSelectionForRotating()
-
+	local InitialPartStates, InitialRootStates = PrepareSelectionForRotating()
+	
+	-- Track the change
+	TrackChange(InitialRootStates);
+	
 	-- Set the pivot point to the center of the selection if in Center mode
 	if RotateTool.Pivot == 'Center' then
 		local BoundingBoxSize, BoundingBoxCFrame = BoundingBox.CalculateExtents(Selection.Parts);
@@ -764,18 +735,13 @@ function NudgeSelectionByAxis(Axis, Direction)
 
 	-- Set the pivot point to the center of the focused part if in Last mode
 	elseif RotateTool.Pivot == 'Last' and not CustomPivotPoint then
-		if Selection.Focus:IsA 'BasePart' then
-			PivotPoint = Selection.Focus.CFrame
-		elseif Selection.Focus:IsA 'Model' then
-			PivotPoint = Selection.Focus:GetModelCFrame()
-			pcall(function ()
-				PivotPoint = Selection.Focus:GetPivot()
-			end)
+		if Selection.Focus:IsA 'PVInstance' then
+			PivotPoint = Selection.Focus:GetPivot()
 		end
 	end;
 
 	-- Perform the rotation
-	RotateSelectionAroundPivot(RotateTool.Pivot, PivotPoint, Axis, NudgeAmount * (Direction or 1), InitialPartStates, InitialModelStates)
+	RotateSelectionAroundPivot(RotateTool.Pivot, PivotPoint, Axis, NudgeAmount * (Direction or 1), InitialPartStates, InitialRootStates)
 
 	-- Update the "degrees rotated" indicator
 	if RotateTool.UI then
@@ -787,11 +753,8 @@ function NudgeSelectionByAxis(Axis, Direction)
 
 	-- Make sure we're not entering any unauthorized private areas
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-		for Part, State in pairs(InitialPartStates) do
-			Part.CFrame = State.CFrame;
-		end;
-		for Model, State in pairs(InitialModelStates) do
-			Model.WorldPivot = State.Pivot
+		for PVInstance, InitialPivot in pairs(InitialRootStates) do
+			PVInstance:PivotTo(InitialPivot)
 		end
 	end;
 
@@ -808,12 +771,19 @@ function NudgeSelectionByAxis(Axis, Direction)
 
 end;
 
-function TrackChange()
+function TrackChange(RootMapping)
+	if RotateTool.Pivot == 'Local' then
+		TrackChangeParts()
+	else
+		TrackChangeRoots(RootMapping)
+	end
+end
+
+function TrackChangeParts()
 
 	-- Start the record
 	HistoryRecord = {
 		Parts = Support.CloneTable(Selection.Parts);
-		Models = Support.CloneTable(Selection.Models);
 		BeforeCFrame = {};
 		AfterCFrame = {};
 		Selection = Selection.Items;
@@ -832,15 +802,9 @@ function TrackChange()
 					CFrame = Record.BeforeCFrame[Part];
 				})
 			end;
-			for _, Model in pairs(Record.Models) do
-				table.insert(Changes, {
-					Model = Model;
-					Pivot = Record.BeforeCFrame[Model];
-				})
-			end
 
 			-- Send the change request
-			Core.SyncAPI:Invoke('SyncRotate', Changes);
+			Core.SyncAPI:Invoke('SyncPartTransform', Changes);
 
 		end;
 
@@ -858,15 +822,9 @@ function TrackChange()
 					CFrame = Record.AfterCFrame[Part];
 				})
 			end;
-			for _, Model in pairs(Record.Models) do
-				table.insert(Changes, {
-					Model = Model;
-					Pivot = Record.AfterCFrame[Model];
-				})
-			end
 
 			-- Send the change request
-			Core.SyncAPI:Invoke('SyncRotate', Changes);
+			Core.SyncAPI:Invoke('SyncPartTransform', Changes);
 
 		end;
 
@@ -876,11 +834,67 @@ function TrackChange()
 	for _, Part in pairs(HistoryRecord.Parts) do
 		HistoryRecord.BeforeCFrame[Part] = Part.CFrame;
 	end;
-	pcall(function ()
-		for _, Model in pairs(HistoryRecord.Models) do
-			HistoryRecord.BeforeCFrame[Model] = Model:GetPivot()
-		end
-	end)
+end;
+
+function TrackChangeRoots(RootMap)
+	local Roots = {}
+	for Root, _ in RootMap do
+		table.insert(Roots, Root)
+	end
+
+	-- Start the record
+	HistoryRecord = {
+		Roots = Roots;
+		BeforePivot = {};
+		AfterPivot = {};
+		Selection = Selection.Items;
+
+		Unapply = function (Record)
+			-- Reverts this change
+
+			-- Select the changed parts
+			Selection.Replace(Record.Selection)
+
+			-- Put together the change request
+			local Changes = {};
+			for _, Root in Record.Roots do
+				table.insert(Changes, {
+					Root = Root;
+					Pivot = Record.BeforePivot[Root];
+				})
+			end;
+
+			-- Send the change request
+			Core.SyncAPI:Invoke('SyncRootTransform', Changes);
+
+		end;
+
+		Apply = function (Record)
+			-- Applies this change
+
+			-- Select the changed parts
+			Selection.Replace(Record.Selection)
+
+			-- Put together the change request
+			local Changes = {};
+			for _, Root in pairs(Record.Roots) do
+				table.insert(Changes, {
+					Root = Root;
+					Pivot = Record.AfterPivot[Root];
+				})
+			end;
+
+			-- Send the change request
+			Core.SyncAPI:Invoke('SyncRootTransform', Changes);
+
+		end;
+
+	};
+
+	-- Collect the selection's initial state
+	for _, Root in HistoryRecord.Roots do
+		HistoryRecord.BeforePivot[Root] = Root:GetPivot();
+	end;
 end;
 
 function RegisterChange()
@@ -893,25 +907,29 @@ function RegisterChange()
 
 	-- Collect the selection's final state
 	local Changes = {};
-	for _, Part in pairs(HistoryRecord.Parts) do
-		HistoryRecord.AfterCFrame[Part] = Part.CFrame;
-		table.insert(Changes, {
-			Part = Part;
-			CFrame = Part.CFrame;
-		})
-	end;
-	pcall(function ()
-		for _, Model in pairs(HistoryRecord.Models) do
-			HistoryRecord.AfterCFrame[Model] = Model:GetPivot()
+	if HistoryRecord.Roots then
+		for _, Root in pairs(HistoryRecord.Roots) do
+			HistoryRecord.AfterPivot[Root] = Root:GetPivot();
 			table.insert(Changes, {
-				Model = Model;
-				Pivot = Model:GetPivot();
+				Root = Root;
+				Pivot = Root:GetPivot();
 			})
-		end
-	end)
-
-	-- Send the change to the server
-	Core.SyncAPI:Invoke('SyncRotate', Changes);
+		end;
+		
+		-- Send the change to the server
+		Core.SyncAPI:Invoke('SyncRootTransform', Changes);
+	else
+		for _, Part in pairs(HistoryRecord.Parts) do
+			HistoryRecord.AfterCFrame[Part] = Part.CFrame;
+			table.insert(Changes, {
+				Part = Part;
+				CFrame = Part.CFrame;
+			})
+		end;
+		
+		-- Send the change to the server
+		Core.SyncAPI:Invoke('SyncPartTransform', Changes);
+	end
 
 	-- Register the record and clear the staging
 	Core.History.Add(HistoryRecord);
@@ -923,7 +941,7 @@ function PrepareSelectionForRotating()
 	-- Prepares parts for rotating and returns the initial state of the parts
 
 	local InitialPartStates = {}
-	local InitialModelStates = {}
+	local InitialRootStates = {}
 
 	-- Get index of parts
 	local PartIndex = Support.FlipTable(Selection.Parts);
@@ -935,25 +953,24 @@ function PrepareSelectionForRotating()
 			CanCollide = Part.CanCollide;
 			CFrame = Part.CFrame;
 		}
-		Part.Anchored = true;
-		Part.CanCollide = false;
+		-- Only do this at runtime because it is not needed at Edit time and
+		-- may disrupt packages.
+		if RunService:IsRunning() then
+			Part.Anchored = true;
+			Part.CanCollide = false;
+			Part.Velocity = Vector3.new();
+			Part.RotVelocity = Vector3.new();
+		end
 		InitialPartStates[Part].Joints = Core.PreserveJoints(Part, PartIndex);
 		Part:BreakJoints();
-		Part.Velocity = Vector3.new();
-		Part.RotVelocity = Vector3.new();
+	end;
+	
+	-- Record the initial position of each root PVInstance for movement
+	for _, PVInstance in Selection.GetRootPVInstances(Selection.Items) do
+		InitialRootStates[PVInstance] = PVInstance:GetPivot()
 	end;
 
-	-- Record model pivots
-	-- (temporarily pcalled due to pivot API being in beta)
-	pcall(function ()
-		for _, Model in pairs(Selection.Models) do
-			InitialModelStates[Model] = {
-				Pivot = Model:GetPivot();
-			}
-		end
-	end)
-
-	return InitialPartStates, InitialModelStates
+	return InitialPartStates, InitialRootStates;
 end;
 
 function GetIncrementMultiple(Number, Increment)

@@ -129,12 +129,12 @@ function FreeDragging:SetUpDragging(BasePart, BasePoint)
 	Core.Targeting.CancelSelecting()
 
 	-- Prepare parts, and start dragging
-	self.InitialPartStates, self.InitialModelStates = self.Tool:PrepareSelectionForDragging()
-	self:StartDragging(BasePart, self.InitialPartStates, self.InitialModelStates, BasePoint)
+	self.InitialPartStates, self.InitialRootStates = self.Tool:PrepareSelectionForDragging()
+	self:StartDragging(BasePart, self.InitialPartStates, self.InitialRootStates, BasePoint)
 
 end
 
-function FreeDragging:StartDragging(BasePart, InitialPartStates, InitialModelStates, BasePoint)
+function FreeDragging:StartDragging(BasePart, InitialPartStates, InitialRootStates, BasePoint)
 	-- Begins dragging the selection
 
 	-- Ensure dragging is not already ongoing
@@ -146,7 +146,7 @@ function FreeDragging:StartDragging(BasePart, InitialPartStates, InitialModelSta
 	self.IsDragging = true
 
 	-- Track changes
-	self.Tool:TrackChange()
+	self.Tool:TrackChange(InitialRootStates)
 
 	-- Disable bounding box calculation
 	BoundingBox.ClearBoundingBox()
@@ -185,14 +185,17 @@ function FreeDragging:StartDragging(BasePart, InitialPartStates, InitialModelSta
 	self.Tool.Maid.DragSnapping = self.Tool.PointSnapped:Connect(function (SnappedPoint)
 
 		-- Align the selection's base point to the snapped point
-		local Rotation = self.SurfaceAlignment or (InitialPartStates[BasePart].CFrame - InitialPartStates[BasePart].CFrame.p)
-		BasePart.CFrame = CFrame.new(SnappedPoint) * Rotation * CFrame.new(BasePartOffset)
-		MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialPartStates, InitialModelStates)
+		local Rotation = self.SurfaceAlignment or InitialPartStates[BasePart].CFrame.Rotation
+		local TargetCFrame = CFrame.new(SnappedPoint) * Rotation * CFrame.new(BasePartOffset)
+		
+		-- Move the parts
+		self:MoveBasePartAndRoots(BasePart, TargetCFrame, InitialPartStates, InitialRootStates)
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-			BasePart.CFrame = InitialPartStates[BasePart].CFrame
-			MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialPartStates, InitialModelStates)
+			for Root, InitialPivot in InitialRootStates do
+				Root:PivotTo(InitialPivot)
+			end
 		end
 
 	end)
@@ -204,7 +207,7 @@ function FreeDragging:StartDragging(BasePart, InitialPartStates, InitialModelSta
 	self.TriggerAlignment = function ()
 
 		-- Trigger drag recalculation
-		self:DragToMouse(BasePart, BasePartOffset, InitialPartStates, InitialModelStates, AreaPermissions)
+		self:DragToMouse(BasePart, BasePartOffset, InitialPartStates, InitialRootStates, AreaPermissions)
 
 		-- Trigger snapping recalculation
 		if SnapTracking.Enabled then
@@ -215,7 +218,7 @@ function FreeDragging:StartDragging(BasePart, InitialPartStates, InitialModelSta
 
 	local function HandleDragChange(Action, State, Input)
 		if State.Name == 'Change' then
-			self:DragToMouse(BasePart, BasePartOffset, InitialPartStates, InitialModelStates, AreaPermissions)
+			self:DragToMouse(BasePart, BasePartOffset, InitialPartStates, InitialRootStates, AreaPermissions)
 		end
 		return Enum.ContextActionResult.Pass
 	end
@@ -228,7 +231,17 @@ function FreeDragging:StartDragging(BasePart, InitialPartStates, InitialModelSta
 
 end
 
-function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialPartStates, InitialModelStates, AreaPermissions)
+function FreeDragging:MoveBasePartAndRoots(BasePart, TargetCFrame, InitialPartStates, InitialRootStates)
+	local OldBasePartCFrame = InitialPartStates[BasePart].CFrame
+	local GlobalTransform = TargetCFrame * OldBasePartCFrame:Inverse()
+	
+	-- Apply the global transform to each root
+	for Root, InitialPivot in InitialRootStates do
+		Root:PivotTo(GlobalTransform * InitialPivot)
+	end
+end
+
+function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialPartStates, InitialRootStates, AreaPermissions)
 	-- Drags the selection by `BasePart`, judging area authorization from `AreaPermissions`
 
 	----------------------------------------------
@@ -311,8 +324,8 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialPartStates, I
 	end
 
 	-- Move the selection, retracted by the max. crossthrough amount
-	BasePart.CFrame = TargetCFrame - (self.TargetNormal * self.CrossthroughCorrection)
-	MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialPartStates, InitialModelStates)
+	local FinalCFrame = TargetCFrame - (self.TargetNormal * self.CrossthroughCorrection)
+	self:MoveBasePartAndRoots(BasePart, FinalCFrame, InitialPartStates, InitialRootStates)
 
 	----------------------------------------
 	-- Check for relevant area authorization
@@ -320,8 +333,9 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialPartStates, I
 
 	-- Make sure we're not entering any unauthorized private areas
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-		BasePart.CFrame = InitialPartStates[BasePart].CFrame
-		MoveUtil.TranslatePartsRelativeToPart(BasePart, InitialPartStates, InitialModelStates)
+		for Root, InitialPivot in InitialRootStates do
+			Root:PivotTo(InitialPivot)
+		end
 	end
 
 end
