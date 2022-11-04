@@ -732,7 +732,7 @@ Actions = {
 
 			-- Apply each surface change
 			for Surface, SurfaceType in pairs(Change.Surfaces) do
-				Part[Surface .. 'Surface'] = SurfaceType;
+				Part[tostring(Surface .. "Surface")] = SurfaceType;
 			end;
 
 		end;
