@@ -5,6 +5,7 @@ local UI = Tool:WaitForChild('UI')
 local Libraries = Tool:WaitForChild('Libraries')
 
 -- Services
+local CollectionService = game:GetService("CollectionService")
 local ContextActionService = game:GetService 'ContextActionService'
 
 -- Libraries
@@ -179,13 +180,30 @@ end;
 function CreatePart(Type)
 
 	-- Send the creation request to the server
-	local Part = Core.SyncAPI:Invoke('CreatePart', Type, CFrame.new(Core.Mouse.Hit.p), Core.Targeting.Scope)
+	local PartTag = Core.SyncAPI:Invoke('CreatePart', Type, CFrame.new(Core.Mouse.Hit.p), Core.Targeting.Scope)
 
-	-- Make sure the part creation succeeds
+	-- Try getting the part the first time.
+	local Part = CollectionService:GetTagged(PartTag)[1]
+
 	if not Part then
-		return;
-	end;
+		-- Let's try waiting for the part to stream in.
+		local Connection = CollectionService:GetInstanceAddedSignal(PartTag):Once(function(Object)
+			Part = Object
+		end)
 
+		-- Try waiting for the part's existence.
+		local TotalWaited = 0
+		while not Part and TotalWaited <= 0.5 do
+			TotalWaited += task.wait()
+		end
+		
+		-- If there still wasn't a part, then it's probably out of range.
+		if not Part then
+			Connection:Disconnect()
+			return
+		end
+	end
+	
 	-- Put together the history record
 	local HistoryRecord = {
 		Part = Part;
