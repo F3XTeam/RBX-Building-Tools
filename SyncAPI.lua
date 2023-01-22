@@ -1,5 +1,7 @@
 local HttpService = game:GetService('HttpService')
 local RunService = game:GetService('RunService')
+local InsertService = game:GetService("InsertService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 -- References
 SyncAPI = script.Parent;
@@ -24,7 +26,7 @@ Options = {
 CreatedInstances = {};
 LastParents = {};
 
--- Provide cached data for 
+-- Provide cached data for requests
 local assetTypeCache = {}
 local imageIdCache = {}
 local IsHttpServiceEnabled = nil
@@ -32,6 +34,7 @@ local IsHttpServiceEnabled = nil
 -- Determine whether we're in tool or plugin mode
 ToolMode = (Tool.Parent:IsA 'Plugin') and 'Plugin' or 'Tool'
 
+-- Get asset type from asset id
 local function getAssetType(assetId)
 	if assetTypeCache[assetId] then
 		return assetTypeCache[assetId]
@@ -47,7 +50,8 @@ local function getAssetType(assetId)
 	end
 end
 
-local function getImageFromDecal(assetId) then
+-- Extract imageid from decalid via insertservice
+local function getImageFromDecal(assetId)
 	if imageIdCache[assetId] then
 		return imageIdCache[assetId]
 	end
