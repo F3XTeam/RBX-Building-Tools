@@ -24,10 +24,45 @@ Options = {
 CreatedInstances = {};
 LastParents = {};
 
+-- Provide cached data for 
+local assetTypeCache = {}
+local imageIdCache = {}
+local IsHttpServiceEnabled = nil
+
 -- Determine whether we're in tool or plugin mode
 ToolMode = (Tool.Parent:IsA 'Plugin') and 'Plugin' or 'Tool'
 
-local IsHttpServiceEnabled = nil
+local function getAssetType(assetId)
+	if assetTypeCache[assetId] then
+		return assetTypeCache[assetId]
+	end
+
+	local success, result = pcall(MarketplaceService.GetProductInfo, MarketplaceService, assetId, Enum.InfoType.Asset)
+
+	if success and result and result.AssetTypeId then
+		assetTypeCache[assetId] = result.AssetTypeId
+		return result.AssetTypeId
+	else
+		return nil
+	end
+end
+
+local function getImageFromDecal(assetId) then
+	if imageIdCache[assetId] then
+		return imageIdCache[assetId]
+	end
+
+	local success, result = pcall(function()
+		return string.match(InsertService:LoadAsset(assetId):FindFirstChildWhichIsA("Decal").Texture, "^.-(%d+)/?$")
+	end)
+
+	if success and result then
+		imageIdCache[assetId] = result
+		return success and result
+	else
+		return nil
+	end
+end
 
 -- List of actions that could be requested
 Actions = {
@@ -1618,7 +1653,7 @@ Actions = {
 
 		-- Perform test HTTP request
 		local DidSucceed, Result = pcall(function ()
-			return HttpService:GetAsync('https://google.com')
+			return HttpService:GetAsync('https://www.google.com/robots.txt')
 		end)
 
 		-- Determine whether HttpService is enabled based on whether request succeeded
@@ -1634,17 +1669,31 @@ Actions = {
 	['ExtractMeshFromAsset'] = function (AssetId)
 		-- Returns the first found mesh in the given asset
 
+		-- Ensure valid asset ID is given
+		assert(type(AssetId) == 'number', 'Invalid asset ID');
+
+		-- Add automatic checking for image assets which works client-sided for better UX
+		if getAssetType(AssetId) == 1 then
+			return string.format([[{"success":true,"textureID":%d}]], AssetId)
+		end
+
 		-- Offload action to server-side if API is running locally
 		if RunService:IsClient() and not RunService:IsStudio() then
 			return SyncAPI.ServerEndpoint:InvokeServer('ExtractMeshFromAsset', AssetId);
 		end;
 
-		-- Ensure valid asset ID is given
-		assert(type(AssetId) == 'number', 'Invalid asset ID');
+		-- Add support for decals which can be inserted via InsertService
+		if getAssetType(AssetId) == 13 then
+			local imageId = getImageFromDecal(AssetId)
+
+			if imageId then
+				return string.format([[{"success":true,"textureID":%d}]], imageId)
+			end
+		end
 
 		-- Return parsed response from API
 		return HttpService:JSONDecode(
-			HttpService:GetAsync('http://f3xteam.com/bt/getFirstMeshData/' .. AssetId)
+			HttpService:GetAsync('https://f3xteam.com/bt/getFirstMeshData/' .. AssetId)
 		);
 
 	end;
@@ -1652,13 +1701,30 @@ Actions = {
 	['ExtractImageFromDecal'] = function (DecalAssetId)
 		-- Returns the first image found in the given decal asset
 
+		-- Ensure valid asset ID is given
+		assert(type(DecalAssetId) == 'number', 'Invalid asset ID');
+
+		-- Add automatic checking for image assets which works client-sided for better UX
+		if getAssetType(DecalAssetId) == 1 then
+			return DecalAssetId
+		end
+
 		-- Offload action to server-side if API is running locally
 		if RunService:IsClient() and not RunService:IsStudio() then
 			return SyncAPI.ServerEndpoint:InvokeServer('ExtractImageFromDecal', DecalAssetId);
 		end;
 
+		-- Add support for decals which can be inserted via InsertService
+		if getAssetType(DecalAssetId) == 13 then
+			local imageId = getImageFromDecal(DecalAssetId)
+
+			if imageId then
+				return imageId
+			end
+		end
+
 		-- Return direct response from the API
-		return HttpService:GetAsync('http://f3xteam.com/bt/getDecalImageID/' .. DecalAssetId);
+		return HttpService:GetAsync('https://f3xteam.com/bt/getDecalImageID/' .. DecalAssetId);
 
 	end;
 
