@@ -89,6 +89,19 @@ local Materials = {
 	[Enum.Material.Wood] = 'Wood';
 	[Enum.Material.WoodPlanks] = 'Wood Planks';
 	[Enum.Material.Glass] = 'Glass';
+	[Enum.Material.Asphalt] = 'Asphalt';
+	[Enum.Material.Basalt] = 'Basalt';
+	[Enum.Material.CrackedLava] = 'Cracked Lava';
+	[Enum.Material.Glacier] = 'Glacier';
+	[Enum.Material.Ground] = 'Ground';
+	[Enum.Material.LeafyGrass] = 'Leafy Grass';
+	[Enum.Material.Limestone] = 'Limestone';
+	[Enum.Material.Mud] = 'Mud';
+	[Enum.Material.Pavement] = 'Pavement';
+	[Enum.Material.Rock] = 'Rock';
+	[Enum.Material.Salt] = 'Salt';
+	[Enum.Material.Sandstone] = 'Sandstone';
+	[Enum.Material.Snow] = 'Snow';
 };
 
 function MaterialTool:ShowUI()
