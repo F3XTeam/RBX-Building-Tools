@@ -1,0 +1,6 @@
+{
+  "name": "@f3xteam/building-tools",
+  "dependencies": {
+    "@quenty/signal": "^3.0.0"
+  }
+}
