@@ -172,11 +172,11 @@ function MoveTool:MovePartsAlongAxesByFace(Face, Distance, InitialPartStates, In
 
 		-- Move parts based on initial offset from focus
 		for Part, InitialState in pairs(InitialPartStates) do
-			local FocusOffset = InitialFocusCFrame:toObjectSpace(InitialState.CFrame)
+			local FocusOffset = Support.ToObjectSpace(InitialFocusCFrame, InitialState.CFrame)
 			Part.CFrame = FocusCFrame * FocusOffset
 		end
 		for Model, InitialState in pairs(InitialModelStates) do
-			local FocusOffset = InitialFocusCFrame:ToObjectSpace(InitialState.Pivot)
+			local FocusOffset = Support.ToObjectSpace(InitialFocusCFrame, InitialState.Pivot)
 			Model.WorldPivot = FocusCFrame * FocusOffset
 		end
 

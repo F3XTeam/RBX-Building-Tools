@@ -1,14 +1,18 @@
+local Tool = script.Parent.Parent.Parent
+
+-- Libraries
+local Libraries = Tool:WaitForChild("Libraries")
+local Support = require(Libraries:WaitForChild("SupportLibrary"))
+
 local function TranslatePartsRelativeToPart(BasePart, InitialPartStates, InitialModelStates)
 	-- Moves the given parts in `InitialStates` to BasePart's current position, with their original offset from it
 
 	-- Get focused part's position for offsetting
-	local RelativeTo = InitialPartStates[BasePart].CFrame:inverse()
+	local PivotCFrame = InitialPartStates[BasePart].CFrame
 
 	-- Calculate offset and move each part
 	for Part, InitialState in pairs(InitialPartStates) do
-
-		-- Calculate how far apart we should be from the focused part
-		local Offset = RelativeTo * InitialState.CFrame
+		local Offset = Support.ToObjectSpace(PivotCFrame, InitialState.CFrame)
 
 		-- Move relative to the focused part by this part's offset from it
 		Part.CFrame = BasePart.CFrame * Offset
@@ -17,7 +21,7 @@ local function TranslatePartsRelativeToPart(BasePart, InitialPartStates, Initial
 
 	-- Calculate offset and move each model
 	for Model, InitialState in pairs(InitialModelStates) do
-		local Offset = RelativeTo * InitialState.Pivot
+		local Offset = Support.ToObjectSpace(PivotCFrame, InitialState.Pivot)
 		Model.WorldPivot = BasePart.CFrame * Offset
 	end
 end
