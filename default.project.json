@@ -34,7 +34,10 @@
           }
         },
         "Libraries": {
-          "$path": "Libraries"
+          "$path": "Libraries",
+          "Signal": {
+            "$path": "node_modules/@quenty/signal/src/Shared/GoodSignal.lua"
+          }
         },
         "Vendor": {
           "$className": "Folder",
