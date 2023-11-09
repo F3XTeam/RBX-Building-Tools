@@ -463,7 +463,7 @@ function RotateSelectionAroundPivot(PivotMode, PivotPoint, Axis, Rotation, Initi
 			local RelativeTo = PivotPoint * RotationCFrame;
 
 			-- Calculate this part's offset from the focused part's rotation
-			local Offset = PivotPoint:toObjectSpace(InitialState.CFrame);
+			local Offset = Support.ToObjectSpace(PivotPoint, InitialState.CFrame)
 
 			-- Rotate relative to the focused part by this part's offset from it
 			Part.CFrame = RelativeTo * Offset;
@@ -486,7 +486,7 @@ function RotateSelectionAroundPivot(PivotMode, PivotPoint, Axis, Rotation, Initi
 			local RelativeTo = PivotPoint * RotationCFrame
 
 			-- Calculate this part's offset from the focused part's rotation
-			local Offset = PivotPoint:ToObjectSpace(InitialState.Pivot)
+			local Offset = Support.ToObjectSpace(PivotPoint, InitialState.Pivot)
 
 			-- Rotate relative to the focused part by this model's offset from it
 			Model.WorldPivot = RelativeTo * Offset

@@ -826,4 +826,29 @@ function SupportLibrary.CreateConsecutiveCallDeferrer(MaxInterval)
 
 end
 
+--[=[
+	Returns objectCFrame:ToObjectSpace(cframe), with each component
+	rounded to an identity CFrame if it's fuzzily equal.
+
+	TODO: Figure out a more elegant solution to this.
+]=]
+function SupportLibrary.ToObjectSpace(objectCFrame: CFrame, cframe: CFrame): CFrame
+	local identity = CFrame.identity
+	local offset = objectCFrame:ToObjectSpace(cframe)
+	return CFrame.fromMatrix(
+		if offset.Position:FuzzyEq(identity.Position)
+			then identity.Position
+			else offset.Position,
+		if offset.XVector:FuzzyEq(identity.XVector)
+			then identity.XVector
+			else offset.XVector,
+		if offset.YVector:FuzzyEq(identity.YVector)
+			then identity.YVector
+			else offset.YVector,
+		if offset.ZVector:FuzzyEq(identity.ZVector)
+			then identity.ZVector
+			else offset.ZVector
+	)
+end
+
 return SupportLibrary;
