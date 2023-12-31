@@ -415,89 +415,6 @@ Actions = {
 
 	end;
 
-	['SyncMove'] = function (Changes)
-		-- Updates parts server-side given their new CFrames
-
-		-- Grab a list of every part we're attempting to modify
-		local Parts = {};
-		local Models = {}
-		for _, Change in pairs(Changes) do
-			if Change.Part then
-				table.insert(Parts, Change.Part);
-			elseif Change.Model then
-				table.insert(Models, Change.Model)
-			end
-		end;
-
-		-- Ensure parts are selectable
-		if not (CanModifyItems(Parts) and CanModifyItems(Models)) then
-			return;
-		end;
-
-		-- Cache up permissions for all private areas
-		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
-
-		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
-			return;
-		end;
-
-		-- Reorganize the changes
-		local PartChangeSet = {}
-		local ModelChangeSet = {}
-		for _, Change in pairs(Changes) do
-			if Change.Part then
-				Change.InitialState = {
-					Anchored = Change.Part.Anchored;
-					CFrame = Change.Part.CFrame;
-				}
-				PartChangeSet[Change.Part] = Change
-			elseif Change.Model then
-				ModelChangeSet[Change.Model] = Change.Pivot
-			end
-		end;
-
-		-- Preserve joints
-		for Part, Change in pairs(PartChangeSet) do
-			Change.Joints = PreserveJoints(Part, PartChangeSet)
-		end;
-
-		-- Perform each change
-		for Part, Change in pairs(PartChangeSet) do
-
-			-- Stabilize the parts and maintain the original anchor state
-			Part.Anchored = true;
-			Part:BreakJoints();
-			Part.Velocity = Vector3.new();
-			Part.RotVelocity = Vector3.new();
-
-			-- Set the part's CFrame
-			Part.CFrame = Change.CFrame;
-
-		end;
-		for Model, Pivot in pairs(ModelChangeSet) do
-			Model.WorldPivot = Pivot
-		end
-
-		-- Make sure the player is authorized to move parts into this area
-		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
-
-			-- Revert changes if unauthorized destination
-			for Part, Change in pairs(PartChangeSet) do
-				Part.CFrame = Change.InitialState.CFrame;
-			end;
-
-		end;
-
-		-- Restore the parts' original states
-		for Part, Change in pairs(PartChangeSet) do
-			Part:MakeJoints();
-			RestoreJoints(Change.Joints);
-			Part.Anchored = Change.InitialState.Anchored;
-		end;
-
-	end;
-
 	['SyncResize'] = function (Changes)
 		-- Updates parts server-side given their new sizes and CFrames
 
@@ -565,22 +482,17 @@ Actions = {
 
 	end;
 
-	['SyncRotate'] = function (Changes)
+	['SyncPartTransform'] = function (Changes)
 		-- Updates parts server-side given their new CFrames
 
 		-- Grab a list of every part and model we're attempting to modify
 		local Parts = {};
-		local Models = {}
 		for _, Change in pairs(Changes) do
-			if Change.Part then
-				table.insert(Parts, Change.Part);
-			elseif Change.Model then
-				table.insert(Models, Change.Model)
-			end
+			table.insert(Parts, Change.Part);
 		end;
 
 		-- Ensure parts are selectable
-		if not (CanModifyItems(Parts) and CanModifyItems(Models)) then
+		if not (CanModifyItems(Parts)) then
 			return;
 		end;
 
@@ -594,7 +506,6 @@ Actions = {
 
 		-- Reorganize the changes
 		local PartChangeSet = {}
-		local ModelChangeSet = {}
 		for _, Change in pairs(Changes) do
 			if Change.Part then
 				Change.InitialState = {
@@ -602,8 +513,6 @@ Actions = {
 					CFrame = Change.Part.CFrame;
 				}
 				PartChangeSet[Change.Part] = Change
-			elseif Change.Model then
-				ModelChangeSet[Change.Model] = Change.Pivot
 			end
 		end;
 
@@ -625,9 +534,6 @@ Actions = {
 			Part.CFrame = Change.CFrame;
 
 		end;
-		for Model, Pivot in pairs(ModelChangeSet) do
-			Model.WorldPivot = Pivot
-		end
 
 		-- Make sure the player is authorized to move parts into this area
 		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
@@ -644,6 +550,77 @@ Actions = {
 			Part:MakeJoints();
 			RestoreJoints(Change.Joints);
 			Part.Anchored = Change.InitialState.Anchored;
+		end;
+
+	end;
+	
+	['SyncRootTransform'] = function (Changes)
+		-- Updates parts server-side given their new CFrames
+
+		-- Grab a list of every root we're attempting to modify
+		local Parts = {};
+		local PartChangeSet = {};
+		for _, Change in pairs(Changes) do
+			local Root = Change.Root
+			if Root:IsA("BasePart") then
+				table.insert(Parts, Root)
+				PartChangeSet[Root] = {}
+			end
+			for _, Descendant in Root:GetDescendants() do
+				if Descendant:IsA("BasePart") then
+					table.insert(Parts, Descendant)
+					PartChangeSet[Descendant] = {}
+				end
+			end
+		end;
+
+		-- Ensure parts are selectable
+		if not (CanModifyItems(Parts)) then
+			return;
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
+			return;
+		end;
+
+		-- Reorganize the changes
+		local RootChangeSet = {}
+		local InitialPivot = {}
+		for _, Change in Changes do
+			RootChangeSet[Change.Root] = Change.Pivot
+			InitialPivot[Change.Root] = Change.Root:GetPivot()
+		end;
+
+		-- Preserve joints
+		for Part, Change in PartChangeSet do
+			Change.Joints = PreserveJoints(Part, PartChangeSet)
+		end;
+
+		-- Stabilize parts
+		for Part, Change in PartChangeSet do
+			Part:BreakJoints();
+			Part.Velocity = Vector3.new();
+			Part.RotVelocity = Vector3.new();
+		end;
+		for Root, Pivot in RootChangeSet do
+			Root:PivotTo(Pivot)
+		end
+
+		-- Make sure the player is authorized to move parts into this area
+		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
+			for Root, Pivot in RootChangeSet do
+				Root:PivotTo(InitialPivot[Root])
+			end
+		end;
+
+		-- Restore the parts' original states
+		for Part, Change in pairs(PartChangeSet) do
+			Part:MakeJoints();
+			RestoreJoints(Change.Joints);
 		end;
 
 	end;
