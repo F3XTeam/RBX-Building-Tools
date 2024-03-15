@@ -1,3 +1,4 @@
+local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService('HttpService')
 local RunService = game:GetService('RunService')
 
@@ -57,19 +58,21 @@ Actions = {
 		end
 
 		local Clones = {}
+		local CloneTag = string.format("F3X:%s", HttpService:GenerateGUID())
 
 		-- Clone items
 		for _, Item in pairs(Items) do
 			local Clone = Item:Clone()
 			Clone.Parent = Parent
-
+			CollectionService:AddTag(Clone, CloneTag)
+		
 			-- Register the clone
 			table.insert(Clones, Clone)
 			CreatedInstances[Item] = Item
 		end
-
-		-- Return the clones
-		return Clones
+		
+		-- Return tag the clones will have
+		return CloneTag
 	end;
 
 	['CreatePart'] = function (PartType, Position, Parent)
@@ -99,8 +102,12 @@ Actions = {
 		-- Register the part
 		CreatedInstances[NewPart] = NewPart;
 
+		-- Create the tag to watch for.
+		local NewPartTag = string.format("F3X:%s", HttpService:GenerateGUID())
+		CollectionService:AddTag(NewPart, NewPartTag)
+
 		-- Return the part
-		return NewPart;
+		return NewPartTag;
 	end;
 
 	['CreateGroup'] = function (Type, Parent, Items)

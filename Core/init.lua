@@ -31,6 +31,7 @@ local Cryo = require(Tool.Libraries:WaitForChild('Cryo'))
 Support.ImportServices();
 SyncAPI = Tool.SyncAPI;
 Player = Players.LocalPlayer;
+local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService('RunService')
 
 -- Preload assets
@@ -157,7 +158,6 @@ Enabled = Signal.new()
 Disabled = Signal.new()
 
 function Enable(Mouse)
-
 	-- Ensure tool is disabled or disabling, and not already enabling
 	if (IsEnabled and not IsDisabling) or IsEnabling then
 		return;
@@ -549,12 +549,34 @@ function CloneSelection()
 	-- Clones selected parts
 
 	-- Make sure that there are items in the selection
-	if #Selection.Items == 0 then
+	local AmountSelected = #Selection.Items
+
+	if AmountSelected == 0 then
 		return;
 	end;
 
 	-- Send the cloning request to the server
-	local Clones = SyncAPI:Invoke('Clone', Selection.Items, GetHighestParent(Selection.Items))
+	local CloneTag = SyncAPI:Invoke('Clone', Selection.Items, GetHighestParent(Selection.Items))
+
+	-- Attempt to collect all the clones
+
+	-- Strong chance that by now, most of the cloned objects would've of replicated.
+	local Clones = CollectionService:GetTagged(CloneTag)
+
+	-- However, with enough cloned parts, it's possible they would've of missed.
+	local Connection = CollectionService:GetInstanceAddedSignal(CloneTag):Connect(function(Object)
+		table.insert(Clones, Object)
+	end)
+
+	-- Wait for all the instances to be collected. 
+	local TotalWaited = 0
+
+	-- At most, wait for half of a second for all of them. Otherwise, they likely out of range.
+	while #Clones ~= AmountSelected and TotalWaited <= 0.5 do
+		TotalWaited += task.wait()
+	end
+
+	Connection:Disconnect()
 
 	-- Put together the history record
 	local HistoryRecord = {
