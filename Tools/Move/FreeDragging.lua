@@ -14,6 +14,7 @@ local BoundingBox = require(Tool.Core.BoundingBox)
 local Libraries = Tool:WaitForChild 'Libraries'
 local Support = require(Libraries:WaitForChild 'SupportLibrary')
 local MoveUtil = require(script.Parent:WaitForChild 'Util')
+local JointUtils = require(Libraries:WaitForChild("JointUtils"))
 
 -- Create class
 local FreeDragging = {}
@@ -515,8 +516,8 @@ function FreeDragging:FinishDragging()
 
 	-- Restore the original state of each part
 	for Part, State in pairs(self.InitialPartStates) do
+		JointUtils.RestoreJoints(State.Joints)
 		Part:MakeJoints()
-		Core.RestoreJoints(State.Joints)
 		Part.CanCollide = State.CanCollide
 		Part.Anchored = State.Anchored
 	end

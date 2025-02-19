@@ -11,6 +11,7 @@ local UserInputService = game:GetService 'UserInputService'
 local Libraries = Tool:WaitForChild 'Libraries'
 local Signal = require(Libraries:WaitForChild 'Signal')
 local Maid = require(Libraries:WaitForChild 'Maid')
+local JointUtils = require(Libraries:WaitForChild("JointUtils"))
 
 -- Import relevant references
 local Selection = Core.Selection
@@ -344,8 +345,8 @@ function MoveTool:SetAxisPosition(Axis, Position)
 
 	-- Restore the parts' original states
 	for Part, State in pairs(InitialPartStates) do
-		Part:MakeJoints();
-		Core.RestoreJoints(State.Joints);
+		JointUtils.RestoreJoints(State.Joints)
+		Part:MakeJoints()
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -391,8 +392,8 @@ function MoveTool:NudgeSelectionByFace(Face)
 
 	-- Restore the parts' original states
 	for Part, State in pairs(InitialPartStates) do
-		Part:MakeJoints();
-		Core.RestoreJoints(State.Joints);
+		JointUtils.RestoreJoints(State.Joints)
+		Part:MakeJoints()
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -531,8 +532,7 @@ function MoveTool:PrepareSelectionForDragging()
 		}
 		Part.Anchored = true;
 		Part.CanCollide = false;
-		InitialPartStates[Part].Joints = Core.PreserveJoints(Part, PartIndex)
-		Part:BreakJoints();
+		InitialPartStates[Part].Joints = JointUtils.PreserveJoints(Part)
 		Part.Velocity = Vector3.new();
 		Part.RotVelocity = Vector3.new();
 	end;
