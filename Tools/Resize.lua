@@ -836,6 +836,10 @@ function StartSnapping()
 
 	-- Listen for when the user starts dragging while in snap mode
 	Connections.SnapDragStart = Support.AddUserInputListener('Began', 'MouseButton1', false, function (Input)
+		
+		if SnapTracking.Target == nil then
+			return;
+		end;
 
 		-- Initialize snapping state
 		SnappingStage = 'Direction';
