@@ -1910,20 +1910,22 @@ function CreatePart(PartType)
 
 	elseif PartType == 'Cylinder' then
 		NewPart = Instance.new('Part')
-		NewPart.Shape = 'Cylinder'
+		NewPart.Shape = Enum.PartType.Cylinder
 		NewPart.Size = Vector3.new(2, 2, 2)
 
 	elseif PartType == 'Ball' then
 		NewPart = Instance.new('Part')
-		NewPart.Shape = 'Ball'
+		NewPart.Shape = Enum.PartType.Ball
 
 	elseif PartType == 'Seat' then
 		NewPart = Instance.new('Seat')
 		NewPart.Size = Vector3.new(4, 1, 2)
+		NewPart.FrontSurface = Enum.SurfaceType.Hinge
 
 	elseif PartType == 'Vehicle Seat' then
 		NewPart = Instance.new('VehicleSeat')
 		NewPart.Size = Vector3.new(4, 1, 2)
+		NewPart.FrontSurface = Enum.SurfaceType.Hinge
 
 	elseif PartType == 'Spawn' then
 		NewPart = Instance.new('SpawnLocation')
