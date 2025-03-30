@@ -72,6 +72,11 @@ function Dropdown:render()
                 AreOptionsVisible = not self.state.AreOptionsVisible;
             })
         end;
+		[Roact.Ref] = function (rbx)
+			if rbx then
+				self.SetSize(rbx.AbsoluteSize)
+			end
+		end;
     }, {
         Corners = new('UICorner', {
             CornerRadius = UDim.new(0, 4);
