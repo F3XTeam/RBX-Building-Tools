@@ -19,6 +19,4 @@ return function(func, ...)
 end
 --]]
 
-return function(func, ...)
-	return task.spawn(func, ...)
-end
+return task.spawn
