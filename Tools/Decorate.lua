@@ -20,7 +20,7 @@ local DecorateTool = {
 	Color = BrickColor.new 'Really black';
 }
 
-DecorateTool.ManualText = [[<font face="MontserratBlack" size="16">Decorate Tool  🛠</font>
+DecorateTool.ManualText = [[<font face="GothamBlack" size="16">Decorate Tool  🛠</font>
 Allows you to add smoke, fire, and sparkles to parts.]]
 
 -- Container for temporary connections (disconnected automatically)
@@ -326,7 +326,7 @@ function EnableOptionsUI(SettingsUI)
 
 	-- Option input references
 	local Options = SettingsUI.Options;
-	
+
 	-- Add/remove/show button references
 	local AddButton = SettingsUI.AddButton;
 	local RemoveButton = SettingsUI.RemoveButton;
@@ -452,7 +452,7 @@ function CloseOptions(Exception)
 			),
 			Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true
 		);
-		
+
 		-- Make sure to not resize the exempt decoration type UI
 		if not Exception or Exception and DecorationType ~= Exception then
 

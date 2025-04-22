@@ -899,8 +899,8 @@ function ExportSelection()
 	:Then(function (CreationId)
 		Roact.update(DialogHandle, Roact.createElement(DialogComponent, {
 			Text = 'Your creation\'s ID:<font size="5"><br /></font>\n' ..
-				'<font face="MontserratBlack" size="18">' .. CreationId .. '</font><font size="6"><br /></font>\n' ..
-				'<font face="Montserrat" size="10">Use the code above to import your creation using the plugin in Studio.</font>';
+				'<font face="GothamBlack" size="18">' .. CreationId .. '</font><font size="6"><br /></font>\n' ..
+				'<font face="Gotham" size="10">Use the code above to import your creation using the plugin in Studio.</font>';
 			OnDismiss = DialogDismissCallback;
 		}))
 		print('[Building Tools by F3X] Uploaded Export:', CreationId);

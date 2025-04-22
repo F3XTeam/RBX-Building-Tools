@@ -13,7 +13,7 @@ local Maid = require(Libraries:WaitForChild('Maid'))
 local new = Roact.createElement
 local ToolManualWindow = require(UI:WaitForChild('ToolManualWindow'))
 
-local MANUAL_CONTENT = [[<font face="MontserratBlack" size="16">Building Tools by F3X  🛠</font>
+local MANUAL_CONTENT = [[<font face="GothamBlack" size="16">Building Tools by F3X  🛠</font>
 To learn more about each tool, click on its ❔ icon at the top right corner.<font size="12"><br /></font>
 
 <font size="12" color="rgb(150, 150, 150)"><b>Selecting</b></font>

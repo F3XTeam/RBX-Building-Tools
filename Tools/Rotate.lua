@@ -29,7 +29,7 @@ local RotateTool = {
 	Pivot = 'Center';
 }
 
-RotateTool.ManualText = [[<font face="MontserratBlack" size="16">Rotate Tool  🛠</font>
+RotateTool.ManualText = [[<font face="GothamBlack" size="16">Rotate Tool  🛠</font>
 Allows you to rotate parts.<font size="12"><br /></font>
 <font size="12" color="rgb(150, 150, 150)"><b>Pivot</b></font>
 This option lets you choose what to rotate the parts around.<font size="6"><br /></font>
@@ -264,7 +264,7 @@ function SetPivot(PivotMode)
 
 	-- For local mode, use focused part handles
 	elseif PivotMode == 'Local' then
-		AttachHandles(Selection.Focus, true); 
+		AttachHandles(Selection.Focus, true);
 
 	-- For last mode, use focused part handles
 	elseif PivotMode == 'Last' then
@@ -478,7 +478,7 @@ function RotateSelectionAroundPivot(PivotMode, PivotPoint, Axis, Rotation, Initi
 
 	-- Rotate each model's pivot
 	for Model, InitialState in pairs(InitialModelStates) do
-		
+
 		-- Rotate around the selection's center, or the currently focused part
 		if (PivotMode == 'Center') or (PivotMode == 'Last') then
 

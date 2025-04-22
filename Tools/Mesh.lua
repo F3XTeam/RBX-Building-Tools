@@ -29,7 +29,7 @@ local MeshTool = {
 	OnTypeChanged = Signal.new();
 }
 
-MeshTool.ManualText = [[<font face="MontserratBlack" size="16">Mesh Tool  🛠</font>
+MeshTool.ManualText = [[<font face="GothamBlack" size="16">Mesh Tool  🛠</font>
 Lets you add meshes to parts.<font size="6"><br /></font>
 
 <b>TIP:</b> You can paste the link to anything with a mesh (e.g. a hat, gear, etc) and it will automatically find the right mesh and texture IDs.<font size="6"><br /></font>

@@ -35,7 +35,7 @@ function NotificationDialog:render()
             Position = UDim2.new(0, 0, 1, 0);
             Size = UDim2.new(self.state.ShouldDisplayDetails and 1 or 0.5, 0, 0, 22);
             Text = 'GOT IT';
-            Font = Enum.Font.Montserrat;
+            Font = Enum.Font.Gotham;
             TextSize = 10;
             TextColor3 = Color3.fromRGB(255, 255, 255);
             [Roact.Event.Activated] = function (rbx)
@@ -50,7 +50,7 @@ function NotificationDialog:render()
             Position = UDim2.new(0.5, 0, 1, 0);
             Size = UDim2.new(0.5, 0, 0, 22);
             Text = 'WHAT CAN I DO?';
-            Font = Enum.Font.Montserrat;
+            Font = Enum.Font.Gotham;
             TextSize = 10;
             TextColor3 = Color3.fromRGB(255, 255, 255);
             [Roact.Event.Activated] = function (rbx)
@@ -73,7 +73,7 @@ function NotificationDialog:render()
             Size = UDim2.new(1, 0, 1, -22 - 2);
             TextWrapped = true;
             RichText = true;
-            Font = Enum.Font.MontserratMedium;
+            Font = Enum.Font.GothamMedium;
             TextColor3 = Color3.fromRGB(255, 255, 255);
             TextSize = 11;
             TextStrokeTransparency = 0.9;

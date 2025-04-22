@@ -28,7 +28,7 @@ local MaterialTool = {
 	OnMaterialChanged = Signal.new();
 }
 
-MaterialTool.ManualText = [[<font face="MontserratBlack" size="16">Material Tool  🛠</font>
+MaterialTool.ManualText = [[<font face="GothamBlack" size="16">Material Tool  🛠</font>
 Lets you change the material, transparency, and reflectance of parts.]]
 
 -- Container for temporary connections (disconnected automatically)

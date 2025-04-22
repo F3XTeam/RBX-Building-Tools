@@ -27,7 +27,7 @@ local PaintTool = {
 	BrickColor = nil;
 }
 
-PaintTool.ManualText = [[<font face="MontserratBlack" size="16">Paint Tool  🛠</font>
+PaintTool.ManualText = [[<font face="GothamBlack" size="16">Paint Tool  🛠</font>
 Lets you paint parts in different colors.<font size="6"><br /></font>
 
 <b>TIP:</b> Press <b><i>R</i></b> while hovering over a part to copy its color.]]

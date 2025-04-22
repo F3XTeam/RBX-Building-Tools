@@ -23,7 +23,7 @@ function ToolButton:UpdateHotkeyTextSize(Text)
     self.HotkeyTextSize = TextService:GetTextSize(
         Text,
         9,
-        Enum.Font.Montserrat,
+        Enum.Font.Gotham,
         Vector2.new(math.huge, math.huge)
     )
 end
@@ -46,7 +46,7 @@ function ToolButton:render()
             BackgroundTransparency = 1;
             Position = UDim2.new(0, 3, 0, 3);
             Size = UDim2.fromOffset(self.HotkeyTextSize.X, self.HotkeyTextSize.Y);
-            Font = Enum.Font.Montserrat;
+            Font = Enum.Font.Gotham;
             Text = self.props.HotkeyLabel;
             TextColor3 = Color3.fromRGB(255, 255, 255);
             TextSize = 9;

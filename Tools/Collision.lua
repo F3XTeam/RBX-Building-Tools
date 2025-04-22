@@ -16,7 +16,7 @@ local CollisionTool = {
 	Color = BrickColor.new 'Really black';
 }
 
-CollisionTool.ManualText = [[<font face="MontserratBlack" size="16">Collision Tool  🛠</font>
+CollisionTool.ManualText = [[<font face="GothamBlack" size="16">Collision Tool  🛠</font>
 Lets you change whether parts collide with one another.<font size="6"><br /></font>
 
 <b>TIP:</b> Press <b>Enter</b> to toggle collision quickly.]]

@@ -26,7 +26,7 @@ local function ExportDialog(props)
                 Position = UDim2.new(0, 0, 1, 0);
                 Size = UDim2.new(1, 0, 0, 23);
                 Text = 'Close';
-                Font = Enum.Font.MontserratMedium;
+                Font = Enum.Font.GothamMedium;
                 TextColor3 = Color3.fromRGB(255, 255, 255);
                 TextSize = 11;
                 [Roact.Event.Activated] = function (rbx)
@@ -40,7 +40,7 @@ local function ExportDialog(props)
             Text = new('TextLabel', {
                 BackgroundTransparency = 1;
                 Size = UDim2.new(1, 0, 1, -23);
-                Font = Enum.Font.MontserratMedium;
+                Font = Enum.Font.GothamMedium;
                 RichText = true;
                 Text = props.Text;
                 TextColor3 = Color3.fromRGB(255, 255, 255);

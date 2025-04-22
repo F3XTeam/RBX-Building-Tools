@@ -233,7 +233,7 @@ function ColorPicker:render()
                 HSVLabel = new('TextLabel', {
                     BackgroundTransparency = 1;
                     Position = UDim2.new(0, 0, 0, 7);
-                    Font = Enum.Font.MontserratBlack;
+                    Font = Enum.Font.GothamBlack;
                     Text = 'HSV: ';
                     TextSize = 11;
                     TextColor3 = Color3.fromRGB(255, 255, 255);
@@ -246,7 +246,7 @@ function ColorPicker:render()
                         BackgroundTransparency = 1;
                         Position = UDim2.new(1, 0, 0, 0);
                         ClearTextOnFocus = false;
-                        Font = Enum.Font.Montserrat;
+                        Font = Enum.Font.Gotham;
                         Text = self.HSV:map(function (HSV)
                             local Hue = tostring(math.floor(HSV.H * 360)) .. '°'
                             local Saturation = tostring(math.floor(HSV.S * 100)) .. '%'
@@ -275,7 +275,7 @@ function ColorPicker:render()
                 RGBLabel = new('TextLabel', {
                     BackgroundTransparency = 1;
                     Position = UDim2.new(0, 0, 0, 7 + 11 + 4);
-                    Font = Enum.Font.MontserratBlack;
+                    Font = Enum.Font.GothamBlack;
                     Text = 'RGB: ';
                     TextSize = 11;
                     TextColor3 = Color3.fromRGB(255, 255, 255);
@@ -288,7 +288,7 @@ function ColorPicker:render()
                         BackgroundTransparency = 1;
                         Position = UDim2.new(1, 0, 0, 0);
                         ClearTextOnFocus = false;
-                        Font = Enum.Font.Montserrat;
+                        Font = Enum.Font.Gotham;
                         Text = self.HSV:map(function (HSV)
                             local Color = Color3.fromHSV(HSV.H, HSV.S, HSV.V)
                             local R = tostring(math.round(Color.R * 255))
@@ -339,7 +339,7 @@ function ColorPicker:render()
                         BackgroundTransparency = 1;
                         Size = UDim2.new(1, 0, 1, 0);
                         Text = '✔';
-                        Font = Enum.Font.MontserratMedium;
+                        Font = Enum.Font.GothamMedium;
                         TextSize = 12;
                         TextColor3 = Color3.fromRGB(0, 0, 0);
                     });
@@ -361,7 +361,7 @@ function ColorPicker:render()
                         BackgroundTransparency = 1;
                         Size = UDim2.new(1, 0, 1, 0);
                         Text = 'Cancel';
-                        Font = Enum.Font.MontserratMedium;
+                        Font = Enum.Font.GothamMedium;
                         TextColor3 = Color3.fromRGB(255, 255, 255);
                         TextSize = 12;
                         TextStrokeTransparency = 0.95;

@@ -28,7 +28,7 @@ local ResizeTool = {
 	Directions = 'Normal';
 }
 
-ResizeTool.ManualText = [[<font face="MontserratBlack" size="16">Resize Tool  🛠</font>
+ResizeTool.ManualText = [[<font face="GothamBlack" size="16">Resize Tool  🛠</font>
 Allows you to resize parts.<font size="12"><br /></font>
 <font size="12" color="rgb(150, 150, 150)"><b>Directions</b></font>
 Lets you choose in which directions to resize the part.<font size="6"><br /></font>
@@ -115,7 +115,7 @@ function ShowUI()
 		return;
 
 	end;
-	
+
 	-- Create the UI
 	ResizeTool.UI = Core.Tool.Interfaces.BTResizeToolGUI:Clone();
 	ResizeTool.UI.Parent = Core.UI;
