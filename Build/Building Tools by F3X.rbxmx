@@ -3259,8 +3259,8 @@ function ExportSelection()
 	:Then(function (CreationId)
 		Roact.update(DialogHandle, Roact.createElement(DialogComponent, {
 			Text = 'Your creation\'s ID:<font size="5"><br /></font>\n' ..
-				'<font face="GothamBlack" size="18">' .. CreationId .. '</font><font size="6"><br /></font>\n' ..
-				'<font face="Gotham" size="10">Use the code above to import your creation using the plugin in Studio.</font>';
+				'<font face="MontserratBlack" size="18">' .. CreationId .. '</font><font size="6"><br /></font>\n' ..
+				'<font face="Montserrat" size="10">Use the code above to import your creation using the plugin in Studio.</font>';
 			OnDismiss = DialogDismissCallback;
 		}))
 		print('[Building Tools by F3X] Uploaded Export:', CreationId);
@@ -68369,7 +68369,7 @@ local Roact = require(Vendor:WaitForChild('Roact'))
 local new = Roact.createElement
 local ToolManualWindow = require(UI:WaitForChild('ToolManualWindow'))
 
-local MANUAL_CONTENT = [[<font face="GothamBlack" size="16">Building Tools by F3X  🛠</font>
+local MANUAL_CONTENT = [[<font face="MontserratBlack" size="16">Building Tools by F3X  🛠</font>
 To learn more about each tool, click on its ❔ icon at the top right corner.<font size="12"><br /></font>
 
 <font size="12" color="rgb(150, 150, 150)"><b>Selecting</b></font>
@@ -68678,7 +68678,7 @@ function ToolButton:UpdateHotkeyTextSize(Text)
     self.HotkeyTextSize = TextService:GetTextSize(
         Text,
         9,
-        Enum.Font.Gotham,
+        Enum.Font.Montserrat,
         Vector2.new(math.huge, math.huge)
     )
 end
@@ -68701,7 +68701,7 @@ function ToolButton:render()
             BackgroundTransparency = 1;
             Position = UDim2.new(0, 3, 0, 3);
             Size = UDim2.fromOffset(self.HotkeyTextSize.X, self.HotkeyTextSize.Y);
-            Font = Enum.Font.Gotham;
+            Font = Enum.Font.Montserrat;
             Text = self.props.HotkeyLabel;
             TextColor3 = Color3.fromRGB(255, 255, 255);
             TextSize = 9;
@@ -68850,7 +68850,7 @@ function Tooltip:UpdateTextBounds(Text)
     self.TextBounds = TextService:GetTextSize(
         Text:gsub('<br />', '\n'):gsub('<.->', ''),
         10,
-        Enum.Font.Gotham,
+        Enum.Font.Montserrat,
         Vector2.new(math.huge, math.huge)
     )
 end
@@ -68882,7 +68882,7 @@ function Tooltip:render()
             BackgroundTransparency = 1;
             Size = UDim2.new(1, 0, 1, 0);
             ZIndex = 2;
-            Font = Enum.Font.Gotham;
+            Font = Enum.Font.Montserrat;
             RichText = true;
             Text = self.props.Text;
             TextColor3 = Color3.fromRGB(255, 255, 255);
@@ -68960,7 +68960,7 @@ function ToolManualWindow:render()
                 Text = new('TextLabel', {
                     BackgroundTransparency = 1;
                     Size = UDim2.new(1, 0, 1, 0);
-                    Font = Enum.Font.Gotham;
+                    Font = Enum.Font.Montserrat;
                     LineHeight = 1.2;
                     RichText = true;
                     Text = self.props.Text;
@@ -69233,7 +69233,7 @@ function ColorPicker:render()
                 HSVLabel = new('TextLabel', {
                     BackgroundTransparency = 1;
                     Position = UDim2.new(0, 0, 0, 7);
-                    Font = Enum.Font.GothamBlack;
+                    Font = Enum.Font.MontserratBlack;
                     Text = 'HSV: ';
                     TextSize = 11;
                     TextColor3 = Color3.fromRGB(255, 255, 255);
@@ -69246,7 +69246,7 @@ function ColorPicker:render()
                         BackgroundTransparency = 1;
                         Position = UDim2.new(1, 0, 0, 0);
                         ClearTextOnFocus = false;
-                        Font = Enum.Font.Gotham;
+                        Font = Enum.Font.Montserrat;
                         Text = self.HSV:map(function (HSV)
                             local Hue = tostring(math.floor(HSV.H * 360)) .. '°'
                             local Saturation = tostring(math.floor(HSV.S * 100)) .. '%'
@@ -69275,7 +69275,7 @@ function ColorPicker:render()
                 RGBLabel = new('TextLabel', {
                     BackgroundTransparency = 1;
                     Position = UDim2.new(0, 0, 0, 7 + 11 + 4);
-                    Font = Enum.Font.GothamBlack;
+                    Font = Enum.Font.MontserratBlack;
                     Text = 'RGB: ';
                     TextSize = 11;
                     TextColor3 = Color3.fromRGB(255, 255, 255);
@@ -69288,7 +69288,7 @@ function ColorPicker:render()
                         BackgroundTransparency = 1;
                         Position = UDim2.new(1, 0, 0, 0);
                         ClearTextOnFocus = false;
-                        Font = Enum.Font.Gotham;
+                        Font = Enum.Font.Montserrat;
                         Text = self.HSV:map(function (HSV)
                             local Color = Color3.fromHSV(HSV.H, HSV.S, HSV.V)
                             local R = tostring(math.round(Color.R * 255))
@@ -69339,7 +69339,7 @@ function ColorPicker:render()
                         BackgroundTransparency = 1;
                         Size = UDim2.new(1, 0, 1, 0);
                         Text = '✔';
-                        Font = Enum.Font.GothamSemibold;
+                        Font = Enum.Font.MontserratMedium;
                         TextSize = 12;
                         TextColor3 = Color3.fromRGB(0, 0, 0);
                     });
@@ -69361,7 +69361,7 @@ function ColorPicker:render()
                         BackgroundTransparency = 1;
                         Size = UDim2.new(1, 0, 1, 0);
                         Text = 'Cancel';
-                        Font = Enum.Font.GothamSemibold;
+                        Font = Enum.Font.MontserratMedium;
                         TextColor3 = Color3.fromRGB(255, 255, 255);
                         TextSize = 12;
                         TextStrokeTransparency = 0.95;
@@ -69642,7 +69642,7 @@ function NotificationDialog:render()
             Position = UDim2.new(0, 0, 1, 0);
             Size = UDim2.new(self.state.ShouldDisplayDetails and 1 or 0.5, 0, 0, 22);
             Text = 'GOT IT';
-            Font = Enum.Font.Gotham;
+            Font = Enum.Font.Montserrat;
             TextSize = 10;
             TextColor3 = Color3.fromRGB(255, 255, 255);
             [Roact.Event.Activated] = function (rbx)
@@ -69657,7 +69657,7 @@ function NotificationDialog:render()
             Position = UDim2.new(0.5, 0, 1, 0);
             Size = UDim2.new(0.5, 0, 0, 22);
             Text = 'WHAT CAN I DO?';
-            Font = Enum.Font.Gotham;
+            Font = Enum.Font.Montserrat;
             TextSize = 10;
             TextColor3 = Color3.fromRGB(255, 255, 255);
             [Roact.Event.Activated] = function (rbx)
@@ -69680,7 +69680,7 @@ function NotificationDialog:render()
             Size = UDim2.new(1, 0, 1, -22 - 2);
             TextWrapped = true;
             RichText = true;
-            Font = Enum.Font.GothamSemibold;
+            Font = Enum.Font.MontserratMedium;
             TextColor3 = Color3.fromRGB(255, 255, 255);
             TextSize = 11;
             TextStrokeTransparency = 0.9;
@@ -69735,7 +69735,7 @@ local function ExportDialog(props)
                 Position = UDim2.new(0, 0, 1, 0);
                 Size = UDim2.new(1, 0, 0, 23);
                 Text = 'Close';
-                Font = Enum.Font.GothamSemibold;
+                Font = Enum.Font.MontserratMedium;
                 TextColor3 = Color3.fromRGB(255, 255, 255);
                 TextSize = 11;
                 [Roact.Event.Activated] = function (rbx)
@@ -69749,7 +69749,7 @@ local function ExportDialog(props)
             Text = new('TextLabel', {
                 BackgroundTransparency = 1;
                 Size = UDim2.new(1, 0, 1, -23);
-                Font = Enum.Font.GothamSemibold;
+                Font = Enum.Font.MontserratMedium;
                 RichText = true;
                 Text = props.Text;
                 TextColor3 = Color3.fromRGB(255, 255, 255);
@@ -69805,7 +69805,7 @@ function Dropdown:BuildButtonList()
             BackgroundTransparency = (self.props.CurrentOption == Option) and 0.1 or 1;
             BackgroundColor3 = Color3.fromRGB(0, 145, 255);
             BorderSizePixel = 0;
-            Font = Enum.Font.GothamBold;
+            Font = Enum.Font.MontserratBold;
             Text = Option;
             TextColor3 = Color3.fromRGB(255, 255, 255);
             TextSize = 10;
@@ -69859,7 +69859,7 @@ function Dropdown:render()
         });
         CurrentOption = new('TextLabel', {
             BackgroundTransparency = 1;
-            Font = Enum.Font.GothamBold;
+            Font = Enum.Font.MontserratBold;
             Text = self.props.CurrentOption or '*';
             TextColor3 = Color3.fromRGB(255, 255, 255);
             TextSize = 10;
@@ -79640,7 +79640,7 @@ local AnchorTool = {
 
 }
 
-AnchorTool.ManualText = [[<font face="GothamBlack" size="16">Anchor Tool  🛠</font>
+AnchorTool.ManualText = [[<font face="MontserratBlack" size="16">Anchor Tool  🛠</font>
 Lets you anchor and unanchor parts.<font size="6"><br /></font>
 
 <b>TIP:</b> Press <b>Enter</b> to toggle anchor quickly.]]
@@ -79909,7 +79909,7 @@ local CollisionTool = {
 	Color = BrickColor.new 'Really black';
 }
 
-CollisionTool.ManualText = [[<font face="GothamBlack" size="16">Collision Tool  🛠</font>
+CollisionTool.ManualText = [[<font face="MontserratBlack" size="16">Collision Tool  🛠</font>
 Lets you change whether parts collide with one another.<font size="6"><br /></font>
 
 <b>TIP:</b> Press <b>Enter</b> to toggle collision quickly.]]
@@ -80182,7 +80182,7 @@ local DecorateTool = {
 	Color = BrickColor.new 'Really black';
 }
 
-DecorateTool.ManualText = [[<font face="GothamBlack" size="16">Decorate Tool  🛠</font>
+DecorateTool.ManualText = [[<font face="MontserratBlack" size="16">Decorate Tool  🛠</font>
 Allows you to add smoke, fire, and sparkles to parts.]]
 
 -- Container for temporary connections (disconnected automatically)
@@ -80850,7 +80850,7 @@ local LightingTool = {
 	OnSideChanged = Signal.new();
 }
 
-LightingTool.ManualText = [[<font face="GothamBlack" size="16">Lighting Tool  🛠</font>
+LightingTool.ManualText = [[<font face="MontserratBlack" size="16">Lighting Tool  🛠</font>
 Lets you add point lights, surface lights, and spotlights to parts.<font size="6"><br /></font>
 
 <b>TIP:</b> Click on the surface of any part to change a light's side quickly.]]
@@ -81686,7 +81686,7 @@ local MaterialTool = {
 	OnMaterialChanged = Signal.new();
 }
 
-MaterialTool.ManualText = [[<font face="GothamBlack" size="16">Material Tool  🛠</font>
+MaterialTool.ManualText = [[<font face="MontserratBlack" size="16">Material Tool  🛠</font>
 Lets you change the material, transparency, and reflectance of parts.]]
 
 -- Container for temporary connections (disconnected automatically)
@@ -82079,7 +82079,7 @@ local MeshTool = {
 	OnTypeChanged = Signal.new();
 }
 
-MeshTool.ManualText = [[<font face="GothamBlack" size="16">Mesh Tool  🛠</font>
+MeshTool.ManualText = [[<font face="MontserratBlack" size="16">Mesh Tool  🛠</font>
 Lets you add meshes to parts.<font size="6"><br /></font>
 
 <b>TIP:</b> You can paste the link to anything with a mesh (e.g. a hat, gear, etc) and it will automatically find the right mesh and texture IDs.<font size="6"><br /></font>
@@ -82910,7 +82910,7 @@ local MoveTool = {
 	AxesChanged = Signal.new();
 }
 
-MoveTool.ManualText = [[<font face="GothamBlack" size="16">Move Tool  🛠</font>
+MoveTool.ManualText = [[<font face="MontserratBlack" size="16">Move Tool  🛠</font>
 Allows you to move parts.<font size="12"><br /></font>
 <font size="12" color="rgb(150, 150, 150)"><b>Axes</b></font>
 This option lets you choose in which direction to move each part.<font size="6"><br /></font>
@@ -84457,7 +84457,7 @@ local NewPartTool = {
 	OnTypeChanged = Signal.new();
 }
 
-NewPartTool.ManualText = [[<font face="GothamBlack" size="16">New Part Tool  🛠</font>
+NewPartTool.ManualText = [[<font face="MontserratBlack" size="16">New Part Tool  🛠</font>
 Lets you create new parts.<font size="6"><br /></font>
 
 <b>TIP:</b> Click and drag where you want your part to be.]]
@@ -84697,7 +84697,7 @@ local PaintTool = {
 	BrickColor = nil;
 }
 
-PaintTool.ManualText = [[<font face="GothamBlack" size="16">Paint Tool  🛠</font>
+PaintTool.ManualText = [[<font face="MontserratBlack" size="16">Paint Tool  🛠</font>
 Lets you paint parts in different colors.<font size="6"><br /></font>
 
 <b>TIP:</b> Press <b><i>R</i></b> while hovering over a part to copy its color.]]
@@ -85105,7 +85105,7 @@ local ResizeTool = {
 	Directions = 'Normal';
 }
 
-ResizeTool.ManualText = [[<font face="GothamBlack" size="16">Resize Tool  🛠</font>
+ResizeTool.ManualText = [[<font face="MontserratBlack" size="16">Resize Tool  🛠</font>
 Allows you to resize parts.<font size="12"><br /></font>
 <font size="12" color="rgb(150, 150, 150)"><b>Directions</b></font>
 Lets you choose in which directions to resize the part.<font size="6"><br /></font>
@@ -86239,7 +86239,7 @@ local RotateTool = {
 	Pivot = 'Center';
 }
 
-RotateTool.ManualText = [[<font face="GothamBlack" size="16">Rotate Tool  🛠</font>
+RotateTool.ManualText = [[<font face="MontserratBlack" size="16">Rotate Tool  🛠</font>
 Allows you to rotate parts.<font size="12"><br /></font>
 <font size="12" color="rgb(150, 150, 150)"><b>Pivot</b></font>
 This option lets you choose what to rotate the parts around.<font size="6"><br /></font>
@@ -87156,7 +87156,7 @@ local SurfaceTool = {
 	OnSurfaceTypeChanged = Signal.new();
 }
 
-SurfaceTool.ManualText = [[<font face="GothamBlack" size="16">Surface Tool  🛠</font>
+SurfaceTool.ManualText = [[<font face="MontserratBlack" size="16">Surface Tool  🛠</font>
 Lets you change the surfaces of parts.<font size="6"><br /></font>
 
 <b>TIP: </b>Click a part's surface to select it quickly.]]
@@ -87592,7 +87592,7 @@ local TextureTool = {
 	OnFaceChanged = Signal.new();
 }
 
-TextureTool.ManualText = [[<font face="GothamBlack" size="16">Texture Tool  🛠</font>
+TextureTool.ManualText = [[<font face="MontserratBlack" size="16">Texture Tool  🛠</font>
 Lets you add decals and textures to parts.<font size="6"><br /></font>
 
 <b>TIP: </b>Click on any part's surface to quickly change a decal/texture's side.<font size="6"><br /></font>
@@ -88247,7 +88247,7 @@ local WeldTool = {
 	Color = BrickColor.new 'Really black';
 }
 
-WeldTool.ManualText = [[<font face="GothamBlack" size="16">Weld Tool  🛠</font>
+WeldTool.ManualText = [[<font face="MontserratBlack" size="16">Weld Tool  🛠</font>
 Allows you to weld parts to hold them together.<font size="6"><br /></font>
 
 <b>NOTE: </b>Welds may break if parts are individually moved.]]

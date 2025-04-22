@@ -53,7 +53,7 @@ function ToolManualWindow:render()
                 Text = new('TextLabel', {
                     BackgroundTransparency = 1;
                     Size = UDim2.new(1, 0, 1, 0);
-                    Font = Enum.Font.Gotham;
+                    Font = Enum.Font.Montserrat;
                     LineHeight = 1.2;
                     RichText = true;
                     Text = self.props.Text;

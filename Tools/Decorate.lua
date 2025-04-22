@@ -20,7 +20,7 @@ local DecorateTool = {
 	Color = BrickColor.new 'Really black';
 }
 
-DecorateTool.ManualText = [[<font face="GothamBlack" size="16">Decorate Tool  🛠</font>
+DecorateTool.ManualText = [[<font face="MontserratBlack" size="16">Decorate Tool  🛠</font>
 Allows you to add smoke, fire, and sparkles to parts.]]
 
 -- Container for temporary connections (disconnected automatically)

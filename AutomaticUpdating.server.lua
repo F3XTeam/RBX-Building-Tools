@@ -4,7 +4,7 @@ function IsVersionOutdated(Version)
 	-- Returns whether the given version of Building Tools is out of date
 
 	-- Check most recent version number
-	local AssetInfo = Game:GetService('MarketplaceService'):GetProductInfo(142785488, Enum.InfoType.Asset);
+	local AssetInfo = game:GetService('MarketplaceService'):GetProductInfo(142785488, Enum.InfoType.Asset);
 	local LatestMajorVersion, LatestMinorVersion, LatestPatchVersion = AssetInfo.Description:match '%[Version: ([0-9]+)%.([0-9]+)%.([0-9]+)%]';
 	local CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion = Version:match '([0-9]+)%.([0-9]+)%.([0-9]+)';
 

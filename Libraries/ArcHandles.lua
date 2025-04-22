@@ -264,7 +264,7 @@ function ArcHandles:Pause()
 end
 
 local function IsFirstPerson(Camera)
-    return (Camera.CFrame.p - Camera.Focus.p).magnitude <= 0.6
+    return (Camera.CFrame.p - Camera.Focus.p).Magnitude <= 0.6
 end
 
 function ArcHandles:Resume()
@@ -395,14 +395,14 @@ function ArcHandles:UpdateHandle(Side, Handle)
     local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * CameraDepth
     local StudsPerPixel = StudWidth / Camera.ViewportSize.X
     local HandlePadding = math.max(1, StudsPerPixel * 14) * (self.IsMouseAvailable and 1 or 1.6)
-    local AdorneeRadius = AdorneeSize.magnitude / 2
+	local AdorneeRadius = AdorneeSize.Magnitude / 2
     local Radius = AdorneeRadius + 2 * HandlePadding
 
     -- Calculate CFrame of the handle's side
     local SideUnitVector = Vector3.FromNormalId(Side)
     local HandleCFrame = AdorneeCFrame * CFrame.new(Radius * SideUnitVector)
     local AxisCFrame = AdorneeCFrame * Vector3.FromAxis(self.SideToAxis[Side])
-    local HandleNormal = (AxisCFrame - AdorneeCFrame.p).unit
+    local HandleNormal = (AxisCFrame - AdorneeCFrame.p).Unit
 
     -- Get viewport position of adornee and the side the handle will be on
     local HandleViewportPoint, HandleCameraDepth, HandleVisible = WorldToViewportPoint(Camera, HandleCFrame.p)
@@ -460,7 +460,7 @@ function ArcHandles:UpdateCircle(Axis, Lines)
     local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * CameraDepth
     local StudsPerPixel = StudWidth / Camera.ViewportSize.X
     local HandlePadding = math.max(1, StudsPerPixel * 14) * (self.IsMouseAvailable and 1 or 1.6)
-    local AdorneeRadius = AdorneeSize.magnitude / 2
+	local AdorneeRadius = AdorneeSize.Magnitude / 2
     local Radius = AdorneeRadius + 2 * HandlePadding
 
     -- Determine angle of each circle slice
@@ -490,7 +490,7 @@ function ArcHandles:UpdateCircle(Axis, Lines)
             CFrame.new(0, 0, Line.Radius / 2)
 
         -- Make line span between endpoints
-        Line.Height = (To - From).magnitude
+		Line.Height = (To - From).Magnitude
 
     end
 end

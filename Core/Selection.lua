@@ -544,7 +544,7 @@ function Selection.EnableMultiselectionHotkeys()
 	Core.Connections.MultiselectingReleaseHotkeys = Support.AddUserInputListener('Ended', 'Keyboard', true, function (Input)
 
 		-- Get currently pressed keys
-		local PressedKeys = Support.GetListMembers(Support.GetListMembers(Game:GetService('UserInputService'):GetKeysPressed(), 'KeyCode'), 'Name');
+		local PressedKeys = Support.GetListMembers(Support.GetListMembers(game:GetService('UserInputService'):GetKeysPressed(), 'KeyCode'), 'Name');
 
 		-- Continue multiselection if a hotkey is still pressed
 		for _, PressedKey in pairs(PressedKeys) do

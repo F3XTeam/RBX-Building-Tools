@@ -44,7 +44,10 @@ Actions = {
 
 	['RecolorHandle'] = function (NewColor)
 		-- Recolors the tool handle
-		Tool.Handle.BrickColor = NewColor;
+		local Handle = Tool:FindFirstChild('Handle')
+		if Handle and Handle:IsA('BasePart') then
+			Handle.BrickColor = NewColor;
+		end
 	end;
 
 	['Clone'] = function (Items, Parent)

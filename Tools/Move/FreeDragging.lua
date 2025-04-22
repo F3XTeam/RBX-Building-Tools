@@ -166,7 +166,7 @@ function FreeDragging:StartDragging(BasePart, InitialPartStates, InitialModelSta
 	end
 
 	-- Determine the base point for dragging
-	local BasePartOffset = -BasePart.CFrame:pointToObjectSpace(Core.Mouse.Hit.p)
+	local BasePartOffset = -BasePart.CFrame:PointToObjectSpace(Core.Mouse.Hit.p)
 
 	-- Improve base point alignment for the given increment
 	BasePartOffset = Vector3.new(
@@ -177,7 +177,7 @@ function FreeDragging:StartDragging(BasePart, InitialPartStates, InitialModelSta
 
 	-- Use the given base point instead if any
 	if BasePoint then
-		BasePartOffset = -BasePart.CFrame:pointToObjectSpace(BasePoint)
+		BasePartOffset = -BasePart.CFrame:PointToObjectSpace(BasePoint)
 	end
 
 	-- Prepare snapping in case it is enabled, and make sure to override its default target selection
@@ -349,14 +349,14 @@ function FreeDragging:AlignSelectionToTarget()
 
 		-- Use target's rightward orientation for calculating orientation (when targeting forward or backward directions)
 		local Target, TargetNormal = self.Target, self.TargetNormal
-		if TargetNormal:isClose(Target.CFrame.lookVector, 0.000001) or TargetNormal:isClose(-Target.CFrame.lookVector, 0.000001) then
-			LookVector = TargetNormal:Cross(Target.CFrame.rightVector).unit
-			RightVector = LookVector:Cross(TargetNormal).unit
+		if TargetNormal:isClose(Target.CFrame.LookVector, 0.000001) or TargetNormal:isClose(-Target.CFrame.LookVector, 0.000001) then
+			LookVector = TargetNormal:Cross(Target.CFrame.RightVector).Unit
+			RightVector = LookVector:Cross(TargetNormal).Unit
 
 		-- Use target's forward orientation for calculating orientation (when targeting any other direction)
 		else
-			RightVector = Target.CFrame.lookVector:Cross(TargetNormal).unit
-			LookVector = TargetNormal:Cross(RightVector).unit
+			RightVector = Target.CFrame.LookVector:Cross(TargetNormal).Unit
+			LookVector = TargetNormal:Cross(RightVector).Unit
 		end
 
 		-- Generate rotation matrix based on direction vectors
@@ -404,37 +404,37 @@ function FreeDragging:GetAlignedTargetPoint(Target, TargetPoint, TargetNormal, I
 			CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.Z), -math.pi / 2)
 
 		-- Get the right alignment reference point on a part's front surface
-		if TargetNormal:isClose(Target.CFrame.lookVector, 0.000001) then
+		if TargetNormal:isClose(Target.CFrame.LookVector, 0.000001) then
 			ReferencePoint = Target.CFrame * CFrame.new(Size.X, Size.Y, -Size.Z)
 			PlaneAxes = Vector3.new(1, 1, 0)
 
 		-- Get the right alignment reference point on a part's back surface
-		elseif TargetNormal:isClose(-Target.CFrame.lookVector, 0.000001) then
+		elseif TargetNormal:isClose(-Target.CFrame.LookVector, 0.000001) then
 			ReferencePoint = Target.CFrame * CFrame.new(-Size.X, Size.Y, Size.Z)
 			PlaneAxes = Vector3.new(1, 1, 0)
 
 		-- Get the right alignment reference point on a part's left surface
-		elseif TargetNormal:isClose(-Target.CFrame.rightVector, 0.000001) then
+		elseif TargetNormal:isClose(-Target.CFrame.RightVector, 0.000001) then
 			ReferencePoint = Target.CFrame * CFrame.new(-Size.X, Size.Y, -Size.Z)
 			PlaneAxes = Vector3.new(0, 1, 1)
 
 		-- Get the right alignment reference point on a part's right surface
-		elseif TargetNormal:isClose(Target.CFrame.rightVector, 0.000001) then
+		elseif TargetNormal:isClose(Target.CFrame.RightVector, 0.000001) then
 			ReferencePoint = Target.CFrame * CFrame.new(Size.X, Size.Y, Size.Z)
 			PlaneAxes = Vector3.new(0, 1, 1)
 
 		-- Get the right alignment reference point on a part's upper surface
-		elseif TargetNormal:isClose(Target.CFrame.upVector, 0.000001) then
+		elseif TargetNormal:isClose(Target.CFrame.UpVector, 0.000001) then
 			ReferencePoint = Target.CFrame * CFrame.new(Size.X, Size.Y, Size.Z)
 			PlaneAxes = Vector3.new(1, 0, 1)
 
 		-- Get the right alignment reference point on a part's bottom surface
-		elseif TargetNormal:isClose(-Target.CFrame.upVector, 0.000001) then
+		elseif TargetNormal:isClose(-Target.CFrame.UpVector, 0.000001) then
 			ReferencePoint = Target.CFrame * CFrame.new(Size.X, -Size.Y, -Size.Z)
 			PlaneAxes = Vector3.new(1, 0, 1)
 
 		-- Get the right alignment reference point on wedged part surfaces
-		elseif TargetNormal:isClose(WedgeDirection.lookVector, 0.000001) then
+		elseif TargetNormal:isClose(WedgeDirection.LookVector, 0.000001) then
 
 			-- Get reference point oriented to wedge plane
 			ReferencePoint = WedgeDirection *
@@ -445,7 +445,7 @@ function FreeDragging:GetAlignedTargetPoint(Target, TargetPoint, TargetNormal, I
 			PlaneAxes = Vector3.new(1, 0, 1)
 
 		-- Get the right alignment reference point on the Z-axis surface of a corner part
-		elseif TargetNormal:isClose(CornerDirectionZ.lookVector, 0.000001) then
+		elseif TargetNormal:isClose(CornerDirectionZ.LookVector, 0.000001) then
 
 			-- Get reference point oriented to wedged plane
 			ReferencePoint = CornerDirectionZ *
@@ -456,7 +456,7 @@ function FreeDragging:GetAlignedTargetPoint(Target, TargetPoint, TargetNormal, I
 			PlaneAxes = Vector3.new(1, 0, 1)
 
 		-- Get the right alignment reference point on the X-axis surface of a corner part
-		elseif TargetNormal:isClose(CornerDirectionX.lookVector, 0.000001) then
+		elseif TargetNormal:isClose(CornerDirectionX.LookVector, 0.000001) then
 
 			-- Get reference point oriented to wedged plane
 			ReferencePoint = CornerDirectionX *
@@ -478,7 +478,7 @@ function FreeDragging:GetAlignedTargetPoint(Target, TargetPoint, TargetNormal, I
 	-------------------------------------
 
 	-- Get target point offset from reference point
-	local ReferencePointOffset = ReferencePoint:inverse() * CFrame.new(TargetPoint)
+	local ReferencePointOffset = ReferencePoint:Inverse() * CFrame.new(TargetPoint)
 
 	-- Align target point on increment grid from reference point along the plane axes
 	local AlignedTargetPoint = ReferencePoint * (Vector3.new(
@@ -536,7 +536,7 @@ function GetCornerOffsets(Origin, InitialStates)
 	local CornerOffsets = {}
 
 	-- Get offset for origin point
-	local OriginOffset = Origin:inverse()
+	local OriginOffset = Origin:Inverse()
 
 	-- Go through each item in the initial state
 	for Item, State in pairs(InitialStates) do

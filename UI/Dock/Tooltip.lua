@@ -24,7 +24,7 @@ function Tooltip:UpdateTextBounds(Text)
     self.TextBounds = TextService:GetTextSize(
         Text:gsub('<br />', '\n'):gsub('<.->', ''),
         10,
-        Enum.Font.Gotham,
+        Enum.Font.Montserrat,
         Vector2.new(math.huge, math.huge)
     )
 end
@@ -56,7 +56,7 @@ function Tooltip:render()
             BackgroundTransparency = 1;
             Size = UDim2.new(1, 0, 1, 0);
             ZIndex = 2;
-            Font = Enum.Font.Gotham;
+            Font = Enum.Font.Montserrat;
             RichText = true;
             Text = self.props.Text;
             TextColor3 = Color3.fromRGB(255, 255, 255);

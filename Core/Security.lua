@@ -1,7 +1,6 @@
 -- Services
-MarketplaceService = Game:GetService 'MarketplaceService';
-HttpService = Game:GetService 'HttpService';
-Workspace = Game:GetService 'Workspace';
+MarketplaceService = game:GetService 'MarketplaceService';
+HttpService = game:GetService 'HttpService';
 
 -- References
 Tool = script.Parent.Parent
@@ -22,16 +21,16 @@ Security.AreaHeight = 500;
 Security.AllowPublicBuilding = true;
 
 -- Allowed locations in the hierarchy (descendants of which are authorized)
-Security.AllowedLocations = { Workspace };
+Security.AllowedLocations = { workspace };
 
 -- Track the enabling of areas
-Security.Areas = Workspace:FindFirstChild('[Private Building Areas]');
-Workspace.ChildAdded:Connect(function (Child)
+Security.Areas = workspace:FindFirstChild('[Private Building Areas]');
+workspace.ChildAdded:Connect(function (Child)
 	if not Security.Areas and Child.Name == '[Private Building Areas]' then
 		Security.Areas = Child;
 	end;
 end);
-Workspace.ChildRemoved:Connect(function (Child)
+workspace.ChildRemoved:Connect(function (Child)
 	if Security.Areas and Child.Name == '[Private Building Areas]' then
 		Security.Areas = nil;
 	end;
@@ -136,9 +135,14 @@ function Security.IsAreaAuthorizedForPlayer(Area, Player)
 				return true;
 			end;
 		elseif Permission.Type == 'BC' then
-			if Player.MembershipType == Enum.MembershipType.BuildersClub then
+			if Player.MembershipType == Enum.MembershipType.BuildersClub or Player.MembershipType == Enum.MembershipType.Premium then
 				return true;
 			end;
+			
+			-- Note(s) from TheFastOneIsBack (aimeetm234)
+			-- Only kept for compatibility. Do not use.
+			
+			-- GigsD4X, I'll let you decide what to do with these.
 		elseif Permission.Type == 'TBC' then
 			if Player.MembershipType == Enum.MembershipType.TurboBuildersClub then
 				return true;

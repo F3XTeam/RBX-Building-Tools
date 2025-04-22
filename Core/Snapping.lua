@@ -1,5 +1,6 @@
 -- Libraries
 Core = require(script.Parent);
+Player = Core.Player;
 Support = Core.Support;
 
 SnapTracking = {};
@@ -29,7 +30,7 @@ function SnapTracking.StartTracking(Callback)
 	SnapTracking.SetCallback(Callback);
 
 	-- Start tracking mouse movement
-	function UpdateTrackingTarget(Input)
+	local function UpdateTrackingTarget(Input)
 
 		-- Blacklist the player's character and the items in `TargetBlacklist`
 		local TargetBlacklist = Support.ConcatTable(
@@ -38,8 +39,8 @@ function SnapTracking.StartTracking(Callback)
 		);
 
 		-- Find the current target part and point
-		local TargetRay = Workspace.CurrentCamera:ScreenPointToRay(Input.Position.X, Input.Position.Y);
-		local TargetPart, TargetPoint, TargetNormal, TargetMaterial = Workspace:FindPartOnRayWithIgnoreList(
+		local TargetRay = workspace.CurrentCamera:ScreenPointToRay(Input.Position.X, Input.Position.Y);
+		local TargetPart, TargetPoint, TargetNormal, TargetMaterial = workspace:FindPartOnRayWithIgnoreList(
 			Ray.new(TargetRay.Origin, TargetRay.Direction * 5000),
 			TargetBlacklist
 		);
@@ -128,7 +129,7 @@ function SnapTracking.UpdateUI(Point)
 	end;
 
 	-- Map the point's position on the screen
-	local PointPosition, PointVisible = Workspace.CurrentCamera:WorldToScreenPoint(Point.p);
+	local PointPosition, PointVisible = workspace.CurrentCamera:WorldToScreenPoint(Point.p);
 
 	-- Move the point marker UI to the point's position on the screen
 	SnapTracking.PointMarker.Visible = PointVisible;
@@ -194,7 +195,7 @@ function SnapTracking.GetClosestPoint()
 
 	-- Calculate proximity of each snapping point to the mouse
 	for SnappingPointKey, SnappingPoint in ipairs(SnappingPoints) do
-		SnappingPointProximity[SnappingPointKey] = (SnapTracking.MousePoint - SnappingPoint.p).magnitude;
+		SnappingPointProximity[SnappingPointKey] = (SnapTracking.MousePoint - SnappingPoint.p).Magnitude;
 	end;
 
 	-- Sort out the closest snapping point

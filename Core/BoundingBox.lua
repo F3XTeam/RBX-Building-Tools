@@ -367,7 +367,7 @@ end;
 -- Create shortcuts to avoid intensive lookups
 local CFrame_new = CFrame.new;
 local table_insert = table.insert;
-local CFrame_toWorldSpace = CFrame.new().toWorldSpace;
+local CFrame_toWorldSpace = CFrame.new().ToWorldSpace;
 local math_min = math.min;
 local math_max = math.max;
 local unpack = unpack;

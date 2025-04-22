@@ -152,8 +152,7 @@ function ScopeHUD:render()
         BackgroundTransparency = 1;
         [Roact.Event.InputBegan] = self.OnInputBegin;
         [Roact.Event.InputEnded] = self.OnInputEnd;
-    },
-    Support.Merge(self:BuildScopeHierarchyButtons(), {
+    }, Support.Merge(self:BuildScopeHierarchyButtons(), {
         Layout = new('UIListLayout', {
             [Roact.Ref] = self.LayoutRef;
             FillDirection = Enum.FillDirection.Horizontal;

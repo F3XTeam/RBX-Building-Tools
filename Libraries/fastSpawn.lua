@@ -2,6 +2,7 @@
 -- unlike coroutines, does not obscure errors
 -- @module fastSpawn
 
+--[[
 return function(func, ...)
 	assert(type(func) == "function")
 
@@ -15,4 +16,9 @@ return function(func, ...)
 
 	bindable:Fire()
 	bindable:Destroy()
+end
+--]]
+
+return function(func, ...)
+	return task.spawn(func, ...)
 end

@@ -28,7 +28,7 @@ local ResizeTool = {
 	Directions = 'Normal';
 }
 
-ResizeTool.ManualText = [[<font face="GothamBlack" size="16">Resize Tool  🛠</font>
+ResizeTool.ManualText = [[<font face="MontserratBlack" size="16">Resize Tool  🛠</font>
 Allows you to resize parts.<font size="12"><br /></font>
 <font size="12" color="rgb(150, 150, 150)"><b>Directions</b></font>
 Lets you choose in which directions to resize the part.<font size="6"><br /></font>
@@ -115,7 +115,7 @@ function ShowUI()
 		return;
 
 	end;
-
+	
 	-- Create the UI
 	ResizeTool.UI = Core.Tool.Interfaces.BTResizeToolGUI:Clone();
 	ResizeTool.UI.Parent = Core.UI;
@@ -866,7 +866,7 @@ function StartSnapping()
 			ScreenSnappedPoint = Vector2.new(ScreenSnappedPoint.X, ScreenSnappedPoint.Y);
 
 			-- Calculate direction setting length
-			local DirectionSettingLength = math.min(50, math.max(50, (SnappingStartAim - ScreenSnappedPoint).magnitude * 1.5));
+			local DirectionSettingLength = math.min(50, math.max(50, (SnappingStartAim - ScreenSnappedPoint).Magnitude * 1.5));
 
 			-- Use the mouse position to figure out the resize direction (until after direction setting length)
 			if SnappingStage == 'Direction' then
@@ -921,7 +921,7 @@ function StartSnapping()
 				DirectionLine.Visible = true;
 
 				-- Check if drag has passed direction setting length
-				local Length = (SnappingEndAim - ScreenSnappedPoint).magnitude;
+				local Length = (SnappingEndAim - ScreenSnappedPoint).Magnitude;
 				if Length < DirectionSettingLength then
 					return;
 				end;
@@ -966,7 +966,7 @@ function StartSnapping()
 			if SnappingStage == 'Destination' then
 
 				-- Calculate direction and distance to resize towards
-				local Direction = (SnappingDirectionOffset - SnappingStartPoint).unit;
+				local Direction = (SnappingDirectionOffset - SnappingStartPoint).Unit;
 				local Distance = (SnappedPoint - SnappingStartPoint):Dot(Direction);
 
 				-- Resize the parts on the selected faces by the calculated distance
@@ -991,7 +991,7 @@ function StartSnapping()
 					local AlignmentCenter = ScreenStartPoint:Lerp(ScreenDestinationPoint, 0.5);
 					AlignmentLine.Position = UDim2.new(0, AlignmentCenter.X, 0, AlignmentCenter.Y);
 					AlignmentLine.Rotation = AlignmentAngle;
-					AlignmentLine.Size = UDim2.new(0, (ScreenDestinationPoint - ScreenStartPoint).magnitude, 0, 1);
+					AlignmentLine.Size = UDim2.new(0, (ScreenDestinationPoint - ScreenStartPoint).Magnitude, 0, 1);
 					AlignmentLine.PointMarkerA.Rotation = -AlignmentAngle;
 					AlignmentLine.Visible = true;
 
@@ -1104,7 +1104,7 @@ function GetFacesFromCorner(Part, Point)
 		local Face = Part.CFrame * (Part.Size / 2 * Vector3.FromNormalId(FaceEnum));
 
 		-- Get the face's proximity to the point
-		local Proximity = (Point - Face).magnitude;
+		local Proximity = (Point - Face).Magnitude;
 
 		-- Keep track of the proximity to the point
 		table.insert(Faces, { Proximity = Proximity, Face = FaceEnum });

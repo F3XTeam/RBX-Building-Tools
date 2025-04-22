@@ -73,7 +73,7 @@ function Serialization.SerializeModel(Items)
 			Datum[4] = Item.Size.X;
 			Datum[5] = Item.Size.Y;
 			Datum[6] = Item.Size.Z;
-			Support.ConcatTable(Datum, { Item.CFrame:components() });
+			Support.ConcatTable(Datum, { Item.CFrame:GetComponents() });
 			Datum[19] = Item.Color.r;
 			Datum[20] = Item.Color.g;
 			Datum[21] = Item.Color.b;
