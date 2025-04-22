@@ -40,7 +40,7 @@ function SnapTracking.StartTracking(Callback)
 
 		-- Find the current target part and point
 		local TargetRay = workspace.CurrentCamera:ScreenPointToRay(Input.Position.X, Input.Position.Y);
-		local TargetPart, TargetPoint, TargetNormal, TargetMaterial = workspace:FindPartOnRayWithIgnoreList(
+		local TargetPart, TargetPoint = workspace:FindPartOnRayWithIgnoreList(
 			Ray.new(TargetRay.Origin, TargetRay.Direction * 5000),
 			TargetBlacklist
 		);

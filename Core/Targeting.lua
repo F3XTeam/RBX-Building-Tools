@@ -114,15 +114,15 @@ function TargetingModule:FindTargetInScope(Target, Scope)
 			return Target
 		end
 	end
-
+	return
 end
 
 function TargetingModule:UpdateTarget(Scope, Force)
-	local Scope = Scope or self.Scope
+	local scope = Scope or self.Scope
 
 	-- Get target
 	local NewTarget = Mouse.Target
-	local NewScopeTarget = self:FindTargetInScope(NewTarget, Scope)
+	local NewScopeTarget = self:FindTargetInScope(NewTarget, scope)
 
 	-- Register whether target has changed
 	if (self.LastTarget == NewTarget) and (not Force) then
@@ -161,19 +161,19 @@ function TargetingModule:UpdateTarget(Scope, Force)
 end
 
 local function GetVisibleChildren(Item, Table)
-	local Table = Table or {}
+	local tbl = Table or {}
 
 	-- Search for visible items recursively
 	for _, Item in pairs(Item:GetChildren()) do
 		if IsVisible(Item) then
-			Table[#Table + 1] = Item
+			tbl[#tbl + 1] = Item
 		else
-			GetVisibleChildren(Item, Table)
+			GetVisibleChildren(Item, tbl)
 		end
 	end
 
 	-- Return visible items
-	return Table
+	return tbl
 end
 
 -- Create target box pool
@@ -226,6 +226,7 @@ local function IsAncestorSelected(Item)
 			Item = Item.Parent
 		end
 	end
+	return
 end
 
 function TargetingModule.SelectTarget(Force)
@@ -275,15 +276,15 @@ function TargetingModule.SelectSiblings(Part, ReplaceSelection)
 	-- Selects all parts under the same parent as `Part`
 
 	-- If a part is not specified, assume the currently focused part
-	local Part = Part or Selection.Focus;
+	local part = Part or Selection.Focus;
 
 	-- Ensure the part exists and its parent is not Workspace
-	if not Part or Part.Parent == TargetingModule.Scope then
+	if not part or part.Parent == TargetingModule.Scope then
 		return;
 	end;
 
 	-- Get the focused item's siblings
-	local Siblings = Support.GetDescendantsWhichAreA(Part.Parent, 'BasePart')
+	local Siblings = Support.GetDescendantsWhichAreA(part.Parent, 'BasePart')
 
 	-- Ensure items are selectable
 	if not GetCore().IsSelectable(Siblings) then
@@ -394,14 +395,14 @@ end;
 function TargetingModule.FinishRectangleSelecting()
 	local Core = GetCore()
 
-	local RectangleSelecting = RectangleSelecting;
-	local RectangleSelectStart = RectangleSelectStart;
+	local rectangleSelecting = RectangleSelecting;
+	local rectangleSelectStart = RectangleSelectStart;
 
 	-- Clear rectangle selection
 	TargetingModule.CancelRectangleSelecting();
 
 	-- Ensure rectangle selection is ongoing
-	if not RectangleSelecting then
+	if not rectangleSelecting then
 		return;
 	end;
 
@@ -412,12 +413,12 @@ function TargetingModule.FinishRectangleSelecting()
 
 	-- Get rectangle dimensions
 	local StartPoint = Vector2.new(
-		math.min(RectangleSelectStart.X, Mouse.X),
-		math.min(RectangleSelectStart.Y, Mouse.Y)
+		math.min(rectangleSelectStart.X, Mouse.X),
+		math.min(rectangleSelectStart.Y, Mouse.Y)
 	);
 	local EndPoint = Vector2.new(
-		math.max(RectangleSelectStart.X, Mouse.X),
-		math.max(RectangleSelectStart.Y, Mouse.Y)
+		math.max(rectangleSelectStart.X, Mouse.X),
+		math.max(rectangleSelectStart.Y, Mouse.Y)
 	);
 
 	local SelectableItems = {};
@@ -463,11 +464,11 @@ function TargetingModule.PrismSelect()
 	-- Get region for selection items and find potential parts
 	local Extents = require(Core.Tool.Core.BoundingBox).CalculateExtents(Selection.Items, nil, true);
 	local Region = Region3.new(Extents.Min, Extents.Max);
-	
+
 	local Params = OverlapParams.new()
 	Params.FilterDescendantsInstances = Selection.Items
 	Params.MaxParts = math.huge
-	
+
 	local PotentialParts = Workspace:GetPartBoundsInBox(Region.CFrame, Region.Size, Params);
 
 	-- Enable collision on all potential parts

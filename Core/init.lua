@@ -29,11 +29,16 @@ local Maid = require(Tool.Libraries:WaitForChild 'Maid')
 local Cryo = require(Tool.Libraries:WaitForChild('Cryo'))
 
 -- References
+local ChangeHistoryService = game:GetService('ChangeHistoryService')
+local CollectionService = game:GetService('CollectionService')
+local Players = game:GetService('Players')
+local MarketplaceService = game:GetService("MarketplaceService")
+local RunService = game:GetService('RunService')
+local SelectionService = game:GetService('Selection')
+local UserInputService = game:GetService('UserInputService')
 Support.ImportServices();
 SyncAPI = Tool.SyncAPI;
 Player = Players.LocalPlayer;
-local CollectionService = game:GetService('CollectionService')
-local RunService = game:GetService('RunService')
 
 -- Preload assets
 Assets = require(Tool.Assets)
@@ -41,7 +46,9 @@ Assets = require(Tool.Assets)
 -- Core events
 ToolChanged = Signal.new()
 
-function EquipTool(Tool)
+CurrentTool = nil
+
+function EquipTool(tool)
 	-- Equips and switches to the given tool
 
 	-- Unequip current tool
@@ -51,14 +58,14 @@ function EquipTool(Tool)
 	end;
 
 	-- Set `Tool` as current
-	CurrentTool = Tool;
+	CurrentTool = tool;
 	CurrentTool.Equipped = true;
 
 	-- Fire relevant events
-	ToolChanged:Fire(Tool);
+	ToolChanged:Fire(tool);
 
 	-- Equip the tool
-	Tool:Equip();
+	tool:Equip();
 
 end;
 
@@ -67,9 +74,9 @@ function RecolorHandle(Color)
 end;
 
 -- Theme UI to current tool
-ToolChanged:Connect(function (Tool)
-	coroutine.wrap(RecolorHandle)(Tool.Color);
-	coroutine.wrap(Selection.RecolorOutlines)(Tool.Color);
+ToolChanged:Connect(function (tool)
+	coroutine.wrap(RecolorHandle)(tool.Color);
+	coroutine.wrap(Selection.RecolorOutlines)(tool.Color);
 end);
 
 -- Core hotkeys
@@ -121,9 +128,7 @@ function EnableHotkeys()
 
 		-- Prioritize hotkeys based on # of required keys
 		table.sort(Hotkeys, function (A, B)
-			if #A.Keys > #B.Keys then
-				return true;
-			end;
+			return #A.Keys > #B.Keys
 		end);
 
 		-- Identify matching hotkeys
@@ -234,6 +239,7 @@ function Enable(Mouse)
 	IsEnabling = false;
 	Enabled:Fire();
 
+	return
 end;
 
 function Disable()
@@ -278,6 +284,8 @@ function Disable()
 	IsDisabling = false;
 	Disabled:Fire();
 
+	return
+
 end;
 
 
@@ -314,11 +322,11 @@ function InitializeUI()
 	local DockHandle = Roact.mount(DockElement, UI, 'Dock')
 
 	-- Provide API for adding tool buttons to dock
-	local function AddToolButton(IconAssetId, HotkeyLabel, Tool)
+	local function AddToolButton(IconAssetId, HotkeyLabel, tool)
 		table.insert(ToolList, {
 			IconAssetId = IconAssetId;
 			HotkeyLabel = HotkeyLabel;
-			Tool = Tool;
+			Tool = tool;
 		})
 
 		-- Update dock
@@ -359,7 +367,7 @@ function OpenExplorer()
 	end
 
 	-- Initialize explorer
-	Explorer = Roact.createElement(ExplorerTemplate, {
+	local Explorer = Roact.createElement(ExplorerTemplate, {
 		Core = getfenv(debug.info(0, 'f')),
 		Close = CloseExplorer,
 		Scope = Targeting.Scope
@@ -415,7 +423,7 @@ AssignHotkey({ 'RightShift', 'H' }, ToggleExplorer)
 if Mode == 'Plugin' then
 
 	-- Set the UI root
-	UIContainer = CoreGui;
+	UIContainer = game:GetService("CoreGui");
 
 	-- Create the toolbar button
 	PluginButton = Plugin:CreateToolbar('Building Tools by F3X'):CreateButton(
@@ -423,6 +431,8 @@ if Mode == 'Plugin' then
 		'Building Tools by F3X',
 		Assets.PluginIcon
 	);
+
+	local PluginEnabled
 
 	-- Connect the button to the system
 	PluginButton.Click:Connect(function ()
@@ -823,11 +833,11 @@ AssignHotkey({ 'RightShift', 'F' }, Support.Call(GroupSelection, 'Folder'))
 AssignHotkey({ 'LeftShift', 'U' }, UngroupSelection)
 AssignHotkey({ 'RightShift', 'U' }, UngroupSelection)
 
-function GetPartsFromSelection(Selection)
+function GetPartsFromSelection(selection)
 	local Parts = {}
 
 	-- Get parts from selection
-	for _, Item in pairs(Selection) do
+	for _, Item in pairs(selection) do
 		if Item:IsA 'BasePart' then
 			Parts[#Parts + 1] = Item
 
@@ -872,6 +882,7 @@ function IsSelectable(Items)
 	return true
 
 end
+do local _ = IsSelectable end
 
 function ExportSelection()
 	-- Exports the selected parts
@@ -955,9 +966,9 @@ function IsVersionOutdated()
 	local CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion = Tool.Version.Value:match '([0-9]+)%.([0-9]+)%.([0-9]+)';
 
 	-- Convert version data into numbers
-	local LatestMajorVersion, LatestMinorVersion, LatestPatchVersion =
+	LatestMajorVersion, LatestMinorVersion, LatestPatchVersion =
 		tonumber(LatestMajorVersion), tonumber(LatestMinorVersion), tonumber(LatestPatchVersion);
-	local CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion =
+	CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion =
 		tonumber(CurrentMajorVersion), tonumber(CurrentMinorVersion), tonumber(CurrentPatchVersion);
 
 	-- Determine whether current version is outdated
@@ -975,6 +986,7 @@ function IsVersionOutdated()
 	return false;
 
 end;
+do local _ = IsVersionOutdated end
 
 function ToggleSwitch(CurrentButtonName, SwitchContainer)
 	-- Toggles between the buttons in a switch
@@ -1005,6 +1017,7 @@ function ToggleSwitch(CurrentButtonName, SwitchContainer)
 
 	end;
 end;
+do local _ = ToggleSwitch end
 
 -- References to reduce indexing time
 local GetConnectedParts = Instance.new('Part').GetConnectedParts;
@@ -1068,6 +1081,7 @@ function RestoreJoints(Joints)
 	end;
 
 end;
+do local _ = RestoreJoints end
 
 function PreserveJoints(Part, Whitelist)
 	-- Preserves and returns intentional joints of `Part` connecting parts in `Whitelist`
@@ -1084,6 +1098,7 @@ function PreserveJoints(Part, Whitelist)
 	return Joints;
 
 end;
+do local _ = PreserveJoints end
 
 -- Initialize the UI
 InitializeUI();

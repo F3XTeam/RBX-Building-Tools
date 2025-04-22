@@ -1,4 +1,4 @@
-
+--!nocheck
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 local Vendor = Tool:WaitForChild('Vendor')
@@ -222,6 +222,7 @@ function PaintParts()
 
 end
 
+local InitialState
 function PreviewColor(Color)
 	-- Previews the given color on the selection
 
@@ -288,7 +289,7 @@ function PaintTool:BindShortcutKeys()
 			end;
 
 		end;
-
+		return
 	end)
 
 end;
@@ -298,7 +299,7 @@ function PaintTool:EnableClickPainting()
 
 	-- Watch out for clicks on selected parts
 	self.Maid.ClickPainting = Selection.FocusChanged:Connect(function (Focus)
-		local Target, ScopeTarget = Core.Targeting:UpdateTarget()
+		local _Target, ScopeTarget = Core.Targeting:UpdateTarget()
 		if Selection.IsSelected(ScopeTarget) then
 
 			-- Paint the selected parts

@@ -325,6 +325,8 @@ function SupportLibrary.HSVToRGB(Hue, Saturation, Value)
 	elseif HueSector == 5 then
 		return Value, P, Q;
 	end;
+
+	return
 end;
 
 function SupportLibrary.RGBToHSV(Red, Green, Blue)
@@ -507,7 +509,7 @@ function SupportLibrary.AddUserInputListener(InputState, InputTypeFilter, CatchA
 		if GameProcessedEvent and not CatchAll then
 			return;
 		end;
-		
+
 
 		-- Make sure this is the right input type
 		if not InputTypes[Input.UserInputType.Name] then
@@ -663,7 +665,7 @@ function SupportLibrary.ChainCall(...)
 		-- Get arguments
 		local Arguments = { ... };
 
-		-- Go through each function and store the returned data to reuse in the next function's arguments 
+		-- Go through each function and store the returned data to reuse in the next function's arguments
 		for _, Function in ipairs(Chain) do
 			Arguments = { Function(unpack(Arguments)) };
 		end;

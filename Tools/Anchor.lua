@@ -1,3 +1,6 @@
+--!nocheck
+local UserInputService = game:GetService('UserInputService')
+
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 

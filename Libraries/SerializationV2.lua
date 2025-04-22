@@ -3,6 +3,7 @@ Serialization = {};
 -- Import services
 local Tool = script.Parent.Parent
 local Support = require(Tool.Libraries.SupportLibrary);
+local HttpService = game:GetService("HttpService")
 Support.ImportServices();
 
 local Types = {

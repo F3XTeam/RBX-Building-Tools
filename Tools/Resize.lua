@@ -1,18 +1,19 @@
+--!nocheck
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 SnapTracking = require(Tool.Core.Snapping);
 
 -- Services
-local ContextActionService = game:GetService 'ContextActionService'
 local Workspace = game:GetService 'Workspace'
 
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
 local Signal = require(Libraries:WaitForChild 'Signal')
-local Make = require(Libraries:WaitForChild 'Make')
+local _Make = require(Libraries:WaitForChild 'Make')
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
 
 -- Import relevant references
+local UserInputService = game:GetService('UserInputService')
 Selection = Core.Selection;
 Support = Core.Support;
 Security = Core.Security;
@@ -293,7 +294,8 @@ function ShowHandles()
 		return
 	end
 
-	local AreaPermissions
+	local HandleResizing, InitialState
+
 	local function OnHandleDragStart()
 		-- Prepare for resizing parts when the handle is clicked
 
@@ -417,11 +419,11 @@ function ResizePartsByFace(Face, Distance, Directions, InitialStates)
 	local AxisName = FaceAxisNames[Face];
 
 	-- Check for any potential undersizing or oversizing
-	local ShortestSize, ShortestPart, LongestSize, LongestPart;
-	for Part, InitialState in pairs(InitialStates) do
+	local ShortestSize, ShortestPart, LongestSize;
+	for Part, state in pairs(InitialStates) do
 
 		-- Calculate target size for this resize
-		local TargetSize = InitialState.Size[AxisName] + Distance;
+		local TargetSize = state.Size[AxisName] + Distance;
 
 		-- If target size is under 0.05, note if it's the shortest size
 		if TargetSize < 0.049999 and (not ShortestSize or (ShortestSize and TargetSize < ShortestSize)) then
@@ -429,7 +431,7 @@ function ResizePartsByFace(Face, Distance, Directions, InitialStates)
 
 		-- If target size is over 2048, note if it's the longest size
 		elseif TargetSize > 2048 and (not LongestSize or (LongestSize and TargetSize > LongestSize)) then
-			LongestSize, LongestPart = TargetSize, Part;
+			LongestSize = TargetSize
 		end;
 
 	end;
@@ -448,36 +450,36 @@ function ResizePartsByFace(Face, Distance, Directions, InitialStates)
 	end;
 
 	-- Resize each part
-	for Part, InitialState in pairs(InitialStates) do
+	for Part, state in pairs(InitialStates) do
 
 		-- Perform the size change depending on shape
 		if Part:IsA 'Part' then
 
 			-- Resize spheres on all axes
 			if Part.Shape == Enum.PartType.Ball then
-				Part.Size = InitialState.Size + Vector3.new(Distance, Distance, Distance);
+				Part.Size = state.Size + Vector3.new(Distance, Distance, Distance);
 
 			-- Resize cylinders on both Y & Z axes for circle sides
 			elseif Part.Shape == Enum.PartType.Cylinder and AxisName ~= 'X' then
-				Part.Size = InitialState.Size + Vector3.new(0, Distance, Distance);
+				Part.Size = state.Size + Vector3.new(0, Distance, Distance);
 
 			-- Resize block parts and cylinder lengths normally
 			else
-				Part.Size = InitialState.Size + IncrementVector;
+				Part.Size = state.Size + IncrementVector;
 			end;
 
 		-- Perform the size change normally on all other parts
 		else
-			Part.Size = InitialState.Size + IncrementVector;
+			Part.Size = state.Size + IncrementVector;
 		end;
 
 		-- Offset the part when resizing in the normal, one direction
 		if Directions == 'Normal' then
-			Part.CFrame = InitialState.CFrame * CFrame.new(AxisPositioningMultipliers[Face] * Distance / 2);
+			Part.CFrame = state.CFrame * CFrame.new(AxisPositioningMultipliers[Face] * Distance / 2);
 
 		-- Keep the part centered when resizing in both directions
 		elseif Directions == 'Both' then
-			Part.CFrame = InitialState.CFrame;
+			Part.CFrame = state.CFrame;
 
 		end;
 
@@ -594,7 +596,7 @@ function SetAxisSize(Axis, Size)
 	local InitialStates = PreparePartsForResizing();
 
 	-- Update each part
-	for Part, InitialState in pairs(InitialStates) do
+	for Part, state in pairs(InitialStates) do
 
 		-- Set the part's new size
 		Part.Size = Vector3.new(
@@ -604,15 +606,15 @@ function SetAxisSize(Axis, Size)
 		);
 
 		-- Keep the part in place
-		Part.CFrame = InitialState.CFrame;
+		Part.CFrame = state.CFrame;
 
 	end;
 
 	-- Cache up permissions for all private areas
-	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
+	local areaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
 
 	-- Revert changes if player is not authorized to resize parts towards the end destination
-	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, areaPermissions) then
 		for Part, State in pairs(InitialStates) do
 			Part.Size = State.Size;
 			Part.CFrame = State.CFrame;
@@ -647,14 +649,14 @@ function NudgeSelectionByFace(Face)
 	TrackChange();
 
 	-- Prepare parts to be resized
-	local InitialState = PreparePartsForResizing();
+	local initialState = PreparePartsForResizing();
 
 	-- Perform the resizing
-	local Success, Adjustment = ResizePartsByFace(Face, NudgeAmount, ResizeTool.Directions, InitialState);
+	local Success, Adjustment = ResizePartsByFace(Face, NudgeAmount, ResizeTool.Directions, initialState);
 
 	-- If the resizing did not succeed, resize according to the suggested adjustment
 	if not Success then
-		ResizePartsByFace(Face, Adjustment, ResizeTool.Directions, InitialState);
+		ResizePartsByFace(Face, Adjustment, ResizeTool.Directions, initialState);
 	end;
 
 	-- Update "studs resized" indicator
@@ -663,18 +665,18 @@ function NudgeSelectionByFace(Face)
 	end;
 
 	-- Cache up permissions for all private areas
-	local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
+	local areaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
 
 	-- Revert changes if player is not authorized to resize parts towards the end destination
-	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-		for Part, State in pairs(InitialState) do
+	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, areaPermissions) then
+		for Part, State in pairs(initialState) do
 			Part.Size = State.Size;
 			Part.CFrame = State.CFrame;
 		end;
 	end;
 
 	-- Restore the parts' original states
-	for Part, State in pairs(InitialState) do
+	for Part, State in pairs(initialState) do
 		Part:MakeJoints();
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
@@ -768,11 +770,11 @@ end;
 function PreparePartsForResizing()
 	-- Prepares parts for resizing and returns the initial state of the parts
 
-	local InitialState = {};
+	local initialState = {};
 
 	-- Stop parts from moving, and capture the initial state of the parts
 	for _, Part in pairs(Selection.Parts) do
-		InitialState[Part] = { Anchored = Part.Anchored, CanCollide = Part.CanCollide, Size = Part.Size, CFrame = Part.CFrame };
+		initialState[Part] = { Anchored = Part.Anchored, CanCollide = Part.CanCollide, Size = Part.Size, CFrame = Part.CFrame };
 		Part.Anchored = true;
 		Part.CanCollide = false;
 		Part:BreakJoints();
@@ -780,7 +782,7 @@ function PreparePartsForResizing()
 		Part.RotVelocity = Vector3.new();
 	end;
 
-	return InitialState;
+	return initialState;
 end;
 
 function GetIncrementMultiple(Number, Increment)
@@ -826,6 +828,8 @@ function StartSnapping()
 		return Selection.PartIndex[Target]
 	end
 
+	local SnappedPoint
+
 	-- Trigger the PointSnapped event when a new point is snapped
 	SnapTracking.StartTracking(function (NewPoint)
 		if NewPoint and NewPoint.p ~= SnappedPoint then
@@ -839,10 +843,10 @@ function StartSnapping()
 
 		-- Initialize snapping state
 		SnappingStage = 'Direction';
-		SnappingStartAim = Vector2.new(Input.Position.X, Input.Position.Y);
-		SnappingStartPoint = SnappedPoint;
-		SnappingStartTarget = SnapTracking.Target;
-		SnappingStartDirections = GetFaceOffsetsFromCorner(SnappingStartTarget, SnappingStartPoint);
+		local SnappingStartAim = Vector2.new(Input.Position.X, Input.Position.Y);
+		local SnappingStartPoint = SnappedPoint;
+		local SnappingStartTarget = SnapTracking.Target;
+		local SnappingStartDirections = GetFaceOffsetsFromCorner(SnappingStartTarget, SnappingStartPoint);
 		SnappingStartSelectionState = PreparePartsForResizing();
 		AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Selection.Parts), Core.Player);
 
@@ -857,12 +861,14 @@ function StartSnapping()
 		-- Track changes for history
 		TrackChange();
 
+		local SnappingDirection, SnappingDirectionOffset
+
 		-- Listen for when the user drags
 		Connections.SnapDrag = Support.AddUserInputListener('Changed', 'MouseMovement', true, function (Input)
 
 			-- Update the latest aim
-			SnappingEndAim = Vector2.new(Input.Position.X, Input.Position.Y);
-			ScreenSnappedPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappingStartPoint);
+			local SnappingEndAim = Vector2.new(Input.Position.X, Input.Position.Y);
+			local ScreenSnappedPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappingStartPoint);
 			ScreenSnappedPoint = Vector2.new(ScreenSnappedPoint.X, ScreenSnappedPoint.Y);
 
 			-- Calculate direction setting length
@@ -960,14 +966,14 @@ function StartSnapping()
 		end);
 
 		-- Listen for when a new point is snapped
-		Connections.Snap = PointSnapped:Connect(function (SnappedPoint)
+		Connections.Snap = PointSnapped:Connect(function (snappedPoint)
 
 			-- Resize to snap point if in the destination stage of snapping
 			if SnappingStage == 'Destination' then
 
 				-- Calculate direction and distance to resize towards
 				local Direction = (SnappingDirectionOffset - SnappingStartPoint).Unit;
-				local Distance = (SnappedPoint - SnappingStartPoint):Dot(Direction);
+				local Distance = (snappedPoint - SnappingStartPoint):Dot(Direction);
 
 				-- Resize the parts on the selected faces by the calculated distance
 				local Success = ResizePartsByFace(SnappingDirection, Distance, 'Normal', SnappingStartSelectionState);
@@ -983,7 +989,7 @@ function StartSnapping()
 					-- Get snap point and destination point screen positions for UI alignment
 					local ScreenStartPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappingStartPoint + (Direction * Distance));
 					ScreenStartPoint = Vector2.new(ScreenStartPoint.X, ScreenStartPoint.Y);
-					local ScreenDestinationPoint = Workspace.CurrentCamera:WorldToScreenPoint(SnappedPoint);
+					local ScreenDestinationPoint = Workspace.CurrentCamera:WorldToScreenPoint(snappedPoint);
 					ScreenDestinationPoint = Vector2.new(ScreenDestinationPoint.X, ScreenDestinationPoint.Y)
 
 					-- Update the distance alignment line

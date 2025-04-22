@@ -70,7 +70,7 @@ function Selection.Add(Items, RegisterHistory)
 	-- Adds the given items to the selection
 
 	-- Get core API
-	local Core = GetCore();
+	local _Core = GetCore();
 
 	-- Go through and validate each given item
 	local SelectableItems = {};
@@ -348,6 +348,8 @@ local function GetVisibleFocus(Item)
 			Item:FindFirstChildWhichIsA('BasePart', true) or
 			Item:FindFirstChildWhichIsA('Model', true)
 	end
+
+	return
 end
 
 function Selection.SetFocus(Item)
@@ -390,19 +392,19 @@ function GetCore()
 end;
 
 local function GetVisibleChildren(Item, Table)
-	local Table = Table or {}
+	local tbl = Table or {}
 
 	-- Search for visible items recursively
 	for _, Item in pairs(Item:GetChildren()) do
 		if IsVisible(Item) then
-			Table[#Table + 1] = Item
+			tbl[#tbl + 1] = Item
 		else
-			GetVisibleChildren(Item, Table)
+			GetVisibleChildren(Item, tbl)
 		end
 	end
 
 	-- Return visible items
-	return Table
+	return tbl
 end
 
 -- Create target box pool

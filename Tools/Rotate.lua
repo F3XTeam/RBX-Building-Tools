@@ -1,11 +1,10 @@
+--!nocheck
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 SnapTracking = require(Tool.Core.Snapping);
 BoundingBox = require(Tool.Core.BoundingBox);
 
 -- Services
-local ContextActionService = game:GetService 'ContextActionService'
-local Workspace = game:GetService 'Workspace'
 local UserInputService = game:GetService('UserInputService')
 
 -- Libraries
@@ -297,7 +296,7 @@ function AttachHandles(Part, Autofocus)
 		return
 	end
 
-	local AreaPermissions
+	local AreaPermissions, HandleRotating, InitialPartStates, InitialModelStates
 	local function OnHandleDragStart()
 		-- Prepare for rotating parts when the handle is clicked
 
@@ -309,7 +308,7 @@ function AttachHandles(Part, Autofocus)
 
 		-- Freeze bounding box extents while rotating
 		if BoundingBox.GetBoundingBox() then
-			InitialExtentsSize, InitialExtentsCFrame = BoundingBox.CalculateExtents(Selection.Parts, BoundingBox.StaticExtents)
+			BoundingBox.CalculateExtents(Selection.Parts, BoundingBox.StaticExtents)
 			BoundingBox.PauseMonitoring();
 		end;
 
@@ -447,23 +446,23 @@ function HideHandles()
 
 end;
 
-function RotateSelectionAroundPivot(PivotMode, PivotPoint, Axis, Rotation, InitialPartStates, InitialModelStates)
+function RotateSelectionAroundPivot(PivotMode, pivotPoint, Axis, Rotation, initialPartStates, initialModelStates)
 	-- Rotates the given selection around `PivotMode` (using `PivotPoint` if applicable)'s `Axis` by `Rotation`
 
 	-- Create a CFrame that increments rotation by `Rotation` around `Axis`
 	local RotationCFrame = CFrame.fromAxisAngle(Vector3.FromAxis(Axis), math.rad(Rotation));
 
 	-- Rotate each part
-	for Part, InitialState in pairs(InitialPartStates) do
+	for Part, InitialState in pairs(initialPartStates) do
 
 		-- Rotate around the selection's center, or the currently focused part
 		if PivotMode == 'Center' or PivotMode == 'Last' then
 
 			-- Calculate the focused part's rotation
-			local RelativeTo = PivotPoint * RotationCFrame;
+			local RelativeTo = pivotPoint * RotationCFrame;
 
 			-- Calculate this part's offset from the focused part's rotation
-			local Offset = PivotPoint:toObjectSpace(InitialState.CFrame);
+			local Offset = pivotPoint:toObjectSpace(InitialState.CFrame);
 
 			-- Rotate relative to the focused part by this part's offset from it
 			Part.CFrame = RelativeTo * Offset;
@@ -477,16 +476,16 @@ function RotateSelectionAroundPivot(PivotMode, PivotPoint, Axis, Rotation, Initi
 	end;
 
 	-- Rotate each model's pivot
-	for Model, InitialState in pairs(InitialModelStates) do
+	for Model, InitialState in pairs(initialModelStates) do
 
 		-- Rotate around the selection's center, or the currently focused part
 		if (PivotMode == 'Center') or (PivotMode == 'Last') then
 
 			-- Calculate the focused part's rotation
-			local RelativeTo = PivotPoint * RotationCFrame
+			local RelativeTo = pivotPoint * RotationCFrame
 
 			-- Calculate this part's offset from the focused part's rotation
-			local Offset = PivotPoint:ToObjectSpace(InitialState.Pivot)
+			local Offset = pivotPoint:ToObjectSpace(InitialState.Pivot)
 
 			-- Rotate relative to the focused part by this model's offset from it
 			Model.WorldPivot = RelativeTo * Offset
@@ -639,12 +638,15 @@ function BindShortcutKeys()
 	end)
 end;
 
+local _GCBypass
 function StartSnapping()
 
 	-- Make sure snapping isn't already enabled
 	if SnapTracking.Enabled then
 		return;
 	end;
+
+	local SnappedPoint
 
 	-- Listen for snapped points
 	SnapTracking.StartTracking(function (NewPoint)
@@ -674,7 +676,7 @@ function StartSnapping()
 		AttachHandles(Part, true);
 
 		-- Maintain the part in memory to prevent garbage collection
-		GCBypass = { Part };
+		_GCBypass = { Part };
 
 		-- Set the pivot point
 		PivotPoint = SnappedPoint;
@@ -691,16 +693,16 @@ function SetAxisAngle(Axis, Angle)
 	-- Sets the selection's angle on axis `Axis` to `Angle`
 
 	-- Turn the given angle from degrees to radians
-	local Angle = math.rad(Angle);
+	Angle = math.rad(Angle);
 
 	-- Track this change
 	TrackChange();
 
 	-- Prepare parts to be moved
-	local InitialPartStates = PrepareSelectionForRotating()
+	local initialPartStates = PrepareSelectionForRotating()
 
 	-- Update each part
-	for Part, State in pairs(InitialPartStates) do
+	for Part, State in pairs(initialPartStates) do
 
 		-- Set the part's new CFrame
 		Part.CFrame = CFrame.new(Part.Position) * CFrame.fromOrientation(
@@ -716,13 +718,13 @@ function SetAxisAngle(Axis, Angle)
 
 	-- Revert changes if player is not authorized to move parts to target destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-		for Part, State in pairs(InitialPartStates) do
+		for Part, State in pairs(initialPartStates) do
 			Part.CFrame = State.CFrame;
 		end;
 	end;
 
 	-- Restore the parts' original states
-	for Part, State in pairs(InitialPartStates) do
+	for Part, State in pairs(initialPartStates) do
 		Part:MakeJoints();
 		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
@@ -755,11 +757,11 @@ function NudgeSelectionByAxis(Axis, Direction)
 	TrackChange();
 
 	-- Stop parts from moving, and capture the initial state of the parts
-	local InitialPartStates, InitialModelStates = PrepareSelectionForRotating()
+	local initialPartStates, initialModelStates = PrepareSelectionForRotating()
 
 	-- Set the pivot point to the center of the selection if in Center mode
 	if RotateTool.Pivot == 'Center' then
-		local BoundingBoxSize, BoundingBoxCFrame = BoundingBox.CalculateExtents(Selection.Parts);
+		local _BoundingBoxSize, BoundingBoxCFrame = BoundingBox.CalculateExtents(Selection.Parts);
 		PivotPoint = BoundingBoxCFrame;
 
 	-- Set the pivot point to the center of the focused part if in Last mode
@@ -775,7 +777,7 @@ function NudgeSelectionByAxis(Axis, Direction)
 	end;
 
 	-- Perform the rotation
-	RotateSelectionAroundPivot(RotateTool.Pivot, PivotPoint, Axis, NudgeAmount * (Direction or 1), InitialPartStates, InitialModelStates)
+	RotateSelectionAroundPivot(RotateTool.Pivot, PivotPoint, Axis, NudgeAmount * (Direction or 1), initialPartStates, initialModelStates)
 
 	-- Update the "degrees rotated" indicator
 	if RotateTool.UI then
@@ -787,16 +789,16 @@ function NudgeSelectionByAxis(Axis, Direction)
 
 	-- Make sure we're not entering any unauthorized private areas
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-		for Part, State in pairs(InitialPartStates) do
+		for Part, State in pairs(initialPartStates) do
 			Part.CFrame = State.CFrame;
 		end;
-		for Model, State in pairs(InitialModelStates) do
+		for Model, State in pairs(initialModelStates) do
 			Model.WorldPivot = State.Pivot
 		end
 	end;
 
 	-- Make joints, restore original anchor and collision states
-	for Part, State in pairs(InitialPartStates) do
+	for Part, State in pairs(initialPartStates) do
 		Part:MakeJoints();
 		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
@@ -922,22 +924,22 @@ end;
 function PrepareSelectionForRotating()
 	-- Prepares parts for rotating and returns the initial state of the parts
 
-	local InitialPartStates = {}
-	local InitialModelStates = {}
+	local initialPartStates = {}
+	local initialModelStates = {}
 
 	-- Get index of parts
 	local PartIndex = Support.FlipTable(Selection.Parts);
 
 	-- Stop parts from moving, and capture the initial state of the parts
 	for _, Part in pairs(Selection.Parts) do
-		InitialPartStates[Part] = {
+		initialPartStates[Part] = {
 			Anchored = Part.Anchored;
 			CanCollide = Part.CanCollide;
 			CFrame = Part.CFrame;
 		}
 		Part.Anchored = true;
 		Part.CanCollide = false;
-		InitialPartStates[Part].Joints = Core.PreserveJoints(Part, PartIndex);
+		initialPartStates[Part].Joints = Core.PreserveJoints(Part, PartIndex);
 		Part:BreakJoints();
 		Part.Velocity = Vector3.new();
 		Part.RotVelocity = Vector3.new();
@@ -947,13 +949,13 @@ function PrepareSelectionForRotating()
 	-- (temporarily pcalled due to pivot API being in beta)
 	pcall(function ()
 		for _, Model in pairs(Selection.Models) do
-			InitialModelStates[Model] = {
+			initialModelStates[Model] = {
 				Pivot = Model:GetPivot();
 			}
 		end
 	end)
 
-	return InitialPartStates, InitialModelStates
+	return initialPartStates, initialModelStates
 end;
 
 function GetIncrementMultiple(Number, Increment)

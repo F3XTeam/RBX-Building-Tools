@@ -112,6 +112,8 @@ function FreeDragging:EnableDragging()
 			Enum.UserInputType.MouseMovement,
 			Enum.UserInputType.Touch
 		)
+
+		return
 	end
 
 	-- Pay attention to when the user intends to start dragging
@@ -345,7 +347,7 @@ function FreeDragging:AlignSelectionToTarget()
 	else
 
 		-- Set upward direction to match the target surface normal
-		local UpVector, LookVector, RightVector = self.TargetNormal
+		local UpVector, LookVector, RightVector = self.TargetNormal, nil, nil
 
 		-- Use target's rightward orientation for calculating orientation (when targeting forward or backward directions)
 		local Target, TargetNormal = self.Target, self.TargetNormal
