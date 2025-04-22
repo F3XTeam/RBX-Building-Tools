@@ -1,3 +1,4 @@
+--!nocheck
 local Tool = script.Parent.Parent
 local Workspace = game:GetService 'Workspace'
 local UserInputService = game:GetService 'UserInputService'

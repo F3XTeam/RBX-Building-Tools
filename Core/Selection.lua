@@ -1,3 +1,4 @@
+--!nocheck
 local Tool = script.Parent.Parent
 local History = require(script.Parent.History)
 

@@ -1,3 +1,4 @@
+--!nocheck
 local Core = getfenv(debug.info(0, 'f'))
 Tool = script.Parent;
 Plugin = (Tool.Parent:IsA 'Plugin') and Tool.Parent or nil

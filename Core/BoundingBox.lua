@@ -1,3 +1,4 @@
+--!nocheck
 local Core = require(script.Parent);
 local Support = Core.Support;
 
