@@ -654,7 +654,7 @@ function StartSnapping()
 	end);
 
 	-- Select the snapped pivot point upon clicking
-	Connections.SelectSnappedPivot = Core.Mouse.Button1Down:Connect(function ()
+	Connections.SelectSnappedPivot = Support.AddUserInputListener('Began', 'MouseButton1', true, function ()
 
 		-- Disable unintentional selection
 		Core.Targeting.CancelSelecting();

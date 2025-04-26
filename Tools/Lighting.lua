@@ -107,7 +107,7 @@ function EnableSurfaceClickSelection(LightType)
 	end;
 
 	-- Add the new click connection
-	Connections.SurfaceClickSelection = Core.Mouse.Button1Down:Connect(function ()
+	Connections.SurfaceClickSelection = Support.AddUserInputListener('Began', 'MouseButton1', true, function ()
 		local _, ScopeTarget = Core.Targeting:UpdateTarget()
 		if Selection.IsSelected(ScopeTarget) then
 			SetSurface(LightType, Core.Mouse.TargetSurface)

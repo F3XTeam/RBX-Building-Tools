@@ -33,12 +33,12 @@ function TargetingModule:EnableTargeting()
 	Mouse = Core.Mouse;
 
 	-- Listen for target changes
-	Connections.Targeting = Mouse.Move:Connect(function ()
+	Connections.Targeting = Support.AddUserInputListener('Changed', 'MouseMovement', true, function ()
 		self:UpdateTarget(self.Scope)
-	end)
-
+	end);
+	
 	-- Listen for target clicks
-	Connections.Selecting = Mouse.Button1Up:Connect(self.SelectTarget)
+	Connections.Selecting = Support.AddUserInputListener('Ended', 'MouseButton1', true, self.SelectTarget);
 
 	-- Listen for sibling selection middle clicks
 	Connections.SiblingSelecting = Support.AddUserInputListener('Began', 'MouseButton3', true, function ()
@@ -46,7 +46,7 @@ function TargetingModule:EnableTargeting()
 	end);
 
 	-- Listen for 2D selection
-	Connections.RectSelectionStarted = Mouse.Button1Down:Connect(self.StartRectangleSelecting);
+	Connections.RectSelectionStarted = Support.AddUserInputListener('Began', 'MouseButton1', true, self.StartRectangleSelecting);
 	Connections.RectSelectionFinished = Support.AddUserInputListener('Ended', 'MouseButton1', true, self.FinishRectangleSelecting);
 
 	-- Hide target box when tool is unequipped
@@ -228,14 +228,14 @@ local function IsAncestorSelected(Item)
 	return
 end
 
-function TargetingModule.SelectTarget(Force)
+function TargetingModule.SelectTarget()
 	local Scope = TargetingModule.Scope
 
 	-- Update target
 	local Target, ScopeTarget = TargetingModule:UpdateTarget(Scope, true)
 
 	-- Ensure target selection isn't cancelled
-	if not Force and SelectionCancelled then
+	if SelectionCancelled then
 		SelectionCancelled = false;
 		return;
 	end;
@@ -310,7 +310,7 @@ function TargetingModule.StartRectangleSelecting()
 	RectangleSelectStart = Vector2.new(Mouse.X, Mouse.Y);
 
 	-- Track mouse while rectangle selecting
-	GetCore().Connections.WatchRectangleSelection = Mouse.Move:Connect(function ()
+	GetCore().Connections.WatchRectangleSelection = Support.AddUserInputListener('Changed', 'MouseMovement', true, function ()
 
 		-- If rectangle selecting, update rectangle
 		if RectangleSelecting then
