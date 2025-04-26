@@ -38,7 +38,7 @@ function TargetingModule:EnableTargeting()
 	end);
 	
 	-- Listen for target clicks
-	Connections.Selecting = Support.AddUserInputListener('Ended', 'MouseButton1', true, self.SelectTarget);
+	Connections.Selecting = Mouse.Button1Up:Connect(self.SelectTarget);
 
 	-- Listen for sibling selection middle clicks
 	Connections.SiblingSelecting = Support.AddUserInputListener('Began', 'MouseButton3', true, function ()
