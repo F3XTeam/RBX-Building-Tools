@@ -5,7 +5,7 @@ local Vendor = Root:WaitForChild('Vendor')
 -- Libraries
 local Roact = require(Vendor:WaitForChild('Roact'))
 local Maid = require(Libraries:WaitForChild('Maid'))
-local fastSpawn = require(Libraries:WaitForChild('fastSpawn'))
+local task_spawn = task.spawn
 
 -- Roact
 local new = Roact.createElement
@@ -42,7 +42,7 @@ end
 function ColorPicker:SetHSV(HSV)
     self._SetHSV(HSV)
     if self.props.SetPreviewColor then
-        fastSpawn(function ()
+        task_spawn(function ()
             self.props.SetPreviewColor(Color3.fromHSV(HSV.H, HSV.S, HSV.V))
         end)
     end
@@ -50,14 +50,14 @@ end
 
 function ColorPicker:Finish()
     if self.props.SetPreviewColor then
-        fastSpawn(function ()
+        task_spawn(function ()
             self.props.SetPreviewColor(nil)
         end)
     end
     if self.props.OnConfirm then
         local HSV = self.HSV:getValue()
         local Color = Color3.fromHSV(HSV.H, HSV.S, HSV.V)
-        fastSpawn(function ()
+        task_spawn(function ()
             self.props.OnConfirm(Color)
         end)
     end
@@ -65,12 +65,12 @@ end
 
 function ColorPicker:Cancel()
     if self.props.SetPreviewColor then
-        fastSpawn(function ()
+        task_spawn(function ()
             self.props.SetPreviewColor(nil)
         end)
     end
     if self.props.OnCancel then
-        fastSpawn(function ()
+        task_spawn(function ()
             self.props.OnCancel()
         end)
     end

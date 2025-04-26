@@ -4,7 +4,7 @@ local Vendor = Root:WaitForChild('Vendor')
 
 -- Libraries
 local Roact = require(Vendor:WaitForChild('Roact'))
-local fastSpawn = require(Libraries:WaitForChild('fastSpawn'))
+local task_spawn = task.spawn
 
 -- Roact
 local new = Roact.createElement
@@ -20,7 +20,7 @@ function Notifications:init()
         ShouldWarnAboutUpdate = false;
     })
 
-    fastSpawn(function ()
+	task_spawn(function ()
         local IsOutdated = self.props.Core.IsVersionOutdated()
         if self.Active then
             self:setState({
@@ -28,7 +28,7 @@ function Notifications:init()
             })
         end
     end)
-    fastSpawn(function ()
+	task_spawn(function ()
         local Core = self.props.Core
         local IsHttpServiceDisabled = (Core.Mode == 'Tool') and
             not Core.SyncAPI:Invoke('IsHttpServiceEnabled')
