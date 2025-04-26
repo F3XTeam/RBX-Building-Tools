@@ -174,7 +174,6 @@ local function IsItemScopable(Item)
     return Item:IsA('Model')
         or Item:IsA('Folder')
         or Item:IsA('Tool')
-        or Item:IsA('Accessory')
         or Item:IsA('Accoutrement')
         or (Item:IsA('BasePart') and Item:FindFirstChildWhichIsA('BasePart', true))
 end

@@ -81,7 +81,6 @@ local function IsTargetable(Item)
 	return Item:IsA 'Model' or
 		Item:IsA 'BasePart' or
 		Item:IsA 'Tool' or
-		Item:IsA 'Accessory' or
 		Item:IsA 'Accoutrement'
 end
 
