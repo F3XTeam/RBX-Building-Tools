@@ -3,6 +3,18 @@
 	"tree": {
 		"$className": "Tool",
 		"$ignoreUnknownInstances": true,
+		"$properties": {
+			"Grip": {
+				"CFrame": {
+					"position": [0, 0, 0.4],
+					"orientation": [
+						[1.0, 0, 0],
+						[0, 1.0, 0],
+						[0, 0, 1.0]
+					]
+				}
+			}
+		},
 		"Core": {
 			"$path": "Core"
 		},
