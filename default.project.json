@@ -71,6 +71,9 @@
 		"UI": {
 			"$path": "UI"
 		},
+		"Handle": {
+			"$path": "Handle.rbxmx"
+		},
 		"Interfaces": {
 			"$path": "Interfaces.rbxmx"
 		}
