@@ -1,12 +1,14 @@
 -- Services
 MarketplaceService = game:GetService 'MarketplaceService';
 HttpService = game:GetService 'HttpService';
+RunService = game:GetService 'RunService';
 
 -- References
 Tool = script.Parent.Parent
 Libraries = Tool:WaitForChild 'Libraries'
 Support = require(Libraries:WaitForChild 'SupportLibrary')
 RegionModule = require(Libraries:WaitForChild 'Region')
+Core = require(script.Parent)
 
 -- Determine whether we're in tool or plugin mode
 local ToolMode = (Tool.Parent:IsA 'Plugin') and 'Plugin' or 'Tool'
@@ -36,6 +38,52 @@ workspace.ChildRemoved:Connect(function (Child)
 	end;
 end);
 
+-- PlayerOwnsAsset, but wrapped in a pcall to suppress errors
+local function PlayerOwnsAsset(player: Player, assetId: number): boolean
+	assert(player, "Argument 1 missing or nil")
+	assert(assetId, "Argument 2 missing or nil")
+
+	assert(typeof(player) == "Instance" and player:IsA("Player"), 
+		"Argument 1 expects a Player"
+	)
+	assert(type(assetId) == "number", "Argument 2 expects a number")
+
+	if RunService:IsServer() then
+		local success, result = pcall(
+			MarketplaceService.PlayerOwnsAsset,
+			MarketplaceService,
+			player,
+			assetId
+		)
+		if not success then
+			return false
+		else
+			return result
+		end
+	else
+		return Core.SyncAPI:Invoke('PlayerOwnsAsset', player, assetId);
+	end
+end
+
+-- Compatibility purposes only
+local function GetPlayerMembershipType(player: Player)
+	assert(player, "Argument 1 missing or nil")
+	assert(typeof(player) == "Instance" and player:IsA("Player"), 
+		"Argument 1 expects a Player"
+	)
+	if player.MembershipType == Enum.MembershipType.None then
+		return Enum.MembershipType.None
+	elseif player.MembershipType == Enum.MembershipType.Premium then
+		if PlayerOwnsAsset(player, 17408283) then
+			return Enum.MembershipType.OutrageousBuildersClub
+		elseif PlayerOwnsAsset(player, 11844853) then
+			return Enum.MembershipType.TurboBuildersClub
+		else
+			return Enum.MembershipType.BuildersClub
+		end
+	end
+end
+
 function Security.IsAreaAuthorizedForPlayer(Area, Player)
 	-- Returns whether `Player` has permission to manipulate parts in this area
 
@@ -52,6 +100,9 @@ function Security.IsAreaAuthorizedForPlayer(Area, Player)
 		return;
 	end;
 
+	-- Compatibility
+	local MembershipType = GetPlayerMembershipType(Player)
+
 	-- Search for authorizing permission
 	for _, Permission in pairs(Permissions) do
 
@@ -65,7 +116,7 @@ function Security.IsAreaAuthorizedForPlayer(Area, Player)
 			if PlayerInGroup and not Permission.Ranks then
 				return true;
 
-			-- If specific rank is required, check player rank
+				-- If specific rank is required, check player rank
 			elseif PlayerInGroup and Permission.Ranks then
 				local Symbol, RankNumber = tostring(Permission.Ranks):match('([<>]?=?)([0-9]+)');
 				local PlayerRank = Player:GetRankInGroup(Permission.GroupId);
@@ -87,35 +138,35 @@ function Security.IsAreaAuthorizedForPlayer(Area, Player)
 				end;
 			end;
 
-		-- Check player permissions
+			-- Check player permissions
 		elseif Permission.Type == 'Player' then
 			if (Player.userId == Permission.PlayerId) or (Player.Name == Permission.PlayerName) then
 				return true;
 			end;
 
-		-- Check owner permissions
+			-- Check owner permissions
 		elseif Permission.Type == 'Owner' then
 			if (Player.userId == Permission.PlayerId) or (Player.Name == Permission.PlayerName) then
 				return true;
 			end;
 
-		-- Check auto-permissions
+			-- Check auto-permissions
 		elseif Permission.Type == 'Anybody' then
 			return true;
 
-		-- Check friend permissions
+			-- Check friend permissions
 		elseif Permission.Type == 'Friends' then
 			if Player:IsFriendsWith(Permission.PlayerId) then
 				return true;
 			end;
 
-		-- Check asset permissions
+			-- Check asset permissions
 		elseif Permission.Type == 'Asset' then
-			if MarketplaceService:PlayerOwnsAsset(Player, Permission.AssetId) then
+			if PlayerOwnsAsset(Player, Permission.AssetId) then
 				return true;
 			end;
 
-		-- Check team permissions
+			-- Check team permissions
 		elseif Permission.Type == 'Team' then
 			if Permission.Team and Player.Team == Permission.Team then
 				return true;
@@ -124,35 +175,30 @@ function Security.IsAreaAuthorizedForPlayer(Area, Player)
 			elseif Permission.TeamName and Player.Team and Player.Team.Name == Permission.TeamName then
 				return true;
 			end;
-		
-		-- Check BC permissions
+
+			-- Check BC permissions
 		elseif Permission.Type == 'NoBC' then
-			if Player.MembershipType == Enum.MembershipType.None then
+			if MembershipType == Enum.MembershipType.None then
 				return true;
 			end;
 		elseif Permission.Type == 'AnyBC' then
-			if Player.MembershipType ~= Enum.MembershipType.None then
+			if MembershipType ~= Enum.MembershipType.None then
 				return true;
 			end;
 		elseif Permission.Type == 'BC' then
-			if Player.MembershipType == Enum.MembershipType.BuildersClub or Player.MembershipType == Enum.MembershipType.Premium then
+			if MembershipType == Enum.MembershipType.BuildersClub then
 				return true;
 			end;
-			
-			-- Note(s) from TheFastOneIsBack (aimeetm234)
-			-- Only kept for compatibility. Do not use.
-			
-			-- GigsD4X, I'll let you decide what to do with these.
 		elseif Permission.Type == 'TBC' then
-			if Player.MembershipType == Enum.MembershipType.TurboBuildersClub then
+			if MembershipType == Enum.MembershipType.TurboBuildersClub then
 				return true;
 			end;
 		elseif Permission.Type == 'OBC' then
-			if Player.MembershipType == Enum.MembershipType.OutrageousBuildersClub then
+			if MembershipType == Enum.MembershipType.OutrageousBuildersClub then
 				return true;
 			end;
 
-		-- Check custom permissions
+			-- Check custom permissions
 		elseif Permission.Type == 'Callback' then
 			return Permission.Callback(Player);
 		end;
@@ -273,11 +319,11 @@ function Security.ArePartsViolatingAreas(Parts, Player, ExemptPartial, AreaPermi
 	if #Areas == 0 then
 		return not Security.AllowPublicBuilding;
 
-	-- If authorization for a partial violation-exempt check on an area failed, indicate a violation
+		-- If authorization for a partial violation-exempt check on an area failed, indicate a violation
 	elseif ExemptPartial then
 		return true;
 
-	-- If in authorized areas, determine violation based on public building policy compliance
+		-- If in authorized areas, determine violation based on public building policy compliance
 	elseif RegionMap and not Security.AllowPublicBuilding then
 
 		-- Check area residence of each part's corner

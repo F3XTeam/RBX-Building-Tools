@@ -3,6 +3,7 @@ local HttpService = game:GetService('HttpService')
 local Players = game:GetService('Players')
 local RunService = game:GetService('RunService')
 local Workspace = game:GetService('Workspace')
+local MarketplaceService = game:GetService('MarketplaceService')
 
 -- References
 SyncAPI = script.Parent;
@@ -43,6 +44,7 @@ local IsHttpServiceEnabled = nil
 
 -- List of actions that could be requested
 Actions = {
+	
 
 	['RecolorHandle'] = function (NewColor)
 		-- Recolors the tool handle
@@ -1750,6 +1752,20 @@ Actions = {
 			end
 		end
 
+	end;
+	
+	['PlayerOwnsAsset'] = function(Player, AssetId)
+		local success, result = pcall(
+			MarketplaceService.PlayerOwnsAsset,
+			MarketplaceService,
+			Player,
+			AssetId
+		)
+		if not success then
+			return false
+		else
+			return result
+		end
 	end
 
 }
