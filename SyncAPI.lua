@@ -1755,6 +1755,12 @@ Actions = {
 	end;
 	
 	['PlayerOwnsAsset'] = function(Player, AssetId)
+		-- Validate arguments
+		assert(typeof(Player) == "Instance" and Player:IsA("Player"), 
+			"Argument 1 expects a Player"
+		)
+		assert(type(AssetId) == "number", "Argument 2 expects a number")
+		
 		local success, result = pcall(
 			MarketplaceService.PlayerOwnsAsset,
 			MarketplaceService,
