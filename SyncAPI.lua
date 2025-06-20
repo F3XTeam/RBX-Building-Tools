@@ -1452,7 +1452,7 @@ Actions = {
 			if Part ~= TargetPart then
 
 				-- Calculate the offset of the part from the target part
-				local Offset = Part.CFrame:toObjectSpace(TargetPart.CFrame);
+				local Offset = Part.CFrame:ToObjectSpace(TargetPart.CFrame);
 
 				-- Create the weld
 				local Weld = Instance.new('Weld');
