@@ -8,7 +8,7 @@ Tool = script.Parent.Parent
 Libraries = Tool:WaitForChild 'Libraries'
 Support = require(Libraries:WaitForChild 'SupportLibrary')
 RegionModule = require(Libraries:WaitForChild 'Region')
-Core = require(script.Parent)
+SyncAPI = Tool.SyncAPI
 
 -- Determine whether we're in tool or plugin mode
 local ToolMode = (Tool.Parent:IsA 'Plugin') and 'Plugin' or 'Tool'
@@ -61,7 +61,7 @@ local function PlayerOwnsAsset(player: Player, assetId: number): boolean
 			return result
 		end
 	else
-		return Core.SyncAPI:Invoke('PlayerOwnsAsset', player, assetId);
+		return SyncAPI:Invoke('PlayerOwnsAsset', player, assetId);
 	end
 end
 
