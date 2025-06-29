@@ -46,7 +46,19 @@ Assets = require(Tool.Assets)
 -- Core events
 ToolChanged = Signal.new()
 
+-- The tool currently selected
 CurrentTool = nil
+
+-- Core connections
+Connections = {};
+
+function ClearConnections()
+	-- Clears and disconnects temporary connections
+	for Index, Connection in pairs(Connections) do
+		Connection:Disconnect();
+		Connections[Index] = nil;
+	end;
+end;
 
 function EquipTool(tool)
 	-- Equips and switches to the given tool
@@ -163,6 +175,51 @@ Disabling = Signal.new()
 Enabled = Signal.new()
 Disabled = Signal.new()
 
+function Disable()
+
+	-- Ensure tool is enabled or enabling, and not already disabling
+	if (not IsEnabled and not IsEnabling) or IsDisabling then
+		return;
+
+		-- If tool is enabling, disable it once fully enabled
+	elseif IsEnabling then
+		Enabled:Wait();
+		return Disable();
+	end;
+
+	-- Indicate that tool is now disabling
+	IsDisabling = true;
+	Disabling:Fire();
+
+	-- Reenable mouse lock option in tool mode
+	if Mode == 'Tool' then
+		coroutine.resume(coroutine.create(function ()
+			SyncAPI:Invoke('SetMouseLockEnabled', true)
+		end))
+	end
+
+	-- Hide UI
+	if UI then
+		UI.Parent = script;
+	end;
+
+	-- Unequip current tool
+	if CurrentTool then
+		CurrentTool:Unequip();
+		CurrentTool.Equipped = false;
+	end;
+
+	-- Clear temporary connections
+	ClearConnections();
+
+	-- Indicate that tool is now disabled
+	IsEnabled = false;
+	IsDisabling = false;
+	Disabled:Fire();
+
+	return
+end;
+
 function Enable(Mouse)
 
 	-- Ensure tool is disabled or disabling, and not already enabling
@@ -238,66 +295,15 @@ function Enable(Mouse)
 	IsEnabled = true;
 	IsEnabling = false;
 	Enabled:Fire();
-
-	return
-end;
-
-function Disable()
-
-	-- Ensure tool is enabled or enabling, and not already disabling
-	if (not IsEnabled and not IsEnabling) or IsDisabling then
-		return;
-
-	-- If tool is enabling, disable it once fully enabled
-	elseif IsEnabling then
-		Enabled:Wait();
-		return Disable();
-	end;
-
-	-- Indicate that tool is now disabling
-	IsDisabling = true;
-	Disabling:Fire();
-
-	-- Reenable mouse lock option in tool mode
-	if Mode == 'Tool' then
-		coroutine.resume(coroutine.create(function ()
-			SyncAPI:Invoke('SetMouseLockEnabled', true)
-		end))
+	
+	-- Setup the Disabled connection
+	if Mode == 'Plugin' then
+		Connections.Disabled = Plugin.Deactivation:Connect(Disable);
+	elseif Mode == 'Tool' then
+		Connections.Disabled = Tool.Unequipped:Connect(Disable);
 	end
 
-	-- Hide UI
-	if UI then
-		UI.Parent = script;
-	end;
-
-	-- Unequip current tool
-	if CurrentTool then
-		CurrentTool:Unequip();
-		CurrentTool.Equipped = false;
-	end;
-
-	-- Clear temporary connections
-	ClearConnections();
-
-	-- Indicate that tool is now disabled
-	IsEnabled = false;
-	IsDisabling = false;
-	Disabled:Fire();
-
 	return
-
-end;
-
-
--- Core connections
-Connections = {};
-
-function ClearConnections()
-	-- Clears and disconnects temporary connections
-	for Index, Connection in pairs(Connections) do
-		Connection:Disconnect();
-		Connections[Index] = nil;
-	end;
 end;
 
 function InitializeUI()
@@ -448,9 +454,6 @@ if Mode == 'Plugin' then
 		end;
 	end);
 
-	-- Disable the tool upon plugin deactivation
-	Plugin.Deactivation:Connect(Disable);
-
 	-- Sync Studio selection to internal selection
 	Selection.Changed:Connect(function ()
 		SelectionService:Set(Selection.Items);
@@ -494,7 +497,6 @@ elseif Mode == 'Tool' then
 
 	-- Connect the tool to the system
 	Tool.Equipped:Connect(Enable);
-	Tool.Unequipped:Connect(Disable);
 
 	-- Disable the tool if not parented
 	if not Tool.Parent then
@@ -882,7 +884,6 @@ function IsSelectable(Items)
 	return true
 
 end
-do local _ = IsSelectable end
 
 function ExportSelection()
 	-- Exports the selected parts
@@ -986,7 +987,6 @@ function IsVersionOutdated()
 	return false;
 
 end;
-do local _ = IsVersionOutdated end
 
 function ToggleSwitch(CurrentButtonName, SwitchContainer)
 	-- Toggles between the buttons in a switch
@@ -1017,7 +1017,6 @@ function ToggleSwitch(CurrentButtonName, SwitchContainer)
 
 	end;
 end;
-do local _ = ToggleSwitch end
 
 -- References to reduce indexing time
 local GetConnectedParts = Instance.new('Part').GetConnectedParts;
@@ -1081,7 +1080,6 @@ function RestoreJoints(Joints)
 	end;
 
 end;
-do local _ = RestoreJoints end
 
 function PreserveJoints(Part, Whitelist)
 	-- Preserves and returns intentional joints of `Part` connecting parts in `Whitelist`
@@ -1098,7 +1096,6 @@ function PreserveJoints(Part, Whitelist)
 	return Joints;
 
 end;
-do local _ = PreserveJoints end
 
 -- Initialize the UI
 InitializeUI();
