@@ -215,7 +215,7 @@ function Handles:Resume()
         coroutine.wrap(function ()
             while self.Running do
                 self:UpdateHandle(Handle, UnitVector)
-                RunService.RenderStepped:Wait()
+                RunService.PreRender:Wait()
             end
         end)()
     end

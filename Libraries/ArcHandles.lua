@@ -282,7 +282,7 @@ function ArcHandles:Resume()
         coroutine.wrap(function ()
             while self.Running do
                 self:UpdateHandle(Side, Handle)
-                RunService.RenderStepped:Wait()
+                RunService.PreRender:Wait()
             end
         end)()
     end
@@ -292,7 +292,7 @@ function ArcHandles:Resume()
         coroutine.wrap(function ()
             while self.Running do
                 self:UpdateCircle(Axis, Lines)
-                RunService.RenderStepped:Wait()
+                RunService.PreRender:Wait()
             end
         end)()
     end
