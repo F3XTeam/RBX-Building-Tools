@@ -402,44 +402,44 @@ function BoundingBoxModule.CalculateExtents(Items, StaticExtents, ExtentsOnly)
 			local XPoints, YPoints, ZPoints = {}, {}, {};
 
 			Corner = PartCFrame * CFrame_new(SizeX, SizeY, SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(-SizeX, SizeY, SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(SizeX, -SizeY, SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(SizeX, SizeY, -SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(-SizeX, SizeY, -SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(-SizeX, -SizeY, SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(SizeX, -SizeY, -SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(-SizeX, -SizeY, -SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			-- Reduce gathered points to min/max extents
 			MinX = math_min(MinX, unpack(XPoints));

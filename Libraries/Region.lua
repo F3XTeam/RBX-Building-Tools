@@ -70,8 +70,8 @@ local BoxPointCollision do
 	local VecDiv=CFrame.new().PointToObjectSpace--Right Division, yo.
 	function BoxPointCollision(CFrame,Size,Point)
 		local Relative	=VecDiv(CFrame, Point)
-		local sx,sy,sz	=Size.x/2,Size.y/2,Size.z/2
-		local rx,ry,rz	=Relative.x,Relative.y,Relative.z
+		local sx,sy,sz	=Size.X/2,Size.Y/2,Size.Z/2
+		local rx,ry,rz	=Relative.X,Relative.Y,Relative.Z
 		return			rx*rx<sx*sx and ry*ry<sy*sy and rz*rz<sz*sz
 	end
 end
@@ -82,8 +82,8 @@ local BoxSphereCollision do
 	local VecDiv=CFrame.new().PointToObjectSpace--Right Division, yo.
 	function BoxSphereCollision(CFrame,Size,Center,Radius)
 		local Relative	=VecDiv(CFrame,Center)
-		local sx,sy,sz	=Size.x/2,Size.y/2,Size.z/2
-		local rx,ry,rz	=Relative.x,Relative.y,Relative.z
+		local sx,sy,sz	=Size.X/2,Size.Y/2,Size.Z/2
+		local rx,ry,rz	=Relative.X,Relative.Y,Relative.Z
 		local dx		=rx>sx and rx-sx--Faster than if statement
 						or rx<-sx and rx+sx
 						or 0
@@ -115,8 +115,8 @@ local BoxCollision do
 				m15,m16,m17,
 				m18,m19,m20,
 				m21,m22,m23	=components(CFrame1)
-		local	m24,m25,m26	=Size0.x/2,Size0.y/2,Size0.z/2
-		local	m27,m28,m29	=Size1.x/2,Size1.y/2,Size1.z/2
+		local	m24,m25,m26	=Size0.X/2,Size0.Y/2,Size0.Z/2
+		local	m27,m28,m29	=Size1.X/2,Size1.Y/2,Size1.Z/2
 		local	m30,m31,m32	=m12-m00,m13-m01,m14-m02
 		local	m00			=m03*m30+m06*m31+m09*m32
 		local	m01			=m04*m30+m07*m31+m10*m32
@@ -290,7 +290,7 @@ local function Region3BoundingBox(CFrame,Size)
 			xx,yx,zx,
 			xy,yy,zy,
 			xz,yz,zz=components(CFrame)
-	local	sx,sy,sz=Size.x/2,Size.y/2,Size.z/2
+	local	sx,sy,sz=Size.X/2,Size.Y/2,Size.Z/2
 	local	px		=sx*(xx<0 and -xx or xx)
 					+sy*(yx<0 and -yx or yx)
 					+sz*(zx<0 and -zx or zx)

@@ -702,13 +702,13 @@ function SetMeshId(AssetId)
 			-- Apply any vertex color found
 			local VertexColor = ExtractionData.tint;
 			if VertexColor then
-				Changes.VertexColor = Vector3.new(VertexColor.x, VertexColor.y, VertexColor.z);
+				Changes.VertexColor = Vector3.new(VertexColor.X, VertexColor.Y, VertexColor.Z);
 			end;
 
 			-- Apply any scale found
 			local Scale = ExtractionData.scale;
 			if Scale then
-				Changes.Scale = Vector3.new(Scale.x, Scale.y, Scale.z);
+				Changes.Scale = Vector3.new(Scale.X, Scale.Y, Scale.Z);
 			end;
 
 		end);

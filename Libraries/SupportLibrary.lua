@@ -420,7 +420,7 @@ function SupportLibrary.GetPartCorners(Part)
 
 	-- Get info about the part
 	local PartCFrame = Part.CFrame;
-	local SizeX, SizeY, SizeZ = Part.Size.x / 2, Part.Size.y / 2, Part.Size.z / 2;
+	local SizeX, SizeY, SizeZ = Part.Size.X / 2, Part.Size.Y / 2, Part.Size.Z / 2;
 
 	-- Get each corner
 	local Corners = {};
