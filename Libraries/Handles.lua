@@ -296,8 +296,8 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
     local AdorneeCFrame = self.IsAdorneeModel and
         self.Adornee:GetModelCFrame() or
         self.Adornee.CFrame
-    local AdorneeSize = self.IsAdorneeModel and
-        self.Adornee:GetModelSize() or
+	local AdorneeSize = self.IsAdorneeModel and
+		self.Adornee:GetExtentsSize() or
         self.Adornee.Size
 
     -- Calculate radius of adornee extents along axis
