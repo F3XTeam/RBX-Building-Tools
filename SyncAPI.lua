@@ -1755,6 +1755,13 @@ Actions = {
 	end;
 	
 	['PlayerOwnsAsset'] = function(Player, AssetId)
+		-- MarketplaceService.PlayerOwnsAsset(), but wrapped in a pcall
+		
+		-- Offload action to server-side if API is running locally
+		if RunService:IsClient() then
+			return SyncAPI.ServerEndpoint:InvokeServer('PlayerOwnsAsset', Player, AssetId);
+		end
+		
 		-- Validate arguments
 		assert(typeof(Player) == "Instance" and Player:IsA("Player"), 
 			"Argument 1 expects a Player"

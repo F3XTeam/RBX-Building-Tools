@@ -1,8 +1,3 @@
--- Services
-MarketplaceService = game:GetService 'MarketplaceService';
-HttpService = game:GetService 'HttpService';
-RunService = game:GetService 'RunService';
-
 -- References
 Tool = script.Parent.Parent
 Libraries = Tool:WaitForChild 'Libraries'
@@ -42,27 +37,7 @@ end);
 local function PlayerOwnsAsset(player: Player, assetId: number): boolean
 	assert(player, "Argument 1 missing or nil")
 	assert(assetId, "Argument 2 missing or nil")
-
-	assert(typeof(player) == "Instance" and player:IsA("Player"), 
-		"Argument 1 expects a Player"
-	)
-	assert(type(assetId) == "number", "Argument 2 expects a number")
-
-	if RunService:IsServer() then
-		local success, result = pcall(
-			MarketplaceService.PlayerOwnsAsset,
-			MarketplaceService,
-			player,
-			assetId
-		)
-		if not success then
-			return false
-		else
-			return result
-		end
-	else
-		return SyncAPI:Invoke('PlayerOwnsAsset', player, assetId);
-	end
+	return SyncAPI:Invoke('PlayerOwnsAsset', player, assetId);
 end
 
 -- Compatibility purposes only
