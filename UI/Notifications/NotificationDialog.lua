@@ -37,7 +37,7 @@ function NotificationDialog:render()
             Text = 'GOT IT';
             Font = Enum.Font.Gotham;
             TextSize = 10;
-            TextColor3 = Color3.fromRGB(255, 255, 255);
+            TextColor3 = Color3.new(1, 1, 1);
             [Roact.Event.Activated] = function (rbx)
                 self.props.OnDismiss()
             end;
@@ -52,7 +52,7 @@ function NotificationDialog:render()
             Text = 'WHAT CAN I DO?';
             Font = Enum.Font.Gotham;
             TextSize = 10;
-            TextColor3 = Color3.fromRGB(255, 255, 255);
+            TextColor3 = Color3.new(1, 1, 1);
             [Roact.Event.Activated] = function (rbx)
                 self:setState({
                     ShouldDisplayDetails = true;
@@ -74,7 +74,7 @@ function NotificationDialog:render()
             TextWrapped = true;
             RichText = true;
             Font = Enum.Font.GothamMedium;
-            TextColor3 = Color3.fromRGB(255, 255, 255);
+            TextColor3 = Color3.new(1, 1, 1);
             TextSize = 11;
             TextStrokeTransparency = 0.9;
             LineHeight = 1;

@@ -243,7 +243,7 @@ function UpdateColorIndicator(Indicator, Color)
 
 	-- If the colors vary, display a * on a gray background
 	else
-		Indicator.BackgroundColor3 = Color3.new(222/255, 222/255, 222/255);
+		Indicator.BackgroundColor3 = Color3.fromRGB(222, 222, 222);
 		Indicator.Varies.Text = '*';
 	end;
 
@@ -497,7 +497,7 @@ function SyncInputToProperty(Property, DecorationType, InputType, Input)
 		Input.MouseButton1Click:Connect(function ()
 			local CommonColor = Support.IdentifyCommonProperty(GetDecorations(DecorationType), Property)
 			local ColorPickerElement = Roact.createElement(ColorPicker, {
-				InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
+				InitialColor = CommonColor or Color3.new(1, 1, 1);
 				SetPreviewColor = function (Color)
 					SetPreviewColor(DecorationType, Property, Color)
 				end;

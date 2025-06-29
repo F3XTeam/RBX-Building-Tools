@@ -26,7 +26,7 @@ function Dropdown:BuildButtonList()
             BorderSizePixel = 0;
             Font = Enum.Font.GothamBold;
             Text = Option;
-            TextColor3 = Color3.fromRGB(255, 255, 255);
+            TextColor3 = Color3.new(1, 1, 1);
             TextSize = 10;
             TextXAlignment = Enum.TextXAlignment.Left;
             TextYAlignment = Enum.TextYAlignment.Center;
@@ -85,7 +85,7 @@ function Dropdown:render()
             BackgroundTransparency = 1;
             Font = Enum.Font.GothamBold;
             Text = self.props.CurrentOption or '*';
-            TextColor3 = Color3.fromRGB(255, 255, 255);
+            TextColor3 = Color3.new(1, 1, 1);
             TextSize = 10;
             TextXAlignment = Enum.TextXAlignment.Left;
             TextYAlignment = Enum.TextYAlignment.Center;

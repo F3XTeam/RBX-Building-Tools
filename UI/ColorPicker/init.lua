@@ -144,7 +144,7 @@ function ColorPicker:render()
                     });
                     HueSlider = new(Slider, {
                         Size = UDim2.new(1, 0, 0, 10);
-                        BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+                        BackgroundColor3 = Color3.new(1, 1, 1);
                         LayoutOrder = 0;
                         Value = self.HSV:map(function (HSV)
                             return HSV.H
@@ -174,7 +174,7 @@ function ColorPicker:render()
                     });
                     SaturationSlider = new(Slider, {
                         Size = UDim2.new(1, 0, 0, 10);
-                        BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+                        BackgroundColor3 = Color3.new(1, 1, 1);
                         LayoutOrder = 1;
                         Value = self.HSV:map(function (HSV)
                             return HSV.S
@@ -199,7 +199,7 @@ function ColorPicker:render()
                     });
                     BrightnessSlider = new(Slider, {
                         Size = UDim2.new(1, 0, 0, 10);
-                        BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+                        BackgroundColor3 = Color3.new(1, 1, 1);
                         LayoutOrder = 2;
                         Value = self.HSV:map(function (HSV)
                             return HSV.V
@@ -236,7 +236,7 @@ function ColorPicker:render()
                     Font = Enum.Font.GothamBlack;
                     Text = 'HSV: ';
                     TextSize = 11;
-                    TextColor3 = Color3.fromRGB(255, 255, 255);
+                    TextColor3 = Color3.new(1, 1, 1);
                     TextStrokeTransparency = 0.95;
                     [Roact.Change.TextBounds] = function (rbx)
                         rbx.Size = UDim2.fromOffset(rbx.TextBounds.X, rbx.TextBounds.Y)
@@ -254,7 +254,7 @@ function ColorPicker:render()
                             return Hue .. ', ' .. Saturation .. ', ' .. Brightness
                         end);
                         TextSize = 11;
-                        TextColor3 = Color3.fromRGB(255, 255, 255);
+                        TextColor3 = Color3.new(1, 1, 1);
                         TextStrokeTransparency = 0.95;
                         TextXAlignment = Enum.TextXAlignment.Left;
                         [Roact.Change.TextBounds] = function (rbx)
@@ -278,7 +278,7 @@ function ColorPicker:render()
                     Font = Enum.Font.GothamBlack;
                     Text = 'RGB: ';
                     TextSize = 11;
-                    TextColor3 = Color3.fromRGB(255, 255, 255);
+                    TextColor3 = Color3.new(1, 1, 1);
                     TextStrokeTransparency = 0.95;
                     [Roact.Change.TextBounds] = function (rbx)
                         rbx.Size = UDim2.fromOffset(rbx.TextBounds.X, rbx.TextBounds.Y)
@@ -297,7 +297,7 @@ function ColorPicker:render()
                             return R .. ', ' .. G .. ', ' .. B
                         end);
                         TextSize = 11;
-                        TextColor3 = Color3.fromRGB(255, 255, 255);
+                        TextColor3 = Color3.new(1, 1, 1);
                         TextStrokeTransparency = 0.95;
                         TextXAlignment = Enum.TextXAlignment.Left;
                         [Roact.Change.TextBounds] = function (rbx)
@@ -362,7 +362,7 @@ function ColorPicker:render()
                         Size = UDim2.new(1, 0, 1, 0);
                         Text = 'Cancel';
                         Font = Enum.Font.GothamMedium;
-                        TextColor3 = Color3.fromRGB(255, 255, 255);
+                        TextColor3 = Color3.new(1, 1, 1);
                         TextSize = 12;
                         TextStrokeTransparency = 0.95;
                         [Roact.Change.TextBounds] = function (rbx)

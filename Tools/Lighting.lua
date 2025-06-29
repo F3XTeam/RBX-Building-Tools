@@ -149,7 +149,7 @@ function EnableLightSettingsUI(LightSettingsUI)
 	ColorPickerButton.MouseButton1Click:Connect(function ()
 		local CommonColor = Support.IdentifyCommonProperty(GetLights(LightType), 'Color')
 		local ColorPickerElement = Roact.createElement(ColorPicker, {
-			InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
+			InitialColor = CommonColor or Color3.new(1, 1, 1);
 			SetPreviewColor = function (Color)
 				PreviewColor(LightType, Color)
 			end;
@@ -479,7 +479,7 @@ function UpdateUI()
 			ColorIndicator.BackgroundColor3 = Color;
 			ColorIndicator.Varies.Text = '';
 		else
-			ColorIndicator.BackgroundColor3 = Color3.new(222/255, 222/255, 222/255);
+			ColorIndicator.BackgroundColor3 = Color3.fromRGB(222, 222, 222);
 			ColorIndicator.Varies.Text = '*';
 		end;
 

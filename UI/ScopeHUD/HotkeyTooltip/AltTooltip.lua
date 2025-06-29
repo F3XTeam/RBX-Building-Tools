@@ -33,7 +33,7 @@ local function ScopeInTooltip(props)
             Text = LABEL_TEXT;
             TextTransparency = 0.5;
             TextYAlignment = Enum.TextYAlignment.Center;
-            TextColor3 = Color3.fromRGB(255, 255, 255);
+            TextColor3 = Color3.new(1, 1, 1);
             LayoutOrder = 1;
         });
     })

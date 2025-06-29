@@ -46,7 +46,7 @@ function ToolManualWindow:render()
                 BorderSizePixel = 0;
                 Size = UDim2.new(1, 0, 1, 0);
                 CanvasSize = self.CanvasSize;
-                ScrollBarImageColor3 = Color3.fromRGB(255, 255, 255);
+                ScrollBarImageColor3 = Color3.new(1, 1, 1);
                 ScrollBarThickness = 2;
                 ScrollingDirection = Enum.ScrollingDirection.Y;
             }, {
@@ -57,7 +57,7 @@ function ToolManualWindow:render()
                     LineHeight = 1.2;
                     RichText = true;
                     Text = self.props.Text;
-                    TextColor3 = Color3.fromRGB(255, 255, 255);
+                    TextColor3 = Color3.new(1, 1, 1);
                     TextSize = 11;
                     TextWrapped = true;
                     TextXAlignment = Enum.TextXAlignment.Left;

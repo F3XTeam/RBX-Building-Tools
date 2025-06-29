@@ -177,7 +177,7 @@ function ShowUI()
 	VertexColorInput.MouseButton1Click:Connect(function ()
 		local CommonColor = VectorToColor(Support.IdentifyCommonProperty(GetMeshes(), 'VertexColor'))
 		local ColorPickerElement = Roact.createElement(ColorPicker, {
-			InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
+			InitialColor = CommonColor or Color3.new(1, 1, 1);
 			SetPreviewColor = function (Color)
 				SetPreviewTint(ColorToVector(Color))
 			end;
@@ -416,7 +416,7 @@ function UpdateColorIndicator(Indicator, Color)
 
 	-- If the colors vary, display a * on a gray background
 	else
-		Indicator.BackgroundColor3 = Color3.new(222/255, 222/255, 222/255);
+		Indicator.BackgroundColor3 = Color3.fromRGB(222, 222, 222);
 		Indicator.Varies.Text = '*';
 	end;
 

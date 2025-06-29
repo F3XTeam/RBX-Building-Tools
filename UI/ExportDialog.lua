@@ -27,7 +27,7 @@ local function ExportDialog(props)
                 Size = UDim2.new(1, 0, 0, 23);
                 Text = 'Close';
                 Font = Enum.Font.GothamMedium;
-                TextColor3 = Color3.fromRGB(255, 255, 255);
+                TextColor3 = Color3.new(1, 1, 1);
                 TextSize = 11;
                 [Roact.Event.Activated] = function (rbx)
                     props.OnDismiss()
@@ -43,7 +43,7 @@ local function ExportDialog(props)
                 Font = Enum.Font.GothamMedium;
                 RichText = true;
                 Text = props.Text;
-                TextColor3 = Color3.fromRGB(255, 255, 255);
+                TextColor3 = Color3.new(1, 1, 1);
                 TextSize = 11;
                 TextWrapped = true;
                 [Roact.Change.TextBounds] = function (rbx)

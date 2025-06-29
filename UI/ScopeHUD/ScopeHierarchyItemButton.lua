@@ -167,7 +167,7 @@ function ScopeHierarchyItemButton:render()
                 Text = self.state.InstanceName;
                 TextTransparency = self.props.IsTarget and 0.5 or 0;
                 TextYAlignment = Enum.TextYAlignment.Center;
-                TextColor3 = Color3.fromRGB(255, 255, 255);
+                TextColor3 = Color3.new(1, 1, 1);
                 LayoutOrder = 1;
             },
             {

@@ -106,7 +106,7 @@ function ShowUI()
 	PaintTool.UI.Controls.ColorPickerButton.MouseButton1Click:Connect(function ()
 		local CommonColor = Support.IdentifyCommonProperty(Selection.Parts, 'Color')
 		local ColorPickerElement = Roact.createElement(ColorPicker, {
-			InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
+			InitialColor = CommonColor or Color3.new(1, 1, 1);
 			SetPreviewColor = PreviewColor;
 			OnConfirm = function (Color)
 				SetColor(Color)
