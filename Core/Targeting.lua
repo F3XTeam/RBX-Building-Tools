@@ -46,7 +46,7 @@ function TargetingModule:EnableTargeting()
 	end);
 
 	-- Listen for 2D selection
-	Connections.RectSelectionStarted = Support.AddUserInputListener('Began', 'MouseButton1', true, self.StartRectangleSelecting);
+	Connections.RectSelectionStarted = Support.AddUserInputListener('Began', 'MouseButton1', false, self.StartRectangleSelecting);
 	Connections.RectSelectionFinished = Support.AddUserInputListener('Ended', 'MouseButton1', true, self.FinishRectangleSelecting);
 
 	-- Hide target box when tool is unequipped
