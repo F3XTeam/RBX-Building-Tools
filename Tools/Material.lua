@@ -139,7 +139,8 @@ function MaterialTool:ShowUI()
 			Size = UDim2.new(0, 130, 0, 25);
 			Options = MaterialList;
 			MaxRows = 6;
-			CurrentOption = self.CurrentMaterial and self.CurrentMaterial.Name;
+			CurrentOption = self.CurrentMaterial 
+				and (Materials[self.CurrentMaterial] or self.CurrentMaterial.Name);
 			OnOptionSelected = function (Option)
 				SetProperty('Material', Support.FindTableOccurrence(Materials, Option))
 			end;
