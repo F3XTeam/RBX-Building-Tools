@@ -12,6 +12,7 @@ local RunService = game:GetService 'RunService'
 local Libraries = Tool:WaitForChild 'Libraries'
 local Signal = require(Libraries:WaitForChild 'Signal')
 local Maid = require(Libraries:WaitForChild 'Maid')
+local JointUtils = require(Libraries:WaitForChild 'JointUtils')
 
 -- Import relevant references
 local Selection = Core.Selection
@@ -335,8 +336,8 @@ function MoveTool:SetAxisPosition(Axis, Position)
 
 	-- Restore the parts' original states
 	for Part, State in pairs(InitialPartStates) do
+		JointUtils.RestoreJoints(State.Joints);
 		Part:MakeJoints();
-		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -382,8 +383,8 @@ function MoveTool:NudgeSelectionByFace(Face)
 
 	-- Restore the parts' original states
 	for Part, State in pairs(InitialPartStates) do
+		JointUtils.RestoreJoints(State.Joints);
 		Part:MakeJoints();
-		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -564,9 +565,6 @@ function MoveTool:PrepareSelectionForDragging()
 	local InitialPartStates = {}
 	local InitialRootStates = {}
 
-	-- Get index of parts
-	local PartIndex = Support.FlipTable(Selection.Parts)
-
 	-- Stop parts from moving, and capture the initial state of the parts
 	for _, Part in pairs(Selection.Parts) do
 		InitialPartStates[Part] = {
@@ -582,8 +580,7 @@ function MoveTool:PrepareSelectionForDragging()
 			Part.AssemblyLinearVelocity = Vector3.new();
 			Part.AssemblyAngularVelocity = Vector3.new();
 		end
-		InitialPartStates[Part].Joints = Core.PreserveJoints(Part, PartIndex)
-		Part:BreakJoints();
+		InitialPartStates[Part].Joints = JointUtils.PreserveJoints(Part);
 	end;
 
 	-- Record the initial position of each root PVInstance for movement

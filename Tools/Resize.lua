@@ -11,6 +11,7 @@ local Libraries = Tool:WaitForChild 'Libraries'
 local Signal = require(Libraries:WaitForChild 'Signal')
 local _Make = require(Libraries:WaitForChild 'Make')
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+local JointUtils = require(Libraries:WaitForChild 'JointUtils')
 
 -- Import relevant references
 local UserInputService = game:GetService('UserInputService')
@@ -365,6 +366,7 @@ function ShowHandles()
 
 		-- Make joints, restore original anchor and collision states
 		for Part, State in pairs(InitialState) do
+			JointUtils.RestoreJoints(State.Joints);
 			Part:MakeJoints();
 			Part.CanCollide = State.CanCollide;
 			Part.Anchored = State.Anchored;
@@ -623,6 +625,7 @@ function SetAxisSize(Axis, Size)
 
 	-- Restore the parts' original states
 	for Part, State in pairs(InitialStates) do
+		JointUtils.RestoreJoints(State.Joints);
 		Part:MakeJoints();
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
@@ -677,6 +680,7 @@ function NudgeSelectionByFace(Face)
 
 	-- Restore the parts' original states
 	for Part, State in pairs(initialState) do
+		JointUtils.RestoreJoints(State.Joints);
 		Part:MakeJoints();
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
@@ -777,7 +781,7 @@ function PreparePartsForResizing()
 		initialState[Part] = { Anchored = Part.Anchored, CanCollide = Part.CanCollide, Size = Part.Size, CFrame = Part.CFrame };
 		Part.Anchored = true;
 		Part.CanCollide = false;
-		Part:BreakJoints();
+		initialState[Part].Joints = JointUtils.PreserveJoints(Part);
 		Part.AssemblyLinearVelocity = Vector3.new();
 		Part.AssemblyAngularVelocity = Vector3.new();
 	end;
@@ -1049,6 +1053,7 @@ function FinishSnapping()
 	-- Restore the selection's original state if stage was reached
 	if SnappingStartSelectionState then
 		for Part, State in pairs(SnappingStartSelectionState) do
+			JointUtils.RestoreJoints(State.Joints);
 			Part:MakeJoints();
 			Part.CanCollide = State.CanCollide;
 			Part.Anchored = State.Anchored;

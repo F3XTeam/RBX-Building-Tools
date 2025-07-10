@@ -12,6 +12,7 @@ local RunService = game:GetService('RunService')
 local Libraries = Tool:WaitForChild 'Libraries'
 local Make = require(Libraries:WaitForChild 'Make')
 local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForManualWindowTrigger'))
+local JointUtils = require(Libraries:WaitForChild 'JointUtils')
 
 -- Import relevant references
 Selection = Core.Selection;
@@ -395,8 +396,8 @@ function AttachHandles(Part, Autofocus)
 
 		-- Make joints, restore original anchor and collision states
 		for Part, State in pairs(InitialPartStates) do
-			Part:MakeJoints();
-			Core.RestoreJoints(State.Joints);
+		    JointUtils.RestoreJoints(State.Joints);
+		    Part:MakeJoints();
 			Part.CanCollide = State.CanCollide;
 			Part.Anchored = State.Anchored;
 		end;
@@ -699,8 +700,8 @@ function SetAxisAngle(Axis, Angle)
 
 	-- Restore the parts' original states
 	for Part, State in pairs(InitialPartStates) do
+		JointUtils.RestoreJoints(State.Joints);
 		Part:MakeJoints();
-		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -765,8 +766,8 @@ function NudgeSelectionByAxis(Axis, Direction)
 
 	-- Make joints, restore original anchor and collision states
 	for Part, State in pairs(InitialPartStates) do
+		JointUtils.RestoreJoints(State.Joints);
 		Part:MakeJoints();
-		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -948,9 +949,6 @@ function PrepareSelectionForRotating()
 	local InitialPartStates = {}
 	local InitialRootStates = {}
 
-	-- Get index of parts
-	local PartIndex = Support.FlipTable(Selection.Parts);
-
 	-- Stop parts from moving, and capture the initial state of the parts
 	for _, Part in pairs(Selection.Parts) do
 		InitialPartStates[Part] = {
@@ -966,8 +964,7 @@ function PrepareSelectionForRotating()
 			Part.AssemblyLinearVelocity = Vector3.new();
 			Part.AssemblyAngularVelocity = Vector3.new();
 		end
-		InitialPartStates[Part].Joints = Core.PreserveJoints(Part, PartIndex);
-		Part:BreakJoints();
+		InitialPartStates[Part].Joints = JointUtils.PreserveJoints(Part);
 	end;
 
 	-- Record the initial position of each root PVInstance for movement
