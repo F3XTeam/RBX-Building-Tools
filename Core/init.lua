@@ -560,12 +560,11 @@ local function GetHighestParent(Items)
 	return HighestItem and HighestItem.Parent or nil
 end
 
-ConfirmationSound = Support.Create 'Sound' {
-	Name = 'BTActionCompletionSound';
-	Pitch = 1.5;
-	SoundId = Assets.ActionCompletionSound;
-	Volume = 1;
-};
+ConfirmationSound = Instance.new('Sound')
+ConfirmationSound.Name = 'BTActionCompletionSound';
+ConfirmationSound.PlaybackSpeed = 1.5;
+ConfirmationSound.SoundId = Assets.ActionCompletionSound;
+ConfirmationSound.Volume = 1;
 
 function PlayConfirmationSound()
 	-- Plays a confirmation beep sound

@@ -1,21 +1,5 @@
 SupportLibrary = {};
 
-function SupportLibrary.Create(ClassName)
-	-- Creates an object with the given className
-	
-	local Object = Instance.new(ClassName)
-	return function(PropertyTable)
-		if PropertyTable then
-			for Index, Value in pairs(PropertyTable) do
-				if Index:lower() ~= "classname" then
-					Object[Index] = Value
-				end
-			end
-		end
-		return Object
-	end
-end
-
 function SupportLibrary.FindTableOccurrences(Haystack, Needle)
 	-- Returns the positions of instances of `needle` in table `haystack`
 
