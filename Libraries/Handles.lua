@@ -292,9 +292,7 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
     end
 
     -- Get adornee CFrame and size
-    local AdorneeCFrame = self.IsAdorneeModel and
-        self.Adornee:GetModelCFrame() or
-        self.Adornee.CFrame
+    local AdorneeCFrame = self.Adornee:GetPivot()
 	local AdorneeSize = self.IsAdorneeModel and
 		self.Adornee:GetExtentsSize() or
         self.Adornee.Size
