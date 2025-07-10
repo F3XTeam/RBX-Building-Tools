@@ -505,8 +505,8 @@ Actions = {
 			-- Stabilize the parts and maintain the original anchor state
 			Part.Anchored = true;
 			Part:BreakJoints();
-			Part.Velocity = Vector3.new();
-			Part.RotVelocity = Vector3.new();
+			Part.AssemblyLinearVelocity = Vector3.new();
+			Part.AssemblyAngularVelocity = Vector3.new();
 			
 			-- Set the part's size and CFrame
 			Part.Size = Change.Size;
@@ -578,8 +578,8 @@ Actions = {
 			-- Stabilize the parts and maintain the original anchor state
 			Part.Anchored = true;
 			Part:BreakJoints();
-			Part.Velocity = Vector3.new();
-			Part.RotVelocity = Vector3.new();
+			Part.AssemblyLinearVelocity = Vector3.new();
+			Part.AssemblyAngularVelocity = Vector3.new();
 
 			-- Set the part's CFrame
 			Part.CFrame = Change.CFrame;
@@ -655,8 +655,8 @@ Actions = {
 		for Part, Change in PartChangeSet do
 			
 			Part:BreakJoints();
-			Part.Velocity = Vector3.new();
-			Part.RotVelocity = Vector3.new();
+			Part.AssemblyLinearVelocity = Vector3.new();
+			Part.AssemblyAngularVelocity = Vector3.new();
 
 		end;
 		for Root, Pivot in RootChangeSet do

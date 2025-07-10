@@ -778,8 +778,8 @@ function PreparePartsForResizing()
 		Part.Anchored = true;
 		Part.CanCollide = false;
 		Part:BreakJoints();
-		Part.Velocity = Vector3.new();
-		Part.RotVelocity = Vector3.new();
+		Part.AssemblyLinearVelocity = Vector3.new();
+		Part.AssemblyAngularVelocity = Vector3.new();
 	end;
 
 	return initialState;

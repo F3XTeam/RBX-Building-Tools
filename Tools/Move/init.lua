@@ -579,8 +579,8 @@ function MoveTool:PrepareSelectionForDragging()
 		if RunService:IsRunning() then
 			Part.Anchored = true;
 			Part.CanCollide = false;
-			Part.Velocity = Vector3.new();
-			Part.RotVelocity = Vector3.new();
+			Part.AssemblyLinearVelocity = Vector3.new();
+			Part.AssemblyAngularVelocity = Vector3.new();
 		end
 		InitialPartStates[Part].Joints = Core.PreserveJoints(Part, PartIndex)
 		Part:BreakJoints();
