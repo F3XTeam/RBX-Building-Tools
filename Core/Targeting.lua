@@ -464,6 +464,7 @@ function TargetingModule.PrismSelect()
 	local Extents = require(Core.Tool.Core.BoundingBox).CalculateExtents(Selection.Items, nil, true);
 	local Region = Region3.new(Extents.Min, Extents.Max);
 
+    -- Create OverlapParams
 	local Params = OverlapParams.new()
 	Params.FilterDescendantsInstances = Selection.Items
 	Params.MaxParts = math.huge
