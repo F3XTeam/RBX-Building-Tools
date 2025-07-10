@@ -157,6 +157,9 @@ function CreateWelds()
 
 	-- Update the UI with the number of welds created
 	UI.Changes.Text.Text = ('created %s weld%s'):format(#Welds, #Welds == 1 and '' or 's');
+	
+	-- Play a confirmation sound
+	Core.PlayConfirmationSound();
 
 	-- Put together the history record
 	local HistoryRecord = {

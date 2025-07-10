@@ -36,6 +36,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local RunService = game:GetService('RunService')
 local SelectionService = game:GetService('Selection')
 local UserInputService = game:GetService('UserInputService')
+local SoundService = game:GetService('SoundService')
 Support.ImportServices();
 SyncAPI = Tool.SyncAPI;
 Player = Players.LocalPlayer;
@@ -559,6 +560,21 @@ local function GetHighestParent(Items)
 	return HighestItem and HighestItem.Parent or nil
 end
 
+ConfirmationSound = Support.Create 'Sound' {
+	Name = 'BTActionCompletionSound';
+	Pitch = 1.5;
+	SoundId = Assets.ActionCompletionSound;
+	Volume = 1;
+};
+
+function PlayConfirmationSound()
+	-- Plays a confirmation beep sound
+
+	-- Trigger the sound locally
+	SoundService:PlayLocalSound(ConfirmationSound);
+
+end;
+
 function CloneSelection()
 	-- Clones selected parts
 
@@ -644,6 +660,9 @@ function CloneSelection()
 
 	-- Select the clones
 	Selection.Replace(Clones);
+	
+	-- Play a confirmation sound
+	PlayConfirmationSound();
 
 	-- Flash the outlines of the new parts
 	coroutine.wrap(Selection.FlashOutlines)();
@@ -916,6 +935,7 @@ function ExportSelection()
 				'<font face="Gotham" size="10">Use the code above to import your creation using the plugin in Studio.</font>';
 			OnDismiss = DialogDismissCallback;
 		}))
+		PlayConfirmationSound();
 		print('[Building Tools by F3X] Uploaded Export:', CreationId);
 	end)
 
