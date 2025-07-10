@@ -1917,7 +1917,7 @@ function CreatePart(PartType)
 	if PartType == 'Normal' then
 		NewPart = Instance.new('Part')
 		NewPart.Size = Vector3.new(4, 1, 2)
-
+		
 	elseif PartType == 'Truss' then
 		NewPart = Instance.new('TrussPart')
 
@@ -1937,15 +1937,24 @@ function CreatePart(PartType)
 		NewPart = Instance.new('Part')
 		NewPart.Shape = Enum.PartType.Ball
 
-	elseif PartType == 'Seat' or PartType == 'Vehicle Seat' then
-		NewPart = Instance.new(PartType == 'Vehicle Seat' and 'VehicleSeat' or 'Seat')
-		NewPart.BrickColor = BrickColor.Black()
+	elseif PartType == 'Seat' then
+		NewPart = Instance.new('Seat')
 		NewPart.Size = Vector3.new(4, 1, 2)
+		NewPart.BrickColor = BrickColor.Black()
+		NewPart.FrontSurface = Enum.SurfaceType.Hinge
+
+	elseif PartType == 'Vehicle Seat' then
+		NewPart = Instance.new('VehicleSeat')
+		NewPart.Size = Vector3.new(4, 1, 2)
+		NewPart.BrickColor = BrickColor.Black()
 		NewPart.FrontSurface = Enum.SurfaceType.Hinge
 
 	elseif PartType == 'Spawn' then
 		NewPart = Instance.new('SpawnLocation')
-		NewPart.Size = Vector3.new(4, 1, 2)
+		NewPart.Size = Vector3.new(12, 1, 12)
+		local SpawnDecal = Instance.new('Decal')
+		SpawnDecal.Texture = 'rbxasset://textures/SpawnLocation.png'
+		SpawnDecal.Parent = NewPart
 	end
 
 	-- Make part surfaces smooth
