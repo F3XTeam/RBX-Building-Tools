@@ -1648,7 +1648,7 @@ Actions = {
 		-- Push serialized data to server
 		local Response = HttpService:JSONDecode(
 			HttpService:PostAsync(
-				'http://f3xteam.com/bt/export',
+				'https://f3xteam.com/bt/export',
 				HttpService:JSONEncode { data = SerializedBuildData, version = 3, userId = (Player and Player.UserId) },
 				Enum.HttpContentType.ApplicationJson,
 				true
@@ -1705,7 +1705,7 @@ Actions = {
 
 		-- Return parsed response from API
 		return HttpService:JSONDecode(
-			HttpService:GetAsync('http://f3xteam.com/bt/getFirstMeshData/' .. AssetId)
+			HttpService:GetAsync('https://f3xteam.com/bt/getFirstMeshData/' .. AssetId)
 		);
 
 	end;
@@ -1719,7 +1719,7 @@ Actions = {
 		end;
 
 		-- Return direct response from the API
-		return HttpService:GetAsync('http://f3xteam.com/bt/getDecalImageID/' .. DecalAssetId);
+		return HttpService:GetAsync('https://f3xteam.com/bt/getDecalImageID/' .. DecalAssetId);
 
 	end;
 
