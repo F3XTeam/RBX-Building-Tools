@@ -27,7 +27,6 @@ Make = require(Tool.Libraries.Make)
 local Roact = require(Tool.Vendor:WaitForChild 'Roact')
 local Maid = require(Tool.Libraries:WaitForChild 'Maid')
 local Cryo = require(Tool.Libraries:WaitForChild 'Cryo')
-local JointUtils = require(Tool.Libraries:WaitForChild 'JointUtils')
 
 -- References
 local ChangeHistoryService = game:GetService('ChangeHistoryService')
@@ -1037,9 +1036,6 @@ function ToggleSwitch(CurrentButtonName, SwitchContainer)
 
 	end;
 end;
-
-Core.PreserveJoints = JointUtils.PreserveJoints
-Core.RestoreJoints = JointUtils.RestoreJoints
 
 -- Initialize the UI
 InitializeUI();
