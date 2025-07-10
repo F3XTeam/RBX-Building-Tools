@@ -80,6 +80,14 @@ Actions = {
 
 		-- Clone items
 		for _, Item in pairs(Items) do
+			-- If the item's Archivable property is set to false,
+			-- set it and `ItemIsNotArchivable` to true
+			local ItemIsNotArchivable = false
+			if not Item.Archivable then
+				ItemIsNotArchivable = true
+				Item.Archivable = true
+			end
+			
 			local Clone = Item:Clone()
 
 			-- Include metadata when streaming is enabled in tool mode
@@ -94,6 +102,15 @@ Actions = {
 			-- Register the clone
 			table.insert(Clones, Clone)
 			CreatedInstances[Item] = Item
+						
+			-- If `ItemIsNotArchivable` is true, set the item's 
+			-- Archivable property back to false, and do the same
+			-- for the clone
+			if ItemIsNotArchivable then
+				Item.Archivable = false
+				Clone.Archivable = false
+				ItemIsNotArchivable = nil -- still not sure if doing this has any effect
+			end
 		end
 
 		-- If streaming is enabled in tool mode, return temporary clone operation metadata
