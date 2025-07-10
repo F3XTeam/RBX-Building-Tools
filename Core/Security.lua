@@ -309,7 +309,7 @@ function Security.ArePartsViolatingAreas(Parts, Player, ExemptPartial, AreaPermi
 
 				-- Track the number of corners that `Part` has in this region
 				for _, Corner in pairs(Support.GetPartCorners(Part)) do
-					if AreaRegion:CastPoint(Corner.p) then
+					if AreaRegion:CastPoint(Corner.Position) then
 						PartCornerCompliance[Part] = PartCornerCompliance[Part] + 1;
 					end;
 				end;

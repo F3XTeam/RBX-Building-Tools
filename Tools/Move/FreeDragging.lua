@@ -168,7 +168,7 @@ function FreeDragging:StartDragging(BasePart, InitialPartStates, InitialRootStat
 	end
 
 	-- Determine the base point for dragging
-	local BasePartOffset = -BasePart.CFrame:PointToObjectSpace(Core.Mouse.Hit.p)
+	local BasePartOffset = -BasePart.CFrame:PointToObjectSpace(Core.Mouse.Hit.Position)
 
 	-- Improve base point alignment for the given increment
 	BasePartOffset = Vector3.new(
@@ -304,7 +304,7 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialPartStates, I
 	)
 
 	-- Move the parts towards their target destination
-	local Rotation = self.SurfaceAlignment or (InitialPartStates[BasePart].CFrame - InitialPartStates[BasePart].CFrame.p)
+	local Rotation = self.SurfaceAlignment or (InitialPartStates[BasePart].CFrame - InitialPartStates[BasePart].CFrame.Position)
 	local TargetCFrame = CFrame.new(self.TargetPoint) * Rotation * CFrame.new(BasePartOffset)
 
 	-- Calculate crossthrough against target plane if necessary
@@ -406,15 +406,15 @@ function FreeDragging:GetAlignedTargetPoint(Target, TargetPoint, TargetNormal, I
 		local Size = Target.Size / 2
 
 		-- Calculate the direction of a wedge surface
-		local WedgeDirection = (Target.CFrame - Target.CFrame.p) *
+		local WedgeDirection = (Target.CFrame - Target.CFrame.Position) *
 			CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.X), math.atan(Target.Size.Z / Target.Size.Y))
 
 		-- Calculate the direction of a corner part's Z-axis surface
-		local CornerDirectionZ = (Target.CFrame - Target.CFrame.p) *
+		local CornerDirectionZ = (Target.CFrame - Target.CFrame.Position) *
 			CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.X), math.pi - math.atan(Target.Size.Z / Target.Size.Y))
 
 		-- Calculate the direction of a corner part's X-axis surface
-		local CornerDirectionX = (Target.CFrame - Target.CFrame.p) *
+		local CornerDirectionX = (Target.CFrame - Target.CFrame.Position) *
 			CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.Z), math.atan(Target.Size.Y / Target.Size.X)) *
 			CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.X), math.pi / 2) *
 			CFrame.fromAxisAngle(Vector3.FromAxis(Enum.Axis.Z), -math.pi / 2)

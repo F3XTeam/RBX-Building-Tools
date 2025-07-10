@@ -294,7 +294,7 @@ function MoveTool:StartSnapping()
 
 		-- Fire `SnappedPoint` and update `SnappedPoint` when there is a new snap point in focus
 		if NewPoint then
-			self.SnappedPoint = NewPoint.p
+			self.SnappedPoint = NewPoint.Position
 			self.PointSnapped:Fire(self.SnappedPoint)
 		end
 
@@ -319,7 +319,7 @@ function MoveTool:SetAxisPosition(Axis, Position)
 			Axis == 'X' and Position or Part.Position.X,
 			Axis == 'Y' and Position or Part.Position.Y,
 			Axis == 'Z' and Position or Part.Position.Z
-		) * (Part.CFrame - Part.CFrame.p);
+		) * (Part.CFrame - Part.CFrame.Position);
 
 	end;
 

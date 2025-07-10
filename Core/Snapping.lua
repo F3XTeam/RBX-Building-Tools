@@ -129,7 +129,7 @@ function SnapTracking.UpdateUI(Point)
 	end;
 
 	-- Map the point's position on the screen
-	local PointPosition, PointVisible = workspace.CurrentCamera:WorldToScreenPoint(Point.p);
+	local PointPosition, PointVisible = workspace.CurrentCamera:WorldToScreenPoint(Point.Position);
 
 	-- Move the point marker UI to the point's position on the screen
 	SnapTracking.PointMarker.Visible = PointVisible;
@@ -195,7 +195,7 @@ function SnapTracking.GetClosestPoint()
 
 	-- Calculate proximity of each snapping point to the mouse
 	for SnappingPointKey, SnappingPoint in ipairs(SnappingPoints) do
-		SnappingPointProximity[SnappingPointKey] = (SnapTracking.MousePoint - SnappingPoint.p).Magnitude;
+		SnappingPointProximity[SnappingPointKey] = (SnapTracking.MousePoint - SnappingPoint.Position).Magnitude;
 	end;
 
 	-- Sort out the closest snapping point

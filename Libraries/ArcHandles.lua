@@ -166,7 +166,7 @@ function ArcHandles:CreateHandles(Options)
 
             -- Calculate aim offset
             local AimRay = self.Camera:ViewportPointToRay(X, Y)
-            local AimDistance = (InitialHandleCFrame.p - AimRay.Origin):Dot(InitialHandlePlane) / AimRay.Direction:Dot(InitialHandlePlane)
+            local AimDistance = (InitialHandleCFrame.Position - AimRay.Origin):Dot(InitialHandlePlane) / AimRay.Direction:Dot(InitialHandlePlane)
             local AimWorldPoint = (AimDistance * AimRay.Direction) + AimRay.Origin
             local InitialDragOffset = InitialAdorneeCFrame:PointToObjectSpace(AimWorldPoint)
 
@@ -179,7 +179,7 @@ function ArcHandles:CreateHandles(Options)
 
                 -- Calculate current aim
                 local AimRay = self.Camera:ScreenPointToRay(AimScreenPoint.X, AimScreenPoint.Y)
-                local AimDistance = (InitialHandleCFrame.p - AimRay.Origin):Dot(InitialHandlePlane) / AimRay.Direction:Dot(InitialHandlePlane)
+                local AimDistance = (InitialHandleCFrame.Position - AimRay.Origin):Dot(InitialHandlePlane) / AimRay.Direction:Dot(InitialHandlePlane)
                 local AimWorldPoint = (AimDistance * AimRay.Direction) + AimRay.Origin
                 local CurrentDragOffset = InitialAdorneeCFrame:PointToObjectSpace(AimWorldPoint)
 
@@ -263,7 +263,7 @@ function ArcHandles:Pause()
 end
 
 local function IsFirstPerson(Camera)
-    return (Camera.CFrame.p - Camera.Focus.p).Magnitude <= 0.6
+    return (Camera.CFrame.Position - Camera.Focus.Position).Magnitude <= 0.6
 end
 
 function ArcHandles:Resume()
@@ -390,7 +390,7 @@ function ArcHandles:UpdateHandle(Side, Handle)
         self.Adornee.Size
 
     -- Calculate radius of adornee extents
-    local ViewportPoint, CameraDepth, Visible = WorldToViewportPoint(Camera, AdorneeCFrame.p)
+    local ViewportPoint, CameraDepth, Visible = WorldToViewportPoint(Camera, AdorneeCFrame.Position)
     local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * CameraDepth
     local StudsPerPixel = StudWidth / Camera.ViewportSize.X
     local HandlePadding = math.max(1, StudsPerPixel * 14) * (self.IsMouseAvailable and 1 or 1.6)
@@ -401,10 +401,10 @@ function ArcHandles:UpdateHandle(Side, Handle)
     local SideUnitVector = Vector3.FromNormalId(Side)
     local HandleCFrame = AdorneeCFrame * CFrame.new(Radius * SideUnitVector)
     local AxisCFrame = AdorneeCFrame * Vector3.FromAxis(self.SideToAxis[Side])
-    local HandleNormal = (AxisCFrame - AdorneeCFrame.p).Unit
+    local HandleNormal = (AxisCFrame - AdorneeCFrame.Position).Unit
 
     -- Get viewport position of adornee and the side the handle will be on
-    local HandleViewportPoint, HandleCameraDepth, HandleVisible = WorldToViewportPoint(Camera, HandleCFrame.p)
+    local HandleViewportPoint, HandleCameraDepth, HandleVisible = WorldToViewportPoint(Camera, HandleCFrame.Position)
 
     -- Display handle if side is visible to the camera
     Handle.Visible = HandleVisible
@@ -455,7 +455,7 @@ function ArcHandles:UpdateCircle(Axis, Lines)
     local CircleVector = Vector3.FromNormalId(self.AxisToSide[Axis])
 
     -- Determine circle radius
-    local ViewportPoint, CameraDepth, Visible = WorldToViewportPoint(Camera, AdorneeCFrame.p)
+    local ViewportPoint, CameraDepth, Visible = WorldToViewportPoint(Camera, AdorneeCFrame.Position)
     local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * CameraDepth
     local StudsPerPixel = StudWidth / Camera.ViewportSize.X
     local HandlePadding = math.max(1, StudsPerPixel * 14) * (self.IsMouseAvailable and 1 or 1.6)

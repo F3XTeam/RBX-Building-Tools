@@ -195,7 +195,7 @@ function Handles:Pause()
 end
 
 local function IsFirstPerson(Camera)
-    return (Camera.CFrame.p - Camera.Focus.p).Magnitude <= 0.6
+    return (Camera.CFrame.Position - Camera.Focus.Position).Magnitude <= 0.6
 end
 
 function Handles:Resume()
@@ -302,7 +302,7 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
     -- Calculate radius of adornee extents along axis
 	local AdorneeRadius = (AdorneeSize * SideUnitVector / 2).Magnitude
     local SideCFrame = AdorneeCFrame * CFrame.new(AdorneeRadius * SideUnitVector)
-    local AdorneeViewportPoint, AdorneeCameraDepth = WorldToViewportPoint(Camera, SideCFrame.p)
+    local AdorneeViewportPoint, AdorneeCameraDepth = WorldToViewportPoint(Camera, SideCFrame.Position)
     local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * AdorneeCameraDepth
     local StudsPerPixel = StudWidth / Camera.ViewportSize.X
     local HandlePadding = math.max(1, StudsPerPixel * 14) * (self.IsMouseAvailable and 1 or 1.6)
@@ -310,8 +310,8 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
 
     -- Calculate CFrame of the handle's side
     local HandleCFrame = AdorneeCFrame * CFrame.new(PaddedRadius * SideUnitVector)
-    local HandleNormal = (HandleCFrame.p - AdorneeCFrame.p).Unit
-    local HandleViewportPoint, HandleCameraDepth, HandleVisible = WorldToViewportPoint(Camera, HandleCFrame.p)
+    local HandleNormal = (HandleCFrame.Position - AdorneeCFrame.Position).Unit
+    local HandleViewportPoint, HandleCameraDepth, HandleVisible = WorldToViewportPoint(Camera, HandleCFrame.Position)
 
     -- Display handle if side is visible to the camera
     Handle.Visible = HandleVisible

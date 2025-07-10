@@ -832,9 +832,9 @@ function StartSnapping()
 
 	-- Trigger the PointSnapped event when a new point is snapped
 	SnapTracking.StartTracking(function (NewPoint)
-		if NewPoint and NewPoint.p ~= SnappedPoint then
-			SnappedPoint = NewPoint.p;
-			PointSnapped:Fire(NewPoint.p);
+		if NewPoint and NewPoint.Position ~= SnappedPoint then
+			SnappedPoint = NewPoint.Position;
+			PointSnapped:Fire(NewPoint.Position);
 		end;
 	end);
 
@@ -955,9 +955,9 @@ function StartSnapping()
 
 				-- Re-enable snapping to select destination
 				SnapTracking.StartTracking(function (NewPoint)
-					if NewPoint and NewPoint.p ~= SnappedPoint then
-						SnappedPoint = NewPoint.p;
-						PointSnapped:Fire(NewPoint.p);
+					if NewPoint and NewPoint.Position ~= SnappedPoint then
+						SnappedPoint = NewPoint.Position;
+						PointSnapped:Fire(NewPoint.Position);
 					end;
 				end);
 
