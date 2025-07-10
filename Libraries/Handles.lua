@@ -341,17 +341,19 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
     HandleState.HandleNormal = HandleNormal
     HandleState.AdorneeViewportPosition = AdorneeViewportPoint
     HandleState.HandleViewportPosition = HandleViewportPoint
+	
+	-- Create RaycastParams
+	local Params = RaycastParams.new()
+	Params.FilterDescendantsInstances = self.ObstacleBlacklist
     
     -- Hide handles if obscured by a non-blacklisted part
     local HandleRay = Camera:ViewportPointToRay(HandleViewportPoint.X, HandleViewportPoint.Y)
-    local TargetRay = Ray.new(HandleRay.Origin, HandleRay.Direction * (HandleCameraDepth - 0.25))
-    local Target, TargetPoint = Workspace:FindPartOnRayWithIgnoreList(TargetRay, self.ObstacleBlacklist)
+	local Target = Workspace:Raycast(HandleRay.Origin, HandleRay.Direction * (HandleCameraDepth - 0.25), Params)
     if Target then
         Handle.ImageTransparency = 1
     elseif Handle.ImageTransparency == 1 then
         Handle.ImageTransparency = 0.33
     end
-
 end
 
 function Handles:Destroy()

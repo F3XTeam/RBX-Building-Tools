@@ -37,27 +37,28 @@ function SnapTracking.StartTracking(Callback)
 			{ Player and Player.Character },
 			SnapTracking.TargetBlacklist or {}
 		);
+		
+		-- Create RaycastParams
+		local Params = RaycastParams.new()
+		Params.FilterDescendantsInstances = TargetBlacklist
 
 		-- Find the current target part and point
 		local TargetRay = workspace.CurrentCamera:ScreenPointToRay(Input.Position.X, Input.Position.Y);
-		local TargetPart, TargetPoint = workspace:FindPartOnRayWithIgnoreList(
-			Ray.new(TargetRay.Origin, TargetRay.Direction * 5000),
-			TargetBlacklist
-		);
+		local TargetCast = workspace:Raycast(TargetRay.Origin, TargetRay.Direction * 5000, Params);
 
 		-- Make sure a target part exists
-		if not TargetPart then
+		if not TargetCast then
 			return;
 		end;
 
 		-- Check with any snapping target filter
-		if SnapTracking.TargetFilter and not SnapTracking.TargetFilter(TargetPart) then
+		if SnapTracking.TargetFilter and not SnapTracking.TargetFilter(TargetCast.Instance) then
 			return;
 		end;
 
 		-- Set the current target for snap point tracking
-		SnapTracking.MousePoint = TargetPoint;
-		SnapTracking.SetTrackingTarget(TargetPart);
+		SnapTracking.MousePoint = TargetCast.Position;
+		SnapTracking.SetTrackingTarget(TargetCast.Instance);
 
 	end;
 
