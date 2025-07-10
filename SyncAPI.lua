@@ -1937,13 +1937,9 @@ function CreatePart(PartType)
 		NewPart = Instance.new('Part')
 		NewPart.Shape = Enum.PartType.Ball
 
-	elseif PartType == 'Seat' then
-		NewPart = Instance.new('Seat')
-		NewPart.Size = Vector3.new(4, 1, 2)
-		NewPart.FrontSurface = Enum.SurfaceType.Hinge
-
-	elseif PartType == 'Vehicle Seat' then
-		NewPart = Instance.new('VehicleSeat')
+	elseif PartType == 'Seat' or PartType == 'Vehicle Seat' then
+		NewPart = Instance.new(PartType == 'Vehicle Seat' and 'VehicleSeat' or 'Seat')
+		NewPart.BrickColor = BrickColor.Black()
 		NewPart.Size = Vector3.new(4, 1, 2)
 		NewPart.FrontSurface = Enum.SurfaceType.Hinge
 
