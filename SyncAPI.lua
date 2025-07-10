@@ -1972,15 +1972,16 @@ end
 -- Keep current player updated in tool mode
 if ToolMode == 'Tool' then
 
-	-- Set current player if in backpack
-	if Tool.Parent and Tool.Parent:IsA 'Backpack' then
-		Player = Tool.Parent.Parent;
-
-	-- Set current player if in character
-	elseif Tool.Parent and Tool.Parent:IsA 'Model' then
-		Player = Players:GetPlayerFromCharacter(Tool.Parent);
-
-	-- Clear `Player` if not in possession of a player
+	-- Set current player if one is linked to the backpack/character the tool is in, 
+	-- otherwise set `Player` to nil
+	if Tool.Parent then
+		if Tool.Parent:IsA 'Backpack' then
+			Player = Tool.Parent.Parent;
+		elseif Tool.Parent:IsA 'Model' then
+			Player = Players:GetPlayerFromCharacter(Tool.Parent);
+		else
+			Player = nil;
+		end;
 	else
 		Player = nil;
 	end;
@@ -1993,26 +1994,32 @@ if ToolMode == 'Tool' then
 			return;
 		end;
 
-		-- Set `Player` to player of the backpack the tool is in
-		if Parent and Parent:IsA 'Backpack' then
-			Player = Parent.Parent;
-
-		-- Set `Player` to player of the character holding the tool
-		elseif Parent and Parent:IsA 'Model' then
-			Player = Players:GetPlayerFromCharacter(Parent);
-
-		-- Clear `Player` if tool is not parented to a player
+		-- Set `Player` to player linked to the backpack/character the tool is in,
+		-- otherwise set `Player` to nil
+		local DoCleanup = false;
+		if Parent then
+			if Parent:IsA 'Backpack' then
+				Player = Parent.Parent;
+			elseif Parent:IsA 'Model' then
+				Player = Players:GetPlayerFromCharacter(Parent);
+			else
+				DoCleanup = true;
+				Player = nil;
+			end;
 		else
+			DoCleanup = true;
 			Player = nil;
+		end;
 
-			-- Clean up remaining clone streaming metadata before tool becomes unable to
+		-- if `DoCleanup` is true, clean up remaining clone streaming metadata before tool becomes unable to
+		if DoCleanup then
 			for clone in streamingClonesPendingUntagging do
 				clone:RemoveTag("BTStreamingClone")
 				clone:SetAttribute("BTStreamingCloneID", nil)
 				streamingClonesPendingUntagging[clone] = nil
 			end
+			DoCleanup = nil; -- might have some kind of effect? don't know
 		end;
-
 	end);
 
 end;
