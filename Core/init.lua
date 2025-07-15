@@ -282,7 +282,7 @@ function Enable(Mouse)
 			LastSelectionChangeHandle = SelectionChangeHandle
 
 			-- Replace selection if it hasn't changed in a heartbeat
-			RunService.Heartbeat:Wait()
+			RunService.PostSimulation:Wait()
 			if LastSelectionChangeHandle == SelectionChangeHandle then
 				Selection.Replace(SelectionService:Get(), false)
 			end
