@@ -19,7 +19,7 @@ local function ScopeInTooltip(props)
         Image = 'rbxassetid://4445959523';
         ScaleType = Enum.ScaleType.Slice;
         SliceCenter = Rect.new(4, 4, 12, 12);
-        ImageColor3 = Color3.fromRGB(0, 0, 0);
+        ImageColor3 = Color3.new(0, 0, 0);
         Size = UDim2.new(0, LABEL_LENGTH + (ICON_SIZE + 9)/2, 0, 30/2);
         LayoutOrder = props.LayoutOrder or 3;
     },

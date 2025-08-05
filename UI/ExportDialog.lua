@@ -20,7 +20,7 @@ local function ExportDialog(props)
             });
             CloseButton = new('TextButton', {
                 AnchorPoint = Vector2.new(0, 1);
-                BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+                BackgroundColor3 = Color3.new(0, 0, 0);
                 BackgroundTransparency = 0.5;
                 Modal = true;
                 Position = UDim2.new(0, 0, 1, 0);

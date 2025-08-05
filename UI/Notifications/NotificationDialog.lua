@@ -16,7 +16,7 @@ end
 
 function NotificationDialog:render()
     return new('Frame', {
-        BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+        BackgroundColor3 = Color3.new(0, 0, 0);
         BackgroundTransparency = 0.7;
         BorderSizePixel = 0;
         Size = UDim2.new(1, 0, 0, 22 + 2);
@@ -28,7 +28,7 @@ function NotificationDialog:render()
             Size = UDim2.new(1, 0, 0, 2);
         });
         OKButton = new('TextButton', {
-            BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+            BackgroundColor3 = Color3.new(0, 0, 0);
             BackgroundTransparency = 0.8;
             BorderSizePixel = 0;
             AnchorPoint = Vector2.new(0, 1);
@@ -43,7 +43,7 @@ function NotificationDialog:render()
             end;
         });
         DetailsButton = (not self.state.ShouldDisplayDetails or nil) and new('TextButton', {
-            BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+            BackgroundColor3 = Color3.new(0, 0, 0);
             BackgroundTransparency = 0.8;
             BorderSizePixel = 0;
             AnchorPoint = Vector2.new(0, 1);
@@ -60,7 +60,7 @@ function NotificationDialog:render()
             end;
         });
         ButtonDivider = (not self.state.ShouldDisplayDetails or nil) and new('Frame', {
-            BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+            BackgroundColor3 = Color3.new(0, 0, 0);
             BackgroundTransparency = 0.75;
             BorderSizePixel = 0;
             Position = UDim2.new(0.5, 0, 1, 0);

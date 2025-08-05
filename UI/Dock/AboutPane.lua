@@ -46,7 +46,7 @@ function AboutPane:render()
     return new('ImageButton', {
         Image = '';
         BackgroundTransparency = 0.75;
-        BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+        BackgroundColor3 = Color3.new(0, 0, 0);
         LayoutOrder = self.props.LayoutOrder;
         Size = UDim2.new(1, 0, 0, 32);
         [Roact.Event.Activated] = function (rbx)

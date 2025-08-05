@@ -58,7 +58,7 @@ end
 
 function Dropdown:render()
     return new('ImageButton', {
-        BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+        BackgroundColor3 = Color3.new(0, 0, 0);
         BackgroundTransparency = 0.3;
         BorderSizePixel = 0;
         Position = self.props.Position;
@@ -101,7 +101,7 @@ function Dropdown:render()
         });
         Options = new('Frame', {
             Visible = self.state.AreOptionsVisible;
-            BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+            BackgroundColor3 = Color3.new(0, 0, 0);
             BackgroundTransparency = 0.3;
             BorderSizePixel = 0;
             Position = UDim2.new(0, 0, 1, 1);

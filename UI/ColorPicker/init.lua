@@ -341,7 +341,7 @@ function ColorPicker:render()
                         Text = '✔';
                         Font = Enum.Font.GothamMedium;
                         TextSize = 12;
-                        TextColor3 = Color3.fromRGB(0, 0, 0);
+                        TextColor3 = Color3.new(0, 0, 0);
                     });
                 });
                 CancelButton = new('ImageButton', {
