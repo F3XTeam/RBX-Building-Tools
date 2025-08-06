@@ -1,20 +1,5 @@
 SupportLibrary = {};
 
-function SupportLibrary.FindTableOccurrences(Haystack, Needle)
-	-- Returns the positions of instances of `needle` in table `haystack`
-
-	local Positions = {};
-
-	-- Add any indexes from `Haystack` that are `Needle`
-	for Index, Value in pairs(Haystack) do
-		if Value == Needle then
-			table.insert(Positions, Index);
-		end;
-	end;
-
-	return Positions;
-end;
-
 function SupportLibrary.FindTableOccurrence(Haystack, Needle)
 	-- Returns one occurrence of `Needle` in `Haystack`
 
@@ -42,27 +27,6 @@ function SupportLibrary.IsInTable(Haystack, Needle)
 
 	-- If no instances were found, return false
 	return false;
-end;
-
-function SupportLibrary.DoTablesMatch(A, B)
-	-- Returns whether the values of tables A and B are the same
-
-	-- Check B table differences
-	for Index in pairs(A) do
-		if A[Index] ~= B[Index] then
-			return false;
-		end;
-	end;
-
-	-- Check A table differences
-	for Index in pairs(B) do
-		if B[Index] ~= A[Index] then
-			return false;
-		end;
-	end;
-
-	-- Return true if no differences
-	return true;
 end;
 
 function SupportLibrary.Round(Number, Places)
@@ -138,26 +102,6 @@ function SupportLibrary.MergeWithBlanks(Target, ...)
 	return Target
 end
 
-function SupportLibrary.GetAllDescendants(Parent)
-	-- Recursively gets all the descendants of `Parent` and returns them
-
-	local Descendants = {};
-
-	for _, Child in pairs(Parent:GetChildren()) do
-
-		-- Add the direct descendants of `Parent`
-		table.insert(Descendants, Child);
-
-		-- Add the descendants of each child
-		for _, Subchild in pairs(SupportLibrary.GetAllDescendants(Child)) do
-			table.insert(Descendants, Subchild);
-		end;
-
-	end;
-
-	return Descendants;
-end;
-
 function SupportLibrary.GetDescendantsWhichAreA(Object, Class)
 	-- Returns descendants of `Object` which match `Class`
 
@@ -174,81 +118,6 @@ function SupportLibrary.GetDescendantsWhichAreA(Object, Class)
 	return Matches
 
 end
-
-function SupportLibrary.FilterArray(Array, Callback)
-	-- Returns a filtered copy of `Array` based on the filter `Callback`
-
-	local FilteredArray = {}
-
-	-- Add items from `Array` that `Callback` returns `true` on
-	for Key, Value in ipairs(Array) do
-		if Callback(Value, Key) then
-			table.insert(FilteredArray, Value)
-		end
-	end
-
-	return FilteredArray
-end
-
-function SupportLibrary.FilterMap(Map, Callback)
-	-- Returns a filtered copy of `Map` based on the filter `Callback`
-
-	local FilteredMap = {}
-
-	-- Add items from `Map` that `Callback` returns `true` on
-	for Key, Value in ipairs(Map) do
-		if Callback(Value, Key) then
-			FilteredMap[Key] = Value
-		end
-	end
-
-	return FilteredMap
-end
-
-function SupportLibrary.GetDescendantCount(Parent)
-	-- Recursively gets a count of all the descendants of `Parent` and returns them
-
-	local Count = 0;
-
-	for _, Child in pairs(Parent:GetChildren()) do
-
-		-- Count the direct descendants of `Parent`
-		Count = Count + 1;
-
-		-- Count and add the descendants of each child
-		Count = Count + SupportLibrary.GetDescendantCount(Child);
-
-	end;
-
-	return Count;
-end;
-
-function SupportLibrary.CloneParts(Parts)
-	-- Returns a table of cloned `Parts`
-
-	local Clones = {};
-
-	-- Copy the parts into `Clones`
-	for Index, Part in pairs(Parts) do
-		Clones[Index] = Part:Clone();
-	end;
-
-	return Clones;
-end;
-
-function SupportLibrary.SplitString(String, Delimiter)
-	-- Returns a table of string `String` split by pattern `Delimiter`
-
-	local StringParts = {};
-	local Pattern = ('([^%s]+)'):format(Delimiter);
-
-	-- Capture each separated part
-	String:gsub(Pattern, function (Part)
-		table.insert(StringParts, Part);
-	end);
-
-	return StringParts;
-end;
 
 function SupportLibrary.GetChildOfClass(Parent, ClassName, Inherit)
 	-- Returns the first child of `Parent` that is of class `ClassName`
@@ -270,103 +139,6 @@ function SupportLibrary.GetChildOfClass(Parent, ClassName, Inherit)
 	end;
 
 	return nil;
-end;
-
-function SupportLibrary.GetChildrenOfClass(Parent, ClassName, Inherit)
-	-- Returns a table containing the children of `Parent` that are
-	-- of class `ClassName`
-
-	local Matches = {};
-
-	if not Inherit then
-		for _, Child in pairs(Parent:GetChildren()) do
-			if Child.ClassName == ClassName then
-				table.insert(Matches, Child);
-			end;
-		end;
-	else
-		for _, Child in pairs(Parent:GetChildren()) do
-			if Child:IsA(ClassName) then
-				table.insert(Matches, Child);
-			end;
-		end;
-	end;
-
-	return Matches;
-end;
-
-function SupportLibrary.HSVToRGB(Hue, Saturation, Value)
-	-- Returns the RGB equivalent of the given HSV-defined color
-	-- (adapted from some code found around the web)
-
-	-- If it's achromatic, just return the value
-	if Saturation == 0 then
-		return Value;
-	end;
-
-	-- Get the hue sector
-	local HueSector = math.floor(Hue / 60);
-	local HueSectorOffset = (Hue / 60) - HueSector;
-
-	local P = Value * (1 - Saturation);
-	local Q = Value * (1 - Saturation * HueSectorOffset);
-	local T = Value * (1 - Saturation * (1 - HueSectorOffset));
-
-	if HueSector == 0 then
-		return Value, T, P;
-	elseif HueSector == 1 then
-		return Q, Value, P;
-	elseif HueSector == 2 then
-		return P, Value, T;
-	elseif HueSector == 3 then
-		return P, Q, Value;
-	elseif HueSector == 4 then
-		return T, P, Value;
-	elseif HueSector == 5 then
-		return Value, P, Q;
-	end;
-
-	return
-end;
-
-function SupportLibrary.RGBToHSV(Red, Green, Blue)
-	-- Returns the HSV equivalent of the given RGB-defined color
-	-- (adapted from some code found around the web)
-
-	local Hue, Saturation, Value;
-
-	local MinValue = math.min(Red, Green, Blue);
-	local MaxValue = math.max(Red, Green, Blue);
-
-	Value = MaxValue;
-
-	local ValueDelta = MaxValue - MinValue;
-
-	-- If the color is not black
-	if MaxValue ~= 0 then
-		Saturation = ValueDelta / MaxValue;
-
-	-- If the color is purely black
-	else
-		Saturation = 0;
-		Hue = -1;
-		return Hue, Saturation, Value;
-	end;
-
-	if Red == MaxValue then
-		Hue = (Green - Blue) / ValueDelta;
-	elseif Green == MaxValue then
-		Hue = 2 + (Blue - Red) / ValueDelta;
-	else
-		Hue = 4 + (Red - Green) / ValueDelta;
-	end;
-
-	Hue = Hue * 60;
-	if Hue < 0 then
-		Hue = Hue + 360;
-	end;
-
-	return Hue, Saturation, Value;
 end;
 
 function SupportLibrary.IdentifyCommonItem(Items)
@@ -528,60 +300,6 @@ function SupportLibrary.AddUserInputListener(InputState, InputTypeFilter, CatchA
 
 end;
 
-function SupportLibrary.AddGuiInputListener(Gui, InputState, InputTypeFilter, CatchAll, Callback)
-	-- Connects to the given GUI user input event and takes care of standard boilerplate code
-
-	-- Create input type whitelist
-	local InputTypes = {}
-	if type(InputTypeFilter) == 'string' then
-		InputTypes[InputTypeFilter] = true
-	elseif type(InputTypeFilter) == 'table' then
-		InputTypes = SupportLibrary.FlipTable(InputTypeFilter)
-	end
-
-	-- Create a UserInputService listener based on the given `InputState`
-	return Gui['Input' .. InputState]:Connect(function (Input, GameProcessedEvent)
-
-		-- Make sure this input was not captured by the client (unless `CatchAll` is enabled)
-		if GameProcessedEvent and not CatchAll then
-			return;
-		end;
-
-		-- Make sure this is the right input type
-		if not InputTypes[Input.UserInputType.Name] then
-			return;
-		end;
-
-		-- Call back upon passing all conditions
-		Callback(Input);
-
-	end);
-
-end;
-
-function SupportLibrary.AreKeysPressed(...)
-	-- Returns whether the given keys are pressed
-
-	local RequestedKeysPressed = 0;
-
-	-- Get currently pressed keys
-	local PressedKeys = SupportLibrary.GetListMembers(game:GetService('UserInputService'):GetKeysPressed(), 'KeyCode');
-
-	-- Go through each requested key
-	for _, Key in pairs({ ... }) do
-
-		-- Count requested keys that are pressed
-		if SupportLibrary.IsInTable(PressedKeys, Key) then
-			RequestedKeysPressed = RequestedKeysPressed + 1;
-		end;
-
-	end;
-
-	-- Return whether all the requested keys are pressed or not
-	return RequestedKeysPressed == #{...};
-
-end;
-
 function SupportLibrary.ConcatTable(TargetTable, ...)
 	-- Inserts all values from given source tables into target
 
@@ -597,18 +315,6 @@ function SupportLibrary.ConcatTable(TargetTable, ...)
 	-- Return the destination table
 	return TargetTable
 end
-
-function SupportLibrary.ClearTable(Table)
-	-- Clears out every value in `Table`
-
-	-- Clear each index
-	for Index in pairs(Table) do
-		Table[Index] = nil;
-	end;
-
-	-- Return the given table
-	return Table;
-end;
 
 function SupportLibrary.Values(Table)
 	-- Returns all the values in the given table
@@ -647,35 +353,6 @@ function SupportLibrary.Call(Function, ...)
 		))
 	end
 end
-
-function SupportLibrary.Trim(String)
-	-- Returns a trimmed version of `String` (adapted from code from lua-users)
-	return (String:gsub("^%s*(.-)%s*$", "%1"));
-end
-
-function SupportLibrary.ChainCall(...)
-	-- Returns function that passes arguments through given functions and returns the final result
-
-	-- Get the given chain of functions
-	local Chain = { ... };
-
-	-- Return the chaining function
-	return function (...)
-
-		-- Get arguments
-		local Arguments = { ... };
-
-		-- Go through each function and store the returned data to reuse in the next function's arguments
-		for _, Function in ipairs(Chain) do
-			Arguments = { Function(unpack(Arguments)) };
-		end;
-
-		-- Return the final returned data
-		return unpack(Arguments);
-
-	end;
-
-end;
 
 function SupportLibrary.CountKeys(Table)
 	-- Returns the number of keys in `Table`
@@ -777,36 +454,6 @@ function SupportLibrary.Loop(Interval, Function, ...)
 	-- Return stopping callback
 	return Stop
 end
-
-function SupportLibrary.Clamp(Number, Minimum, Maximum)
-	-- Returns the given number, clamped according to the provided min/max
-
-	-- Clamp the number
-	if Minimum and Number < Minimum then
-		Number = Minimum;
-	elseif Maximum and Number > Maximum then
-		Number = Maximum;
-	end;
-
-	-- Return the clamped number
-	return Number;
-
-end;
-
-function SupportLibrary.ReverseTable(Table)
-	-- Returns a new table with values in the opposite order
-
-	local ReversedTable = {};
-
-	-- Copy each value at the opposite key
-	for Index, Value in ipairs(Table) do
-		ReversedTable[#Table - Index + 1] = Value;
-	end;
-
-	-- Return the reversed table
-	return ReversedTable;
-
-end;
 
 function SupportLibrary.CreateConsecutiveCallDeferrer(MaxInterval)
 	-- Returns a callback for determining whether to execute consecutive calls
