@@ -378,7 +378,7 @@ Actions = {
 				if Object:IsA 'BasePart' then
 					table.insert(Parts, Object);
 
-				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Light' then
+				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Light' then
 					table.insert(Parts, Object.Parent);
 
 				elseif Object:IsA 'Model' or Object:IsA 'Folder' then
@@ -430,7 +430,7 @@ Actions = {
 				if Object:IsA 'BasePart' then
 					table.insert(Parts, Object);
 
-				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Light' then
+				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Light' then
 					table.insert(Parts, Object.Parent);
 
 				elseif Object:IsA 'Model' or Object:IsA 'Folder' then

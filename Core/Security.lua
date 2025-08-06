@@ -196,7 +196,6 @@ function Security.IsItemAllowed(Item, Player)
 		Item:IsA 'Sparkles' or
 		Item:IsA 'DataModelMesh' or
 		Item:IsA 'Decal' or
-		Item:IsA 'Texture' or
 		Item:IsA 'Light'
 	if not IsItemClassAllowed then
 		return false
