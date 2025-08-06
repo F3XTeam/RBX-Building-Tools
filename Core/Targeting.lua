@@ -78,8 +78,7 @@ local function IsVisible(Item)
 end
 
 local function IsTargetable(Item)
-	return Item:IsA 'Model' or
-		Item:IsA 'BasePart' or
+	return IsVisible(Item) or
 		Item:IsA 'Tool' or
 		Item:IsA 'Accoutrement'
 end
