@@ -187,8 +187,8 @@ function SupportLibrary.GetPartCorners(Part)
 
 	-- Make references to functions called a lot for efficiency
 	local Insert = table.insert;
-	local ToWorldSpace = CFrame.new().ToWorldSpace;
 	local NewCFrame = CFrame.new;
+	local ToWorldSpace = NewCFrame().ToWorldSpace;
 
 	-- Get info about the part
 	local PartCFrame = Part.CFrame;
