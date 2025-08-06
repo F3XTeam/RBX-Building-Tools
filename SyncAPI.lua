@@ -12,7 +12,6 @@ Player = nil;
 
 -- Libraries
 Security = require(Tool.Core.Security);
-RegionModule = require(Tool.Libraries.Region);
 Support = require(Tool.Libraries.SupportLibrary);
 Serialization = require(Tool.Libraries.SerializationV3);
 
