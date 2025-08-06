@@ -198,31 +198,6 @@ function SupportLibrary.GetPartCorners(Part)
 	return Corners;
 end;
 
-function SupportLibrary.ImportServices()
-	-- Adds references to common services into the calling environment
-
-	-- Get the calling environment
-	local CallingEnvironment = getfenv(debug.info(2, 'f'));
-
-	-- Add the services
-	CallingEnvironment.Workspace = game:GetService 'Workspace';
-	CallingEnvironment.Players = game:GetService 'Players';
-	CallingEnvironment.MarketplaceService = game:GetService 'MarketplaceService';
-	CallingEnvironment.ContentProvider = game:GetService 'ContentProvider';
-	CallingEnvironment.SoundService = game:GetService 'SoundService';
-	CallingEnvironment.UserInputService = game:GetService 'UserInputService';
-	CallingEnvironment.SelectionService = game:GetService 'Selection';
-	CallingEnvironment.CoreGui = game:GetService 'CoreGui';
-	CallingEnvironment.HttpService = game:GetService 'HttpService';
-	CallingEnvironment.ChangeHistoryService = game:GetService 'ChangeHistoryService';
-	CallingEnvironment.ReplicatedStorage = game:GetService 'ReplicatedStorage';
-	CallingEnvironment.GroupService = game:GetService 'GroupService';
-	CallingEnvironment.ServerScriptService = game:GetService 'ServerScriptService';
-	CallingEnvironment.ServerStorage = game:GetService 'ServerStorage';
-	CallingEnvironment.StarterGui = game:GetService 'StarterGui';
-	CallingEnvironment.RunService = game:GetService 'RunService';
-end;
-
 function SupportLibrary.GetListMembers(List, MemberName)
 	-- Gets the given member for each object in the given list table
 

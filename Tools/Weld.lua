@@ -8,7 +8,7 @@ local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForMa
 Selection = Core.Selection;
 Support = Core.Support;
 Security = Core.Security;
-Support.ImportServices();
+
 
 -- Initialize the tool
 local WeldTool = {

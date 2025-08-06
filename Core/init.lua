@@ -36,7 +36,7 @@ local RunService = game:GetService('RunService')
 local SelectionService = game:GetService('Selection')
 local UserInputService = game:GetService('UserInputService')
 local SoundService = game:GetService('SoundService')
-Support.ImportServices();
+
 SyncAPI = Tool.SyncAPI;
 Player = Players.LocalPlayer;
 
