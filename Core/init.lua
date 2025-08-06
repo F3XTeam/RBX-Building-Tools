@@ -19,7 +19,6 @@ Selection = require(script.Selection)
 Targeting = require(script.Targeting)
 
 -- Libraries
-Region = require(Tool.Libraries.Region)
 Signal = require(Tool.Libraries.Signal)
 Support = require(Tool.Libraries.SupportLibrary)
 Try = require(Tool.Libraries.Try)
