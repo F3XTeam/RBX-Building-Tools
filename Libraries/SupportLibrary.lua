@@ -125,20 +125,10 @@ function SupportLibrary.GetChildOfClass(Parent, ClassName, Inherit)
 
 	-- Look for a child of `Parent` of class `ClassName` and return it
 	if not Inherit then
-		for _, Child in pairs(Parent:GetChildren()) do
-			if Child.ClassName == ClassName then
-				return Child;
-			end;
-		end;
+		return Parent:FindFirstChildOfClass(ClassName)
 	else
-		for _, Child in pairs(Parent:GetChildren()) do
-			if Child:IsA(ClassName) then
-				return Child;
-			end;
-		end;
+		return Parent:FindFirstChildWhichIsA(ClassName)
 	end;
-
-	return nil;
 end;
 
 function SupportLibrary.IdentifyCommonItem(Items)
