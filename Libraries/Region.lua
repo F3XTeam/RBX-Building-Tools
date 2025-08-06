@@ -62,12 +62,26 @@ Region functions:
 		>Returns true if the point intersects a part, false otherwise
 ]]
 
+local setmetatable	=setmetatable
+local cf            =CFrame.new
+local ov            =OverlapParams.new
+local r3			=Region3.new
+local v3			=Vector3.new
+local nc            =cf()
+local GetComponents	=nc.GetComponents
+local VecDiv        =nc.PointToObjectSpace --Right Division, yo.
+local workspace     =workspace
+local BoxCast       =workspace.GetPartBoundsInBox
+local type			=type
+
+
+
+
 local Region={}
 
 
 
 local BoxPointCollision do
-	local VecDiv=CFrame.new().PointToObjectSpace--Right Division, yo.
 	function BoxPointCollision(CFrame,Size,Point)
 		local Relative	=VecDiv(CFrame, Point)
 		local sx,sy,sz	=Size.X/2,Size.Y/2,Size.Z/2
@@ -79,7 +93,6 @@ end
 
 
 local BoxSphereCollision do
-	local VecDiv=CFrame.new().PointToObjectSpace--Right Division, yo.
 	function BoxSphereCollision(CFrame,Size,Center,Radius)
 		local Relative	=VecDiv(CFrame,Center)
 		local sx,sy,sz	=Size.X/2,Size.Y/2,Size.Z/2
@@ -105,16 +118,15 @@ end
 --Also I ran out of local variables so I had to redo everything so that I could reuse the names lol.
 --So don't even try to read it.
 local BoxCollision do
-	local components=CFrame.new().GetComponents
 	function BoxCollision(CFrame0,Size0,CFrame1,Size1,AssumeTrue)
 		local	m00,m01,m02,
 				m03,m04,m05,
 				m06,m07,m08,
-				m09,m10,m11	=components(CFrame0)
+				m09,m10,m11	=GetComponents(CFrame0)
 		local	m12,m13,m14,
 				m15,m16,m17,
 				m18,m19,m20,
-				m21,m22,m23	=components(CFrame1)
+				m21,m22,m23	=GetComponents(CFrame1)
 		local	m24,m25,m26	=Size0.X/2,Size0.Y/2,Size0.Z/2
 		local	m27,m28,m29	=Size1.X/2,Size1.Y/2,Size1.Z/2
 		local	m30,m31,m32	=m12-m00,m13-m01,m14-m02
@@ -276,20 +288,12 @@ local BoxCollision do
 end
 
 
-local setmetatable	=setmetatable
-local components	=CFrame.new().GetComponents
-local type			=type
-local IsA			=game.IsA
-local r3			=Region3.new
-local v3			=Vector3.new
-
-
 
 local function Region3BoundingBox(CFrame,Size)
  	local	x,y,z,
 			xx,yx,zx,
 			xy,yy,zy,
-			xz,yz,zz=components(CFrame)
+			xz,yz,zz=GetComponents(CFrame)
 	local	sx,sy,sz=Size.X/2,Size.Y/2,Size.Z/2
 	local	px		=sx*(xx<0 and -xx or xx)
 					+sy*(yx<0 and -yx or yx)
@@ -306,13 +310,10 @@ end
 
 
 local function FindAllPartsInRegion3(Region3, Ignore)
-	local Ignore = (type(Ignore) == 'table') and Ignore or { Ignore }
-	
-	local Params = OverlapParams.new()
-	Params.FilterDescendantsInstances = Ignore
+	local Params = ov()
+	Params.FilterDescendantsInstances = type(Ignore) == 'table' and Ignore or { Ignore }
 	Params.MaxParts = math.huge
-	
-	return workspace:GetPartBoundsInBox(Region3.CFrame, Region3.Size, Params)
+	return BoxCast(workspace, Region3.CFrame, Region3.Size, Params)
 end
 
 
