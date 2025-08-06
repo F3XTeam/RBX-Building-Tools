@@ -151,6 +151,10 @@ function SnapTracking.GetClosestPoint()
 	if not SnapTracking.Target or not SnapTracking.MousePoint then
 		return nil;
 	end;
+	
+	-- Make references to functions called a lot for efficiency
+	local Insert = table.insert;
+	local NewCFrame = CFrame.new;
 
 	local SnappingPoints = {};
 	local SnappingPointProximity = {};
@@ -162,36 +166,36 @@ function SnapTracking.GetClosestPoint()
 
 	-- Filter based on snapping point options
 	if SnapTracking.TrackCorners then
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, SizeY, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, SizeY, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, -SizeY, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, SizeY, -SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, SizeY, -SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, -SizeY, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, -SizeY, -SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, -SizeY, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, SizeY, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, SizeY, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, -SizeY, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, SizeY, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, SizeY, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, -SizeY, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, -SizeY, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, -SizeY, -SizeZ));
 	end;
 	if SnapTracking.TrackEdgeMidpoints then
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, SizeY, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, 0, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, SizeY, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, SizeY, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, 0, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, -SizeY, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, -SizeY, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, 0, -SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, SizeY, -SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, -SizeY, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, 0, -SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, -SizeY, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, SizeY, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, 0, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, SizeY, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, SizeY, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, 0, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, -SizeY, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, -SizeY, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, 0, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, SizeY, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, -SizeY, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, 0, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, -SizeY, -SizeZ));
 	end;
 	if SnapTracking.TrackFaceCentroids then
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, 0, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, 0, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, SizeY, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, 0, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, -SizeY, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, 0, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, 0, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, 0, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, SizeY, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, 0, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, -SizeY, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, 0, -SizeZ));
 	end;
 
 	-- Calculate proximity of each snapping point to the mouse
