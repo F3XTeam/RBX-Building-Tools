@@ -1,3 +1,6 @@
 [submodule "Vendor/Roact"]
 	path = Vendor/Roact
 	url = https://github.com/Roblox/roact
+[submodule "Libraries/Cryo"]
+	path = Libraries/Cryo
+	url = https://github.com/aimeetm234/cryo
