@@ -1795,6 +1795,33 @@ Actions = {
 		else
 			return result
 		end
+	end;
+	
+	['GetProductInfo'] = function(AssetId, InfoType)
+		-- MarketplaceService.GetProductInfo(), but wrapped in a pcall
+
+		-- Offload action to server-side if API is running locally
+		if RunService:IsClient() then
+			return SyncAPI.ServerEndpoint:InvokeServer('GetProductInfo', AssetId, InfoType);
+		end
+
+		-- Validate arguments
+		assert(type(AssetId) == "number", "Argument 1 expects a number")
+		assert(typeof(InfoType) == "EnumItem" and Enum.InfoType:FromValue(InfoType.Value),
+			"Argument 2 expects an Enum.InfoType"
+		)
+
+		local success, result = pcall(
+			MarketplaceService.GetProductInfo,
+			MarketplaceService,
+			AssetId,
+			InfoType
+		)
+		if not success then
+			return nil
+		else
+			return result
+		end
 	end
 
 }

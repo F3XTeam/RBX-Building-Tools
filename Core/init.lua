@@ -31,7 +31,6 @@ local Cryo = require(Tool.Libraries:WaitForChild 'Cryo')
 local ChangeHistoryService = game:GetService('ChangeHistoryService')
 local CollectionService = game:GetService('CollectionService')
 local Players = game:GetService('Players')
-local MarketplaceService = game:GetService('MarketplaceService')
 local RunService = game:GetService('RunService')
 local SelectionService = game:GetService('Selection')
 local UserInputService = game:GetService('UserInputService')
@@ -980,30 +979,34 @@ function IsVersionOutdated()
 	-- Returns whether this version of Building Tools is out of date
 
 	-- Check most recent version number
-	local AssetInfo = MarketplaceService:GetProductInfo(142785488, Enum.InfoType.Asset);
-	local LatestMajorVersion, LatestMinorVersion, LatestPatchVersion = AssetInfo.Description:match '%[Version: ([0-9]+)%.([0-9]+)%.([0-9]+)%]';
-	local CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion = Tool.Version.Value:match '([0-9]+)%.([0-9]+)%.([0-9]+)';
+	local AssetInfo = SyncAPI:Invoke('GetProductInfo', 142785488, Enum.InfoType.Asset);
+	if AssetInfo then
+		local LatestMajorVersion, LatestMinorVersion, LatestPatchVersion = AssetInfo.Description:match '%[Version: ([0-9]+)%.([0-9]+)%.([0-9]+)%]';
+		local CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion = Tool.Version.Value:match '([0-9]+)%.([0-9]+)%.([0-9]+)';
 
-	-- Convert version data into numbers
-	LatestMajorVersion, LatestMinorVersion, LatestPatchVersion =
-		tonumber(LatestMajorVersion), tonumber(LatestMinorVersion), tonumber(LatestPatchVersion);
-	CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion =
-		tonumber(CurrentMajorVersion), tonumber(CurrentMinorVersion), tonumber(CurrentPatchVersion);
+		-- Convert version data into numbers
+		LatestMajorVersion, LatestMinorVersion, LatestPatchVersion =
+			tonumber(LatestMajorVersion), tonumber(LatestMinorVersion), tonumber(LatestPatchVersion);
+		CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion =
+			tonumber(CurrentMajorVersion), tonumber(CurrentMinorVersion), tonumber(CurrentPatchVersion);
 
-	-- Determine whether current version is outdated
-	if LatestMajorVersion > CurrentMajorVersion then
-		return true;
-	elseif LatestMajorVersion == CurrentMajorVersion then
-		if LatestMinorVersion > CurrentMinorVersion then
+		-- Determine whether current version is outdated
+		if LatestMajorVersion > CurrentMajorVersion then
 			return true;
-		elseif LatestMinorVersion == CurrentMinorVersion then
-			return LatestPatchVersion > CurrentPatchVersion;
+		elseif LatestMajorVersion == CurrentMajorVersion then
+			if LatestMinorVersion > CurrentMinorVersion then
+				return true;
+			elseif LatestMinorVersion == CurrentMinorVersion then
+				return LatestPatchVersion > CurrentPatchVersion;
+			end;
 		end;
-	end;
-
-	-- Return an up-to-date status if not oudated
-	return false;
-
+		
+		-- Return an up-to-date status if not oudated
+		return false;
+	else
+		-- Return an up-to-date status if GetProductInfo returns nil (failed)
+		return false;
+	end
 end;
 
 function ToggleSwitch(CurrentButtonName, SwitchContainer)
