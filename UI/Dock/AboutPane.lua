@@ -28,7 +28,7 @@ To learn more about each tool, click on its ❔ icon at the top right corner.<fo
 <font size="12" color="rgb(150, 150, 150)"><b>Exporting your creations</b></font>
 You can export your builds into a short code by clicking the export button, or pressing <b>Shift-P</b>.<font size="8"><br /></font>
 Install the import plugin in <b>Roblox Studio</b> to import your creation:
-<font color="rgb(150, 150, 150)">roblox.com/library/142485815</font>]]
+<font color="rgb(150, 150, 150)">create.roblox.com/store/asset/142485815</font>]]
 
 -- Create component
 local AboutPane = Roact.PureComponent:extend(script.Name)
