@@ -33,8 +33,8 @@ local CollectionService = game:GetService('CollectionService')
 local Players = game:GetService('Players')
 local RunService = game:GetService('RunService')
 local SelectionService = game:GetService('Selection')
-local UserInputService = game:GetService('UserInputService')
 local SoundService = game:GetService('SoundService')
+local UserInputService = game:GetService('UserInputService')
 
 SyncAPI = Tool.SyncAPI;
 Player = Players.LocalPlayer;
