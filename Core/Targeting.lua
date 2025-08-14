@@ -22,6 +22,8 @@ TargetingModule.ScopeChanged = Signal.new()
 TargetingModule.ScopeTargetChanged = Signal.new()
 TargetingModule.ScopeLockChanged = Signal.new()
 
+local Mouse
+
 function TargetingModule:EnableTargeting()
 	-- 	Begin targeting parts from the mouse
 
