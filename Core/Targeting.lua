@@ -484,7 +484,7 @@ function TargetingModule.PrismSelect()
 
 	-- Find all parts intersecting with selection
 	for _, Part in pairs(Selection.Items) do
-		local TouchingParts = Part:GetTouchingParts();
+		local TouchingParts = Workspace:GetPartsInPart(Part);
 		for _, TouchingPart in pairs(TouchingParts) do
 			if not Selection.IsSelected(TouchingPart) then
 				Parts[TouchingPart] = true;
