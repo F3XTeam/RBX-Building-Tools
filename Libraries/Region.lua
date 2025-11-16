@@ -312,7 +312,6 @@ end
 local function FindAllPartsInRegion3(Region3, Ignore)
 	local Params = ov()
 	Params.FilterDescendantsInstances = type(Ignore) == 'table' and Ignore or { Ignore }
-	Params.MaxParts = math.huge
 	return BoxCast(workspace, Region3.CFrame, Region3.Size, Params)
 end
 
