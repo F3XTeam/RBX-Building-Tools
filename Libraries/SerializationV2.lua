@@ -148,9 +148,9 @@ function Serialization.SerializeModel(Items)
 			Datum[2] = Keys[Item.Parent] or 0;
 			Datum[3] = Item.Name == DefaultNames[Item.ClassName] and '' or Item.Name;
 			Datum[4] = Item.Brightness;
-			Datum[5] = Item.Color.r;
-			Datum[6] = Item.Color.g;
-			Datum[7] = Item.Color.b;
+			Datum[5] = Item.Color.R;
+			Datum[6] = Item.Color.G;
+			Datum[7] = Item.Color.B;
 			Datum[8] = Item.Enabled and 1 or 0;
 			Datum[9] = Item.Shadows and 1 or 0;
 			Data.Items[Index] = Datum;
@@ -181,9 +181,9 @@ function Serialization.SerializeModel(Items)
 			Datum[2] = Keys[Item.Parent] or 0;
 			Datum[3] = Item.Name == DefaultNames[Item.ClassName] and '' or Item.Name;
 			Datum[4] = Item.Enabled and 1 or 0;
-			Datum[5] = Item.Color.r;
-			Datum[6] = Item.Color.g;
-			Datum[7] = Item.Color.b;
+			Datum[5] = Item.Color.R;
+			Datum[6] = Item.Color.G;
+			Datum[7] = Item.Color.B;
 			Datum[8] = Item.Size;
 			Datum[9] = Item.RiseVelocity;
 			Datum[10] = Item.Opacity;
@@ -196,12 +196,12 @@ function Serialization.SerializeModel(Items)
 			Datum[2] = Keys[Item.Parent] or 0;
 			Datum[3] = Item.Name == DefaultNames[Item.ClassName] and '' or Item.Name;
 			Datum[4] = Item.Enabled and 1 or 0;
-			Datum[5] = Item.Color.r;
-			Datum[6] = Item.Color.g;
-			Datum[7] = Item.Color.b;
-			Datum[8] = Item.SecondaryColor.r;
-			Datum[9] = Item.SecondaryColor.g;
-			Datum[10] = Item.SecondaryColor.b;
+			Datum[5] = Item.Color.R;
+			Datum[6] = Item.Color.G;
+			Datum[7] = Item.Color.B;
+			Datum[8] = Item.SecondaryColor.R;
+			Datum[9] = Item.SecondaryColor.G;
+			Datum[10] = Item.SecondaryColor.B;
 			Datum[11] = Item.Heat;
 			Datum[12] = Item.Size;
 			Data.Items[Index] = Datum;
@@ -213,9 +213,9 @@ function Serialization.SerializeModel(Items)
 			Datum[2] = Keys[Item.Parent] or 0;
 			Datum[3] = Item.Name == DefaultNames[Item.ClassName] and '' or Item.Name;
 			Datum[4] = Item.Enabled and 1 or 0;
-			Datum[5] = Item.SparkleColor.r;
-			Datum[6] = Item.SparkleColor.g;
-			Datum[7] = Item.SparkleColor.b;
+			Datum[5] = Item.SparkleColor.R;
+			Datum[6] = Item.SparkleColor.G;
+			Datum[7] = Item.SparkleColor.B;
 			Data.Items[Index] = Datum;
 		end;
 

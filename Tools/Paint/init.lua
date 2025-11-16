@@ -184,7 +184,7 @@ function SetColor(Color)
 
 	-- Use BrickColor name if color matches one
 	local EquivalentBrickColor = BrickColor.new(Color);
-	local RGBText = ('(%d, %d, %d)'):format(Color.r * 255, Color.g * 255, Color.b * 255);
+	local RGBText = ('(%d, %d, %d)'):format(Color.R * 255, Color.G * 255, Color.B * 255);
 	local ColorText = (EquivalentBrickColor.Color == Color) and EquivalentBrickColor.Name or RGBText;
 
 	-- Shortcuts to color indicators

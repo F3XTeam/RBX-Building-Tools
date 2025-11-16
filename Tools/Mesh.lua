@@ -385,7 +385,7 @@ function ColorToVector(Color)
 	if not Color then return end;
 
 	-- Return the Vector3
-	return Vector3.new(Color.r, Color.g, Color.b);
+	return Vector3.new(Color.R, Color.G, Color.B);
 end;
 
 function UpdateDataInputs(Data)
