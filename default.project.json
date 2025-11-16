@@ -4,6 +4,9 @@
 		"$className": "Tool",
 		"$ignoreUnknownInstances": true,
 		"$properties": {
+			"ToolTip": {
+				"String": "Building Tools by F3X"
+			},
 			"Grip": {
 				"CFrame": {
 					"position": [0, 0, 0.4],
