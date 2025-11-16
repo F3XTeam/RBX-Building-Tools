@@ -172,13 +172,13 @@ function SupportLibrary.IdentifyCommonProperty(Items, Property)
 
 end;
 
+-- Make references to functions called a lot for efficiency
+local Insert = table.insert;
+local NewCFrame = CFrame.new;
+local ToWorldSpace = NewCFrame().ToWorldSpace;
+
 function SupportLibrary.GetPartCorners(Part)
 	-- Returns a table of the given part's corners' CFrames
-
-	-- Make references to functions called a lot for efficiency
-	local Insert = table.insert;
-	local NewCFrame = CFrame.new;
-	local ToWorldSpace = NewCFrame().ToWorldSpace;
 
 	-- Get info about the part
 	local PartCFrame = Part.CFrame;

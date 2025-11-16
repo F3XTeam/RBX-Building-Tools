@@ -144,6 +144,10 @@ function SnapTracking.SetTrackingTarget(NewTarget)
 	SnapTracking.Update();
 end;
 
+-- Make references to functions called a lot for efficiency
+local Insert = table.insert;
+local NewCFrame = CFrame.new;
+
 function SnapTracking.GetClosestPoint()
 	-- Find the current nearest snapping point for the target, update the GUI
 
@@ -151,10 +155,6 @@ function SnapTracking.GetClosestPoint()
 	if not SnapTracking.Target or not SnapTracking.MousePoint then
 		return nil;
 	end;
-	
-	-- Make references to functions called a lot for efficiency
-	local Insert = table.insert;
-	local NewCFrame = CFrame.new;
 
 	local SnappingPoints = {};
 	local SnappingPointProximity = {};
