@@ -1785,7 +1785,7 @@ Actions = {
 		assert(type(AssetId) == "number", "Argument 2 expects a number")
 		
 		local success, result = pcall(
-			MarketplaceService.PlayerOwnsAsset,
+			MarketplaceService.PlayerOwnsAssetAsync,
 			MarketplaceService,
 			Player,
 			AssetId
@@ -1812,7 +1812,7 @@ Actions = {
 		)
 
 		local success, result = pcall(
-			MarketplaceService.GetProductInfo,
+			MarketplaceService.GetProductInfoAsync,
 			MarketplaceService,
 			AssetId,
 			InfoType
