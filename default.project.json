@@ -16,7 +16,8 @@
 						[0, 0, 1.0]
 					]
 				}
-			}
+			},
+			"RequiresHandle" : false
 		},
 		"Core": {
 			"$path": "Core"
