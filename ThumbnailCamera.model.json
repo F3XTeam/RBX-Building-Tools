@@ -29,7 +29,7 @@
 					"Name": "ThumbnailClearer",
 					"ClassName": "Script",
 					"Properties": {
-						"Source": "script.Parent:Destroy()"
+						"Source": "script.Parent.Parent:Destroy()"
 					}
 				}
 			]

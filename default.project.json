@@ -91,6 +91,9 @@
 		},
 		"Interfaces": {
 			"$path": "Interfaces.rbxmx"
+		},
+		"ThumbnailCamera": {
+            "$path": "ThumbnailCamera.model.json"
 		}
 	}
 }
