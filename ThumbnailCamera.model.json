@@ -22,8 +22,7 @@
 					"ClassName": "Decal",
 					"Properties": {
 						"Texture": "rbxassetid://455573525",
-						"Face": "Front",
-						"UVScale": [1, 1]
+						"Face": "Front"
 					}
 				},
 				{
