@@ -17,7 +17,9 @@
 					]
 				}
 			},
-			"RequiresHandle" : false
+			"RequiresHandle": {
+                "Bool": false
+			}
 		},
 		"Core": {
 			"$path": "Core"

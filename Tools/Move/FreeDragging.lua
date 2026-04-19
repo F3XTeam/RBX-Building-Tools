@@ -252,14 +252,18 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialPartStates, I
 	----------------------------------------------
 
 	-- Don't consider other selected parts possible targets
-	local IgnoreList = Support.CloneTable(Selection.Items)
-	table.insert(IgnoreList, Core.Player and Core.Player.Character)
+	local TargetParams = RaycastParams.new()
+	TargetParams.FilterDescendantsInstances = Support.CloneTable(Selection.Items)
+	if Core.Player then
+		TargetParams:AddToFilter(Core.Player.Character)
+	end
 
 	-- Perform the mouse target search
-	local Target, TargetPoint, TargetNormal = Workspace:FindPartOnRayWithIgnoreList(
-		Ray.new(Core.Mouse.UnitRay.Origin, Core.Mouse.UnitRay.Direction * 5000),
-		IgnoreList
-	)
+	local TargetOrigin, TargetDirection = Core.Mouse.UnitRay.Origin, Core.Mouse.UnitRay.Direction * 5000
+	local TargetCast = Workspace:Raycast(TargetOrigin, TargetDirection, TargetParams)
+	local Target = TargetCast and TargetCast.Instance or nil
+	local TargetPoint = TargetCast and TargetCast.Position or (TargetOrigin + TargetDirection)
+	local TargetNormal = TargetCast and TargetCast.Normal or nil
 	self.Target = Target
 	self.TargetPoint = TargetPoint
 	self.TargetNormal = TargetNormal
