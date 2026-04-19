@@ -263,7 +263,7 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialPartStates, I
 	local TargetCast = Workspace:Raycast(TargetOrigin, TargetDirection, TargetParams)
 	local Target = TargetCast and TargetCast.Instance or nil
 	local TargetPoint = TargetCast and TargetCast.Position or (TargetOrigin + TargetDirection)
-	local TargetNormal = TargetCast and TargetCast.Normal or nil
+	local TargetNormal = TargetCast and TargetCast.Normal or TargetPoint.Unit
 	self.Target = Target
 	self.TargetPoint = TargetPoint
 	self.TargetNormal = TargetNormal
