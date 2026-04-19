@@ -94,7 +94,7 @@
 				<Z>0.800000012</Z>
 			</Vector3>
 			<BinaryString name="AttributesSerialize"></BinaryString>
-			<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+			
 			<bool name="DefinesCapabilities">false</bool>
 			<string name="Name">Handle</string>
 			<int64 name="SourceAssetId">-1</int64>
@@ -125,7 +125,7 @@
 				<int name="ZIndex">1</int>
 				<token name="Face">5</token>
 				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+				
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">Decal</string>
 				<int64 name="SourceAssetId">-1</int64>
@@ -157,7 +157,7 @@
 				<int name="ZIndex">1</int>
 				<token name="Face">2</token>
 				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+				
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">Decal</string>
 				<int64 name="SourceAssetId">-1</int64>
@@ -189,7 +189,7 @@
 				<int name="ZIndex">1</int>
 				<token name="Face">3</token>
 				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+				
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">Decal</string>
 				<int64 name="SourceAssetId">-1</int64>
@@ -221,7 +221,7 @@
 				<int name="ZIndex">1</int>
 				<token name="Face">0</token>
 				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+				
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">Decal</string>
 				<int64 name="SourceAssetId">-1</int64>
@@ -253,7 +253,7 @@
 				<int name="ZIndex">1</int>
 				<token name="Face">1</token>
 				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+				
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">Decal</string>
 				<int64 name="SourceAssetId">-1</int64>
@@ -285,7 +285,7 @@
 				<int name="ZIndex">1</int>
 				<token name="Face">4</token>
 				<BinaryString name="AttributesSerialize"></BinaryString>
-				<SecurityCapabilities name="Capabilities">0</SecurityCapabilities>
+				
 				<bool name="DefinesCapabilities">false</bool>
 				<string name="Name">Decal</string>
 				<int64 name="SourceAssetId">-1</int64>
