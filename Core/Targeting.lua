@@ -467,7 +467,7 @@ function TargetingModule.PrismSelect()
 
     -- Create OverlapParams
 	local Params = OverlapParams.new()
-	Params.FilterDescendantsInstances = Selection.Items
+	Params.ExcludeInstances = Selection.Items
 
 	local PotentialParts = Workspace:GetPartBoundsInBox(Region.CFrame, Region.Size, Params);
 

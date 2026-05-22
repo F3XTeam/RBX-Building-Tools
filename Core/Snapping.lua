@@ -40,7 +40,7 @@ function SnapTracking.StartTracking(Callback)
 		
 		-- Create RaycastParams
 		local Params = RaycastParams.new()
-		Params.FilterDescendantsInstances = TargetBlacklist
+		Params.ExcludeInstances = TargetBlacklist
 
 		-- Find the current target part and point
 		local TargetRay = workspace.CurrentCamera:ScreenPointToRay(Input.Position.X, Input.Position.Y);

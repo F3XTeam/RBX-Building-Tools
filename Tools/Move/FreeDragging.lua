@@ -253,7 +253,7 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialPartStates, I
 
 	-- Don't consider other selected parts possible targets
 	local TargetParams = RaycastParams.new()
-	TargetParams.FilterDescendantsInstances = Support.CloneTable(Selection.Items)
+	TargetParams.ExcludeInstances = Support.CloneTable(Selection.Items)
 	if Core.Player then
 		TargetParams:AddToFilter(Core.Player.Character)
 	end

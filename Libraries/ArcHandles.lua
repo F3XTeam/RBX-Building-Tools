@@ -428,7 +428,7 @@ function ArcHandles:UpdateHandle(Side, Handle)
 
 	-- Create RaycastParams
 	local Params = RaycastParams.new()
-	Params.FilterDescendantsInstances = self.ObstacleBlacklist   
+	Params.ExcludeInstances = self.ObstacleBlacklist   
 
    -- Hide handles if obscured by a non-blacklisted part
     local HandleRay = Camera:ViewportPointToRay(HandleViewportPoint.X, HandleViewportPoint.Y)
