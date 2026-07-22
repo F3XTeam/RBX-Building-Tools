@@ -255,7 +255,7 @@ function FreeDragging:DragToMouse(BasePart, BasePartOffset, InitialPartStates, I
 	local TargetParams = RaycastParams.new()
 	TargetParams.ExcludeInstances = Support.CloneTable(Selection.Items)
 	if Core.Player then
-		TargetParams:AddToFilter(Core.Player.Character)
+		TargetParams.ExcludeInstances = {unpack(TargetParams.ExcludeInstances), Core.Player.Character}
 	end
 
 	-- Perform the mouse target search
