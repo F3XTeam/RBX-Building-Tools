@@ -46,16 +46,16 @@ local function GetPlayerMembershipType(player: Player)
 	assert(typeof(player) == "Instance" and player:IsA("Player"), 
 		"Argument 1 expects a Player"
 	)
-	if player.MembershipType == Enum.MembershipType.None then
-		return Enum.MembershipType.None
-	elseif player.MembershipType == Enum.MembershipType.Premium then
-		if PlayerOwnsAsset(player, 17408283) then
+	if player.HasRobloxSubscription then
+	    if PlayerOwnsAsset(player, 17408283) then
 			return Enum.MembershipType.OutrageousBuildersClub
 		elseif PlayerOwnsAsset(player, 11844853) then
 			return Enum.MembershipType.TurboBuildersClub
 		else
 			return Enum.MembershipType.BuildersClub
 		end
+	else
+		return Enum.MembershipType.None
 	end
 end
 
