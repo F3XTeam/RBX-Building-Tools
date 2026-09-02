@@ -2,31 +2,12 @@ SupportLibrary = {};
 
 function SupportLibrary.FindTableOccurrence(Haystack, Needle)
 	-- Returns one occurrence of `Needle` in `Haystack`
-
-	-- Search for the first instance of `Needle` found and return it
-	for Index, Value in pairs(Haystack) do
-		if Value == Needle then
-			return Index;
-		end;
-	end;
-
-	-- If no occurrences exist, return `nil`
-	return nil;
-
+	return table.find(Haystack, Needle)
 end;
 
 function SupportLibrary.IsInTable(Haystack, Needle)
 	-- Returns whether the given `Needle` can be found within table `Haystack`
-
-	-- Go through every value in `Haystack` and return whether `Needle` is found
-	for _, Value in pairs(Haystack) do
-		if Value == Needle then
-			return true;
-		end;
-	end;
-
-	-- If no instances were found, return false
-	return false;
+	return table.find(Haystack, Needle) ~= nil
 end;
 
 function SupportLibrary.Round(Number, Places)
@@ -104,19 +85,7 @@ end
 
 function SupportLibrary.GetDescendantsWhichAreA(Object, Class)
 	-- Returns descendants of `Object` which match `Class`
-
-	local Matches = {}
-
-	-- Check each descendant
-	for _, Descendant in pairs(Object:GetDescendants()) do
-		if Descendant:IsA(Class) then
-			Matches[#Matches + 1] = Descendant
-		end
-	end
-
-	-- Return matches
-	return Matches
-
+	return Object:QueryDescendants(Class)
 end
 
 function SupportLibrary.GetChildOfClass(Parent, ClassName, Inherit)
@@ -143,7 +112,7 @@ function SupportLibrary.IdentifyCommonItem(Items)
 		if ItemIndex == 1 then
 			CommonItem = Item;
 
-		-- Check if this item is the same as the rest
+			-- Check if this item is the same as the rest
 		else
 			-- If it isn't the same, there is no common item, so just stop right here
 			if Item ~= CommonItem then
@@ -315,7 +284,7 @@ function SupportLibrary.Call(Function, ...)
 	return function (...)
 		return Function(unpack(
 			SupportLibrary.ConcatTable({}, Args, { ... })
-		))
+			))
 	end
 end
 
