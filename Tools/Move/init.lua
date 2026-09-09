@@ -6,11 +6,13 @@ local BoundingBox = require(Tool.Core.BoundingBox)
 -- Services
 local ContextActionService = game:GetService 'ContextActionService'
 local UserInputService = game:GetService 'UserInputService'
+local RunService = game:GetService 'RunService'
 
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
 local Signal = require(Libraries:WaitForChild 'Signal')
 local Maid = require(Libraries:WaitForChild 'Maid')
+local JointUtils = require(Libraries:WaitForChild 'JointUtils')
 
 -- Import relevant references
 local Selection = Core.Selection
@@ -141,18 +143,15 @@ function MoveTool:SetAxes(AxisMode)
 end
 
 --- Moves the given parts in `InitialStates`, along the given axis mode, in the given face direction, by the given distance.
-function MoveTool:MovePartsAlongAxesByFace(Face, Distance, InitialPartStates, InitialModelStates, InitialFocusCFrame)
+function MoveTool:MovePartsAlongAxesByFace(Face, Distance, InitialPartStates, InitialRootStates, InitialFocusCFrame)
 
 	-- Calculate the shift along the direction of the face
 	local Shift = Vector3.FromNormalId(Face) * Distance
 
 	-- Move along global axes
 	if self.Axes == 'Global' then
-		for Part, InitialState in pairs(InitialPartStates) do
-			Part.CFrame = InitialState.CFrame + Shift
-		end
-		for Model, InitialState in pairs(InitialModelStates) do
-			Model.WorldPivot = InitialState.Pivot + Shift
+		for Root, InitialPivot in pairs(InitialRootStates) do
+			Root:PivotTo(InitialPivot + Shift)
 		end
 
 	-- Move along individual items' axes
@@ -160,9 +159,6 @@ function MoveTool:MovePartsAlongAxesByFace(Face, Distance, InitialPartStates, In
 		for Part, InitialState in pairs(InitialPartStates) do
 			Part.CFrame = InitialState.CFrame * CFrame.new(Shift)
 		end
-		-- for Model, InitialState in pairs(InitialModelStates) do
-		-- 	Model.WorldPivot = InitialState.Pivot * CFrame.new(Shift)
-		-- end
 
 	-- Move along focused item's axes
 	elseif self.Axes == 'Last' then
@@ -170,14 +166,10 @@ function MoveTool:MovePartsAlongAxesByFace(Face, Distance, InitialPartStates, In
 		-- Calculate focused item's position
 		local FocusCFrame = InitialFocusCFrame * CFrame.new(Shift)
 
-		-- Move parts based on initial offset from focus
-		for Part, InitialState in pairs(InitialPartStates) do
-			local FocusOffset = InitialFocusCFrame:toObjectSpace(InitialState.CFrame)
-			Part.CFrame = FocusCFrame * FocusOffset
-		end
-		for Model, InitialState in pairs(InitialModelStates) do
-			local FocusOffset = InitialFocusCFrame:ToObjectSpace(InitialState.Pivot)
-			Model.WorldPivot = FocusCFrame * FocusOffset
+		-- Move roots based on initial offset from focus
+		for Root, InitialPivot in pairs(InitialRootStates) do
+			local FocusOffset = InitialFocusCFrame:ToObjectSpace(InitialPivot)
+			Root:PivotTo(FocusCFrame * FocusOffset)
 		end
 
 	end
@@ -303,7 +295,7 @@ function MoveTool:StartSnapping()
 
 		-- Fire `SnappedPoint` and update `SnappedPoint` when there is a new snap point in focus
 		if NewPoint then
-			self.SnappedPoint = NewPoint.p
+			self.SnappedPoint = NewPoint.Position
 			self.PointSnapped:Fire(self.SnappedPoint)
 		end
 
@@ -314,11 +306,11 @@ end
 function MoveTool:SetAxisPosition(Axis, Position)
 	-- Sets the selection's position on axis `Axis` to `Position`
 
-	-- Track this change
-	self:TrackChange()
-
 	-- Prepare parts to be moved
-	local InitialPartStates = self:PrepareSelectionForDragging()
+	local InitialPartStates, InitialRootStates = self:PrepareSelectionForDragging()
+
+	-- Track this change
+	self:TrackChange(InitialRootStates)
 
 	-- Update each part
 	for Part in pairs(InitialPartStates) do
@@ -328,7 +320,7 @@ function MoveTool:SetAxisPosition(Axis, Position)
 			Axis == 'X' and Position or Part.Position.X,
 			Axis == 'Y' and Position or Part.Position.Y,
 			Axis == 'Z' and Position or Part.Position.Z
-		) * (Part.CFrame - Part.CFrame.p);
+		) * (Part.CFrame - Part.CFrame.Position);
 
 	end;
 
@@ -337,15 +329,15 @@ function MoveTool:SetAxisPosition(Axis, Position)
 
 	-- Revert changes if player is not authorized to move parts to target destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-		for Part, State in pairs(InitialPartStates) do
-			Part.CFrame = State.CFrame;
+		for Root, InitialPivot in InitialRootStates do
+			Root:PivotTo(InitialPivot)
 		end;
 	end;
 
 	-- Restore the parts' original states
 	for Part, State in pairs(InitialPartStates) do
+		JointUtils.RestoreJoints(State.Joints);
 		Part:MakeJoints();
-		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -367,14 +359,14 @@ function MoveTool:NudgeSelectionByFace(Face)
 		NudgeAmount = -NudgeAmount;
 	end;
 
-	-- Track this change
-	self:TrackChange()
-
 	-- Prepare parts to be moved
-	local InitialPartStates, InitialModelStates, InitialFocusCFrame = self:PrepareSelectionForDragging()
+	local InitialPartStates, InitialRootStates, InitialFocusCFrame = self:PrepareSelectionForDragging()
+
+	-- Track this change
+	self:TrackChange(InitialRootStates)
 
 	-- Perform the movement
-	self:MovePartsAlongAxesByFace(Face, NudgeAmount, InitialPartStates, InitialModelStates, InitialFocusCFrame)
+	self:MovePartsAlongAxesByFace(Face, NudgeAmount, InitialPartStates, InitialRootStates, InitialFocusCFrame)
 
 	-- Indicate updated drag distance
 	self.DragChanged:Fire(NudgeAmount)
@@ -384,15 +376,15 @@ function MoveTool:NudgeSelectionByFace(Face)
 
 	-- Revert changes if player is not authorized to move parts to target destination
 	if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-		for Part, State in pairs(InitialPartStates) do
-			Part.CFrame = State.CFrame;
+		for Root, InitialPivot in InitialRootStates do
+			Root:SetPivot(InitialPivot)
 		end;
 	end;
 
 	-- Restore the parts' original states
 	for Part, State in pairs(InitialPartStates) do
+		JointUtils.RestoreJoints(State.Joints);
 		Part:MakeJoints();
-		Core.RestoreJoints(State.Joints);
 		Part.CanCollide = State.CanCollide;
 		Part.Anchored = State.Anchored;
 	end;
@@ -402,12 +394,11 @@ function MoveTool:NudgeSelectionByFace(Face)
 
 end
 
-function MoveTool:TrackChange()
+function MoveTool:TrackChangeParts()
 
 	-- Start the record
 	self.HistoryRecord = {
 		Parts = Support.CloneTable(Selection.Parts);
-		Models = Support.CloneTable(Selection.Models);
 		BeforeCFrame = {};
 		AfterCFrame = {};
 		Selection = Selection.Items;
@@ -426,15 +417,9 @@ function MoveTool:TrackChange()
 					CFrame = Record.BeforeCFrame[Part];
 				})
 			end
-			for _, Model in ipairs(Record.Models) do
-				table.insert(Changes, {
-					Model = Model;
-					Pivot = Record.BeforeCFrame[Model];
-				})
-			end
 
 			-- Send the change request
-			Core.SyncAPI:Invoke('SyncMove', Changes);
+			Core.SyncAPI:Invoke('SyncPartTransform', Changes);
 
 		end;
 
@@ -452,15 +437,9 @@ function MoveTool:TrackChange()
 					CFrame = Record.AfterCFrame[Part];
 				})
 			end
-			for _, Model in ipairs(Record.Models) do
-				table.insert(Changes, {
-					Model = Model;
-					Pivot = Record.AfterCFrame[Model];
-				})
-			end
 
 			-- Send the change request
-			Core.SyncAPI:Invoke('SyncMove', Changes);
+			Core.SyncAPI:Invoke('SyncPartTransform', Changes);
 
 		end;
 
@@ -470,12 +449,75 @@ function MoveTool:TrackChange()
 	for _, Part in pairs(self.HistoryRecord.Parts) do
 		self.HistoryRecord.BeforeCFrame[Part] = Part.CFrame
 	end
-	pcall(function ()
-		for _, Model in ipairs(self.HistoryRecord.Models) do
-			self.HistoryRecord.BeforeCFrame[Model] = Model:GetPivot()
-		end
-	end)
+end
 
+function MoveTool:TrackChangeRoots(RootMapping)
+	local Roots = {}
+	for Root, _ in RootMapping do
+		table.insert(Roots, Root)
+	end
+
+	-- Start the record
+	self.HistoryRecord = {
+		Roots = Roots,
+		BeforePivot = {};
+		AfterPivot = {};
+		Selection = Selection.Items;
+
+		Unapply = function (Record)
+			-- Reverts this change
+
+			-- Select the changed parts
+			Selection.Replace(Record.Selection)
+
+			-- Put together the change request
+			local Changes = {}
+			for _, Root in Record.Roots do
+				table.insert(Changes, {
+					Root = Root;
+					Pivot = Record.BeforePivot[Root];
+				})
+			end
+
+			-- Send the change request
+			Core.SyncAPI:Invoke('SyncPartTransform', Changes);
+
+		end;
+
+		Apply = function (Record)
+			-- Applies this change
+
+			-- Select the changed parts
+			Selection.Replace(Record.Selection)
+
+			-- Put together the change request
+			local Changes = {};
+			for _, Root in Record.Roots do
+				table.insert(Changes, {
+					Root = Root;
+					Pivot = Record.AfterPivot[Root];
+				})
+			end
+
+			-- Send the change request
+			Core.SyncAPI:Invoke('SyncPartTransform', Changes);
+
+		end;
+
+	};
+
+	-- Collect the selection's initial state
+	for _, Root in self.HistoryRecord.Roots do
+		self.HistoryRecord.BeforePivot[Root] = Root:GetPivot()
+	end
+end
+
+function MoveTool:TrackChange(RootMapping)
+	if self.Axes == 'Local' then
+		self:TrackChangeParts()
+	else
+		self:TrackChangeRoots(RootMapping)
+	end
 end
 
 function MoveTool:RegisterChange()
@@ -488,25 +530,29 @@ function MoveTool:RegisterChange()
 
 	-- Collect the selection's final state
 	local Changes = {}
-	for _, Part in pairs(self.HistoryRecord.Parts) do
-		self.HistoryRecord.AfterCFrame[Part] = Part.CFrame
-		table.insert(Changes, {
-			Part = Part;
-			CFrame = Part.CFrame;
-		})
-	end;
-	pcall(function ()
-		for _, Model in pairs(self.HistoryRecord.Models) do
-			self.HistoryRecord.AfterCFrame[Model] = Model:GetPivot()
+	if self.HistoryRecord.Roots then
+		for _, Root in self.HistoryRecord.Roots do
+			self.HistoryRecord.AfterPivot[Root] = Root:GetPivot()
 			table.insert(Changes, {
-				Model = Model;
-				Pivot = Model:GetPivot();
+				Root = Root;
+				Pivot = Root:GetPivot();
 			})
-		end
-	end)
+		end;
+		
+		-- Send the change to the server
+		Core.SyncAPI:Invoke('SyncRootTransform', Changes);
+	else
+		for _, Part in pairs(self.HistoryRecord.Parts) do
+			self.HistoryRecord.AfterCFrame[Part] = Part.CFrame
+			table.insert(Changes, {
+				Part = Part;
+				CFrame = Part.CFrame;
+			})
+		end;
 
-	-- Send the change to the server
-	Core.SyncAPI:Invoke('SyncMove', Changes);
+		-- Send the change to the server
+		Core.SyncAPI:Invoke('SyncPartTransform', Changes);
+	end
 
 	-- Register the record and clear the staging
 	Core.History.Add(self.HistoryRecord)
@@ -517,10 +563,7 @@ end
 --- Prepares selection for dragging, and returns the initial state of the selection.
 function MoveTool:PrepareSelectionForDragging()
 	local InitialPartStates = {}
-	local InitialModelStates = {}
-
-	-- Get index of parts
-	local PartIndex = Support.FlipTable(Selection.Parts)
+	local InitialRootStates = {}
 
 	-- Stop parts from moving, and capture the initial state of the parts
 	for _, Part in pairs(Selection.Parts) do
@@ -529,38 +572,32 @@ function MoveTool:PrepareSelectionForDragging()
 			CanCollide = Part.CanCollide;
 			CFrame = Part.CFrame;
 		}
-		Part.Anchored = true;
-		Part.CanCollide = false;
-		InitialPartStates[Part].Joints = Core.PreserveJoints(Part, PartIndex)
-		Part:BreakJoints();
-		Part.Velocity = Vector3.new();
-		Part.RotVelocity = Vector3.new();
+		-- Only do this at runtime because it is not needed at Edit time and
+		-- may disrupt packages.
+		if RunService:IsRunning() then
+			Part.Anchored = true;
+			Part.CanCollide = false;
+			Part.AssemblyLinearVelocity = Vector3.new();
+			Part.AssemblyAngularVelocity = Vector3.new();
+		end
+		InitialPartStates[Part].Joints = JointUtils.PreserveJoints(Part);
 	end;
 
-	-- Get initial model states (temporarily pcalled due to pivot API being in beta)
-	pcall(function ()
-		for _, Model in ipairs(Selection.Models) do
-			InitialModelStates[Model] = {
-				Pivot = Model:GetPivot();
-			}
-		end
-	end)
+	-- Record the initial position of each root PVInstance for movement
+	for _, PVInstance in Selection.GetRootPVInstances(Selection.Items) do
+		InitialRootStates[PVInstance] = PVInstance:GetPivot()
+	end;
 
 	-- Get initial state of focused item
 	local InitialFocusCFrame
 	local Focus = Selection.Focus
 	if not Focus then
 		InitialFocusCFrame = nil
-	elseif Focus:IsA 'BasePart' then
-		InitialFocusCFrame = Focus.CFrame
-	elseif Focus:IsA 'Model' then
-		InitialFocusCFrame = Focus:GetModelCFrame()
-		pcall(function ()
-			InitialFocusCFrame = Focus:GetPivot()
-		end)
+	elseif Focus:IsA 'PVInstance' then
+		InitialFocusCFrame = Focus:GetPivot()
 	end
 
-	return InitialPartStates, InitialModelStates, InitialFocusCFrame
+	return InitialPartStates, InitialRootStates, InitialFocusCFrame
 end;
 
 -- Return the tool

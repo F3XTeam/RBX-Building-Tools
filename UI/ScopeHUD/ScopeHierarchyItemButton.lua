@@ -46,6 +46,7 @@ local ClassIconPositions = {
     Workspace = Vector2.new(10, 2);
     Accessory = Vector2.new(3, 4);
     Accoutrement = Vector2.new(3, 4);
+	Hat = Vector2.new(6, 5);
 }
 
 --- Updates the current instance state.
@@ -166,7 +167,7 @@ function ScopeHierarchyItemButton:render()
                 Text = self.state.InstanceName;
                 TextTransparency = self.props.IsTarget and 0.5 or 0;
                 TextYAlignment = Enum.TextYAlignment.Center;
-                TextColor3 = Color3.fromRGB(255, 255, 255);
+                TextColor3 = Color3.new(1, 1, 1);
                 LayoutOrder = 1;
             },
             {

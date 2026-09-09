@@ -2,7 +2,7 @@ local function TranslatePartsRelativeToPart(BasePart, InitialPartStates, Initial
 	-- Moves the given parts in `InitialStates` to BasePart's current position, with their original offset from it
 
 	-- Get focused part's position for offsetting
-	local RelativeTo = InitialPartStates[BasePart].CFrame:inverse()
+	local RelativeTo = InitialPartStates[BasePart].CFrame:Inverse()
 
 	-- Calculate offset and move each part
 	for Part, InitialState in pairs(InitialPartStates) do

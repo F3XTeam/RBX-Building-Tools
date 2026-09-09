@@ -19,7 +19,7 @@ local function ScopeLockTooltip(props)
         Image = 'rbxassetid://4445959523';
         ScaleType = Enum.ScaleType.Slice;
         SliceCenter = Rect.new(4, 4, 12, 12);
-        ImageColor3 = Color3.fromRGB(0, 0, 0);
+        ImageColor3 = Color3.new(0, 0, 0);
         Size = UDim2.new(0, LABEL_LENGTH + (ICON_SIZE + 12)/2, 0, 30/2);
         LayoutOrder = props.LayoutOrder or 3;
     },
@@ -51,7 +51,7 @@ local function ScopeLockTooltip(props)
             Text = LABEL_TEXT;
             TextTransparency = 0.5;
             TextYAlignment = Enum.TextYAlignment.Center;
-            TextColor3 = Color3.fromRGB(255, 255, 255);
+            TextColor3 = Color3.new(1, 1, 1);
             LayoutOrder = 1;
         });
     })

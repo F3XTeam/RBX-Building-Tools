@@ -202,7 +202,8 @@ ItemRow.ClassIcons = {
     Tool = Vector2.new(8, 2),
     Workspace = Vector2.new(10, 2),
     Accessory = Vector2.new(3, 4),
-    Accoutrement = Vector2.new(3, 4)
+    Accoutrement = Vector2.new(3, 4),
+	Hat = Vector2.new(6, 5)
 }
 
 function ItemRow:render()

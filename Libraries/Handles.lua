@@ -1,7 +1,6 @@
 local RunService = game:GetService 'RunService'
 local Workspace = game:GetService 'Workspace'
 local Players = game:GetService 'Players'
-local ContextActionService = game:GetService 'ContextActionService'
 local UserInputService = game:GetService 'UserInputService'
 local GuiService = game:GetService 'GuiService'
 
@@ -196,7 +195,7 @@ function Handles:Pause()
 end
 
 local function IsFirstPerson(Camera)
-    return (Camera.CFrame.p - Camera.Focus.p).magnitude <= 0.6
+    return (Camera.CFrame.Position - Camera.Focus.Position).Magnitude <= 0.6
 end
 
 function Handles:Resume()
@@ -215,7 +214,7 @@ function Handles:Resume()
         coroutine.wrap(function ()
             while self.Running do
                 self:UpdateHandle(Handle, UnitVector)
-                RunService.RenderStepped:Wait()
+                RunService.PreRender:Wait()
             end
         end)()
     end
@@ -293,17 +292,15 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
     end
 
     -- Get adornee CFrame and size
-    local AdorneeCFrame = self.IsAdorneeModel and
-        self.Adornee:GetModelCFrame() or
-        self.Adornee.CFrame
-    local AdorneeSize = self.IsAdorneeModel and
-        self.Adornee:GetModelSize() or
+    local AdorneeCFrame = self.Adornee:GetPivot()
+	local AdorneeSize = self.IsAdorneeModel and
+		self.Adornee:GetExtentsSize() or
         self.Adornee.Size
 
     -- Calculate radius of adornee extents along axis
-    local AdorneeRadius = (AdorneeSize * SideUnitVector / 2).magnitude
+	local AdorneeRadius = (AdorneeSize * SideUnitVector / 2).Magnitude
     local SideCFrame = AdorneeCFrame * CFrame.new(AdorneeRadius * SideUnitVector)
-    local AdorneeViewportPoint, AdorneeCameraDepth = WorldToViewportPoint(Camera, SideCFrame.p)
+    local AdorneeViewportPoint, AdorneeCameraDepth = WorldToViewportPoint(Camera, SideCFrame.Position)
     local StudWidth = 2 * math.tan(math.rad(Camera.FieldOfView) / 2) * AdorneeCameraDepth
     local StudsPerPixel = StudWidth / Camera.ViewportSize.X
     local HandlePadding = math.max(1, StudsPerPixel * 14) * (self.IsMouseAvailable and 1 or 1.6)
@@ -311,8 +308,8 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
 
     -- Calculate CFrame of the handle's side
     local HandleCFrame = AdorneeCFrame * CFrame.new(PaddedRadius * SideUnitVector)
-    local HandleNormal = (HandleCFrame.p - AdorneeCFrame.p).unit
-    local HandleViewportPoint, HandleCameraDepth, HandleVisible = WorldToViewportPoint(Camera, HandleCFrame.p)
+    local HandleNormal = (HandleCFrame.Position - AdorneeCFrame.Position).Unit
+    local HandleViewportPoint, HandleCameraDepth, HandleVisible = WorldToViewportPoint(Camera, HandleCFrame.Position)
 
     -- Display handle if side is visible to the camera
     Handle.Visible = HandleVisible
@@ -342,17 +339,19 @@ function Handles:UpdateHandle(Handle, SideUnitVector)
     HandleState.HandleNormal = HandleNormal
     HandleState.AdorneeViewportPosition = AdorneeViewportPoint
     HandleState.HandleViewportPosition = HandleViewportPoint
+	
+	-- Create RaycastParams
+	local Params = RaycastParams.new()
+	Params.ExcludeInstances = self.ObstacleBlacklist
     
     -- Hide handles if obscured by a non-blacklisted part
     local HandleRay = Camera:ViewportPointToRay(HandleViewportPoint.X, HandleViewportPoint.Y)
-    local TargetRay = Ray.new(HandleRay.Origin, HandleRay.Direction * (HandleCameraDepth - 0.25))
-    local Target, TargetPoint = Workspace:FindPartOnRayWithIgnoreList(TargetRay, self.ObstacleBlacklist)
+	local Target = Workspace:Raycast(HandleRay.Origin, HandleRay.Direction * (HandleCameraDepth - 0.25), Params)
     if Target then
         Handle.ImageTransparency = 1
     elseif Handle.ImageTransparency == 1 then
         Handle.ImageTransparency = 0.33
     end
-
 end
 
 function Handles:Destroy()

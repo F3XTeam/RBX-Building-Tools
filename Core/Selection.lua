@@ -1,3 +1,4 @@
+--!nocheck
 local Tool = script.Parent.Parent
 local History = require(script.Parent.History)
 
@@ -65,11 +66,50 @@ local function CollectPartsAndModels(Item, PartTable, ModelTable)
 	end
 end
 
+local function CollectTransformablesRecursive(PotentialRoot: Instance, Seen: {PVInstance: boolean}, Roots: {PVInstance})
+	if PotentialRoot:IsA("PVInstance") then
+		-- Once we hit a PVInstance, if it's already been seen, this heirarchy
+		-- has already been traversed down, bail out.
+		if Seen[PotentialRoot] then
+			return
+		end
+
+		-- Mark this as seen and insert it into the set of roots
+		Seen[PotentialRoot] = true
+		table.insert(Roots, PotentialRoot)
+
+		-- At this point, we know we haven't seen the descendants, go and mark 
+		-- all the descendants as seen.
+		for _, Descendant in PotentialRoot:GetDescendants() do
+			if Descendant:IsA("PVInstance") then
+				Seen[Descendant] = true
+			end
+		end
+	else
+		-- Traverse down hierarchy looking for roots
+		for _, Child in PotentialRoot:GetChildren() do
+			CollectTransformablesRecursive(Child, Seen, Roots)
+		end
+	end
+end
+
+-- Get all the PVInstances in the selection which are NOT inside of another
+-- PVInstance in the selection. Those are the PVInstances which need to be
+-- transformed via PivotTo.
+function Selection.GetRootPVInstances(Items: {Instance}): {PVInstance}
+	local Seen = {} :: {PVInstance: boolean}
+	local Results = {} :: {PVInstance}
+	for _, Instance in Items do
+		CollectTransformablesRecursive(Instance, Seen, Results)
+	end
+	return Results
+end
+
 function Selection.Add(Items, RegisterHistory)
 	-- Adds the given items to the selection
 
 	-- Get core API
-	local Core = GetCore();
+	local _Core = GetCore();
 
 	-- Go through and validate each given item
 	local SelectableItems = {};
@@ -347,6 +387,8 @@ local function GetVisibleFocus(Item)
 			Item:FindFirstChildWhichIsA('BasePart', true) or
 			Item:FindFirstChildWhichIsA('Model', true)
 	end
+
+	return
 end
 
 function Selection.SetFocus(Item)
@@ -389,19 +431,19 @@ function GetCore()
 end;
 
 local function GetVisibleChildren(Item, Table)
-	local Table = Table or {}
+	local tbl = Table or {}
 
 	-- Search for visible items recursively
 	for _, Item in pairs(Item:GetChildren()) do
 		if IsVisible(Item) then
-			Table[#Table + 1] = Item
+			tbl[#tbl + 1] = Item
 		else
-			GetVisibleChildren(Item, Table)
+			GetVisibleChildren(Item, tbl)
 		end
 	end
 
 	-- Return visible items
-	return Table
+	return tbl
 end
 
 -- Create target box pool
@@ -544,7 +586,7 @@ function Selection.EnableMultiselectionHotkeys()
 	Core.Connections.MultiselectingReleaseHotkeys = Support.AddUserInputListener('Ended', 'Keyboard', true, function (Input)
 
 		-- Get currently pressed keys
-		local PressedKeys = Support.GetListMembers(Support.GetListMembers(Game:GetService('UserInputService'):GetKeysPressed(), 'KeyCode'), 'Name');
+		local PressedKeys = Support.GetListMembers(Support.GetListMembers(game:GetService('UserInputService'):GetKeysPressed(), 'KeyCode'), 'Name');
 
 		-- Continue multiselection if a hotkey is still pressed
 		for _, PressedKey in pairs(PressedKeys) do

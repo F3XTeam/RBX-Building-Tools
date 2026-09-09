@@ -1,37 +1,8 @@
 local Tool = script.Parent.Parent;
-
-function IsVersionOutdated(Version)
-	-- Returns whether the given version of Building Tools is out of date
-
-	-- Check most recent version number
-	local AssetInfo = Game:GetService('MarketplaceService'):GetProductInfo(142785488, Enum.InfoType.Asset);
-	local LatestMajorVersion, LatestMinorVersion, LatestPatchVersion = AssetInfo.Description:match '%[Version: ([0-9]+)%.([0-9]+)%.([0-9]+)%]';
-	local CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion = Version:match '([0-9]+)%.([0-9]+)%.([0-9]+)';
-
-	-- Convert version data into numbers
-	local LatestMajorVersion, LatestMinorVersion, LatestPatchVersion =
-		tonumber(LatestMajorVersion), tonumber(LatestMinorVersion), tonumber(LatestPatchVersion);
-	local CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion =
-		tonumber(CurrentMajorVersion), tonumber(CurrentMinorVersion), tonumber(CurrentPatchVersion);
-
-	-- Determine whether current version is outdated
-	if LatestMajorVersion > CurrentMajorVersion then
-		return true;
-	elseif LatestMajorVersion == CurrentMajorVersion then
-		if LatestMinorVersion > CurrentMinorVersion then
-			return true;
-		elseif LatestMinorVersion == CurrentMinorVersion then
-			return LatestPatchVersion > CurrentPatchVersion;
-		end;
-	end;
-
-	-- Return an up-to-date status if not oudated
-	return false;
-
-end;
+local Core = require(Tool.Core);
 
 -- Ensure tool mode is enabled, auto-updating is enabled, and version is outdated
-if not (Tool:IsA 'Tool' and Tool.AutoUpdate.Value and IsVersionOutdated(Tool.Version.Value)) then
+if not (Tool:IsA 'Tool' and Tool.AutoUpdate.Value and Core.IsVersionOutdated()) then
 	return;
 end;
 

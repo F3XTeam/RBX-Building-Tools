@@ -43,7 +43,7 @@ function Slider:render()
         });
         Thumb = new('Frame', {
             AnchorPoint = Vector2.new(0.5, 0.5);
-            BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+            BackgroundColor3 = Color3.new(1, 1, 1);
             BorderSizePixel = 0;
             Position = (typeof(self.props.Value) == 'number') and
                 self.props.Value or

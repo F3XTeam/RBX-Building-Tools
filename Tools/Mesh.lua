@@ -15,7 +15,7 @@ local Signal = require(Libraries:WaitForChild('Signal'))
 Selection = Core.Selection;
 Support = Core.Support;
 Security = Core.Security;
-Support.ImportServices();
+
 
 -- Initialize the tool
 local MeshTool = {
@@ -105,7 +105,7 @@ function ShowUI()
 	};
 
 	-- Sort the mesh types
-	SortedMeshTypes = Support.Keys(MeshTypes);
+	local SortedMeshTypes = Support.Keys(MeshTypes);
 	table.sort(SortedMeshTypes);
 
 	-- Create type dropdown
@@ -177,7 +177,7 @@ function ShowUI()
 	VertexColorInput.MouseButton1Click:Connect(function ()
 		local CommonColor = VectorToColor(Support.IdentifyCommonProperty(GetMeshes(), 'VertexColor'))
 		local ColorPickerElement = Roact.createElement(ColorPicker, {
-			InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
+			InitialColor = CommonColor or Color3.new(1, 1, 1);
 			SetPreviewColor = function (Color)
 				SetPreviewTint(ColorToVector(Color))
 			end;
@@ -385,7 +385,7 @@ function ColorToVector(Color)
 	if not Color then return end;
 
 	-- Return the Vector3
-	return Vector3.new(Color.r, Color.g, Color.b);
+	return Vector3.new(Color.R, Color.G, Color.B);
 end;
 
 function UpdateDataInputs(Data)
@@ -416,7 +416,7 @@ function UpdateColorIndicator(Indicator, Color)
 
 	-- If the colors vary, display a * on a gray background
 	else
-		Indicator.BackgroundColor3 = Color3.new(222/255, 222/255, 222/255);
+		Indicator.BackgroundColor3 = Color3.fromRGB(222, 222, 222);
 		Indicator.Varies.Text = '*';
 	end;
 
@@ -702,13 +702,13 @@ function SetMeshId(AssetId)
 			-- Apply any vertex color found
 			local VertexColor = ExtractionData.tint;
 			if VertexColor then
-				Changes.VertexColor = Vector3.new(VertexColor.x, VertexColor.y, VertexColor.z);
+				Changes.VertexColor = Vector3.new(VertexColor.X, VertexColor.Y, VertexColor.Z);
 			end;
 
 			-- Apply any scale found
 			local Scale = ExtractionData.scale;
 			if Scale then
-				Changes.Scale = Vector3.new(Scale.x, Scale.y, Scale.z);
+				Changes.Scale = Vector3.new(Scale.X, Scale.Y, Scale.Z);
 			end;
 
 		end);

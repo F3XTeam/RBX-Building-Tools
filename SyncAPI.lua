@@ -1,6 +1,9 @@
+--!nocheck
 local HttpService = game:GetService('HttpService')
+local Players = game:GetService('Players')
 local RunService = game:GetService('RunService')
 local Workspace = game:GetService('Workspace')
+local MarketplaceService = game:GetService('MarketplaceService')
 
 -- References
 SyncAPI = script.Parent;
@@ -9,12 +12,11 @@ Player = nil;
 
 -- Libraries
 Security = require(Tool.Core.Security);
-RegionModule = require(Tool.Libraries.Region);
 Support = require(Tool.Libraries.SupportLibrary);
 Serialization = require(Tool.Libraries.SerializationV3);
 
 -- Import services
-Support.ImportServices();
+
 
 -- Default options
 Options = {
@@ -41,10 +43,14 @@ local IsHttpServiceEnabled = nil
 
 -- List of actions that could be requested
 Actions = {
+	
 
 	['RecolorHandle'] = function (NewColor)
 		-- Recolors the tool handle
-		Tool.Handle.BrickColor = NewColor;
+		local Handle = Tool:FindFirstChild('Handle')
+		if Handle and Handle:IsA('BasePart') then
+			Handle.BrickColor = NewColor;
+		end
 	end;
 
 	['Clone'] = function (Items, Parent)
@@ -73,6 +79,14 @@ Actions = {
 
 		-- Clone items
 		for _, Item in pairs(Items) do
+			-- If the item's Archivable property is set to false,
+			-- set it and `ItemIsNotArchivable` to true
+			local ItemIsNotArchivable = false
+			if not Item.Archivable then
+				ItemIsNotArchivable = true
+				Item.Archivable = true
+			end
+			
 			local Clone = Item:Clone()
 
 			-- Include metadata when streaming is enabled in tool mode
@@ -87,6 +101,15 @@ Actions = {
 			-- Register the clone
 			table.insert(Clones, Clone)
 			CreatedInstances[Item] = Item
+						
+			-- If `ItemIsNotArchivable` is true, set the item's 
+			-- Archivable property back to false, and do the same
+			-- for the clone
+			if ItemIsNotArchivable then
+				Item.Archivable = false
+				Clone.Archivable = false
+				ItemIsNotArchivable = nil -- still not sure if doing this has any effect
+			end
 		end
 
 		-- If streaming is enabled in tool mode, return temporary clone operation metadata
@@ -355,7 +378,7 @@ Actions = {
 				if Object:IsA 'BasePart' then
 					table.insert(Parts, Object);
 
-				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Light' then
+				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Light' then
 					table.insert(Parts, Object.Parent);
 
 				elseif Object:IsA 'Model' or Object:IsA 'Folder' then
@@ -407,7 +430,7 @@ Actions = {
 				if Object:IsA 'BasePart' then
 					table.insert(Parts, Object);
 
-				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Texture' or Object:IsA 'Light' then
+				elseif Object:IsA 'Smoke' or Object:IsA 'Fire' or Object:IsA 'Sparkles' or Object:IsA 'DataModelMesh' or Object:IsA 'Decal' or Object:IsA 'Light' then
 					table.insert(Parts, Object.Parent);
 
 				elseif Object:IsA 'Model' or Object:IsA 'Folder' then
@@ -455,89 +478,6 @@ Actions = {
 
 	end;
 
-	['SyncMove'] = function (Changes)
-		-- Updates parts server-side given their new CFrames
-
-		-- Grab a list of every part we're attempting to modify
-		local Parts = {};
-		local Models = {}
-		for _, Change in pairs(Changes) do
-			if Change.Part then
-				table.insert(Parts, Change.Part);
-			elseif Change.Model then
-				table.insert(Models, Change.Model)
-			end
-		end;
-
-		-- Ensure parts are selectable
-		if not (CanModifyItems(Parts) and CanModifyItems(Models)) then
-			return;
-		end;
-
-		-- Cache up permissions for all private areas
-		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
-
-		-- Make sure the player is allowed to perform changes to these parts
-		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
-			return;
-		end;
-
-		-- Reorganize the changes
-		local PartChangeSet = {}
-		local ModelChangeSet = {}
-		for _, Change in pairs(Changes) do
-			if Change.Part then
-				Change.InitialState = {
-					Anchored = Change.Part.Anchored;
-					CFrame = Change.Part.CFrame;
-				}
-				PartChangeSet[Change.Part] = Change
-			elseif Change.Model then
-				ModelChangeSet[Change.Model] = Change.Pivot
-			end
-		end;
-
-		-- Preserve joints
-		for Part, Change in pairs(PartChangeSet) do
-			Change.Joints = PreserveJoints(Part, PartChangeSet)
-		end;
-
-		-- Perform each change
-		for Part, Change in pairs(PartChangeSet) do
-
-			-- Stabilize the parts and maintain the original anchor state
-			Part.Anchored = true;
-			Part:BreakJoints();
-			Part.Velocity = Vector3.new();
-			Part.RotVelocity = Vector3.new();
-
-			-- Set the part's CFrame
-			Part.CFrame = Change.CFrame;
-
-		end;
-		for Model, Pivot in pairs(ModelChangeSet) do
-			Model.WorldPivot = Pivot
-		end
-
-		-- Make sure the player is authorized to move parts into this area
-		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
-
-			-- Revert changes if unauthorized destination
-			for Part, Change in pairs(PartChangeSet) do
-				Part.CFrame = Change.InitialState.CFrame;
-			end;
-
-		end;
-
-		-- Restore the parts' original states
-		for Part, Change in pairs(PartChangeSet) do
-			Part:MakeJoints();
-			RestoreJoints(Change.Joints);
-			Part.Anchored = Change.InitialState.Anchored;
-		end;
-
-	end;
-
 	['SyncResize'] = function (Changes)
 		-- Updates parts server-side given their new sizes and CFrames
 
@@ -546,7 +486,7 @@ Actions = {
 		for _, Change in pairs(Changes) do
 			if Change.Part then
 				table.insert(Parts, Change.Part);
-			end;
+			end
 		end;
 
 		-- Ensure parts are selectable
@@ -563,10 +503,14 @@ Actions = {
 		end;
 
 		-- Reorganize the changes
-		local ChangeSet = {};
+		local ChangeSet = {}
 		for _, Change in pairs(Changes) do
 			if Change.Part then
-				Change.InitialState = { Anchored = Change.Part.Anchored, Size = Change.Part.Size, CFrame = Change.Part.CFrame };
+				Change.InitialState = { 
+					Anchored = Change.Part.Anchored, 
+					Size = Change.Part.Size, 
+					CFrame = Change.Part.CFrame 
+				};
 				ChangeSet[Change.Part] = Change;
 			end;
 		end;
@@ -577,9 +521,9 @@ Actions = {
 			-- Stabilize the parts and maintain the original anchor state
 			Part.Anchored = true;
 			Part:BreakJoints();
-			Part.Velocity = Vector3.new();
-			Part.RotVelocity = Vector3.new();
-
+			Part.AssemblyLinearVelocity = Vector3.new();
+			Part.AssemblyAngularVelocity = Vector3.new();
+			
 			-- Set the part's size and CFrame
 			Part.Size = Change.Size;
 			Part.CFrame = Change.CFrame;
@@ -605,22 +549,17 @@ Actions = {
 
 	end;
 
-	['SyncRotate'] = function (Changes)
+	['SyncPartTransform'] = function (Changes)
 		-- Updates parts server-side given their new CFrames
 
 		-- Grab a list of every part and model we're attempting to modify
 		local Parts = {};
-		local Models = {}
 		for _, Change in pairs(Changes) do
-			if Change.Part then
-				table.insert(Parts, Change.Part);
-			elseif Change.Model then
-				table.insert(Models, Change.Model)
-			end
+			table.insert(Parts, Change.Part);
 		end;
 
 		-- Ensure parts are selectable
-		if not (CanModifyItems(Parts) and CanModifyItems(Models)) then
+		if not CanModifyItems(Parts) then
 			return;
 		end;
 
@@ -633,8 +572,7 @@ Actions = {
 		end;
 
 		-- Reorganize the changes
-		local PartChangeSet = {}
-		local ModelChangeSet = {}
+		local PartChangeSet  = {};
 		for _, Change in pairs(Changes) do
 			if Change.Part then
 				Change.InitialState = {
@@ -642,11 +580,9 @@ Actions = {
 					CFrame = Change.Part.CFrame;
 				}
 				PartChangeSet[Change.Part] = Change
-			elseif Change.Model then
-				ModelChangeSet[Change.Model] = Change.Pivot
 			end
 		end;
-
+		
 		-- Preserve joints
 		for Part, Change in pairs(PartChangeSet) do
 			Change.Joints = PreserveJoints(Part, PartChangeSet)
@@ -658,16 +594,13 @@ Actions = {
 			-- Stabilize the parts and maintain the original anchor state
 			Part.Anchored = true;
 			Part:BreakJoints();
-			Part.Velocity = Vector3.new();
-			Part.RotVelocity = Vector3.new();
+			Part.AssemblyLinearVelocity = Vector3.new();
+			Part.AssemblyAngularVelocity = Vector3.new();
 
 			-- Set the part's CFrame
 			Part.CFrame = Change.CFrame;
 
 		end;
-		for Model, Pivot in pairs(ModelChangeSet) do
-			Model.WorldPivot = Pivot
-		end
 
 		-- Make sure the player is authorized to move parts into this area
 		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
@@ -684,6 +617,82 @@ Actions = {
 			Part:MakeJoints();
 			RestoreJoints(Change.Joints);
 			Part.Anchored = Change.InitialState.Anchored;
+		end;
+
+	end;
+
+	['SyncRootTransform'] = function (Changes)
+		-- Updates parts server-side given their new CFrames
+
+		-- Grab a list of every root we're attempting to modify
+		local Parts = {};
+		local PartChangeSet = {};
+		for _, Change in pairs(Changes) do
+			local Root = Change.Root
+			if Root:IsA("BasePart") then
+				table.insert(Parts, Root)
+				PartChangeSet[Root] = {}
+			end
+			for _, Descendant in Root:GetDescendants() do
+				if Descendant:IsA("BasePart") then
+					table.insert(Parts, Descendant)
+					PartChangeSet[Descendant] = {}
+				end
+			end
+		end;
+
+		-- Ensure parts are selectable
+		if not CanModifyItems(Parts) then
+			return;
+		end;
+
+		-- Cache up permissions for all private areas
+		local AreaPermissions = Security.GetPermissions(Security.GetSelectionAreas(Parts), Player);
+
+		-- Make sure the player is allowed to perform changes to these parts
+		if Security.ArePartsViolatingAreas(Parts, Player, true, AreaPermissions) then
+			return;
+		end;
+
+		-- Reorganize the changes
+		local RootChangeSet = {}
+		local InitialPivot = {}
+		for _, Change in Changes do
+			RootChangeSet[Change.Root] = Change.Pivot
+			InitialPivot[Change.Root] = Change.Root:GetPivot()
+		end;
+
+		-- Preserve joints
+		for Part, Change in PartChangeSet do
+			Change.Joints = PreserveJoints(Part, PartChangeSet)
+		end;
+
+		-- Stabilize parts
+		for Part, Change in PartChangeSet do
+			
+			Part:BreakJoints();
+			Part.AssemblyLinearVelocity = Vector3.new();
+			Part.AssemblyAngularVelocity = Vector3.new();
+
+		end;
+		for Root, Pivot in RootChangeSet do
+			Root:PivotTo(Pivot)
+		end
+
+		-- Make sure the player is authorized to move parts into this area
+		if Security.ArePartsViolatingAreas(Parts, Player, false, AreaPermissions) then
+
+			-- Revert changes if unauthorized destination
+			for Root, Pivot in RootChangeSet do
+				Root:PivotTo(InitialPivot[Root])
+			end
+
+		end;
+
+		-- Restore the parts' original states
+		for Part, Change in pairs(PartChangeSet) do
+			Part:MakeJoints();
+			RestoreJoints(Change.Joints);
 		end;
 
 	end;
@@ -1461,7 +1470,7 @@ Actions = {
 			if Part ~= TargetPart then
 
 				-- Calculate the offset of the part from the target part
-				local Offset = Part.CFrame:toObjectSpace(TargetPart.CFrame);
+				local Offset = Part.CFrame:ToObjectSpace(TargetPart.CFrame);
 
 				-- Create the weld
 				local Weld = Instance.new('Weld');
@@ -1638,7 +1647,7 @@ Actions = {
 		-- Push serialized data to server
 		local Response = HttpService:JSONDecode(
 			HttpService:PostAsync(
-				'http://f3xteam.com/bt/export',
+				'https://f3xteam.com/bt/export',
 				HttpService:JSONEncode { data = SerializedBuildData, version = 3, userId = (Player and Player.UserId) },
 				Enum.HttpContentType.ApplicationJson,
 				true
@@ -1695,7 +1704,7 @@ Actions = {
 
 		-- Return parsed response from API
 		return HttpService:JSONDecode(
-			HttpService:GetAsync('http://f3xteam.com/bt/getFirstMeshData/' .. AssetId)
+			HttpService:GetAsync('https://f3xteam.com/bt/getFirstMeshData/' .. AssetId)
 		);
 
 	end;
@@ -1709,7 +1718,7 @@ Actions = {
 		end;
 
 		-- Return direct response from the API
-		return HttpService:GetAsync('http://f3xteam.com/bt/getDecalImageID/' .. DecalAssetId);
+		return HttpService:GetAsync('https://f3xteam.com/bt/getDecalImageID/' .. DecalAssetId);
 
 	end;
 
@@ -1759,6 +1768,60 @@ Actions = {
 			end
 		end
 
+	end;
+	
+	['PlayerOwnsAsset'] = function(Player, AssetId)
+		-- MarketplaceService.PlayerOwnsAsset(), but wrapped in a pcall
+		
+		-- Offload action to server-side if API is running locally
+		if RunService:IsClient() then
+			return SyncAPI.ServerEndpoint:InvokeServer('PlayerOwnsAsset', Player, AssetId);
+		end
+		
+		-- Validate arguments
+		assert(typeof(Player) == "Instance" and Player:IsA("Player"), 
+			"Argument 1 expects a Player"
+		)
+		assert(type(AssetId) == "number", "Argument 2 expects a number")
+		
+		local success, result = pcall(
+			MarketplaceService.PlayerOwnsAssetAsync,
+			MarketplaceService,
+			Player,
+			AssetId
+		)
+		if not success then
+			return false
+		else
+			return result
+		end
+	end;
+	
+	['GetProductInfo'] = function(AssetId, InfoType)
+		-- MarketplaceService.GetProductInfo(), but wrapped in a pcall
+
+		-- Offload action to server-side if API is running locally
+		if RunService:IsClient() then
+			return SyncAPI.ServerEndpoint:InvokeServer('GetProductInfo', AssetId, InfoType);
+		end
+
+		-- Validate arguments
+		assert(type(AssetId) == "number", "Argument 1 expects a number")
+		assert(typeof(InfoType) == "EnumItem" and Enum.InfoType:FromValue(InfoType.Value),
+			"Argument 2 expects an Enum.InfoType"
+		)
+
+		local success, result = pcall(
+			MarketplaceService.GetProductInfoAsync,
+			MarketplaceService,
+			AssetId,
+			InfoType
+		)
+		if not success then
+			return nil
+		else
+			return result
+		end
 	end
 
 }
@@ -1897,7 +1960,7 @@ function CreatePart(PartType)
 	if PartType == 'Normal' then
 		NewPart = Instance.new('Part')
 		NewPart.Size = Vector3.new(4, 1, 2)
-
+		
 	elseif PartType == 'Truss' then
 		NewPart = Instance.new('TrussPart')
 
@@ -1910,24 +1973,33 @@ function CreatePart(PartType)
 
 	elseif PartType == 'Cylinder' then
 		NewPart = Instance.new('Part')
-		NewPart.Shape = 'Cylinder'
+		NewPart.Shape = Enum.PartType.Cylinder
 		NewPart.Size = Vector3.new(2, 2, 2)
 
 	elseif PartType == 'Ball' then
 		NewPart = Instance.new('Part')
-		NewPart.Shape = 'Ball'
+		NewPart.Shape = Enum.PartType.Ball
 
 	elseif PartType == 'Seat' then
 		NewPart = Instance.new('Seat')
 		NewPart.Size = Vector3.new(4, 1, 2)
+		NewPart.BrickColor = BrickColor.Black()
+		NewPart.FrontSurface = Enum.SurfaceType.Hinge
 
 	elseif PartType == 'Vehicle Seat' then
 		NewPart = Instance.new('VehicleSeat')
 		NewPart.Size = Vector3.new(4, 1, 2)
+		NewPart.BrickColor = BrickColor.Black()
+		NewPart.FrontSurface = Enum.SurfaceType.Hinge
 
 	elseif PartType == 'Spawn' then
 		NewPart = Instance.new('SpawnLocation')
-		NewPart.Size = Vector3.new(4, 1, 2)
+		NewPart.Size = Vector3.new(12, 1, 12)
+		
+		local SpawnDecal = Instance.new('Decal')
+		SpawnDecal.Face = Enum.NormalId.Top
+		SpawnDecal.Texture = 'rbxasset://textures/SpawnLocation.png'
+		SpawnDecal.Parent = NewPart
 	end
 
 	-- Make part surfaces smooth
@@ -1943,15 +2015,16 @@ end
 -- Keep current player updated in tool mode
 if ToolMode == 'Tool' then
 
-	-- Set current player if in backpack
-	if Tool.Parent and Tool.Parent:IsA 'Backpack' then
-		Player = Tool.Parent.Parent;
-
-	-- Set current player if in character
-	elseif Tool.Parent and Tool.Parent:IsA 'Model' then
-		Player = Players:GetPlayerFromCharacter(Tool.Parent);
-
-	-- Clear `Player` if not in possession of a player
+	-- Set current player if one is linked to the backpack/character the tool is in, 
+	-- otherwise set `Player` to nil
+	if Tool.Parent then
+		if Tool.Parent:IsA 'Backpack' then
+			Player = Tool.Parent.Parent;
+		elseif Tool.Parent:IsA 'Model' then
+			Player = Players:GetPlayerFromCharacter(Tool.Parent);
+		else
+			Player = nil;
+		end;
 	else
 		Player = nil;
 	end;
@@ -1964,26 +2037,32 @@ if ToolMode == 'Tool' then
 			return;
 		end;
 
-		-- Set `Player` to player of the backpack the tool is in
-		if Parent and Parent:IsA 'Backpack' then
-			Player = Parent.Parent;
-
-		-- Set `Player` to player of the character holding the tool
-		elseif Parent and Parent:IsA 'Model' then
-			Player = Players:GetPlayerFromCharacter(Parent);
-
-		-- Clear `Player` if tool is not parented to a player
+		-- Set `Player` to player linked to the backpack/character the tool is in,
+		-- otherwise set `Player` to nil
+		local DoCleanup = false;
+		if Parent then
+			if Parent:IsA 'Backpack' then
+				Player = Parent.Parent;
+			elseif Parent:IsA 'Model' then
+				Player = Players:GetPlayerFromCharacter(Parent);
+			else
+				DoCleanup = true;
+				Player = nil;
+			end;
 		else
+			DoCleanup = true;
 			Player = nil;
+		end;
 
-			-- Clean up remaining clone streaming metadata before tool becomes unable to
+		-- if `DoCleanup` is true, clean up remaining clone streaming metadata before tool becomes unable to
+		if DoCleanup then
 			for clone in streamingClonesPendingUntagging do
 				clone:RemoveTag("BTStreamingClone")
 				clone:SetAttribute("BTStreamingCloneID", nil)
 				streamingClonesPendingUntagging[clone] = nil
 			end
+			DoCleanup = nil; -- might have some kind of effect? don't know
 		end;
-
 	end);
 
 end;

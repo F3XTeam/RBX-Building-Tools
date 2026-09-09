@@ -1,3 +1,6 @@
+--!nocheck
+local UserInputService = game:GetService('UserInputService')
+
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 local Vendor = Tool:WaitForChild('Vendor')
@@ -14,7 +17,7 @@ local Signal = require(Libraries:WaitForChild('Signal'))
 Selection = Core.Selection;
 Support = Core.Support;
 Security = Core.Security;
-Support.ImportServices();
+
 
 -- Initialize the tool
 local MaterialTool = {
@@ -29,7 +32,8 @@ local MaterialTool = {
 }
 
 MaterialTool.ManualText = [[<font face="GothamBlack" size="16">Material Tool  🛠</font>
-Lets you change the material, transparency, and reflectance of parts.]]
+Lets you change the material, transparency, and reflectance of parts.
+<b>TIP:</b> Press <b><i>R</i></b> while hovering over a part to copy its material properties.]]
 
 -- Container for temporary connections (disconnected automatically)
 local Connections = {};
@@ -39,6 +43,7 @@ function MaterialTool:Equip()
 
 	-- Start up our interface
 	self:ShowUI()
+	BindShortcutKeys()
 
 end;
 
@@ -85,6 +90,19 @@ local Materials = {
 	[Enum.Material.Wood] = 'Wood';
 	[Enum.Material.WoodPlanks] = 'Wood Planks';
 	[Enum.Material.Glass] = 'Glass';
+	[Enum.Material.Asphalt] = 'Asphalt';
+	[Enum.Material.Basalt] = 'Basalt';
+	[Enum.Material.CrackedLava] = 'Cracked Lava';
+	[Enum.Material.Glacier] = 'Glacier';
+	[Enum.Material.Ground] = 'Ground';
+	[Enum.Material.LeafyGrass] = 'Leafy Grass';
+	[Enum.Material.Limestone] = 'Limestone';
+	[Enum.Material.Mud] = 'Mud';
+	[Enum.Material.Pavement] = 'Pavement';
+	[Enum.Material.Rock] = 'Rock';
+	[Enum.Material.Salt] = 'Salt';
+	[Enum.Material.Sandstone] = 'Sandstone';
+	[Enum.Material.Snow] = 'Snow';
 };
 
 function MaterialTool:ShowUI()
@@ -126,7 +144,8 @@ function MaterialTool:ShowUI()
 			Size = UDim2.new(0, 130, 0, 25);
 			Options = MaterialList;
 			MaxRows = 6;
-			CurrentOption = self.CurrentMaterial and self.CurrentMaterial.Name;
+			CurrentOption = self.CurrentMaterial 
+				and (Materials[self.CurrentMaterial] or self.CurrentMaterial.Name);
 			OnOptionSelected = function (Option)
 				SetProperty('Material', Support.FindTableOccurrence(Materials, Option))
 			end;
@@ -177,6 +196,42 @@ function SyncInputToProperty(Property, Input)
 	Input.FocusLost:Connect(function ()
 		SetProperty(Property, tonumber(Input.Text));
 	end);
+
+end;
+
+function BindShortcutKeys()
+	-- Enables useful shortcut keys for this tool
+
+	-- Track user input while this tool is equipped
+	table.insert(Connections, UserInputService.InputBegan:Connect(function (InputInfo, GameProcessedEvent)
+		-- Make sure this is an intentional event
+		if GameProcessedEvent then
+			return;
+		end;
+
+		-- Make sure this input is a key press
+		if InputInfo.UserInputType ~= Enum.UserInputType.Keyboard then
+			return;
+		end;
+
+		-- Make sure it wasn't pressed while typing
+		if UserInputService:GetFocusedTextBox() then
+			return;
+		end;
+
+		-- Check if the enter key was pressed
+		if InputInfo.KeyCode == Enum.KeyCode.R then
+
+			-- Set selection's properties to that of the target (if any)
+			if Core.Mouse.Target then
+				SetProperty('Material', Core.Mouse.Target.Material)
+				SetProperty('Transparency', Core.Mouse.Target.Transparency)
+				SetProperty('Reflectance', Core.Mouse.Target.Reflectance)
+			end;
+
+		end;
+
+	end));
 
 end;
 

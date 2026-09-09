@@ -14,7 +14,7 @@ local Signal = require(Libraries:WaitForChild('Signal'))
 Selection = Core.Selection;
 Support = Core.Support;
 Security = Core.Security;
-Support.ImportServices();
+
 
 -- Initialize the tool
 local TextureTool = {
@@ -192,7 +192,7 @@ function TextureTool:EnableSurfaceClickSelection()
 	end;
 
 	-- Add the new click connection
-	Connections.SurfaceClickSelection = Core.Mouse.Button1Down:Connect(function ()
+	Connections.SurfaceClickSelection = Support.AddUserInputListener('Began', 'MouseButton1', true, function ()
 		local _, ScopeTarget = Core.Targeting:UpdateTarget()
 		if Selection.IsSelected(ScopeTarget) then
 			self:SetFace(Core.Mouse.TargetSurface)

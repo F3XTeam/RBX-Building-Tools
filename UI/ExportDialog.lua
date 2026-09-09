@@ -20,14 +20,14 @@ local function ExportDialog(props)
             });
             CloseButton = new('TextButton', {
                 AnchorPoint = Vector2.new(0, 1);
-                BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+                BackgroundColor3 = Color3.new(0, 0, 0);
                 BackgroundTransparency = 0.5;
                 Modal = true;
                 Position = UDim2.new(0, 0, 1, 0);
                 Size = UDim2.new(1, 0, 0, 23);
                 Text = 'Close';
-                Font = Enum.Font.GothamSemibold;
-                TextColor3 = Color3.fromRGB(255, 255, 255);
+                Font = Enum.Font.GothamMedium;
+                TextColor3 = Color3.new(1, 1, 1);
                 TextSize = 11;
                 [Roact.Event.Activated] = function (rbx)
                     props.OnDismiss()
@@ -40,10 +40,10 @@ local function ExportDialog(props)
             Text = new('TextLabel', {
                 BackgroundTransparency = 1;
                 Size = UDim2.new(1, 0, 1, -23);
-                Font = Enum.Font.GothamSemibold;
+                Font = Enum.Font.GothamMedium;
                 RichText = true;
                 Text = props.Text;
-                TextColor3 = Color3.fromRGB(255, 255, 255);
+                TextColor3 = Color3.new(1, 1, 1);
                 TextSize = 11;
                 TextWrapped = true;
                 [Roact.Change.TextBounds] = function (rbx)

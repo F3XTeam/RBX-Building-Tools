@@ -1,5 +1,6 @@
 -- Libraries
 Core = require(script.Parent);
+Player = Core.Player;
 Support = Core.Support;
 
 SnapTracking = {};
@@ -29,34 +30,35 @@ function SnapTracking.StartTracking(Callback)
 	SnapTracking.SetCallback(Callback);
 
 	-- Start tracking mouse movement
-	function UpdateTrackingTarget(Input)
+	local function UpdateTrackingTarget(Input)
 
 		-- Blacklist the player's character and the items in `TargetBlacklist`
 		local TargetBlacklist = Support.ConcatTable(
 			{ Player and Player.Character },
 			SnapTracking.TargetBlacklist or {}
 		);
+		
+		-- Create RaycastParams
+		local Params = RaycastParams.new()
+		Params.ExcludeInstances = TargetBlacklist
 
 		-- Find the current target part and point
-		local TargetRay = Workspace.CurrentCamera:ScreenPointToRay(Input.Position.X, Input.Position.Y);
-		local TargetPart, TargetPoint, TargetNormal, TargetMaterial = Workspace:FindPartOnRayWithIgnoreList(
-			Ray.new(TargetRay.Origin, TargetRay.Direction * 5000),
-			TargetBlacklist
-		);
+		local TargetRay = workspace.CurrentCamera:ScreenPointToRay(Input.Position.X, Input.Position.Y);
+		local TargetCast = workspace:Raycast(TargetRay.Origin, TargetRay.Direction * 5000, Params);
 
 		-- Make sure a target part exists
-		if not TargetPart then
+		if not TargetCast then
 			return;
 		end;
 
 		-- Check with any snapping target filter
-		if SnapTracking.TargetFilter and not SnapTracking.TargetFilter(TargetPart) then
+		if SnapTracking.TargetFilter and not SnapTracking.TargetFilter(TargetCast.Instance) then
 			return;
 		end;
 
 		-- Set the current target for snap point tracking
-		SnapTracking.MousePoint = TargetPoint;
-		SnapTracking.SetTrackingTarget(TargetPart);
+		SnapTracking.MousePoint = TargetCast.Position;
+		SnapTracking.SetTrackingTarget(TargetCast.Instance);
 
 	end;
 
@@ -128,7 +130,7 @@ function SnapTracking.UpdateUI(Point)
 	end;
 
 	-- Map the point's position on the screen
-	local PointPosition, PointVisible = Workspace.CurrentCamera:WorldToScreenPoint(Point.p);
+	local PointPosition, PointVisible = workspace.CurrentCamera:WorldToScreenPoint(Point.Position);
 
 	-- Move the point marker UI to the point's position on the screen
 	SnapTracking.PointMarker.Visible = PointVisible;
@@ -141,6 +143,10 @@ function SnapTracking.SetTrackingTarget(NewTarget)
 	SnapTracking.Target = NewTarget;
 	SnapTracking.Update();
 end;
+
+-- Make references to functions called a lot for efficiency
+local Insert = table.insert;
+local NewCFrame = CFrame.new;
 
 function SnapTracking.GetClosestPoint()
 	-- Find the current nearest snapping point for the target, update the GUI
@@ -160,41 +166,41 @@ function SnapTracking.GetClosestPoint()
 
 	-- Filter based on snapping point options
 	if SnapTracking.TrackCorners then
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, SizeY, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, SizeY, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, -SizeY, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, SizeY, -SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, SizeY, -SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, -SizeY, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, -SizeY, -SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, -SizeY, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, SizeY, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, SizeY, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, -SizeY, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, SizeY, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, SizeY, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, -SizeY, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, -SizeY, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, -SizeY, -SizeZ));
 	end;
 	if SnapTracking.TrackEdgeMidpoints then
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, SizeY, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, 0, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, SizeY, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, SizeY, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, 0, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, -SizeY, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, -SizeY, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, 0, -SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, SizeY, -SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, -SizeY, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, 0, -SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, -SizeY, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, SizeY, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, 0, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, SizeY, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, SizeY, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, 0, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, -SizeY, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, -SizeY, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, 0, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, SizeY, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, -SizeY, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, 0, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, -SizeY, -SizeZ));
 	end;
 	if SnapTracking.TrackFaceCentroids then
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(SizeX, 0, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, 0, SizeZ));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, SizeY, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(-SizeX, 0, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, -SizeY, 0));
-		table.insert(SnappingPoints, PartCFrame * CFrame.new(0, 0, -SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(SizeX, 0, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, 0, SizeZ));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, SizeY, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(-SizeX, 0, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, -SizeY, 0));
+		Insert(SnappingPoints, PartCFrame * NewCFrame(0, 0, -SizeZ));
 	end;
 
 	-- Calculate proximity of each snapping point to the mouse
 	for SnappingPointKey, SnappingPoint in ipairs(SnappingPoints) do
-		SnappingPointProximity[SnappingPointKey] = (SnapTracking.MousePoint - SnappingPoint.p).magnitude;
+		SnappingPointProximity[SnappingPointKey] = (SnapTracking.MousePoint - SnappingPoint.Position).Magnitude;
 	end;
 
 	-- Sort out the closest snapping point

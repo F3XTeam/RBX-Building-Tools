@@ -26,7 +26,7 @@ function Dropdown:BuildButtonList()
             BorderSizePixel = 0;
             Font = Enum.Font.GothamBold;
             Text = Option;
-            TextColor3 = Color3.fromRGB(255, 255, 255);
+            TextColor3 = Color3.new(1, 1, 1);
             TextSize = 10;
             TextXAlignment = Enum.TextXAlignment.Left;
             TextYAlignment = Enum.TextYAlignment.Center;
@@ -58,7 +58,7 @@ end
 
 function Dropdown:render()
     return new('ImageButton', {
-        BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+        BackgroundColor3 = Color3.new(0, 0, 0);
         BackgroundTransparency = 0.3;
         BorderSizePixel = 0;
         Position = self.props.Position;
@@ -72,6 +72,11 @@ function Dropdown:render()
                 AreOptionsVisible = not self.state.AreOptionsVisible;
             })
         end;
+		[Roact.Ref] = function (rbx)
+			if rbx then
+				self.SetSize(rbx.AbsoluteSize)
+			end
+		end;
     }, {
         Corners = new('UICorner', {
             CornerRadius = UDim.new(0, 4);
@@ -80,7 +85,7 @@ function Dropdown:render()
             BackgroundTransparency = 1;
             Font = Enum.Font.GothamBold;
             Text = self.props.CurrentOption or '*';
-            TextColor3 = Color3.fromRGB(255, 255, 255);
+            TextColor3 = Color3.new(1, 1, 1);
             TextSize = 10;
             TextXAlignment = Enum.TextXAlignment.Left;
             TextYAlignment = Enum.TextYAlignment.Center;
@@ -96,7 +101,7 @@ function Dropdown:render()
         });
         Options = new('Frame', {
             Visible = self.state.AreOptionsVisible;
-            BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+            BackgroundColor3 = Color3.new(0, 0, 0);
             BackgroundTransparency = 0.3;
             BorderSizePixel = 0;
             Position = UDim2.new(0, 0, 1, 1);

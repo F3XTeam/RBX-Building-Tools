@@ -14,7 +14,7 @@ local Signal = require(Libraries:WaitForChild('Signal'))
 Selection = Core.Selection;
 Support = Core.Support;
 Security = Core.Security;
-Support.ImportServices();
+
 
 -- Initialize the tool
 local SurfaceTool = {
@@ -299,7 +299,7 @@ function EnableSurfaceSelection()
 	-- Allows the player to select surfaces by clicking on them
 
 	-- Watch out for clicks on selected parts
-	Connections.SurfaceSelection = Core.Mouse.Button1Down:Connect(function ()
+	Connections.SurfaceSelection = Support.AddUserInputListener('Began', 'MouseButton1', true, function ()
 		local _, ScopeTarget = Core.Targeting:UpdateTarget()
 		if Selection.IsSelected(ScopeTarget) then
 

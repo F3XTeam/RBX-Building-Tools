@@ -59,7 +59,7 @@ function Tooltip:render()
             Font = Enum.Font.Gotham;
             RichText = true;
             Text = self.props.Text;
-            TextColor3 = Color3.fromRGB(255, 255, 255);
+            TextColor3 = Color3.new(1, 1, 1);
             TextSize = 10;
             TextXAlignment = Enum.TextXAlignment.Center;
             TextYAlignment = Enum.TextYAlignment.Center;

@@ -59,7 +59,7 @@ end
 function SelectionPane:render()
     return new('Frame', {
         BackgroundTransparency = 0.7;
-        BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+        BackgroundColor3 = Color3.new(0, 0, 0);
         BorderSizePixel = 0;
         Size = self.PaneSize;
         LayoutOrder = self.props.LayoutOrder;

@@ -9,6 +9,7 @@ local BoundingBox = require(Tool.Core.BoundingBox)
 -- Libraries
 local Libraries = Tool:WaitForChild 'Libraries'
 local MoveUtil = require(script.Parent:WaitForChild 'Util')
+local JointUtils = require(Libraries:WaitForChild 'JointUtils')
 
 -- Create class
 local HandleDragging = {}
@@ -83,13 +84,13 @@ function HandleDragging:AttachHandles(Part, Autofocus)
 		end
 
 		-- Stop parts from moving, and capture the initial state of the parts
-		local InitialPartStates, InitialModelStates, InitialFocusCFrame = self.Tool:PrepareSelectionForDragging()
+		local InitialPartStates, InitialRootStates, InitialFocusCFrame = self.Tool:PrepareSelectionForDragging()
 		self.InitialPartStates = InitialPartStates
-		self.InitialModelStates = InitialModelStates
+		self.InitialRootStates = InitialRootStates
 		self.InitialFocusCFrame = InitialFocusCFrame
 
 		-- Track the change
-		self.Tool:TrackChange()
+		self.Tool:TrackChange(InitialRootStates)
 
 		-- Cache area permissions information
 		if Core.Mode == 'Tool' then
@@ -110,13 +111,13 @@ function HandleDragging:AttachHandles(Part, Autofocus)
 		Distance = MoveUtil.GetIncrementMultiple(Distance, self.Tool.Increment)
 
 		-- Move the parts along the selected axes by the calculated distance
-		self.Tool:MovePartsAlongAxesByFace(Face, Distance, self.InitialPartStates, self.InitialModelStates, self.InitialFocusCFrame)
+		self.Tool:MovePartsAlongAxesByFace(Face, Distance, self.InitialPartStates, self.InitialRootStates, self.InitialFocusCFrame)
 
 		-- Make sure we're not entering any unauthorized private areas
 		if Core.Mode == 'Tool' and Security.ArePartsViolatingAreas(Selection.Parts, Core.Player, false, AreaPermissions) then
-			local Part, InitialPartState = next(self.InitialPartStates)
-			Part.CFrame = InitialPartState.CFrame
-			MoveUtil.TranslatePartsRelativeToPart(Part, self.InitialPartStates, self.InitialModelStates)
+			for Root, InitialPivot in self.InitialRootStates do
+				Root:PivotTo(InitialPivot)
+			end
 			Distance = 0
 		end
 
@@ -140,8 +141,8 @@ function HandleDragging:AttachHandles(Part, Autofocus)
 
 		-- Make joints, restore original anchor and collision states
 		for Part, State in pairs(self.InitialPartStates) do
+			JointUtils.RestoreJoints(State.Joints)
 			Part:MakeJoints()
-			Core.RestoreJoints(State.Joints)
 			Part.CanCollide = State.CanCollide
 			Part.Anchored = State.Anchored
 		end

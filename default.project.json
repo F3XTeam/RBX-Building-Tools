@@ -1,92 +1,102 @@
 {
-  "name": "RBX-Building-Tools",
-  "servePort": 8000,
-  "tree": {
-    "$className": "DataModel",
-    "StarterPack": {
-      "$className": "StarterPack",
-      "Building Tools": {
-        "$className": "Tool",
-        "$ignoreUnknownInstances": true,
-        "Core": {
-          "$path": "Core"
-        },
-        "Tools": {
-          "$className": "Folder",
-          "$path": "Tools"
-        },
-        "Loader": {
-          "$path": "Loader"
-        },
-        "SyncAPI": {
-          "$className": "BindableFunction",
-          "SyncModule": {
-            "$path": "SyncAPI.lua"
-          },
-          "LocalEndpoint": {
-            "$path": "Support/LocalAPIEndpoint.client.lua"
-          },
-          "ServerEndpoint": {
-            "$className": "RemoteFunction",
-            "ServerEndpoint": {
-              "$path": "Support/ServerAPIEndpoint.server.lua"
-            }
-          }
-        },
-        "Libraries": {
-          "$path": "Libraries",
-          "Signal": {
-            "$path": "node_modules/@quenty/signal/src/Shared/GoodSignal.lua"
-          }
-        },
-        "Vendor": {
-          "$className": "Folder",
-          "$ignoreUnknownInstances": false,
-          "Roact": {
-            "$path": "Vendor/Roact/src"
-          }
-        },
-        "Assets": {
-          "$path": "Support/Assets.lua"
-        },
-        "AutoUpdate": {
-          "$className": "BoolValue",
-          "$properties": {
-            "Value": false
-          },
-          "AutomaticUpdating": {
-            "$path": "AutomaticUpdating.server.lua"
-          }
-        },
-        "Loaded": {
-          "$className": "BoolValue",
-          "DescendantCount": {
-            "$className": "IntValue",
-            "DescendantCounter": {
-              "$path": "Support/DescendantCounter.server.lua"
-            }
-          },
-          "ReplicationListener": {
-            "$path": "Support/ReplicationListener.client.lua"
-          }
-        },
-        "Version": {
-          "$className": "StringValue",
-          "$properties": {
-            "Value": "3.1.0"
-          }
-        },
-        "UI": {
-          "$path": "UI"
-        },
-        "Interfaces": {
-          "$className": "Folder",
-          "$ignoreUnknownInstances": true
-        },
-        "ThumbnailCamera": {
-          "$path": "ThumbnailCamera.model.json"
-        }
-      }
-    }
-  }
+	"name": "Building Tools",
+	"tree": {
+		"$className": "Tool",
+		"$ignoreUnknownInstances": true,
+		"$properties": {
+			"ToolTip": {
+				"String": "Building Tools by F3X"
+			},
+			"Grip": {
+				"CFrame": {
+					"position": [0, 0, 0.4],
+					"orientation": [
+						[1.0, 0, 0],
+						[0, 1.0, 0],
+						[0, 0, 1.0]
+					]
+				}
+			},
+			"RequiresHandle": {
+                "Bool": false
+			}
+		},
+		"Core": {
+			"$path": "Core"
+		},
+		"Tools": {
+			"$className": "Folder",
+			"$path": "Tools"
+		},
+		"Loader": {
+			"$path": "Loader"
+		},
+		"SyncAPI": {
+			"$className": "BindableFunction",
+			"SyncModule": {
+				"$path": "SyncAPI.lua"
+			},
+			"LocalEndpoint": {
+				"$path": "Support/LocalAPIEndpoint.client.lua"
+			},
+			"ServerEndpoint": {
+				"$className": "RemoteFunction",
+				"ServerEndpoint": {
+					"$path": "Support/ServerAPIEndpoint.server.lua"
+				}
+			}
+		},
+		"Libraries": {
+			"$path": "Libraries"
+		},
+		"Vendor": {
+			"$className": "Folder",
+			"$ignoreUnknownInstances": false,
+			"Roact": {
+				"$path": "Vendor/Roact/src"
+			}
+		},
+		"Assets": {
+			"$path": "Support/Assets.lua"
+		},
+		"AutoUpdate": {
+			"$className": "BoolValue",
+			"$properties": {
+				"Value": false
+			},
+			"AutomaticUpdating": {
+				"$path": "AutomaticUpdating.server.lua"
+			}
+		},
+		"Loaded": {
+			"$className": "BoolValue",
+			"DescendantCount": {
+				"$className": "IntValue",
+				"DescendantCounter": {
+					"$path": "Support/DescendantCounter.server.lua"
+				}
+			},
+			"ReplicationListener": {
+				"$path": "Support/ReplicationListener.client.lua"
+			}
+		},
+		"Version": {
+			"$className": "StringValue",
+			"$properties": {
+				"Value": "3.1.0"
+			}
+		},
+		"UI": {
+			"$path": "UI"
+		},
+		"Handle": {
+			"$path": "Handle.rbxmx"
+		},
+		"Interfaces": {
+			"$path": "Interfaces.rbxmx"
+		},
+		"ThumbnailCamera": {
+            "$path": "ThumbnailCamera.rbxmx"
+		}
+	}
 }

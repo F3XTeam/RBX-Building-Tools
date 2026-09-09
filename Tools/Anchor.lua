@@ -1,3 +1,6 @@
+--!nocheck
+local UserInputService = game:GetService('UserInputService')
+
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 
@@ -8,7 +11,7 @@ local ListenForManualWindowTrigger = require(Tool.Core:WaitForChild('ListenForMa
 Selection = Core.Selection;
 Support = Core.Support;
 Security = Core.Security;
-Support.ImportServices();
+
 
 -- Initialize the tool
 local AnchorTool = {

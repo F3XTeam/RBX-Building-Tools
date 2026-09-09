@@ -48,7 +48,7 @@ function ToolButton:render()
             Size = UDim2.fromOffset(self.HotkeyTextSize.X, self.HotkeyTextSize.Y);
             Font = Enum.Font.Gotham;
             Text = self.props.HotkeyLabel;
-            TextColor3 = Color3.fromRGB(255, 255, 255);
+            TextColor3 = Color3.new(1, 1, 1);
             TextSize = 9;
             TextXAlignment = Enum.TextXAlignment.Left;
             TextYAlignment = Enum.TextYAlignment.Top;

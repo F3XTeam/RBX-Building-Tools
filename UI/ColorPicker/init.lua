@@ -5,7 +5,7 @@ local Vendor = Root:WaitForChild('Vendor')
 -- Libraries
 local Roact = require(Vendor:WaitForChild('Roact'))
 local Maid = require(Libraries:WaitForChild('Maid'))
-local fastSpawn = require(Libraries:WaitForChild('fastSpawn'))
+local task_spawn = task.spawn
 
 -- Roact
 local new = Roact.createElement
@@ -42,7 +42,7 @@ end
 function ColorPicker:SetHSV(HSV)
     self._SetHSV(HSV)
     if self.props.SetPreviewColor then
-        fastSpawn(function ()
+        task_spawn(function ()
             self.props.SetPreviewColor(Color3.fromHSV(HSV.H, HSV.S, HSV.V))
         end)
     end
@@ -50,14 +50,14 @@ end
 
 function ColorPicker:Finish()
     if self.props.SetPreviewColor then
-        fastSpawn(function ()
+        task_spawn(function ()
             self.props.SetPreviewColor(nil)
         end)
     end
     if self.props.OnConfirm then
         local HSV = self.HSV:getValue()
         local Color = Color3.fromHSV(HSV.H, HSV.S, HSV.V)
-        fastSpawn(function ()
+        task_spawn(function ()
             self.props.OnConfirm(Color)
         end)
     end
@@ -65,12 +65,12 @@ end
 
 function ColorPicker:Cancel()
     if self.props.SetPreviewColor then
-        fastSpawn(function ()
+        task_spawn(function ()
             self.props.SetPreviewColor(nil)
         end)
     end
     if self.props.OnCancel then
-        fastSpawn(function ()
+        task_spawn(function ()
             self.props.OnCancel()
         end)
     end
@@ -144,7 +144,7 @@ function ColorPicker:render()
                     });
                     HueSlider = new(Slider, {
                         Size = UDim2.new(1, 0, 0, 10);
-                        BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+                        BackgroundColor3 = Color3.new(1, 1, 1);
                         LayoutOrder = 0;
                         Value = self.HSV:map(function (HSV)
                             return HSV.H
@@ -174,7 +174,7 @@ function ColorPicker:render()
                     });
                     SaturationSlider = new(Slider, {
                         Size = UDim2.new(1, 0, 0, 10);
-                        BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+                        BackgroundColor3 = Color3.new(1, 1, 1);
                         LayoutOrder = 1;
                         Value = self.HSV:map(function (HSV)
                             return HSV.S
@@ -199,7 +199,7 @@ function ColorPicker:render()
                     });
                     BrightnessSlider = new(Slider, {
                         Size = UDim2.new(1, 0, 0, 10);
-                        BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+                        BackgroundColor3 = Color3.new(1, 1, 1);
                         LayoutOrder = 2;
                         Value = self.HSV:map(function (HSV)
                             return HSV.V
@@ -236,7 +236,7 @@ function ColorPicker:render()
                     Font = Enum.Font.GothamBlack;
                     Text = 'HSV: ';
                     TextSize = 11;
-                    TextColor3 = Color3.fromRGB(255, 255, 255);
+                    TextColor3 = Color3.new(1, 1, 1);
                     TextStrokeTransparency = 0.95;
                     [Roact.Change.TextBounds] = function (rbx)
                         rbx.Size = UDim2.fromOffset(rbx.TextBounds.X, rbx.TextBounds.Y)
@@ -254,7 +254,7 @@ function ColorPicker:render()
                             return Hue .. ', ' .. Saturation .. ', ' .. Brightness
                         end);
                         TextSize = 11;
-                        TextColor3 = Color3.fromRGB(255, 255, 255);
+                        TextColor3 = Color3.new(1, 1, 1);
                         TextStrokeTransparency = 0.95;
                         TextXAlignment = Enum.TextXAlignment.Left;
                         [Roact.Change.TextBounds] = function (rbx)
@@ -278,7 +278,7 @@ function ColorPicker:render()
                     Font = Enum.Font.GothamBlack;
                     Text = 'RGB: ';
                     TextSize = 11;
-                    TextColor3 = Color3.fromRGB(255, 255, 255);
+                    TextColor3 = Color3.new(1, 1, 1);
                     TextStrokeTransparency = 0.95;
                     [Roact.Change.TextBounds] = function (rbx)
                         rbx.Size = UDim2.fromOffset(rbx.TextBounds.X, rbx.TextBounds.Y)
@@ -297,7 +297,7 @@ function ColorPicker:render()
                             return R .. ', ' .. G .. ', ' .. B
                         end);
                         TextSize = 11;
-                        TextColor3 = Color3.fromRGB(255, 255, 255);
+                        TextColor3 = Color3.new(1, 1, 1);
                         TextStrokeTransparency = 0.95;
                         TextXAlignment = Enum.TextXAlignment.Left;
                         [Roact.Change.TextBounds] = function (rbx)
@@ -339,9 +339,9 @@ function ColorPicker:render()
                         BackgroundTransparency = 1;
                         Size = UDim2.new(1, 0, 1, 0);
                         Text = '✔';
-                        Font = Enum.Font.GothamSemibold;
+                        Font = Enum.Font.GothamMedium;
                         TextSize = 12;
-                        TextColor3 = Color3.fromRGB(0, 0, 0);
+                        TextColor3 = Color3.new(0, 0, 0);
                     });
                 });
                 CancelButton = new('ImageButton', {
@@ -361,8 +361,8 @@ function ColorPicker:render()
                         BackgroundTransparency = 1;
                         Size = UDim2.new(1, 0, 1, 0);
                         Text = 'Cancel';
-                        Font = Enum.Font.GothamSemibold;
-                        TextColor3 = Color3.fromRGB(255, 255, 255);
+                        Font = Enum.Font.GothamMedium;
+                        TextColor3 = Color3.new(1, 1, 1);
                         TextSize = 12;
                         TextStrokeTransparency = 0.95;
                         [Roact.Change.TextBounds] = function (rbx)

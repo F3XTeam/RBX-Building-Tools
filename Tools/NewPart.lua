@@ -17,7 +17,7 @@ local Signal = require(Libraries:WaitForChild('Signal'))
 Selection = Core.Selection;
 Support = Core.Support;
 Security = Core.Security;
-Support.ImportServices();
+
 
 -- Initialize the tool
 local NewPartTool = {
@@ -91,7 +91,7 @@ function NewPartTool:ShowUI()
 	self.UI.Visible = true
 
 	-- Creatable part types
-	Types = {
+	local Types = {
 		'Normal';
 		'Truss';
 		'Wedge';
@@ -179,7 +179,7 @@ end;
 function CreatePart(Type)
 
 	-- Send the creation request to the server
-	local Part = Core.SyncAPI:Invoke('CreatePart', Type, CFrame.new(Core.Mouse.Hit.p), Core.Targeting.Scope)
+	local Part = Core.SyncAPI:Invoke('CreatePart', Type, CFrame.new(Core.Mouse.Hit.Position), Core.Targeting.Scope)
 
 	-- Make sure the part creation succeeds
 	if not Part then

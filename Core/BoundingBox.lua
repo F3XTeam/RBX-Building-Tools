@@ -1,3 +1,4 @@
+--!nocheck
 local Core = require(script.Parent);
 local Support = Core.Support;
 
@@ -9,7 +10,7 @@ local StaticParts = {};
 local StaticPartsIndex = {};
 local StaticPartMonitors = {};
 local RecalculateStaticExtents = true;
-local AggregatingStaticParts = false;
+local _AggregatingStaticParts = false;
 local StaticPartAggregators = {};
 local PotentialPartMonitors = {};
 
@@ -63,12 +64,13 @@ function BoundingBoxModule.GetBoundingBox()
 
 end;
 
+local _IsPhysicsStatic
 function IsPhysicsStatic()
 	-- Returns whether the game's physics are active or static
 
 	-- Determine value if not yet cached
 	if _IsPhysicsStatic == nil then
-		_IsPhysicsStatic = (Core.Mode == 'Plugin') and (Workspace.DistributedGameTime == 0);
+		_IsPhysicsStatic = (Core.Mode == 'Plugin') and (workspace.DistributedGameTime == 0);
 	end;
 
 	-- Return cached value
@@ -367,7 +369,6 @@ end;
 -- Create shortcuts to avoid intensive lookups
 local CFrame_new = CFrame.new;
 local table_insert = table.insert;
-local CFrame_toWorldSpace = CFrame.new().toWorldSpace;
 local math_min = math.min;
 local math_max = math.max;
 local unpack = unpack;
@@ -401,44 +402,44 @@ function BoundingBoxModule.CalculateExtents(Items, StaticExtents, ExtentsOnly)
 			local XPoints, YPoints, ZPoints = {}, {}, {};
 
 			Corner = PartCFrame * CFrame_new(SizeX, SizeY, SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(-SizeX, SizeY, SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(SizeX, -SizeY, SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(SizeX, SizeY, -SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(-SizeX, SizeY, -SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(-SizeX, -SizeY, SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(SizeX, -SizeY, -SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			Corner = PartCFrame * CFrame_new(-SizeX, -SizeY, -SizeZ);
-			table_insert(XPoints, Corner.x);
-			table_insert(YPoints, Corner.y);
-			table_insert(ZPoints, Corner.z);
+			table_insert(XPoints, Corner.X);
+			table_insert(YPoints, Corner.Y);
+			table_insert(ZPoints, Corner.Z);
 
 			-- Reduce gathered points to min/max extents
 			MinX = math_min(MinX, unpack(XPoints));

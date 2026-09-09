@@ -12,7 +12,7 @@ SyncAPI.OnInvoke = function (...)
 
 	-- Perform requests locally if working locally
 	else
-		SyncModule = require(SyncAPI:WaitForChild 'SyncModule')
+		local SyncModule = require(SyncAPI:WaitForChild 'SyncModule')
 		return SyncModule.PerformAction(game.Players.LocalPlayer, ...)
 	end;
 

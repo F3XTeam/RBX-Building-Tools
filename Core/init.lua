@@ -1,4 +1,5 @@
-local Core = getfenv(0)
+--!nocheck
+local Core = getfenv(debug.info(0, 'f'))
 Tool = script.Parent;
 Plugin = (Tool.Parent:IsA 'Plugin') and Tool.Parent or nil
 
@@ -18,21 +19,25 @@ Selection = require(script.Selection)
 Targeting = require(script.Targeting)
 
 -- Libraries
-Region = require(Tool.Libraries.Region)
 Signal = require(Tool.Libraries.Signal)
 Support = require(Tool.Libraries.SupportLibrary)
 Try = require(Tool.Libraries.Try)
 Make = require(Tool.Libraries.Make)
 local Roact = require(Tool.Vendor:WaitForChild 'Roact')
 local Maid = require(Tool.Libraries:WaitForChild 'Maid')
-local Cryo = require(Tool.Libraries:WaitForChild('Cryo'))
+local Cryo = require(Tool.Libraries:WaitForChild 'Cryo')
 
 -- References
-Support.ImportServices();
+local ChangeHistoryService = game:GetService('ChangeHistoryService')
+local CollectionService = game:GetService('CollectionService')
+local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
+local SelectionService = game:GetService('Selection')
+local SoundService = game:GetService('SoundService')
+local UserInputService = game:GetService('UserInputService')
+
 SyncAPI = Tool.SyncAPI;
 Player = Players.LocalPlayer;
-local CollectionService = game:GetService('CollectionService')
-local RunService = game:GetService('RunService')
 
 -- Preload assets
 Assets = require(Tool.Assets)
@@ -40,7 +45,21 @@ Assets = require(Tool.Assets)
 -- Core events
 ToolChanged = Signal.new()
 
-function EquipTool(Tool)
+-- The tool currently selected
+CurrentTool = nil
+
+-- Core connections
+Connections = {};
+
+function ClearConnections()
+	-- Clears and disconnects temporary connections
+	for Index, Connection in pairs(Connections) do
+		Connection:Disconnect();
+		Connections[Index] = nil;
+	end;
+end;
+
+function EquipTool(tool)
 	-- Equips and switches to the given tool
 
 	-- Unequip current tool
@@ -50,14 +69,14 @@ function EquipTool(Tool)
 	end;
 
 	-- Set `Tool` as current
-	CurrentTool = Tool;
+	CurrentTool = tool;
 	CurrentTool.Equipped = true;
 
 	-- Fire relevant events
-	ToolChanged:Fire(Tool);
+	ToolChanged:Fire(tool);
 
 	-- Equip the tool
-	Tool:Equip();
+	tool:Equip();
 
 end;
 
@@ -66,9 +85,9 @@ function RecolorHandle(Color)
 end;
 
 -- Theme UI to current tool
-ToolChanged:Connect(function (Tool)
-	coroutine.wrap(RecolorHandle)(Tool.Color);
-	coroutine.wrap(Selection.RecolorOutlines)(Tool.Color);
+ToolChanged:Connect(function (tool)
+	coroutine.wrap(RecolorHandle)(tool.Color);
+	coroutine.wrap(Selection.RecolorOutlines)(tool.Color);
 end);
 
 -- Core hotkeys
@@ -120,9 +139,7 @@ function EnableHotkeys()
 
 		-- Prioritize hotkeys based on # of required keys
 		table.sort(Hotkeys, function (A, B)
-			if #A.Keys > #B.Keys then
-				return true;
-			end;
+			return #A.Keys > #B.Keys
 		end);
 
 		-- Identify matching hotkeys
@@ -157,6 +174,51 @@ Disabling = Signal.new()
 Enabled = Signal.new()
 Disabled = Signal.new()
 
+function Disable()
+
+	-- Ensure tool is enabled or enabling, and not already disabling
+	if (not IsEnabled and not IsEnabling) or IsDisabling then
+		return;
+
+		-- If tool is enabling, disable it once fully enabled
+	elseif IsEnabling then
+		Enabled:Wait();
+		return Disable();
+	end;
+
+	-- Indicate that tool is now disabling
+	IsDisabling = true;
+	Disabling:Fire();
+
+	-- Reenable mouse lock option in tool mode
+	if Mode == 'Tool' then
+		coroutine.resume(coroutine.create(function ()
+			SyncAPI:Invoke('SetMouseLockEnabled', true)
+		end))
+	end
+
+	-- Hide UI
+	if UI then
+		UI.Parent = script;
+	end;
+
+	-- Unequip current tool
+	if CurrentTool then
+		CurrentTool:Unequip();
+		CurrentTool.Equipped = false;
+	end;
+
+	-- Clear temporary connections
+	ClearConnections();
+
+	-- Indicate that tool is now disabled
+	IsEnabled = false;
+	IsDisabling = false;
+	Disabled:Fire();
+
+	return
+end;
+
 function Enable(Mouse)
 
 	-- Ensure tool is disabled or disabling, and not already enabling
@@ -174,7 +236,7 @@ function Enable(Mouse)
 	Enabling:Fire();
 
 	-- Update the core mouse
-	getfenv(0).Mouse = Mouse;
+	getfenv(debug.info(0, 'f')).Mouse = Mouse;
 
 	-- Use default mouse behavior
 	UserInputService.MouseBehavior = Enum.MouseBehavior.Default;
@@ -218,7 +280,7 @@ function Enable(Mouse)
 			LastSelectionChangeHandle = SelectionChangeHandle
 
 			-- Replace selection if it hasn't changed in a heartbeat
-			RunService.Heartbeat:Wait()
+			RunService.PostSimulation:Wait()
 			if LastSelectionChangeHandle == SelectionChangeHandle then
 				Selection.Replace(SelectionService:Get(), false)
 			end
@@ -232,63 +294,15 @@ function Enable(Mouse)
 	IsEnabled = true;
 	IsEnabling = false;
 	Enabled:Fire();
-
-end;
-
-function Disable()
-
-	-- Ensure tool is enabled or enabling, and not already disabling
-	if (not IsEnabled and not IsEnabling) or IsDisabling then
-		return;
-
-	-- If tool is enabling, disable it once fully enabled
-	elseif IsEnabling then
-		Enabled:Wait();
-		return Disable();
-	end;
-
-	-- Indicate that tool is now disabling
-	IsDisabling = true;
-	Disabling:Fire();
-
-	-- Reenable mouse lock option in tool mode
-	if Mode == 'Tool' then
-		coroutine.resume(coroutine.create(function ()
-			SyncAPI:Invoke('SetMouseLockEnabled', true)
-		end))
+	
+	-- Setup the Disabled connection
+	if Mode == 'Plugin' then
+		Connections.Disabled = Plugin.Deactivation:Connect(Disable);
+	elseif Mode == 'Tool' then
+		Connections.Disabled = Tool.Unequipped:Connect(Disable);
 	end
 
-	-- Hide UI
-	if UI then
-		UI.Parent = script;
-	end;
-
-	-- Unequip current tool
-	if CurrentTool then
-		CurrentTool:Unequip();
-		CurrentTool.Equipped = false;
-	end;
-
-	-- Clear temporary connections
-	ClearConnections();
-
-	-- Indicate that tool is now disabled
-	IsEnabled = false;
-	IsDisabling = false;
-	Disabled:Fire();
-
-end;
-
-
--- Core connections
-Connections = {};
-
-function ClearConnections()
-	-- Clears and disconnects temporary connections
-	for Index, Connection in pairs(Connections) do
-		Connection:Disconnect();
-		Connections[Index] = nil;
-	end;
+	return
 end;
 
 function InitializeUI()
@@ -313,11 +327,11 @@ function InitializeUI()
 	local DockHandle = Roact.mount(DockElement, UI, 'Dock')
 
 	-- Provide API for adding tool buttons to dock
-	local function AddToolButton(IconAssetId, HotkeyLabel, Tool)
+	local function AddToolButton(IconAssetId, HotkeyLabel, tool)
 		table.insert(ToolList, {
 			IconAssetId = IconAssetId;
 			HotkeyLabel = HotkeyLabel;
-			Tool = Tool;
+			Tool = tool;
 		})
 
 		-- Update dock
@@ -358,8 +372,8 @@ function OpenExplorer()
 	end
 
 	-- Initialize explorer
-	Explorer = Roact.createElement(ExplorerTemplate, {
-		Core = getfenv(0),
+	local Explorer = Roact.createElement(ExplorerTemplate, {
+		Core = getfenv(debug.info(0, 'f')),
 		Close = CloseExplorer,
 		Scope = Targeting.Scope
 	})
@@ -399,7 +413,7 @@ coroutine.wrap(function ()
 	-- Create scope HUD
 	local ScopeHUDTemplate = require(UIElements:WaitForChild 'ScopeHUD')
 	local ScopeHUD = Roact.createElement(ScopeHUDTemplate, {
-		Core = getfenv(0);
+		Core = getfenv(debug.info(0, 'f'));
 	})
 
 	-- Mount scope HUD
@@ -414,7 +428,7 @@ AssignHotkey({ 'RightShift', 'H' }, ToggleExplorer)
 if Mode == 'Plugin' then
 
 	-- Set the UI root
-	UIContainer = CoreGui;
+	UIContainer = game:GetService("CoreGui");
 
 	-- Create the toolbar button
 	PluginButton = Plugin:CreateToolbar('Building Tools by F3X'):CreateButton(
@@ -422,6 +436,8 @@ if Mode == 'Plugin' then
 		'Building Tools by F3X',
 		Assets.PluginIcon
 	);
+
+	local PluginEnabled
 
 	-- Connect the button to the system
 	PluginButton.Click:Connect(function ()
@@ -436,9 +452,6 @@ if Mode == 'Plugin' then
 			Disable();
 		end;
 	end);
-
-	-- Disable the tool upon plugin deactivation
-	Plugin.Deactivation:Connect(Disable);
 
 	-- Sync Studio selection to internal selection
 	Selection.Changed:Connect(function ()
@@ -483,7 +496,6 @@ elseif Mode == 'Tool' then
 
 	-- Connect the tool to the system
 	Tool.Equipped:Connect(Enable);
-	Tool.Unequipped:Connect(Disable);
 
 	-- Disable the tool if not parented
 	if not Tool.Parent then
@@ -545,6 +557,20 @@ local function GetHighestParent(Items)
 	-- Return parent of highest item
 	return HighestItem and HighestItem.Parent or nil
 end
+
+ConfirmationSound = Instance.new('Sound')
+ConfirmationSound.Name = 'BTActionCompletionSound';
+ConfirmationSound.PlaybackSpeed = 1.5;
+ConfirmationSound.SoundId = Assets.ActionCompletionSound;
+ConfirmationSound.Volume = 1;
+
+function PlayConfirmationSound()
+	-- Plays a confirmation beep sound
+
+	-- Trigger the sound locally
+	SoundService:PlayLocalSound(ConfirmationSound);
+
+end;
 
 function CloneSelection()
 	-- Clones selected parts
@@ -631,6 +657,9 @@ function CloneSelection()
 
 	-- Select the clones
 	Selection.Replace(Clones);
+	
+	-- Play a confirmation sound
+	PlayConfirmationSound();
 
 	-- Flash the outlines of the new parts
 	coroutine.wrap(Selection.FlashOutlines)();
@@ -822,11 +851,11 @@ AssignHotkey({ 'RightShift', 'F' }, Support.Call(GroupSelection, 'Folder'))
 AssignHotkey({ 'LeftShift', 'U' }, UngroupSelection)
 AssignHotkey({ 'RightShift', 'U' }, UngroupSelection)
 
-function GetPartsFromSelection(Selection)
+function GetPartsFromSelection(selection)
 	local Parts = {}
 
 	-- Get parts from selection
-	for _, Item in pairs(Selection) do
+	for _, Item in pairs(selection) do
 		if Item:IsA 'BasePart' then
 			Parts[#Parts + 1] = Item
 
@@ -903,6 +932,7 @@ function ExportSelection()
 				'<font face="Gotham" size="10">Use the code above to import your creation using the plugin in Studio.</font>';
 			OnDismiss = DialogDismissCallback;
 		}))
+		PlayConfirmationSound();
 		print('[Building Tools by F3X] Uploaded Export:', CreationId);
 	end)
 
@@ -949,30 +979,34 @@ function IsVersionOutdated()
 	-- Returns whether this version of Building Tools is out of date
 
 	-- Check most recent version number
-	local AssetInfo = MarketplaceService:GetProductInfo(142785488, Enum.InfoType.Asset);
-	local LatestMajorVersion, LatestMinorVersion, LatestPatchVersion = AssetInfo.Description:match '%[Version: ([0-9]+)%.([0-9]+)%.([0-9]+)%]';
-	local CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion = Tool.Version.Value:match '([0-9]+)%.([0-9]+)%.([0-9]+)';
+	local AssetInfo = SyncAPI:Invoke('GetProductInfo', 142785488, Enum.InfoType.Asset);
+	if AssetInfo then
+		local LatestMajorVersion, LatestMinorVersion, LatestPatchVersion = AssetInfo.Description:match '%[Version: ([0-9]+)%.([0-9]+)%.([0-9]+)%]';
+		local CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion = Tool.Version.Value:match '([0-9]+)%.([0-9]+)%.([0-9]+)';
 
-	-- Convert version data into numbers
-	local LatestMajorVersion, LatestMinorVersion, LatestPatchVersion =
-		tonumber(LatestMajorVersion), tonumber(LatestMinorVersion), tonumber(LatestPatchVersion);
-	local CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion =
-		tonumber(CurrentMajorVersion), tonumber(CurrentMinorVersion), tonumber(CurrentPatchVersion);
+		-- Convert version data into numbers
+		LatestMajorVersion, LatestMinorVersion, LatestPatchVersion =
+			tonumber(LatestMajorVersion), tonumber(LatestMinorVersion), tonumber(LatestPatchVersion);
+		CurrentMajorVersion, CurrentMinorVersion, CurrentPatchVersion =
+			tonumber(CurrentMajorVersion), tonumber(CurrentMinorVersion), tonumber(CurrentPatchVersion);
 
-	-- Determine whether current version is outdated
-	if LatestMajorVersion > CurrentMajorVersion then
-		return true;
-	elseif LatestMajorVersion == CurrentMajorVersion then
-		if LatestMinorVersion > CurrentMinorVersion then
+		-- Determine whether current version is outdated
+		if LatestMajorVersion > CurrentMajorVersion then
 			return true;
-		elseif LatestMinorVersion == CurrentMinorVersion then
-			return LatestPatchVersion > CurrentPatchVersion;
+		elseif LatestMajorVersion == CurrentMajorVersion then
+			if LatestMinorVersion > CurrentMinorVersion then
+				return true;
+			elseif LatestMinorVersion == CurrentMinorVersion then
+				return LatestPatchVersion > CurrentPatchVersion;
+			end;
 		end;
-	end;
-
-	-- Return an up-to-date status if not oudated
-	return false;
-
+		
+		-- Return an up-to-date status if not oudated
+		return false;
+	else
+		-- Return an up-to-date status if GetProductInfo returns nil (failed)
+		return false;
+	end
 end;
 
 function ToggleSwitch(CurrentButtonName, SwitchContainer)
@@ -1005,87 +1039,8 @@ function ToggleSwitch(CurrentButtonName, SwitchContainer)
 	end;
 end;
 
--- References to reduce indexing time
-local GetConnectedParts = Instance.new('Part').GetConnectedParts;
-local GetChildren = script.GetChildren;
-
-function GetPartJoints(Part, Whitelist)
-	-- Returns any manual joints involving `Part`
-
-	local Joints = {};
-
-	-- Get joints stored inside `Part`
-	for Joint, JointParent in pairs(SearchJoints(Part, Part, Whitelist)) do
-		Joints[Joint] = JointParent;
-	end;
-
-	-- Get joints stored inside connected parts
-	for _, ConnectedPart in pairs(GetConnectedParts(Part)) do
-		for Joint, JointParent in pairs(SearchJoints(ConnectedPart, Part, Whitelist)) do
-			Joints[Joint] = JointParent;
-		end;
-	end;
-
-	-- Return all found joints
-	return Joints;
-
-end;
-
--- Types of joints to assume should be preserved
-local ManualJointTypes = Support.FlipTable { 'Weld', 'ManualWeld', 'ManualGlue', 'Motor', 'Motor6D' };
-
-function SearchJoints(Haystack, Part, Whitelist)
-	-- Searches for and returns manual joints in `Haystack` involving `Part` and other parts in `Whitelist`
-
-	local Joints = {};
-
-	-- Search the haystack for joints involving `Part`
-	for _, Item in pairs(GetChildren(Haystack)) do
-
-		-- Check if this item is a manual, intentional joint
-		if ManualJointTypes[Item.ClassName] and
-		   (Whitelist[Item.Part0] and Whitelist[Item.Part1]) then
-
-			-- Save joint and state if intentional
-			Joints[Item] = Item.Parent;
-
-		end;
-
-	end;
-
-	-- Return the found joints
-	return Joints;
-
-end;
-
-function RestoreJoints(Joints)
-	-- Restores the joints from the given `Joints` data
-
-	-- Restore each joint
-	for Joint, JointParent in pairs(Joints) do
-		Joint.Parent = JointParent;
-	end;
-
-end;
-
-function PreserveJoints(Part, Whitelist)
-	-- Preserves and returns intentional joints of `Part` connecting parts in `Whitelist`
-
-	-- Get the part's joints
-	local Joints = GetPartJoints(Part, Whitelist);
-
-	-- Save the joints from being broken
-	for Joint in pairs(Joints) do
-		Joint.Parent = nil;
-	end;
-
-	-- Return the joints
-	return Joints;
-
-end;
-
 -- Initialize the UI
 InitializeUI();
 
 -- Return core
-return getfenv(0);
+return getfenv(debug.info(0, 'f'));

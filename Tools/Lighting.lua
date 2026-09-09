@@ -15,7 +15,7 @@ local Signal = require(Libraries:WaitForChild('Signal'))
 Selection = Core.Selection;
 Support = Core.Support;
 Security = Core.Security;
-Support.ImportServices();
+
 
 -- Initialize the tool
 local LightingTool = {
@@ -107,7 +107,7 @@ function EnableSurfaceClickSelection(LightType)
 	end;
 
 	-- Add the new click connection
-	Connections.SurfaceClickSelection = Core.Mouse.Button1Down:Connect(function ()
+	Connections.SurfaceClickSelection = Support.AddUserInputListener('Began', 'MouseButton1', true, function ()
 		local _, ScopeTarget = Core.Targeting:UpdateTarget()
 		if Selection.IsSelected(ScopeTarget) then
 			SetSurface(LightType, Core.Mouse.TargetSurface)
@@ -149,7 +149,7 @@ function EnableLightSettingsUI(LightSettingsUI)
 	ColorPickerButton.MouseButton1Click:Connect(function ()
 		local CommonColor = Support.IdentifyCommonProperty(GetLights(LightType), 'Color')
 		local ColorPickerElement = Roact.createElement(ColorPicker, {
-			InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
+			InitialColor = CommonColor or Color3.new(1, 1, 1);
 			SetPreviewColor = function (Color)
 				PreviewColor(LightType, Color)
 			end;
@@ -479,7 +479,7 @@ function UpdateUI()
 			ColorIndicator.BackgroundColor3 = Color;
 			ColorIndicator.Varies.Text = '';
 		else
-			ColorIndicator.BackgroundColor3 = Color3.new(222/255, 222/255, 222/255);
+			ColorIndicator.BackgroundColor3 = Color3.fromRGB(222, 222, 222);
 			ColorIndicator.Varies.Text = '*';
 		end;
 

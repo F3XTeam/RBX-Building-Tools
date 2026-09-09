@@ -153,7 +153,6 @@ local function IsTargetable(Item)
 	return Item:IsA 'Model' or
 		Item:IsA 'BasePart' or
 		Item:IsA 'Tool' or
-		Item:IsA 'Accessory' or
 		Item:IsA 'Accoutrement'
 end
 
@@ -492,7 +491,9 @@ function Explorer:UpdateItemParent(Item, Changes, State)
     ItemState.Parent = Parent
     Changes[ItemId] = ItemState
 
-    -- Queue parenting if parent item valid, but not yet registered
+	-- Queue parenting if parent item valid, but not yet registered
+	local Core = self.props.Core
+	local Scope = Core.Targeting.Scope
     if not ParentId and not (Parent == Scope) then
         if Parent:IsDescendantOf(Scope) then
             self.PendingParent[Parent] = Support.Merge(self.PendingParent[Parent] or {}, { [ItemId] = true })

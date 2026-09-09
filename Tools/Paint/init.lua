@@ -1,4 +1,4 @@
-
+--!nocheck
 Tool = script.Parent.Parent;
 Core = require(Tool.Core);
 local Vendor = Tool:WaitForChild('Vendor')
@@ -16,7 +16,7 @@ local ColorPicker = require(UI:WaitForChild('ColorPicker'))
 Selection = Core.Selection;
 Support = Core.Support;
 Security = Core.Security;
-Support.ImportServices();
+
 
 -- Initialize the tool
 local PaintTool = {
@@ -106,7 +106,7 @@ function ShowUI()
 	PaintTool.UI.Controls.ColorPickerButton.MouseButton1Click:Connect(function ()
 		local CommonColor = Support.IdentifyCommonProperty(Selection.Parts, 'Color')
 		local ColorPickerElement = Roact.createElement(ColorPicker, {
-			InitialColor = CommonColor or Color3.fromRGB(255, 255, 255);
+			InitialColor = CommonColor or Color3.new(1, 1, 1);
 			SetPreviewColor = PreviewColor;
 			OnConfirm = function (Color)
 				SetColor(Color)
@@ -184,7 +184,7 @@ function SetColor(Color)
 
 	-- Use BrickColor name if color matches one
 	local EquivalentBrickColor = BrickColor.new(Color);
-	local RGBText = ('(%d, %d, %d)'):format(Color.r * 255, Color.g * 255, Color.b * 255);
+	local RGBText = ('(%d, %d, %d)'):format(Color.R * 255, Color.G * 255, Color.B * 255);
 	local ColorText = (EquivalentBrickColor.Color == Color) and EquivalentBrickColor.Name or RGBText;
 
 	-- Shortcuts to color indicators
@@ -222,6 +222,7 @@ function PaintParts()
 
 end
 
+local InitialState
 function PreviewColor(Color)
 	-- Previews the given color on the selection
 
@@ -288,7 +289,7 @@ function PaintTool:BindShortcutKeys()
 			end;
 
 		end;
-
+		return
 	end)
 
 end;
@@ -298,7 +299,7 @@ function PaintTool:EnableClickPainting()
 
 	-- Watch out for clicks on selected parts
 	self.Maid.ClickPainting = Selection.FocusChanged:Connect(function (Focus)
-		local Target, ScopeTarget = Core.Targeting:UpdateTarget()
+		local _Target, ScopeTarget = Core.Targeting:UpdateTarget()
 		if Selection.IsSelected(ScopeTarget) then
 
 			-- Paint the selected parts

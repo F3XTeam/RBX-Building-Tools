@@ -1,6 +1,6 @@
 Building Tools by F3X
 =========================
-A set of powerful, easy building tools for ROBLOX. Get a built version [of the tools here](http://www.roblox.com/Building-Tools-by-F3X-item?id=142785488), [of the Studio plugin here](http://www.roblox.com/Building-Tools-by-F3X-Plugin-item?id=144950355) or [of the import plugin here](http://www.roblox.com/Import-from-Building-Tools-by-F3X-item?id=142485815). Builds of work that has not been released as a version yet can be found in the `build` folder in the `development` branch.
+A set of powerful, easy building tools for ROBLOX. Get a built version [of the tools here](https://create.roblox.com/store/asset/142785488/Building-Tools-by-F3X), [of the Studio plugin here](https://create.roblox.com/store/asset/144950355/Building-Tools-by-F3X-Plugin), or [of the import plugin here](https://create.roblox.com/store/asset/142485815/Import-from-Building-Tools-by-F3X).
 
 ## What's included?
 BT includes the following tools:
@@ -20,7 +20,7 @@ BT includes the following tools:
   -  A __decorate__ tool, which lets you add smoke, fire, and sparkles to parts.
 
 You can also:
-  -  Export your creations (Shift + P) and import them into Studio (using [this plugin](http://www.roblox.com/Import-from-Building-Tools-by-F3X-item?id=142485815))
+  -  Export your creations (Shift + P) and import them into Studio (using [this plugin](https://create.roblox.com/store/asset/142485815/Import-from-Building-Tools-by-F3X))
   -  Select multiple parts in various convenient ways such as:
        - Adding parts to the selection individually (Shift + Click)
        - Selecting parts using a 2D rectangle (Shift + Click & Drag)
@@ -32,4 +32,4 @@ You can also:
   -  Switch between tools using hotkeys
 
 ---
-Designed and built by [the F3X team](http://www.roblox.com/Groups/Group.aspx?gid=831895).
+Designed and built by [the F3X team](https://www.roblox.com/communities/831895/F3X).

@@ -63,7 +63,7 @@ function ToolList:render()
 
     return new('Frame', {
         BackgroundTransparency = 0.8;
-        BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+        BackgroundColor3 = Color3.new(0, 0, 0);
         BorderSizePixel = 0;
         LayoutOrder = self.props.LayoutOrder;
         Size = self.CanvasSize:map(function (CanvasSize)
@@ -83,7 +83,7 @@ function ToolList:render()
             CanvasSize = self.CanvasSize;
             ScrollBarThickness = 1;
             ScrollingDirection = Enum.ScrollingDirection.Y;
-            ScrollBarImageColor3 = Color3.fromRGB(0, 0, 0);
+            ScrollBarImageColor3 = Color3.new(0, 0, 0);
             [Roact.Children] = Children;
         });
     })
